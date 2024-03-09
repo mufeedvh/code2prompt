@@ -1,0 +1,17 @@
+[package]
+name = "code2prompt"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+handlebars = "4.3"
+jwalk = "0.8"
+termtree = "0.4"
+cli-clipboard = "0.4"
+serde_json = "1.0.114"
+indicatif = "0.17.8"
+colored = "2.1.0"
+tiktoken-rs = "0.5.8"
+ignore = "0.4.22"
+anyhow = "1.0.80"
