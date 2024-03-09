@@ -12,7 +12,10 @@ use serde_json::json;
 use termtree::Tree;
 use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
 
-/// CLI arguments structure
+
+/// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
+/// 
+/// Author: Mufeed VH (@mufeedvh)
 #[derive(Parser)]
 #[clap(name = "code2prompt", version = "1.0.0", author = "Mufeed VH")]
 struct Cli {
@@ -36,9 +39,13 @@ struct Cli {
     #[clap(long)]
     tokens: bool,
 
+    /// Optional tokenizer to use for token count
+    /// 
+    /// Supported tokenizers: cl100k (default), p50k, p50k_edit, r50k, gpt2
     #[clap(short, long)]
     encoding: Option<String>,
 
+    /// Optional output file path
     #[clap(short, long)]
     output: Option<String>,
 }
