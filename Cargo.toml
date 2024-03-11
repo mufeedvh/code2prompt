@@ -1,7 +1,22 @@
 [package]
 name = "code2prompt"
 version = "1.0.0"
+authors = ["Mufeed VH <mufeed@lyminal.space>"]
+description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
+keywords = ["cli", "code", "prompt", "llm", "chatgpt", "gpt", "ai", "development"]
+categories = ["command-line-utilities", "development-tools"]
+homepage = "https://github.com/mufeedvh/code2prompt"
+documentation = "https://github.com/mufeedvh/code2prompt"
+repository = "https://github.com/mufeedvh/code2prompt"
+license = "MIT"
+readme = "README.md"
+exclude = [".github/*", ".assets/*"]
 edition = "2021"
+
+[[bin]]
+name = "code2prompt"
+test = false
+bench = false
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
@@ -15,3 +30,14 @@ colored = "2.1.0"
 tiktoken-rs = "0.5.8"
 ignore = "0.4.22"
 anyhow = "1.0.80"
+
+[profile.release]
+lto = "thin"
+panic = 'abort'
+codegen-units = 1
+
+[package.metadata.deb]
+section = "utility"
+assets = [
+    ["target/release/code2prompt", "/usr/bin/", "755"],
+]
