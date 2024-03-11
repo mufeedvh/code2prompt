@@ -4,8 +4,8 @@ A command-line tool to generate an LLM prompt from codebases of any size, fast.
 
 With the advent of LLMs with multi-million context windows, it's just a matter of copy-pasting entire codebases into your prompts.
 
-[![crates.io](https://img.shields.io/crates/v/code2prompt.svg)](https://crates.io/crates/code2prompt)
-[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
+[![crates.io](https://img.shields.io/crates/v/code2prompt.svg#cache)](https://crates.io/crates/code2prompt)
+[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
 
 <h1 align="center">
   <a href="https://github.com/mufeedvh/code2prompt"><img src=".assets/code2prompt-screenshot.png" alt="code2prompt"></a>
