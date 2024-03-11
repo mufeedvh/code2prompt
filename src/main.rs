@@ -53,24 +53,7 @@ struct Cli {
 fn main() {
     let args = Cli::parse();
 
-    let default_template = r#"Project Path: {{ absolute_code_path }}
-
-Source Tree:
-
-```
-{{ source_tree }}
-```
-
-{{#each files}}
-{{#if code}}
-`{{path}}`:
-
-```{{extension}}
-{{code}}
-```
-
-{{/if}}
-{{/each}}"#;
+    let default_template = include_str!("default_template.hbs");
 
     let mut handlebars = Handlebars::new();
     handlebars.register_escape_fn(no_escape);
@@ -181,10 +164,24 @@ Source Tree:
     }
 }
 
+/// Wraps the code block with backticks and adds the file extension as a label
+#[inline]
+fn wrap_code_block(code: &str, extension: &str) -> String {
+    let backticks = "`".repeat(7);
+    format!("{}{}\n{}\n{}", backticks, extension, code, backticks)
+}
 
-/// Returns the file name as a label
+/// Returns the directory name as a label
+#[inline]
 fn label<P: AsRef<Path>>(p: P) -> String {
-    p.as_ref().file_name().unwrap().to_str().unwrap().to_owned()
+    let path = p.as_ref();
+    if path.file_name().is_none() {
+        // If the path is the current directory or a root directory
+        path.to_str().unwrap_or(".").to_owned()
+    } else {
+        // Otherwise, use the file name as the label
+        path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_owned()
+    }
 }
 
 /// Traverses the directory, builds the tree, and collects information about each file.
@@ -195,14 +192,16 @@ fn traverse_directory(
 ) -> Result<(String, Vec<serde_json::Value>)> {
     let mut files = Vec::new();
 
-    let tree = WalkBuilder::new(root_path)
+    let canonical_root_path = root_path.canonicalize()?;
+
+    let tree = WalkBuilder::new(&canonical_root_path)
         .git_ignore(true)
         .build()
         .filter_map(|e| e.ok())
-        .fold(Tree::new(label(root_path)), |mut root, entry| {
+        .fold(Tree::new(label(&canonical_root_path)), |mut root, entry| {
             let path = entry.path();
             // Calculate the relative path from the root directory to this entry
-            if let Ok(relative_path) = path.strip_prefix(root_path) {
+            if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
                 let mut current_tree = &mut root;
                 for component in relative_path.components() {
                     let component_str = component.as_os_str().to_string_lossy().to_string();
@@ -242,11 +241,13 @@ fn traverse_directory(
                     let code_bytes = fs::read(&path).expect("Failed to read file");
                     let code = String::from_utf8_lossy(&code_bytes);
 
+                    let code_block = wrap_code_block(&code, extension);
+
                     if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
                         files.push(json!({
                             "path": path.display().to_string(),
                             "extension": extension,
-                            "code": code.into_owned(),
+                            "code": code_block,
                         }));
                     }
                 }
