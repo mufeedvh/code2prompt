@@ -1,4 +1,4 @@
-# `code2prompt` :computer::memo:
+# `code2prompt` 💻📝
 
 A command-line tool to generate an LLM prompt from codebases of any size, fast.
 
