@@ -53,4 +53,4 @@ jobs:
         files: |
           target/${{ matrix.job.target }}/release/code2prompt${{ matrix.job.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
