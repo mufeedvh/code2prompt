@@ -1,4 +1,4 @@
-# `code2prompt` 💻📝
+# `code2prompt`
 
 A CLI tool to generate LLM prompts from your codebase with prompt templating and token counting.
 
