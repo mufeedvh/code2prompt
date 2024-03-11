@@ -2,7 +2,7 @@
 
 A CLI tool to generate LLM prompts from your codebase with prompt templating and token counting.
 
-_With the advent of LLMs with multi-million context windows, it's just a matter of copy-pasting entire codebases into your prompts._
+> I initially wrote this for personal use to utilize Claude 3.0's 200K context window and it has proven to be pretty useful so I decided to open-source it!
 
 [![crates.io](https://img.shields.io/crates/v/code2prompt.svg#cache)](https://crates.io/crates/code2prompt)
 [![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
