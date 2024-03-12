@@ -2,6 +2,15 @@
 
 A CLI tool to generate LLM prompts from your codebase with prompt templating and token counting.
 
+You can run this tool on the entire directory and it would generate a well-formatted Markdown prompt detailing the source tree structure, and all the code. You can then upload this document to either GPT or Claude models with higher context windows and ask it to:
+
+- Rewrite the code to another language.
+- Find bugs/security vulnerabilities.
+- Document the code.
+- Implement new features.
+
+You can customise the prompt template to achieve any of the desired use cases. It essentially traverses a codebase and creates a prompt with all source files combined. In short, it automates copy-pasting multiple source files into your prompt and formatting them along with letting you know how many tokens your code consumes. 
+
 > I initially wrote this for personal use to utilize Claude 3.0's 200K context window and it has proven to be pretty useful so I decided to open-source it!
 
 [![crates.io](https://img.shields.io/crates/v/code2prompt.svg#cache)](https://crates.io/crates/code2prompt)
