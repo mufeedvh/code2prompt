@@ -37,7 +37,7 @@ You can customise the prompt template to achieve any of the desired use cases. I
 - Customize prompt generation with Handlebars templates. (See the [default template](src/default_template.hbs))
 - Follows `.gitignore`.
 - Filter and exclude files by extension.
-- Display the token count of the generated prompt. (See [Tokenizer](#Tokenizers) for more details)
+- Display the token count of the generated prompt. (See [Tokenizers](#Tokenizers) for more details)
 - Copy the generated prompt to the clipboard on generation.
 - Save the generated prompt to an output file.
 
