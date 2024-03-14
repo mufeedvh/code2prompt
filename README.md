@@ -25,6 +25,7 @@ You can customise the prompt template to achieve any of the desired use cases. I
 * [Features](#features)
 * [Installation](#installation)
 * [Usage](#usage)
+* [Templates](#templates)
 * [Build From Source](#build-from-source)
 * [Contribution](#contribution)
 * [License](#license)
@@ -98,6 +99,40 @@ Save the generated prompt to an output file:
 $ code2prompt path/to/codebase -o output.txt  
 ```
 
+## Templates
+
+`code2prompt` comes with a set of built-in templates for common use cases. You can find them in the [`templates`](templates) directory.
+
+### [`document-the-code.hbs`](templates/document-the-code.hbs)
+
+Use this template to generate prompts for documenting the code. It will add documentation comments to all public functions, methods, classes and modules in the codebase.
+
+### [`find-security-vulnerabilities.hbs`](templates/find-security-vulnerabilities.hbs)
+
+Use this template to generate prompts for finding potential security vulnerabilities in the codebase. It will look for common security issues and provide recommendations on how to fix or mitigate them.
+
+### [`clean-up-code.hbs`](templates/clean-up-code.hbs) 
+
+Use this template to generate prompts for cleaning up and improving the code quality. It will look for opportunities to improve readability, adherence to best practices, efficiency, error handling, and more.
+
+### [`fix-bugs.hbs`](templates/fix-bugs.hbs)
+
+Use this template to generate prompts for fixing bugs in the codebase. It will help diagnose issues, provide fix suggestions, and update the code with proposed fixes.
+
+### [`write-github-readme.hbs`](templates/write-github-readme.hbs)
+
+Use this template to generate a high-quality README file for the project, suitable for hosting on GitHub. It will analyze the codebase to understand its purpose and functionality, and generate the README content in Markdown format.
+
+### [`improve-performance.hbs`](templates/improve-performance.hbs)
+
+Use this template to generate prompts for improving the performance of the codebase. It will look for optimization opportunities, provide specific suggestions, and update the code with the changes.
+
+You can use these templates by passing the `-t` flag followed by the path to the template file. For example:
+
+```
+code2prompt path/to/codebase -t templates/document-the-code.hbs
+```
+
 ## Tokenizers
 
 Tokenization is implemented using [`tiktoken-rs`](https://github.com/zurawiki/tiktoken-rs). `tiktoken` supports these encodings used by OpenAI models:
@@ -150,3 +185,5 @@ Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2pr
 ## Liked the project?
 
 If you liked the project and found it useful, please give it a :star: and consider supporting the author!
+
+---

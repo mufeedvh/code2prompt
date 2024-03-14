@@ -1,0 +1,38 @@
+Project Path: {{ absolute_code_path }}
+
+I'd like your help cleaning up and improving the code quality in this project. Please review all the code files carefully:
+
+Source Tree:
+```
+{{ source_tree }} 
+```
+
+{{#each files}}
+{{#if code}}
+`{{path}}`:
+
+{{code}}
+
+{{/if}} 
+{{/each}}
+
+When reviewing the code, look for opportunities to improve:
+- Readability and clarity 
+- Adherence to language idioms and best practices
+- Modularity and code organization 
+- Efficiency and performance (within reason)
+- Consistency in style and conventions
+- Error handling and reliability
+- Simplicity (remove unused code, simplify complex logic)
+- Naming of variables, functions, classes, etc.
+- Formatting and whitespace
+- Comments and documentation 
+
+Make sure your changes don't alter existing behavior (except perhaps for improved error handling). Try to infer the original intent as much as possible, and refactor towards that intent.
+
+For each change you make, include a brief code comment explaining your rationale, something like:
+
+// Refactored to improve readability and efficiency. 
+// Combined error handling logic into a reusable function.
+
+Be thoughtful and judicious with your changes. I trust your programming expertise! Let me know if any part of the original code is unclear.
