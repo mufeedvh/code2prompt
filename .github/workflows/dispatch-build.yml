@@ -1,4 +1,4 @@
-name: Release
+name: Build
 
 env:
   PROJECT_NAME: code2prompt
@@ -11,8 +11,8 @@ on:
     types: [published]
 
 jobs:
-  release:
-    name: Release
+  build:
+    name: Build
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
@@ -40,12 +40,17 @@ jobs:
         target: ${{ matrix.job.target }}
         override: true
         default: true
+    - name: Install cross-compilation dependencies
+      if: matrix.job.target == 'arm-unknown-linux-gnueabihf' || matrix.job.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
     - name: Build release binary
       uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: build
-        args: --release --target ${{ matrix.job.target }}
+        args: --release --target ${{ matrix.job.target }} --verbose
     - name: Strip release binary (unix)
       if: matrix.job.target != 'x86_64-pc-windows-msvc'
       run: strip "target/${{ matrix.job.target }}/release/code2prompt"
@@ -60,12 +65,12 @@ jobs:
             per_page: 1
           });
           return releases.data[0].id;
-    - name: Upload release asset
-      uses: actions/upload-release-asset@v1
+    - name: Upload release archive
+      uses: softprops/action-gh-release@v1
+      with:
+        release_id: ${{ steps.latest_release.outputs.result }}
+        files: |
+          target/${{ matrix.job.target }}/release/code2prompt${{ matrix.job.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+        fail_on_unmatched_files: false
       env:
         GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-      with:
-        upload_url: https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.latest_release.outputs.result }}/assets
-        asset_path: target/${{ matrix.job.target }}/release/code2prompt${{ matrix.job.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
-        asset_name: code2prompt-${{ matrix.job.target }}${{ matrix.job.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
-        asset_content_type: application/octet-stream
