@@ -26,6 +26,7 @@ jobs:
           - { os: ubuntu-latest  , target: x86_64-unknown-linux-gnu    , use-cross: use-cross }
           - { os: ubuntu-latest  , target: x86_64-unknown-linux-musl   , use-cross: use-cross }
           - { os: macos-latest   , target: x86_64-apple-darwin         }
+          - { os: macos-latest   , target: aarch64-apple-darwin        }
           - { os: windows-latest , target: i686-pc-windows-gnu         }
           - { os: windows-latest , target: i686-pc-windows-msvc        }
           - { os: windows-latest , target: x86_64-pc-windows-gnu       }
@@ -59,11 +60,12 @@ jobs:
             per_page: 1
           });
           return releases.data[0].id;
-    - name: Upload release archive
-      uses: softprops/action-gh-release@v1
-      with:
-        release_id: ${{ steps.latest_release.outputs.result }}
-        files: |
-          target/${{ matrix.job.target }}/release/code2prompt${{ matrix.job.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      with:
+        upload_url: https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.latest_release.outputs.result }}/assets
+        asset_path: target/${{ matrix.job.target }}/release/code2prompt${{ matrix.job.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+        asset_name: code2prompt-${{ matrix.job.target }}${{ matrix.job.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+        asset_content_type: application/octet-stream
