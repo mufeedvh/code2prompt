@@ -36,6 +36,14 @@ struct Cli {
     #[clap(short, long)]
     exclude: Option<String>,
 
+    /// Optional comma-separated list of file names to exclude
+    #[clap(long)]
+    exclude_files: Option<String>,
+
+    /// Optional comma-separated list of folder paths to exclude
+    #[clap(long)]
+    exclude_folders: Option<String>,
+
     /// Display the token count of the generated prompt
     #[clap(long)]
     tokens: bool,
@@ -82,7 +90,13 @@ fn main() {
 
     spinner.set_message("Traversing directory and building tree...");
 
-    let create_tree = traverse_directory(&args.path, &args.filter, &args.exclude);
+    let create_tree = traverse_directory(
+        &args.path,
+        &args.filter,
+        &args.exclude,
+        &args.exclude_files,
+        &args.exclude_folders,
+    );
     let (tree, files) = create_tree.unwrap_or_else(|e| {
         spinner.finish_with_message(format!("{}", "Failed!".red()));
         eprintln!(
@@ -227,6 +241,8 @@ fn traverse_directory(
     root_path: &PathBuf,
     filter: &Option<String>,
     exclude: &Option<String>,
+    exclude_files: &Option<String>,
+    exclude_folders: &Option<String>,
 ) -> Result<(String, Vec<serde_json::Value>)> {
     let mut files = Vec::new();
 
@@ -273,6 +289,25 @@ fn traverse_directory(
                             filter_ext.split(',').map(|s| s.trim()).collect();
                         if !filter_extensions.contains(&extension) {
                             return root;
+                        }
+                    }
+
+                    if let Some(ref exclude_files_str) = exclude_files {
+                        let exclude_files_list: Vec<&str> =
+                            exclude_files_str.split(',').map(|s| s.trim()).collect();
+                        if exclude_files_list.contains(&path.file_name().unwrap().to_str().unwrap()) {
+                            return root;
+                        }
+                    }
+
+                    if let Some(ref exclude_folders_str) = exclude_folders {
+                        let exclude_folders_list: Vec<&str> =
+                            exclude_folders_str.split(',').map(|s| s.trim()).collect();
+                        if let Some(parent_path) = path.parent() {
+                            let relative_parent_path = parent_path.strip_prefix(&canonical_root_path).unwrap();
+                            if exclude_folders_list.iter().any(|folder| relative_parent_path.starts_with(folder)) {
+                                return root;
+                            }
                         }
                     }
 

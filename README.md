@@ -28,6 +28,7 @@ You can customize the prompt template to achieve any of the desired use cases. I
 * [Installation](#installation)
 * [Usage](#usage)
 * [Templates](#templates)
+* [User Defined Variables](#user-defined-variables)
 * [Build From Source](#build-from-source)
 * [Contribution](#contribution)
 * [License](#license)
@@ -76,6 +77,18 @@ Exclude files by extension:
 
 ```  
 code2prompt path/to/codebase -e txt,md
+```
+
+Exclude files by name:
+
+```
+code2prompt path/to/codebase --exclude-files "file1.txt,file2.txt"
+```
+
+Exclude files by folder/directory path:
+
+```
+code2prompt path/to/codebase --exclude-folders "tests,docs"
 ```
 
 Display token count of the generated prompt:
@@ -134,6 +147,16 @@ You can use these templates by passing the `-t` flag followed by the path to the
 ```
 code2prompt path/to/codebase -t templates/document-the-code.hbs
 ```
+
+## User Defined Variables
+
+`code2prompt` supports the use of user defined variables in the Handlebars templates. Any variables in the template that are not part of the default context (`absolute_code_path`, `source_tree`, `files`) will be treated as user defined variables.
+
+During prompt generation, `code2prompt` will prompt the user to enter values for these user defined variables. This allows for further customization of the generated prompts based on user input.
+
+For example, if your template includes `{{challenge_name}}` and `{{challenge_description}}`, you will be prompted to enter values for these variables when running `code2prompt`.
+
+This feature enables creating reusable templates that can be adapted to different scenarios based on user provided information.
 
 ## Tokenizers
 
