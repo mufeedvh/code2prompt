@@ -30,6 +30,8 @@ colored = "2.1.0"
 tiktoken-rs = "0.5.8"
 ignore = "0.4.22"
 anyhow = "1.0.80"
+inquire = "0.7.1"
+regex = "1.10.3"
 
 [profile.release]
 lto = "thin"

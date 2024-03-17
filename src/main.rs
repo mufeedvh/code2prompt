@@ -8,13 +8,14 @@ use colored::*;
 use handlebars::{no_escape, Handlebars};
 use ignore::WalkBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
+use inquire::Text;
+use regex::Regex;
 use serde_json::json;
 use termtree::Tree;
 use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
 
-
 /// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
-/// 
+///
 /// Author: Mufeed VH (@mufeedvh)
 #[derive(Parser)]
 #[clap(name = "code2prompt", version = "1.0.0", author = "Mufeed VH")]
@@ -40,7 +41,7 @@ struct Cli {
     tokens: bool,
 
     /// Optional tokenizer to use for token count
-    /// 
+    ///
     /// Supported tokenizers: cl100k (default), p50k, p50k_edit, r50k, gpt2
     #[clap(short, long)]
     encoding: Option<String>,
@@ -61,9 +62,10 @@ fn main() {
         .register_template_string("default", default_template)
         .expect("Failed to register default template");
 
+    let mut template = String::new();
+
     if let Some(template_path) = args.template.as_ref() {
-        let template =
-            std::fs::read_to_string(template_path).expect("Failed to read template file");
+        template = std::fs::read_to_string(template_path).expect("Failed to read template file");
         handlebars
             .register_template_string("custom", &template)
             .expect("Failed to register custom template");
@@ -95,11 +97,33 @@ fn main() {
 
     spinner.finish_with_message(format!("{}", "Done!".green()));
 
-    let data = json!({
+    let mut data = json!({
         "absolute_code_path": args.path.canonicalize().unwrap().display().to_string(),
         "source_tree": tree,
         "files": files,
     });
+
+    let undefined_variables = extract_undefined_variables(&template);
+    let mut user_defined_vars = serde_json::Map::new();
+
+    for var in undefined_variables.iter() {
+        if !data.as_object().unwrap().contains_key(var) {
+            let prompt = format!("Enter value for '{}': ", var);
+            let answer = Text::new(&prompt)
+                .with_help_message("Fill user defined variable in template")
+                .prompt()
+                .unwrap_or_else(|_| "".to_string());
+
+            user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
+        }
+    }
+
+    // Merge user_defined_vars into the existing `data` JSON object
+    if let Some(obj) = data.as_object_mut() {
+        for (key, value) in user_defined_vars {
+            obj.insert(key, value);
+        }
+    }
 
     let rendered = if args.template.is_some() {
         handlebars
@@ -164,6 +188,17 @@ fn main() {
     }
 }
 
+/// Extracts undefined variable names from the template string.
+#[inline]
+fn extract_undefined_variables(template: &str) -> Vec<String> {
+    let registered_identifiers = vec!["path", "code"];
+    let re = Regex::new(r"\{\{\s*(?P<var>[a-zA-Z_][a-zA-Z_0-9]*)\s*\}\}").unwrap();
+    re.captures_iter(template)
+        .map(|cap| cap["var"].to_string())
+        .filter(|var| !registered_identifiers.contains(&var.as_str()))
+        .collect()
+}
+
 /// Wraps the code block with backticks and adds the file extension as a label
 #[inline]
 fn wrap_code_block(code: &str, extension: &str) -> String {
@@ -180,7 +215,10 @@ fn label<P: AsRef<Path>>(p: P) -> String {
         path.to_str().unwrap_or(".").to_owned()
     } else {
         // Otherwise, use the file name as the label
-        path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_owned()
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("")
+            .to_owned()
     }
 }
 
