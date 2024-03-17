@@ -41,6 +41,7 @@ You can customize the prompt template to achieve any of the desired use cases. I
 - Follows `.gitignore`.
 - Filter and exclude files by extension.
 - Display the token count of the generated prompt. (See [Tokenizers](#Tokenizers) for more details)
+- Optionally include the Git diff output (staged files) in the generated prompt.
 - Copy the generated prompt to the clipboard on generation.
 - Save the generated prompt to an output file.
 
@@ -114,6 +115,15 @@ Save the generated prompt to an output file:
 $ code2prompt path/to/codebase -o output.txt  
 ```
 
+Generate git committ message (for staged files):
+
+```
+$ code2prompt path/to/codebase --diff -t "templates/write-git-commit.hbs"    
+```
+
+
+
+
 ## Templates
 
 `code2prompt` comes with a set of built-in templates for common use cases. You can find them in the [`templates`](templates) directory.
@@ -137,6 +147,10 @@ Use this template to generate prompts for fixing bugs in the codebase. It will h
 ### [`write-github-readme.hbs`](templates/write-github-readme.hbs)
 
 Use this template to generate a high-quality README file for the project, suitable for hosting on GitHub. It will analyze the codebase to understand its purpose and functionality, and generate the README content in Markdown format.
+
+### [`write-git-commit.hbs`](templates/write-git-commit.hbs)
+
+Use this template to generate git commits from the staged files in your git directory. It will analyze the codebase to understand its purpose and functionality, and generate the git commit message content in Markdown format.
 
 ### [`improve-performance.hbs`](templates/improve-performance.hbs)
 
