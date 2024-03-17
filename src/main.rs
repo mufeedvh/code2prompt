@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use clap::Parser;
 use colored::*;
+use git2::{DiffOptions, Repository};
 use handlebars::{no_escape, Handlebars};
 use ignore::WalkBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -57,6 +58,10 @@ struct Cli {
     /// Optional output file path
     #[clap(short, long)]
     output: Option<String>,
+
+    /// Include git diff
+    #[clap(short = 'd', long)]
+    diff: bool,
 }
 
 fn main() {
@@ -97,6 +102,7 @@ fn main() {
         &args.exclude_files,
         &args.exclude_folders,
     );
+
     let (tree, files) = create_tree.unwrap_or_else(|e| {
         spinner.finish_with_message(format!("{}", "Failed!".red()));
         eprintln!(
@@ -109,12 +115,19 @@ fn main() {
         std::process::exit(1);
     });
 
+    let mut git_diff = String::default();
+    if args.diff {
+        spinner.set_message("Generating git diff...");
+        git_diff = get_git_diff(&args.path).unwrap();
+    }
+
     spinner.finish_with_message(format!("{}", "Done!".green()));
 
     let mut data = json!({
         "absolute_code_path": args.path.canonicalize().unwrap().display().to_string(),
         "source_tree": tree,
         "files": files,
+        "git_diff": git_diff,
     });
 
     let undefined_variables = extract_undefined_variables(&template);
@@ -205,7 +218,7 @@ fn main() {
 /// Extracts undefined variable names from the template string.
 #[inline]
 fn extract_undefined_variables(template: &str) -> Vec<String> {
-    let registered_identifiers = vec!["path", "code"];
+    let registered_identifiers = vec!["path", "code", "git_diff"];
     let re = Regex::new(r"\{\{\s*(?P<var>[a-zA-Z_][a-zA-Z_0-9]*)\s*\}\}").unwrap();
     re.captures_iter(template)
         .map(|cap| cap["var"].to_string())
@@ -295,7 +308,8 @@ fn traverse_directory(
                     if let Some(ref exclude_files_str) = exclude_files {
                         let exclude_files_list: Vec<&str> =
                             exclude_files_str.split(',').map(|s| s.trim()).collect();
-                        if exclude_files_list.contains(&path.file_name().unwrap().to_str().unwrap()) {
+                        if exclude_files_list.contains(&path.file_name().unwrap().to_str().unwrap())
+                        {
                             return root;
                         }
                     }
@@ -304,8 +318,12 @@ fn traverse_directory(
                         let exclude_folders_list: Vec<&str> =
                             exclude_folders_str.split(',').map(|s| s.trim()).collect();
                         if let Some(parent_path) = path.parent() {
-                            let relative_parent_path = parent_path.strip_prefix(&canonical_root_path).unwrap();
-                            if exclude_folders_list.iter().any(|folder| relative_parent_path.starts_with(folder)) {
+                            let relative_parent_path =
+                                parent_path.strip_prefix(&canonical_root_path).unwrap();
+                            if exclude_folders_list
+                                .iter()
+                                .any(|folder| relative_parent_path.starts_with(folder))
+                            {
                                 return root;
                             }
                         }
@@ -330,4 +348,21 @@ fn traverse_directory(
         });
 
     Ok((tree.to_string(), files))
+}
+
+fn get_git_diff(repo_path: &Path) -> Result<String, git2::Error> {
+    let repo = Repository::open(repo_path)?;
+    let head = repo.head()?;
+    let head_tree = head.peel_to_tree()?;
+    let diff = repo.diff_tree_to_index(
+        Some(&head_tree),
+        None,
+        Some(DiffOptions::new().ignore_whitespace(true)),
+    )?;
+    let mut diff_text = Vec::new();
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        diff_text.extend_from_slice(line.content());
+        true
+    })?;
+    Ok(String::from_utf8_lossy(&diff_text).into_owned())
 }
