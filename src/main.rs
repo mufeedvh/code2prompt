@@ -51,7 +51,7 @@ struct Cli {
     /// Optional tokenizer to use for token count
     ///
     /// Supported tokenizers: cl100k (default), p50k, p50k_edit, r50k, gpt2
-    #[clap(short, long)]
+    #[clap(short = 'c', long)]
     encoding: Option<String>,
 
     /// Optional output file path
