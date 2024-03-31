@@ -62,6 +62,10 @@ struct Cli {
     /// Include git diff
     #[clap(short = 'd', long)]
     diff: bool,
+
+    /// Add line numbers to the source code
+    #[clap(short = 'l', long)]
+    line_number: bool,
 }
 
 fn main() {
@@ -101,6 +105,7 @@ fn main() {
         &args.exclude,
         &args.exclude_files,
         &args.exclude_folders,
+        args.line_number,
     );
 
     let (tree, files) = create_tree.unwrap_or_else(|e| {
@@ -228,9 +233,19 @@ fn extract_undefined_variables(template: &str) -> Vec<String> {
 
 /// Wraps the code block with backticks and adds the file extension as a label
 #[inline]
-fn wrap_code_block(code: &str, extension: &str) -> String {
+fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
     let backticks = "`".repeat(7);
-    format!("{}{}\n{}\n{}", backticks, extension, code, backticks)
+    let mut code_with_line_numbers = String::new();
+    
+    if line_numbers {
+        for (line_number, line) in code.lines().enumerate() {
+            code_with_line_numbers.push_str(&format!("{:4} | {}\n", line_number + 1, line));
+        }
+    } else {
+        code_with_line_numbers = code.to_string();
+    }
+    
+    format!("{}{}\n{}\n{}", backticks, extension, code_with_line_numbers, backticks)
 }
 
 /// Returns the directory name as a label
@@ -256,6 +271,7 @@ fn traverse_directory(
     exclude: &Option<String>,
     exclude_files: &Option<String>,
     exclude_folders: &Option<String>,
+    line_number: bool,
 ) -> Result<(String, Vec<serde_json::Value>)> {
     let mut files = Vec::new();
 
@@ -332,7 +348,7 @@ fn traverse_directory(
                     let code_bytes = fs::read(&path).expect("Failed to read file");
                     let code = String::from_utf8_lossy(&code_bytes);
 
-                    let code_block = wrap_code_block(&code, extension);
+                    let code_block = wrap_code_block(&code, extension, line_number);
 
                     if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
                         files.push(json!({
