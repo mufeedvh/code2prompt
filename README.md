@@ -50,7 +50,7 @@ You can customize the prompt template to achieve any of the desired use cases. I
 Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases) OR install with `cargo`:
 
 ```
-$ cargo install code2prompt
+cargo install code2prompt
 ```
 
 ## Usage
@@ -112,13 +112,13 @@ Supported tokenizers: `c100k`, `p50k`, `p50k_edit`, `r50k_base`.
 Save the generated prompt to an output file:
 
 ```
-$ code2prompt path/to/codebase -o output.txt  
+code2prompt path/to/codebase -o output.txt  
 ```
 
-Generate git committ message (for staged files):
+Generate git commit message (for staged files):
 
 ```
-$ code2prompt path/to/codebase --diff -t "templates/write-git-commit.hbs"    
+code2prompt path/to/codebase --diff -t "templates/write-git-commit.hbs"    
 ```
 
 
