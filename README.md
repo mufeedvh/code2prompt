@@ -15,8 +15,8 @@ You can customize the prompt template to achieve any of the desired use cases. I
 
 > I initially wrote this for personal use to utilize Claude 3.0's 200K context window and it has proven to be pretty useful so I decided to open-source it!
 
-[![crates.io](https://img.shields.io/crates/v/code2prompt.svg#cache)](https://crates.io/crates/code2prompt)
-[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
+[![crates.io](https://img.shields.io/crates/v/code2prompt.svg#cache1)](https://crates.io/crates/code2prompt)
+[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
 
 <h1 align="center">
   <a href="https://github.com/mufeedvh/code2prompt"><img src=".assets/code2prompt-screenshot.png" alt="code2prompt"></a>
