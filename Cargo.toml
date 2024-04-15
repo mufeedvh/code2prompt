@@ -32,7 +32,7 @@ ignore = "0.4.22"
 anyhow = "1.0.80"
 inquire = "0.7.1"
 regex = "1.10.3"
-git2 = "0.18.2"
+git2 = { version = "0.18.2", default_features = false, features = [ "https", "vendored-libgit2", "vendored-openssl" ] }
 
 [profile.release]
 lto = "thin"
