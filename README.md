@@ -55,6 +55,12 @@ Download the latest binary for your OS from [Releases](https://github.com/mufeed
 cargo install code2prompt
 ```
 
+For unpublished builds:
+
+```
+cargo install --git https://github.com/mufeedvh/code2prompt
+```
+
 ## Usage
 
 
