@@ -44,6 +44,8 @@ You can customize the prompt template to achieve any of the desired use cases. I
 - Optionally include the Git diff output (staged files) in the generated prompt.
 - Copy the generated prompt to the clipboard on generation.
 - Save the generated prompt to an output file.
+- Exclude files and folders by name or path.
+- Add line numbers to source code blocks.
 
 ## Installation
 
@@ -101,10 +103,10 @@ code2prompt path/to/codebase --tokens
 Specify tokenizer for token count:
 
 ```
-code2prompt path/to/codebase --tokens -e p50k
+code2prompt path/to/codebase --tokens --encoding p50k
 ```
 
-Supported tokenizers: `c100k`, `p50k`, `p50k_edit`, `r50k_base`.
+Supported tokenizers: `cl100k`, `p50k`, `p50k_edit`, `r50k_base`.
 
 > [!NOTE]  
 > See [Tokenizers](#Tokenizers) for more details.
@@ -121,8 +123,11 @@ Generate git commit message (for staged files):
 code2prompt path/to/codebase --diff -t "templates/write-git-commit.hbs"    
 ```
 
+Add line numbers to source code blocks:
 
-
+```
+code2prompt path/to/codebase --line-number
+```
 
 ## Templates
 
@@ -224,5 +229,3 @@ Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2pr
 ## Liked the project?
 
 If you liked the project and found it useful, please give it a :star: and consider supporting the author!
-
----
