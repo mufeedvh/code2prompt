@@ -44,12 +44,20 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+    - name: Install MinGW toolchain
+      if: matrix.job.target == 'i686-pc-windows-gnu' || matrix.job.target == 'x86_64-pc-windows-gnu'
+      uses: egor-tensin/setup-mingw@v2
+      with:
+        platform: ${{ matrix.job.target }}
     - name: Build release binary
       uses: actions-rs/cargo@v1
       with:
         use-cross: ${{ matrix.job.use-cross }}
         command: build
         args: --release --target ${{ matrix.job.target }} --verbose
+      env:
+        OPENSSL_DIR: /usr/local/opt/openssl
+        PKG_CONFIG_ALLOW_CROSS: 1
     - name: Strip release binary (unix)
       if: matrix.job.target != 'x86_64-pc-windows-msvc'
       run: strip "target/${{ matrix.job.target }}/release/code2prompt"
