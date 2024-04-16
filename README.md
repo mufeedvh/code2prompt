@@ -100,6 +100,12 @@ Exclude files by folder/directory path:
 code2prompt path/to/codebase --exclude-folders "tests,docs"
 ```
 
+Use relative paths instead of absolute paths:
+
+```
+code2prompt path/to/codebase --relative-paths
+```
+
 Display token count of the generated prompt:
 
 ```

@@ -66,6 +66,10 @@ struct Cli {
     /// Add line numbers to the source code
     #[clap(short = 'l', long)]
     line_number: bool,
+
+    /// Use relative paths instead of absolute paths, including the parent directory
+    #[clap(long)]
+    relative_paths: bool,
 }
 
 fn main() {
@@ -106,6 +110,7 @@ fn main() {
         &args.exclude_files,
         &args.exclude_folders,
         args.line_number,
+        args.relative_paths,
     );
 
     let (tree, files) = create_tree.unwrap_or_else(|e| {
@@ -129,7 +134,11 @@ fn main() {
     spinner.finish_with_message(format!("{}", "Done!".green()));
 
     let mut data = json!({
-        "absolute_code_path": args.path.canonicalize().unwrap().display().to_string(),
+        "absolute_code_path": if args.relative_paths {
+            label(args.path.canonicalize().unwrap())
+        } else {
+            args.path.canonicalize().unwrap().display().to_string()
+        },
         "source_tree": tree,
         "files": files,
         "git_diff": git_diff,
@@ -272,16 +281,19 @@ fn traverse_directory(
     exclude_files: &Option<String>,
     exclude_folders: &Option<String>,
     line_number: bool,
+    relative_paths: bool,
 ) -> Result<(String, Vec<serde_json::Value>)> {
     let mut files = Vec::new();
 
     let canonical_root_path = root_path.canonicalize()?;
 
+    let parent_directory = label(&canonical_root_path);
+
     let tree = WalkBuilder::new(&canonical_root_path)
         .git_ignore(true)
         .build()
         .filter_map(|e| e.ok())
-        .fold(Tree::new(label(&canonical_root_path)), |mut root, entry| {
+        .fold(Tree::new(parent_directory.to_owned()), |mut root, entry| {
             let path = entry.path();
             // Calculate the relative path from the root directory to this entry
             if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
@@ -351,8 +363,14 @@ fn traverse_directory(
                     let code_block = wrap_code_block(&code, extension, line_number);
 
                     if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
+                        let file_path = if relative_paths {
+                            format!("{}/{}", parent_directory, relative_path.display())
+                        } else {
+                            path.display().to_string()
+                        };
+
                         files.push(json!({
-                            "path": path.display().to_string(),
+                            "path": file_path,
                             "extension": extension,
                             "code": code_block,
                         }));
