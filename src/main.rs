@@ -29,17 +29,25 @@ struct Cli {
     #[clap(short, long)]
     template: Option<PathBuf>,
 
-    /// Optional comma-separated list of file extensions to filter
-    #[clap(short, long)]
-    filter: Option<String>,
+    /// Optional comma-separated list of file extensions to include
+    #[clap(long)]
+    include_extensions: Option<String>,
 
     /// Optional comma-separated list of file extensions to exclude
-    #[clap(short, long)]
-    exclude: Option<String>,
+    #[clap(long)]
+    exclude_extensions: Option<String>,
+
+    /// Optional comma-separated list of file names to include
+    #[clap(long)]
+    include_files: Option<String>,
 
     /// Optional comma-separated list of file names to exclude
     #[clap(long)]
     exclude_files: Option<String>,
+
+    /// Optional comma-separated list of folder paths to include
+    #[clap(long)]
+    include_folders: Option<String>,
 
     /// Optional comma-separated list of folder paths to exclude
     #[clap(long)]
@@ -70,6 +78,10 @@ struct Cli {
     /// Use relative paths instead of absolute paths, including the parent directory
     #[clap(long)]
     relative_paths: bool,
+
+    /// Disable copying to clipboard
+    #[clap(long)]
+    no_clipboard: bool,
 }
 
 fn main() {
@@ -105,10 +117,12 @@ fn main() {
 
     let create_tree = traverse_directory(
         &args.path,
-        &args.filter,
-        &args.exclude,
+        &args.include_extensions,
+        &args.exclude_extensions,
+        &args.include_files,
         &args.exclude_files,
         &args.exclude_folders,
+        &args.include_folders,
         args.line_number,
         args.relative_paths,
     );
@@ -125,7 +139,7 @@ fn main() {
         std::process::exit(1);
     });
 
-    let mut git_diff = String::default();
+    let mut git_diff = String::new();
     if args.diff {
         spinner.set_message("Generating git diff...");
         git_diff = get_git_diff(&args.path).unwrap();
@@ -178,41 +192,32 @@ fn main() {
     let rendered = rendered.trim();
 
     if args.tokens {
-        let (bpe, model_info) = match args.encoding.as_deref().unwrap_or("cl100k") {
-            "cl100k" => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),
-            "p50k" => (
-                p50k_base(),
-                "Code models, text-davinci-002, text-davinci-003",
-            ),
-            "p50k_edit" => (
-                p50k_edit(),
-                "Edit models like text-davinci-edit-001, code-davinci-edit-001",
-            ),
-            "r50k" | "gpt2" => (r50k_base(), "GPT-3 models like davinci"),
-            _ => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),
-        };
-
-        let token_count = bpe.unwrap().encode_with_special_tokens(&rendered).len();
-
-        println!(
-            "{}{}{} Token count: {}, Model info: {}",
-            "[".bold().white(),
-            "i".bold().blue(),
-            "]".bold().white(),
-            token_count.to_string().bold().yellow(),
-            model_info
-        );
+        count_tokens(rendered, &args.encoding);
     }
 
-    cli_clipboard::set_contents(rendered.into()).expect("Failed to copy output to clipboard");
-
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Prompt copied to clipboard!".green()
-    );
+    if !args.no_clipboard {
+        match cli_clipboard::set_contents(rendered.to_string()) {
+            Ok(_) => {
+                println!(
+                    "{}{}{} {}",
+                    "[".bold().white(),
+                    "✓".bold().green(),
+                    "]".bold().white(),
+                    "Prompt copied to clipboard!".green()
+                );
+            },
+            Err(e) => {
+                eprintln!(
+                    "{}{}{} {}: {}",
+                    "[".bold().white(),
+                    "!".bold().red(),
+                    "]".bold().white(),
+                    "Failed to copy to clipboard".red(),
+                    e
+                );
+            }
+        }
+    }
 
     if let Some(output_path) = args.output {
         let file = std::fs::File::create(&output_path).expect("Failed to create output file");
@@ -229,8 +234,79 @@ fn main() {
     }
 }
 
-/// Extracts undefined variable names from the template string.
-#[inline]
+fn is_path_included(path: &Path, includes: &[String]) -> bool {
+    includes.iter().any(|inc| path.starts_with(inc))
+}
+
+fn is_path_excluded(path: &Path, excludes: &[String]) -> bool {
+    excludes.iter().any(|exc| path.starts_with(exc))
+}
+
+fn is_extension_included(extension: &str, includes: &[String]) -> bool {
+    includes.iter().any(|inc| extension == inc)
+}
+
+fn is_extension_excluded(extension: &str, excludes: &[String]) -> bool {
+    excludes.iter().any(|exc| extension == exc)
+}
+
+fn is_file_included(file_name: &str, includes: &[String]) -> bool {
+    includes.iter().any(|inc| file_name == inc)
+}
+
+fn is_file_excluded(file_name: &str, excludes: &[String]) -> bool {
+    excludes.iter().any(|exc| file_name == exc)
+}
+
+fn should_include_file(
+    path: &Path,
+    include_extensions: &[String],
+    exclude_extensions: &[String],
+    include_files: &[String],
+    exclude_files: &[String],
+) -> bool {
+    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_string();
+    let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_string();
+
+    (include_extensions.is_empty() || is_extension_included(&extension, include_extensions))
+        && !is_extension_excluded(&extension, exclude_extensions)
+        && (include_files.is_empty() || is_file_included(&file_name, include_files))
+        && !is_file_excluded(&file_name, exclude_files)
+}
+
+fn validate_inclusion_exclusion(
+    include_files: &[String],
+    exclude_files: &[String],
+    include_extensions: &[String],
+    exclude_extensions: &[String],
+) {
+    for file in include_files {
+        if exclude_files.contains(file) {
+            eprintln!(
+                "{}{}{} {}: {}",
+                "[".bold().white(),
+                "!".bold().red(),
+                "]".bold().white(),
+                "File is both included and excluded".red(),
+                file
+            );
+        }
+    }
+
+    for ext in include_extensions {
+        if exclude_extensions.contains(ext) {
+            eprintln!(
+                "{}{}{} {}: {}",
+                "[".bold().white(),
+                "!".bold().red(),
+                "]".bold().white(),
+                "Extension is both included and excluded".red(),
+                ext
+            );
+        }
+    }
+}
+
 fn extract_undefined_variables(template: &str) -> Vec<String> {
     let registered_identifiers = vec!["path", "code", "git_diff"];
     let re = Regex::new(r"\{\{\s*(?P<var>[a-zA-Z_][a-zA-Z_0-9]*)\s*\}\}").unwrap();
@@ -240,8 +316,6 @@ fn extract_undefined_variables(template: &str) -> Vec<String> {
         .collect()
 }
 
-/// Wraps the code block with backticks and adds the file extension as a label
-#[inline]
 fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
     let backticks = "`".repeat(7);
     let mut code_with_line_numbers = String::new();
@@ -257,15 +331,11 @@ fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
     format!("{}{}\n{}\n{}", backticks, extension, code_with_line_numbers, backticks)
 }
 
-/// Returns the directory name as a label
-#[inline]
 fn label<P: AsRef<Path>>(p: P) -> String {
     let path = p.as_ref();
     if path.file_name().is_none() {
-        // If the path is the current directory or a root directory
         path.to_str().unwrap_or(".").to_owned()
     } else {
-        // Otherwise, use the file name as the label
         path.file_name()
             .and_then(|name| name.to_str())
             .unwrap_or("")
@@ -273,21 +343,64 @@ fn label<P: AsRef<Path>>(p: P) -> String {
     }
 }
 
-/// Traverses the directory, builds the tree, and collects information about each file.
 fn traverse_directory(
     root_path: &PathBuf,
-    filter: &Option<String>,
-    exclude: &Option<String>,
+    include_extensions: &Option<String>,
+    exclude_extensions: &Option<String>,
+    include_files: &Option<String>,
     exclude_files: &Option<String>,
     exclude_folders: &Option<String>,
+    include_folders: &Option<String>,
     line_number: bool,
     relative_paths: bool,
 ) -> Result<(String, Vec<serde_json::Value>)> {
     let mut files = Vec::new();
-
     let canonical_root_path = root_path.canonicalize()?;
-
     let parent_directory = label(&canonical_root_path);
+
+    let include_extensions_list: Vec<String> = include_extensions
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    let exclude_extensions_list: Vec<String> = exclude_extensions
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    let include_folders_list: Vec<String> = include_folders
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    let exclude_folders_list: Vec<String> = exclude_folders
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    let include_files_list: Vec<String> = include_files
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    let exclude_files_list: Vec<String> = exclude_files
+        .as_deref()
+        .unwrap_or("")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    validate_inclusion_exclusion(&include_files_list, &exclude_files_list, &include_extensions_list, &exclude_extensions_list);
 
     let tree = WalkBuilder::new(&canonical_root_path)
         .git_ignore(true)
@@ -295,12 +408,10 @@ fn traverse_directory(
         .filter_map(|e| e.ok())
         .fold(Tree::new(parent_directory.to_owned()), |mut root, entry| {
             let path = entry.path();
-            // Calculate the relative path from the root directory to this entry
             if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
                 let mut current_tree = &mut root;
                 for component in relative_path.components() {
                     let component_str = component.as_os_str().to_string_lossy().to_string();
-
                     current_tree = if let Some(pos) = current_tree
                         .leaves
                         .iter_mut()
@@ -315,65 +426,28 @@ fn traverse_directory(
                 }
 
                 if path.is_file() {
-                    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+                    if is_path_included(path, &include_folders_list)
+                        && !is_path_excluded(path, &exclude_folders_list)
+                        && should_include_file(path, &include_extensions_list, &exclude_extensions_list, &include_files_list, &exclude_files_list)
+                    {
+                        let code_bytes = fs::read(&path).expect("Failed to read file");
+                        let code = String::from_utf8_lossy(&code_bytes);
 
-                    if let Some(ref exclude_ext) = exclude {
-                        let exclude_extensions: Vec<&str> =
-                            exclude_ext.split(',').map(|s| s.trim()).collect();
-                        if exclude_extensions.contains(&extension) {
-                            return root;
+                        let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number);
+
+                        if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
+                            let file_path = if relative_paths {
+                                format!("{}/{}", parent_directory, relative_path.display())
+                            } else {
+                                path.display().to_string()
+                            };
+
+                            files.push(json!({
+                                "path": file_path,
+                                "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
+                                "code": code_block,
+                            }));
                         }
-                    }
-
-                    if let Some(ref filter_ext) = filter {
-                        let filter_extensions: Vec<&str> =
-                            filter_ext.split(',').map(|s| s.trim()).collect();
-                        if !filter_extensions.contains(&extension) {
-                            return root;
-                        }
-                    }
-
-                    if let Some(ref exclude_files_str) = exclude_files {
-                        let exclude_files_list: Vec<&str> =
-                            exclude_files_str.split(',').map(|s| s.trim()).collect();
-                        if exclude_files_list.contains(&path.file_name().unwrap().to_str().unwrap())
-                        {
-                            return root;
-                        }
-                    }
-
-                    if let Some(ref exclude_folders_str) = exclude_folders {
-                        let exclude_folders_list: Vec<&str> =
-                            exclude_folders_str.split(',').map(|s| s.trim()).collect();
-                        if let Some(parent_path) = path.parent() {
-                            let relative_parent_path =
-                                parent_path.strip_prefix(&canonical_root_path).unwrap();
-                            if exclude_folders_list
-                                .iter()
-                                .any(|folder| relative_parent_path.starts_with(folder))
-                            {
-                                return root;
-                            }
-                        }
-                    }
-
-                    let code_bytes = fs::read(&path).expect("Failed to read file");
-                    let code = String::from_utf8_lossy(&code_bytes);
-
-                    let code_block = wrap_code_block(&code, extension, line_number);
-
-                    if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
-                        let file_path = if relative_paths {
-                            format!("{}/{}", parent_directory, relative_path.display())
-                        } else {
-                            path.display().to_string()
-                        };
-
-                        files.push(json!({
-                            "path": file_path,
-                            "extension": extension,
-                            "code": code_block,
-                        }));
                     }
                 }
             }
@@ -399,4 +473,31 @@ fn get_git_diff(repo_path: &Path) -> Result<String, git2::Error> {
         true
     })?;
     Ok(String::from_utf8_lossy(&diff_text).into_owned())
+}
+
+fn count_tokens(rendered: &str, encoding: &Option<String>) {
+    let (bpe, model_info) = match encoding.as_deref().unwrap_or("cl100k") {
+        "cl100k" => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),
+        "p50k" => (
+            p50k_base(),
+            "Code models, text-davinci-002, text-davinci-003",
+        ),
+        "p50k_edit" => (
+            p50k_edit(),
+            "Edit models like text-davinci-edit-001, code-davinci-edit-001",
+        ),
+        "r50k" | "gpt2" => (r50k_base(), "GPT-3 models like davinci"),
+        _ => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),
+    };
+
+    let token_count = bpe.unwrap().encode_with_special_tokens(rendered).len();
+
+    println!(
+        "{}{}{} Token count: {}, Model info: {}",
+        "[".bold().white(),
+        "i".bold().blue(),
+        "]".bold().white(),
+        token_count.to_string().bold().yellow(),
+        model_info
+    );
 }
