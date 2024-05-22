@@ -26,7 +26,8 @@ fn test_include_extensions() {
     cmd.assert().success().stdout(contains("test1.rs"));
     cmd.assert().success().stdout(contains("test3.rs"));
     cmd.assert().success().stdout(contains("fn main() {}"));
-    cmd.assert().failure().stdout(contains("print('Hello, world!')"));
+    cmd.assert().stdout(contains("test2.py").not());
+    cmd.assert().stdout(contains("print('Hello, world!')").not());
 }
 
 #[test]
@@ -44,8 +45,8 @@ fn test_exclude_extensions() {
     cmd.assert().success().stdout(contains("test1.rs"));
     cmd.assert().success().stdout(contains("test3.rs"));
     cmd.assert().success().stdout(contains("fn main() {}"));
-    cmd.assert().failure().stdout(contains("test2.py"));
-    cmd.assert().failure().stdout(contains("print('Hello, world!')"));
+    cmd.assert().stdout(contains("test2.py").not());
+    cmd.assert().stdout(contains("print('Hello, world!')").not());
 }
 
 #[test]
@@ -61,8 +62,8 @@ fn test_include_files() {
 
     cmd.assert().success().stdout(contains("include.rs"));
     cmd.assert().success().stdout(contains("fn main() {}"));
-    cmd.assert().failure().stdout(contains("exclude.rs"));
-    cmd.assert().failure().stdout(contains("fn exclude() {}"));
+    cmd.assert().stdout(contains("exclude.rs").not());
+    cmd.assert().stdout(contains("fn exclude() {}").not());
 }
 
 #[test]
@@ -78,8 +79,8 @@ fn test_exclude_files() {
 
     cmd.assert().success().stdout(contains("include.rs"));
     cmd.assert().success().stdout(contains("fn main() {}"));
-    cmd.assert().failure().stdout(contains("exclude.rs"));
-    cmd.assert().failure().stdout(contains("fn exclude() {}"));
+    cmd.assert().stdout(contains("exclude.rs").not());
+    cmd.assert().stdout(contains("fn exclude() {}").not());
 }
 
 #[test]
@@ -100,8 +101,8 @@ fn test_include_folders() {
 
     cmd.assert().success().stdout(contains("include.rs"));
     cmd.assert().success().stdout(contains("fn main() {}"));
-    cmd.assert().failure().stdout(contains("exclude.rs"));
-    cmd.assert().failure().stdout(contains("fn exclude() {}"));
+    cmd.assert().stdout(contains("exclude.rs").not());
+    cmd.assert().stdout(contains("fn exclude() {}").not());
 }
 
 #[test]
@@ -122,6 +123,6 @@ fn test_exclude_folders() {
 
     cmd.assert().success().stdout(contains("include.rs"));
     cmd.assert().success().stdout(contains("fn main() {}"));
-    cmd.assert().failure().stdout(contains("exclude.rs"));
-    cmd.assert().failure().stdout(contains("fn exclude() {}"));
+    cmd.assert().stdout(contains("exclude.rs").not());
+    cmd.assert().stdout(contains("fn exclude() {}").not());
 }

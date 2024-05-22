@@ -192,7 +192,7 @@ fn main() {
     let rendered = rendered.trim();
 
     if args.tokens {
-        count_tokens(rendered, &args.encoding);
+        count_tokens(&rendered, &args.encoding);
     }
 
     if !args.no_clipboard {
@@ -234,29 +234,12 @@ fn main() {
     }
 }
 
-
 fn is_path_included(path: &Path, includes: &[String]) -> bool {
     includes.iter().any(|inc| path.starts_with(inc))
 }
 
 fn is_path_excluded(path: &Path, excludes: &[String]) -> bool {
     excludes.iter().any(|exc| path.starts_with(exc))
-}
-
-fn is_extension_included(extension: &str, includes: &[String]) -> bool {
-    includes.iter().any(|inc| extension == inc)
-}
-
-fn is_extension_excluded(extension: &str, excludes: &[String]) -> bool {
-    excludes.iter().any(|exc| extension == exc)
-}
-
-fn is_file_included(file_name: &str, includes: &[String]) -> bool {
-    includes.iter().any(|inc| file_name == inc)
-}
-
-fn is_file_excluded(file_name: &str, excludes: &[String]) -> bool {
-    excludes.iter().any(|exc| file_name == exc)
 }
 
 fn should_include_file(
@@ -269,10 +252,15 @@ fn should_include_file(
     let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_string();
     let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_string();
 
-    (include_extensions.is_empty() || is_extension_included(&extension, include_extensions))
-        && !is_extension_excluded(&extension, exclude_extensions)
-        && (include_files.is_empty() || is_file_included(&file_name, include_files))
-        && !is_file_excluded(&file_name, exclude_files)
+    if include_files.contains(&file_name) || include_extensions.contains(&extension) {
+        return true;
+    }
+
+    if exclude_files.contains(&file_name) || exclude_extensions.contains(&extension) {
+        return false;
+    }
+
+    true
 }
 
 fn validate_inclusion_exclusion(
@@ -427,7 +415,7 @@ fn traverse_directory(
                 }
 
                 if path.is_file() {
-                    if is_path_included(path, &include_folders_list)
+                    if (include_folders_list.is_empty() || is_path_included(path, &include_folders_list))
                         && !is_path_excluded(path, &exclude_folders_list)
                         && should_include_file(path, &include_extensions_list, &exclude_extensions_list, &include_files_list, &exclude_files_list)
                     {
