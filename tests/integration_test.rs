@@ -4,6 +4,7 @@ use std::path::Path;
 use tempfile::tempdir;
 use assert_cmd::Command;
 use predicates::str::contains;
+use predicates::prelude::*;
 
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let file_path = dir.join(name);

@@ -252,12 +252,20 @@ fn should_include_file(
     let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_string();
     let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_string();
 
-    if include_files.contains(&file_name) || include_extensions.contains(&extension) {
+    if include_files.contains(&file_name) {
+        return true;
+    }
+
+    if include_extensions.contains(&extension) {
         return true;
     }
 
     if exclude_files.contains(&file_name) || exclude_extensions.contains(&extension) {
         return false;
+    }
+
+    if include_files.is_empty() && exclude_files.is_empty() && include_extensions.is_empty() && exclude_extensions.is_empty() {
+        return true;
     }
 
     true
