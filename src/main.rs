@@ -268,7 +268,7 @@ fn should_include_file(
         return true;
     }
 
-    true
+    false
 }
 
 fn validate_inclusion_exclusion(
