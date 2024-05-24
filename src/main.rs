@@ -30,33 +30,17 @@ struct Cli {
     #[arg()]
     path: PathBuf,
 
-    /// Optional custom Handlebars template file path
-    #[clap(short, long)]
-    template: Option<PathBuf>,
-
-    /// Optional comma-separated list of file extensions to include
+    /// Patterns to include
     #[clap(long)]
-    include_extensions: Option<String>,
+    include: Option<String>,
 
-    /// Optional comma-separated list of file extensions to exclude
+    /// Patterns to exclude
     #[clap(long)]
-    exclude_extensions: Option<String>,
+    exclude: Option<String>,
 
-    /// Optional comma-separated list of file names to include
+    /// Include files in case of conflict between include and exclude patterns
     #[clap(long)]
-    include_files: Option<String>,
-
-    /// Optional comma-separated list of file names to exclude
-    #[clap(long)]
-    exclude_files: Option<String>,
-
-    /// Optional comma-separated list of folder paths to include
-    #[clap(long)]
-    include_folders: Option<String>,
-
-    /// Optional comma-separated list of folder paths to exclude
-    #[clap(long)]
-    exclude_folders: Option<String>,
+    conflict_include: bool,
 
     /// Display the token count of the generated prompt
     #[clap(long)]
@@ -100,15 +84,6 @@ fn main() {
         .register_template_string("default", default_template)
         .expect("Failed to register default template");
 
-    let mut template = String::new();
-
-    if let Some(template_path) = args.template.as_ref() {
-        template = std::fs::read_to_string(template_path).expect("Failed to read template file");
-        handlebars
-            .register_template_string("custom", &template)
-            .expect("Failed to register custom template");
-    }
-
     let spinner = ProgressBar::new_spinner();
     spinner.enable_steady_tick(std::time::Duration::from_millis(120));
     spinner.set_style(
@@ -122,12 +97,9 @@ fn main() {
 
     let create_tree = traverse_directory(
         &args.path,
-        &args.include_extensions,
-        &args.exclude_extensions,
-        &args.include_files,
-        &args.exclude_files,
-        &args.exclude_folders,
-        &args.include_folders,
+        &args.include,
+        &args.exclude,
+        args.conflict_include,
         args.line_number,
         args.relative_paths,
     );
@@ -166,7 +138,7 @@ fn main() {
     // Log the JSON object before rendering
     println!("JSON Data: {}", serde_json::to_string_pretty(&data).unwrap());
 
-    let undefined_variables = extract_undefined_variables(&template);
+    let undefined_variables = extract_undefined_variables(&default_template);
     let mut user_defined_vars = serde_json::Map::new();
 
     for var in undefined_variables.iter() {
@@ -188,15 +160,10 @@ fn main() {
         }
     }
 
-    let rendered = if args.template.is_some() {
-        handlebars
-            .render("custom", &data)
-            .expect("Failed to render custom template")
-    } else {
-        handlebars
-            .render("default", &data)
-            .expect("Failed to render default template")
-    };
+    let rendered = handlebars
+        .render("default", &data)
+        .expect("Failed to render default template");
+
     let rendered = rendered.trim();
 
     if args.tokens {
@@ -242,47 +209,6 @@ fn main() {
     }
 }
 
-fn is_path_included(path: &Path, includes: &[String]) -> bool {
-    includes.iter().any(|inc| path.starts_with(inc))
-}
-
-fn is_path_excluded(path: &Path, excludes: &[String]) -> bool {
-    excludes.iter().any(|exc| path.starts_with(exc))
-}
-
-fn validate_inclusion_exclusion(
-    include_files: &[String],
-    exclude_files: &[String],
-    include_extensions: &[String],
-    exclude_extensions: &[String],
-) {
-    for file in include_files {
-        if exclude_files.contains(file) {
-            println!(
-                "{}{}{} {}: {}",
-                "[".bold().white(),
-                "!".bold().yellow(),
-                "]".bold().white(),
-                "File is both included and excluded, prioritizing inclusion".yellow(),
-                file
-            );
-        }
-    }
-
-    for ext in include_extensions {
-        if exclude_extensions.contains(ext) {
-            println!(
-                "{}{}{} {}: {}",
-                "[".bold().white(),
-                "!".bold().yellow(),
-                "]".bold().white(),
-                "Extension is both included and excluded, prioritizing inclusion".yellow(),
-                ext
-            );
-        }
-    }
-}
-
 fn extract_undefined_variables(template: &str) -> Vec<String> {
     let registered_identifiers = vec!["path", "code", "git_diff"];
     let re = Regex::new(r"\{\{\s*(?P<var>[a-zA-Z_][a-zA-Z_0-9]*)\s*\}\}").unwrap();
@@ -321,12 +247,9 @@ fn label<P: AsRef<Path>>(p: P) -> String {
 
 fn traverse_directory(
     root_path: &PathBuf,
-    include_extensions: &Option<String>,
-    exclude_extensions: &Option<String>,
-    include_files: &Option<String>,
-    exclude_files: &Option<String>,
-    exclude_folders: &Option<String>,
-    include_folders: &Option<String>,
+    include: &Option<String>,
+    exclude: &Option<String>,
+    conflict_include: bool,
     line_number: bool,
     relative_paths: bool,
 ) -> Result<(String, Vec<serde_json::Value>)> {
@@ -334,49 +257,19 @@ fn traverse_directory(
     let canonical_root_path = root_path.canonicalize()?;
     let parent_directory = label(&canonical_root_path);
 
-    let include_extensions_list: Vec<String> = include_extensions
+    let include_patterns: Vec<String> = include
         .as_deref()
         .unwrap_or("")
-        .split(',')
+        .split(';')
         .map(|s| s.trim().to_string())
         .collect();
 
-    let exclude_extensions_list: Vec<String> = exclude_extensions
+    let exclude_patterns: Vec<String> = exclude
         .as_deref()
         .unwrap_or("")
-        .split(',')
+        .split(';')
         .map(|s| s.trim().to_string())
         .collect();
-
-    let include_folders_list: Vec<String> = include_folders
-        .as_deref()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .collect();
-
-    let exclude_folders_list: Vec<String> = exclude_folders
-        .as_deref()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .collect();
-
-    let include_files_list: Vec<String> = include_files
-        .as_deref()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .collect();
-
-    let exclude_files_list: Vec<String> = exclude_files
-        .as_deref()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .collect();
-
-    validate_inclusion_exclusion(&include_files_list, &exclude_files_list, &include_extensions_list, &exclude_extensions_list);
 
     let tree = WalkBuilder::new(&canonical_root_path)
         .git_ignore(true)
@@ -402,10 +295,7 @@ fn traverse_directory(
                 }
 
                 if path.is_file() {
-                    if (include_folders_list.is_empty() || is_path_included(path, &include_folders_list))
-                        && !is_path_excluded(path, &exclude_folders_list)
-                        && should_include_file(path, &include_extensions_list, &exclude_extensions_list, &include_files_list, &exclude_files_list)
-                    {
+                    if should_include_file(path, &include_patterns, &exclude_patterns, conflict_include) {
                         let code_bytes = fs::read(&path).expect("Failed to read file");
                         let code = String::from_utf8_lossy(&code_bytes);
 

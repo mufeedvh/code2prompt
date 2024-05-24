@@ -1,28 +1,34 @@
-// src/filter.rs
-
 use std::path::Path;
+use glob::Pattern;
+use colored::*;
+use std::fs;
 
 pub fn should_include_file(
     path: &Path,
-    include_extensions: &[String],
-    exclude_extensions: &[String],
-    include_files: &[String],
-    exclude_files: &[String],
+    include_patterns: &[String],
+    exclude_patterns: &[String],
+    conflict_include: bool,
 ) -> bool {
-    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_string();
-    let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_string();
+    // Convert the path to an absolute path and normalize it
+    let canonical_path = fs::canonicalize(path).unwrap();
+    let path_str = canonical_path.to_str().unwrap();
 
-    if include_files.contains(&file_name) || include_extensions.contains(&extension) {
-        return true;
+    let included = include_patterns.iter().any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
+    let excluded = exclude_patterns.iter().any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
+
+    println!(
+        "Checking path: {:?}, {}: {}, {}: {}",
+        path_str,
+        "included".bold().green(),
+        included,
+        "excluded".bold().red(),
+        excluded
+    );
+
+    match (included, excluded) {
+        (true, true) => conflict_include,
+        (true, false) => true,
+        (false, true) => false,
+        (false, false) => true,
     }
-
-    if exclude_files.contains(&file_name) || exclude_extensions.contains(&extension) {
-        return false;
-    }
-
-    if include_files.is_empty() && exclude_files.is_empty() && include_extensions.is_empty() && exclude_extensions.is_empty() {
-        return true;
-    }
-
-    false
 }
