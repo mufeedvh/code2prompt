@@ -252,11 +252,7 @@ fn should_include_file(
     let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_string();
     let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_string();
 
-    if include_files.contains(&file_name) {
-        return true;
-    }
-
-    if include_extensions.contains(&extension) {
+    if include_files.contains(&file_name) || include_extensions.contains(&extension) {
         return true;
     }
 
@@ -279,12 +275,12 @@ fn validate_inclusion_exclusion(
 ) {
     for file in include_files {
         if exclude_files.contains(file) {
-            eprintln!(
+            println!(
                 "{}{}{} {}: {}",
                 "[".bold().white(),
-                "!".bold().red(),
+                "!".bold().yellow(),
                 "]".bold().white(),
-                "File is both included and excluded".red(),
+                "File is both included and excluded, prioritizing inclusion".yellow(),
                 file
             );
         }
@@ -292,12 +288,12 @@ fn validate_inclusion_exclusion(
 
     for ext in include_extensions {
         if exclude_extensions.contains(ext) {
-            eprintln!(
+            println!(
                 "{}{}{} {}: {}",
                 "[".bold().white(),
-                "!".bold().red(),
+                "!".bold().yellow(),
                 "]".bold().white(),
-                "Extension is both included and excluded".red(),
+                "Extension is both included and excluded, prioritizing inclusion".yellow(),
                 ext
             );
         }
