@@ -15,6 +15,11 @@ use serde_json::json;
 use termtree::Tree;
 use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
 
+
+mod filter;
+use filter::should_include_file;
+
+
 /// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 ///
 /// Author: Mufeed VH (@mufeedvh)
@@ -158,6 +163,9 @@ fn main() {
         "git_diff": git_diff,
     });
 
+    // Log the JSON object before rendering
+    println!("JSON Data: {}", serde_json::to_string_pretty(&data).unwrap());
+
     let undefined_variables = extract_undefined_variables(&template);
     let mut user_defined_vars = serde_json::Map::new();
 
@@ -240,31 +248,6 @@ fn is_path_included(path: &Path, includes: &[String]) -> bool {
 
 fn is_path_excluded(path: &Path, excludes: &[String]) -> bool {
     excludes.iter().any(|exc| path.starts_with(exc))
-}
-
-fn should_include_file(
-    path: &Path,
-    include_extensions: &[String],
-    exclude_extensions: &[String],
-    include_files: &[String],
-    exclude_files: &[String],
-) -> bool {
-    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_string();
-    let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_string();
-
-    if include_files.contains(&file_name) || include_extensions.contains(&extension) {
-        return true;
-    }
-
-    if exclude_files.contains(&file_name) || exclude_extensions.contains(&extension) {
-        return false;
-    }
-
-    if include_files.is_empty() && exclude_files.is_empty() && include_extensions.is_empty() && exclude_extensions.is_empty() {
-        return true;
-    }
-
-    false
 }
 
 fn validate_inclusion_exclusion(

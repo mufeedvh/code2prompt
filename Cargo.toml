@@ -17,6 +17,7 @@ edition = "2021"
 name = "code2prompt"
 test = false
 bench = false
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
