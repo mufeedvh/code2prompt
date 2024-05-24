@@ -42,8 +42,10 @@ fn create_test_hierarchy(base_path: &Path) {
 
 fn read_output_file(dir: &Path, file_name: &str) -> String {
     let file_path = dir.join(file_name);
-    read_to_string(file_path).expect(&format!("Failed to read output file: {:?}", file_path))
+    read_to_string(file_path.clone()).expect(&format!("Failed to read output file: {:?}", file_path))
 }
+
+
 
 #[test]
 fn test_include_extensions() {
