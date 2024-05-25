@@ -3,6 +3,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use arboard::Clipboard;
 use clap::Parser;
 use colored::*;
 use git2::{DiffOptions, Repository};
@@ -204,7 +205,8 @@ fn main() {
         );
     }
 
-    cli_clipboard::set_contents(rendered.into()).expect("Failed to copy output to clipboard");
+    let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
+    clipboard.set_text(rendered).expect("Failed to copy output to clipboard");
 
     println!(
         "{}{}{} {}",
