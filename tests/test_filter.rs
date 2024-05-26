@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::fs::{self, File};
 use std::io::Write;
-use tempfile::{tempdir,TempDir};
+use tempfile::{tempdir, TempDir};
 use once_cell::sync::Lazy;
 use code2prompt::filter::should_include_file;
 
@@ -78,16 +78,14 @@ mod tests {
         let exclude_patterns = vec!["*.txt".to_string()];
         let conflict_include = false;
 
-        for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/baz.py", "uppercase/FOO.py", "uppercase/BAR.py", "uppercase/BAZ.py"] {
-            let path = base_path.join(file);
-            println!("Testing exclude_patterns with file: {:?}", path); // Debugging line
-            assert!(should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
-        }
-
         for file in ["lowercase/qux.txt", "lowercase/corge.txt", "lowercase/grault.txt", "uppercase/QUX.txt", "uppercase/CORGE.txt", "uppercase/GRAULT.txt"] {
             let path = base_path.join(file);
-            println!("Testing exclude_patterns with file: {:?}", path); // Debugging line
             assert!(!should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
+        }
+
+        for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/baz.py", "uppercase/FOO.py", "uppercase/BAR.py", "uppercase/BAZ.py"] {
+            let path = base_path.join(file);
+            assert!(should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
     }
 
@@ -95,19 +93,17 @@ mod tests {
     fn test_include_files() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["foo.py".to_string(), "bar.py".to_string()];
+        let include_patterns = vec!["**/foo.py".to_string(), "**/bar.py".to_string()];
         let exclude_patterns = vec![];
         let conflict_include = false;
 
         for file in ["lowercase/foo.py", "lowercase/bar.py"] {
             let path = base_path.join(file);
-            println!("Testing include_files with file: {:?}", path); // Debugging line
             assert!(should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
 
         for file in ["lowercase/baz.py", "lowercase/qux.txt", "lowercase/corge.txt", "lowercase/grault.txt", "uppercase/FOO.py", "uppercase/BAR.py", "uppercase/BAZ.py", "uppercase/QUX.txt", "uppercase/CORGE.txt", "uppercase/GRAULT.txt"] {
             let path = base_path.join(file);
-            println!("Testing include_files with file: {:?}", path); // Debugging line
             assert!(!should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
     }
@@ -117,18 +113,16 @@ mod tests {
         let base_path = TEST_DIR.path();
 
         let include_patterns = vec![];
-        let exclude_patterns = vec!["foo.py".to_string(), "bar.py".to_string()];
+        let exclude_patterns = vec!["**/foo.py".to_string(), "**/bar.py".to_string()];
         let conflict_include = false;
 
         for file in ["lowercase/foo.py", "lowercase/bar.py"] {
             let path = base_path.join(file);
-            println!("Testing exclude_files with file: {:?}", path); // Debugging line
             assert!(!should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
 
         for file in ["lowercase/baz.py", "lowercase/qux.txt", "lowercase/corge.txt", "lowercase/grault.txt", "uppercase/FOO.py", "uppercase/BAR.py", "uppercase/BAZ.py", "uppercase/QUX.txt", "uppercase/CORGE.txt", "uppercase/GRAULT.txt"] {
             let path = base_path.join(file);
-            println!("Testing exclude_files with file: {:?}", path); // Debugging line
             assert!(should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
     }
@@ -137,19 +131,17 @@ mod tests {
     fn test_include_exclude_conflict_file() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["foo.py".to_string()];
-        let exclude_patterns = vec!["foo.py".to_string()];
+        let include_patterns = vec!["**/foo.py".to_string()];
+        let exclude_patterns = vec!["**/foo.py".to_string()];
         let conflict_include = true;
 
         for file in ["lowercase/foo.py"] {
             let path = base_path.join(file);
-            println!("Testing include_exclude_conflict_file with file: {:?}", path); // Debugging line
             assert!(should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
 
         for file in ["lowercase/bar.py", "lowercase/baz.py", "lowercase/qux.txt", "lowercase/corge.txt", "lowercase/grault.txt", "uppercase/FOO.py", "uppercase/BAR.py", "uppercase/BAZ.py", "uppercase/QUX.txt", "uppercase/CORGE.txt", "uppercase/GRAULT.txt"] {
             let path = base_path.join(file);
-            println!("Testing include_exclude_conflict_file with file: {:?}", path); // Debugging line
             assert!(!should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
     }
@@ -164,15 +156,12 @@ mod tests {
 
         for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/baz.py", "uppercase/FOO.py", "uppercase/BAR.py", "uppercase/BAZ.py"] {
             let path = base_path.join(file);
-            println!("Testing include_exclude_conflict_extension with file: {:?}", path); // Debugging line
             assert!(should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
 
         for file in ["lowercase/qux.txt", "lowercase/corge.txt", "lowercase/grault.txt", "uppercase/QUX.txt", "uppercase/CORGE.txt", "uppercase/GRAULT.txt"] {
             let path = base_path.join(file);
-            println!("Testing include_exclude_conflict_extension with file: {:?}", path); // Debugging line
             assert!(!should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
         }
     }
-
 }

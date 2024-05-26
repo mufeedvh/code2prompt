@@ -13,7 +13,8 @@ pub fn should_include_file(
     let canonical_path = fs::canonicalize(path).unwrap();
     let path_str = canonical_path.to_str().unwrap();
 
-    let included = include_patterns.is_empty() || include_patterns.iter().any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
+    // Check for inclusion and exclusion
+    let included = include_patterns.iter().any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
     let excluded = exclude_patterns.iter().any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
 
     println!(
@@ -29,6 +30,6 @@ pub fn should_include_file(
         (true, true) => conflict_include,
         (true, false) => true,
         (false, true) => false,
-        (false, false) => false,
+        (false, false) => include_patterns.is_empty(),
     }
 }
