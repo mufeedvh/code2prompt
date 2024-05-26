@@ -4,6 +4,8 @@ use std::io::Write;
 use tempfile::{tempdir, TempDir};
 use once_cell::sync::Lazy;
 use code2prompt::filter::should_include_file;
+use colored::*;
+
 
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let file_path = dir.join(name);
@@ -44,12 +46,33 @@ fn create_test_hierarchy(base_path: &Path) {
     for (file_path, content) in files {
         create_temp_file(base_path, file_path, content);
     }
+    println!(
+        "{}{}{} {}",
+        "[".bold().white(),
+        "✓".bold().green(),
+        "]".bold().white(),
+        "Tempfiles created".green()
+    );
 }
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_no_list() {
+        let base_path = TEST_DIR.path();
+
+        let include_patterns = vec![];
+        let exclude_patterns = vec![];
+        let conflict_include = true;
+
+        for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/baz.py", "uppercase/FOO.py", "uppercase/BAR.py", "uppercase/BAZ.py","lowercase/qux.txt", "lowercase/corge.txt", "lowercase/grault.txt", "uppercase/QUX.txt", "uppercase/CORGE.txt", "uppercase/GRAULT.txt"] {
+            let path = base_path.join(file);
+            assert!(should_include_file(&path, &include_patterns, &exclude_patterns, conflict_include));
+        }
+    }
 
     #[test]
     fn test_include_patterns() {

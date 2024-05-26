@@ -16,6 +16,7 @@ use termtree::Tree;
 use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
 
 
+
 mod filter;
 use filter::should_include_file;
 
@@ -294,26 +295,24 @@ fn traverse_directory(
                     };
                 }
 
-                if path.is_file() {
-                    if should_include_file(path, &include_patterns, &exclude_patterns, conflict_include) {
-                        let code_bytes = fs::read(&path).expect("Failed to read file");
-                        let code = String::from_utf8_lossy(&code_bytes);
+                if path.is_file() && should_include_file(path, &include_patterns, &exclude_patterns, conflict_include) {
+                    let code_bytes = fs::read(&path).expect("Failed to read file");
+                    let code = String::from_utf8_lossy(&code_bytes);
 
-                        let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number);
+                    let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number);
 
-                        if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
-                            let file_path = if relative_paths {
-                                format!("{}/{}", parent_directory, relative_path.display())
-                            } else {
-                                path.display().to_string()
-                            };
+                    if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
+                        let file_path = if relative_paths {
+                            format!("{}/{}", parent_directory, relative_path.display())
+                        } else {
+                            path.display().to_string()
+                        };
 
-                            files.push(json!({
-                                "path": file_path,
-                                "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
-                                "code": code_block,
-                            }));
-                        }
+                        files.push(json!({
+                            "path": file_path,
+                            "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
+                            "code": code_block,
+                        }));
                     }
                 }
             }

@@ -1,259 +1,215 @@
-// use std::fs::{self, File, read_to_string};
-// use std::io::Write;
-// use std::path::Path;
-// use tempfile::tempdir;
-// use assert_cmd::Command;
-// use predicates::str::contains;
-// use predicates::prelude::*;
-
-// fn create_temp_file(dir: &Path, name: &str, content: &str) {
-//     let file_path = dir.join(name);
-//     println!("Creating file: {:?}", file_path); // Debugging line
-//     let parent_dir = file_path.parent().unwrap();
-//     fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
-//     let mut file = File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
-//     writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
-// }
+use std::fs::{self, File, read_to_string};
+use std::io::Write;
+use std::path::Path;
+use tempfile::{tempdir};
+use assert_cmd::Command;
+use predicates::prelude::*;
+use predicates::str::contains;
+use colored::*;
 
 
-// fn create_test_hierarchy(base_path: &Path) {
-//     let lowercase_dir = base_path.join("lowercase");
-//     let uppercase_dir = base_path.join("uppercase");
+fn create_temp_file(dir: &Path, name: &str, content: &str) {
+    let file_path = dir.join(name);
+    let parent_dir = file_path.parent().unwrap();
+    fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
+    let mut file = File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
+    writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
+}
 
-//     fs::create_dir_all(&lowercase_dir).unwrap();
-//     fs::create_dir_all(&uppercase_dir).unwrap();
+fn create_test_hierarchy(base_path: &Path) {
+    let lowercase_dir = base_path.join("lowercase");
+    let uppercase_dir = base_path.join("uppercase");
 
-//     let files = vec![
-//         ("lowercase/foo.py", "content foo.py"),
-//         ("lowercase/baz.py", "content baz.py"),
-//         ("lowercase/qux.txt", "content qux.txt"),
-//         ("lowercase/corge.txt", "content corge.txt"),
-//         ("lowercase/grault.txt", "content grault.txt"),
-//         ("uppercase/FOO.py", "CONTENT FOO.PY"),
-//         ("uppercase/BAR.py", "CONTENT BAR.PY"),
-//         ("uppercase/BAZ.py", "CONTENT BAZ.PY"),
-//         ("uppercase/QUX.txt", "CONTENT QUX.TXT"),
-//         ("uppercase/CORGE.txt", "CONTENT CORGE.TXT"),
-//         ("uppercase/GRAULT.txt", "CONTENT GRAULT.TXT"),
-//     ];
+    fs::create_dir_all(&lowercase_dir).unwrap();
+    fs::create_dir_all(&uppercase_dir).unwrap();
 
-//     for (file_path, content) in files {
-//         create_temp_file(base_path, file_path, content);
-//     }
-// }
+    let files = vec![
+        ("lowercase/foo.py", "content foo.py"),
+        ("lowercase/baz.py", "content baz.py"),
+        ("lowercase/qux.txt", "content qux.txt"),
+        ("lowercase/corge.txt", "content corge.txt"),
+        ("lowercase/grault.txt", "content grault.txt"),
+        ("uppercase/FOO.py", "CONTENT FOO.PY"),
+        ("uppercase/BAR.py", "CONTENT BAR.PY"),
+        ("uppercase/BAZ.py", "CONTENT BAZ.PY"),
+        ("uppercase/QUX.txt", "CONTENT QUX.TXT"),
+        ("uppercase/CORGE.txt", "CONTENT CORGE.TXT"),
+        ("uppercase/GRAULT.txt", "CONTENT GRAULT.TXT"),
+    ];
 
-// fn read_output_file(dir: &Path, file_name: &str) -> String {
-//     let file_path = dir.join(file_name);
-//     let content = read_to_string(&file_path).expect(&format!("Failed to read output file: {:?}", file_path));
-//     content
-// }
+    for (file_path, content) in files {
+        create_temp_file(base_path, file_path, content);
+    }
+    println!(
+        "{}{}{} {}",
+        "[".bold().white(),
+        "✓".bold().green(),
+        "]".bold().white(),
+        "Tempfiles created".green()
+    );
 
-// #[test]
-// fn test_include_extensions() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
+}
 
-//     let output_file = dir.path().join("output.txt");
+fn read_output_file(dir: &Path, file_name: &str) -> String {
+    let file_path = dir.join(file_name);
+    read_to_string(&file_path).expect(&format!("Failed to read output file: {:?}", file_path))
+}
 
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--include-extensions=py")
-//         .arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
 
-//     cmd.assert().success();
+    struct TestEnv {
+        dir: TempDir,
+        output_file: String,
+    }
 
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test include extensions output:\n{}", output);
-//     assert!(contains("foo.py").eval(&output));
-//     assert!(contains("content foo.py").eval(&output));
-//     assert!(contains("FOO.py").eval(&output));
-//     assert!(contains("CONTENT FOO.PY").eval(&output));
-//     assert!(contains("qux.txt").not().eval(&output));
-//     assert!(contains("content qux.txt").not().eval(&output));
-// }
+    impl TestEnv {
+        fn new() -> Self {
+            let dir = tempdir().unwrap();
+            create_test_hierarchy(dir.path());
+            let output_file = dir.path().join("output.txt").to_str().unwrap().to_string();
+            TestEnv { dir, output_file }
+        }
 
-// #[test]
-// fn test_exclude_extensions() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
+        fn command(&self) -> Command {
+            let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+            cmd.arg(&self.dir.path().to_str().unwrap())
+               .arg("--output").arg(&self.output_file)
+               .arg("--no-clipboard");
+            cmd
+        }
 
-//     let output_file = dir.path().join("output.txt");
+        fn read_output(&self) -> String {
+            read_output_file(self.dir.path(), "output.txt")
+        }
+    }
 
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--exclude-extensions=txt")
-//         .arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
+    #[test]
+    fn test_include_extensions() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--include=**/*.py").assert().success();
 
-//     cmd.assert().success();
+        let output = env.read_output();
+        println!("Test include extensions output:\n{}", output);
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("FOO.py").eval(&output));
+        assert!(contains("CONTENT FOO.PY").eval(&output));
+        assert!(contains("content qux.txt").not().eval(&output));
+    }
 
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test exclude extensions output:\n{}", output);
-//     assert!(contains("foo.py").eval(&output));
-//     assert!(contains("content foo.py").eval(&output));
-//     assert!(contains("FOO.py").eval(&output));
-//     assert!(contains("CONTENT FOO.PY").eval(&output));
-//     assert!(contains("qux.txt").not().eval(&output));
-//     assert!(contains("content qux.txt").not().eval(&output));
-// }
+    #[test]
+    fn test_exclude_extensions() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--exclude=**/*.txt").assert().success();
 
-// #[test]
-// fn test_include_files() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
+        let output = env.read_output();
+        println!("Test exclude extensions output:\n{}", output);
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("FOO.py").eval(&output));
+        assert!(contains("CONTENT FOO.PY").eval(&output));
+        assert!(contains("content qux.txt").not().eval(&output));
+    }
 
-//     let output_file = dir.path().join("output.txt");
+    // #[test]
+    // fn test_include_files() {
+    //     let env = TestEnv::new();
+    //     let mut cmd = env.command();
+    //     cmd.arg("--include=**/foo.py,**/bar.py").assert().success();
 
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--include-files=foo.py,bar.py")
-//         .arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
+    //     let output = env.read_output();
+    //     println!("Test include files output:\n{}", output);
+    //     assert!(contains("foo.py").eval(&output));
+    //     assert!(contains("content foo.py").eval(&output));
+    //     assert!(contains("bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
+    //     assert!(contains("content bar.py").not().eval(&output));
+    //     assert!(contains("baz.py").not().eval(&output));
+    //     assert!(contains("content baz.py").not().eval(&output));
+    // }
 
-//     cmd.assert().success();
+    // #[test]
+    // fn test_exclude_files() {
+    //     let env = TestEnv::new();
+    //     let mut cmd = env.command();
+    //     cmd.arg("--exclude=**/foo.py,**/bar.py").assert().success();
 
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test include files output:\n{}", output);
-//     assert!(contains("foo.py").eval(&output));
-//     assert!(contains("content foo.py").eval(&output));
-//     assert!(contains("bar.py").eval(&output));
-//     assert!(contains("content bar.py").eval(&output));
-//     assert!(contains("baz.py").not().eval(&output));
-//     assert!(contains("content baz.py").not().eval(&output));
-// }
+    //     let output = env.read_output();
+    //     println!("Test exclude files output:\n{}", output);
+    //     assert!(contains("baz.py").eval(&output));
+    //     assert!(contains("content baz.py").eval(&output));
+    //     assert!(contains("foo.py").not().eval(&output));
+    //     assert!(contains("content foo.py").not().eval(&output));
+    //     assert!(contains("bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
+    //     assert!(contains("content bar.py").not().eval(&output));
+    // }
 
-// #[test]
-// fn test_exclude_files() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
+    // #[test]
+    // fn test_include_folders() {
+    //     let env = TestEnv::new();
+    //     let mut cmd = env.command();
+    //     cmd.arg("--include=**/lowercase/**").assert().success();
 
-//     let output_file = dir.path().join("output.txt");
+    //     let output = env.read_output();
+    //     println!("Test include folders output:\n{}", output);
+    //     assert!(contains("foo.py").eval(&output));
+    //     assert!(contains("content foo.py").eval(&output));
+    //     assert!(contains("baz.py").eval(&output));
+    //     assert!(contains("content baz.py").eval(&output));
+    //     assert!(contains("uppercase").not().eval(&output));
+    // }
 
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--exclude-files=foo.py,bar.py")
-//         .arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
+    // #[test]
+    // fn test_exclude_folders() {
+    //     let env = TestEnv::new();
+    //     let mut cmd = env.command();
+    //     cmd.arg("--exclude=**/uppercase/**").assert().success();
 
-//     cmd.assert().success();
+    //     let output = env.read_output();
+    //     println!("Test exclude folders output:\n{}", output);
+    //     assert!(contains("foo.py").eval(&output));
+    //     assert!(contains("content foo.py").eval(&output));
+    //     assert!(contains("baz.py").eval(&output));
+    //     assert!(contains("content baz.py").eval(&output));
+    //     assert!(contains("uppercase").not().eval(&output));
+    // }
 
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test exclude files output:\n{}", output);
-//     assert!(contains("baz.py").eval(&output));
-//     assert!(contains("content baz.py").eval(&output));
-//     assert!(contains("foo.py").not().eval(&output));
-//     assert!(contains("content foo.py").not().eval(&output));
-//     assert!(contains("bar.py").not().eval(&output));
-//     assert!(contains("content bar.py").not().eval(&output));
-// }
+    // #[test]
+    // fn test_include_exclude_combinations() {
+    //     let env = TestEnv::new();
+    //     let mut cmd = env.command();
+    //     cmd.arg("--include=**/*.py,**/lowercase/**")
+    //         .arg("--exclude=**/foo.py,**/uppercase/**")
+    //         .assert().success();
 
-// #[test]
-// fn test_include_folders() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
+    //     let output = env.read_output();
+    //     println!("Test include and exclude combinations output:\n{}", output);
+    //     assert!(contains("baz.py").eval(&output));
+    //     assert!(contains("content baz.py").eval(&output));
+    //     assert!(contains("foo.py").not().eval(&output));
+    //     assert!(contains("content foo.py").not().eval(&output));
+    //     assert!(contains("FOO.py").not().eval(&output));
+    //     assert!(contains("CONTENT FOO.PY").not().eval(&output));
+    // }
 
-//     let output_file = dir.path().join("output.txt");
+    // #[test]
+    // fn test_no_filters() {
+    //     let env = TestEnv::new();
+    //     let mut cmd = env.command();
+    //     cmd.assert().success();
 
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--include-folders=lowercase")
-//         .arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
-
-//     cmd.assert().success();
-
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test include folders output:\n{}", output);
-//     assert!(contains("foo.py").eval(&output));
-//     assert!(contains("content foo.py").eval(&output));
-//     assert!(contains("bar.py").eval(&output));
-//     assert!(contains("content bar.py").eval(&output));
-//     assert!(contains("uppercase").not().eval(&output));
-// }
-
-// #[test]
-// fn test_exclude_folders() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
-
-//     let output_file = dir.path().join("output.txt");
-
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--exclude-folders=uppercase")
-//         .arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
-
-//     cmd.assert().success();
-
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test exclude folders output:\n{}", output);
-//     assert!(contains("foo.py").eval(&output));
-//     assert!(contains("content foo.py").eval(&output));
-//     assert!(contains("bar.py").eval(&output));
-//     assert!(contains("content bar.py").eval(&output));
-//     assert!(contains("uppercase").not().eval(&output));
-// }
-
-// #[test]
-// fn test_include_exclude_combinations() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
-
-//     let output_file = dir.path().join("output.txt");
-
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--include-extensions=py")
-//         .arg("--exclude-files=foo.py")
-//         .arg("--include-folders=lowercase")
-//         .arg("--exclude-folders=uppercase")
-//         .arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
-
-//     cmd.assert().success();
-
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test include and exclude combinations output:\n{}", output);
-//     assert!(contains("bar.py").eval(&output));
-//     assert!(contains("content bar.py").eval(&output));
-//     assert!(contains("foo.py").not().eval(&output));
-//     assert!(contains("content foo.py").not().eval(&output));
-//     assert!(contains("qux.txt").not().eval(&output));
-//     assert!(contains("content qux.txt").not().eval(&output));
-// }
-
-// #[test]
-// fn test_no_filters() {
-//     let dir = tempdir().unwrap();
-//     create_test_hierarchy(dir.path());
-
-//     let output_file = dir.path().join("output.txt");
-
-//     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-//     cmd.arg("--output")
-//         .arg(output_file.to_str().unwrap())
-//         .arg("--no-clipboard")
-//         .arg(dir.path().to_str().unwrap());
-
-//     cmd.assert().success();
-
-//     let output = read_output_file(dir.path(), "output.txt");
-//     println!("Test no filters output:\n{}", output);
-//     assert!(contains("foo.py").eval(&output));
-//     assert!(contains("content foo.py").eval(&output));
-//     assert!(contains("bar.py").eval(&output));
-//     assert!(contains("content bar.py").eval(&output));
-//     assert!(contains("FOO.py").eval(&output));
-//     assert!(contains("CONTENT FOO.PY").eval(&output));
-//     assert!(contains("BAZ.py").eval(&output));
-//     assert!(contains("CONTENT BAZ.PY").eval(&output));
-// }
+    //     let output = env.read_output();
+    //     println!("Test no filters output:\n{}", output);
+    //     assert!(contains("foo.py").eval(&output));
+    //     assert!(contains("content foo.py").eval(&output));
+    //     assert!(contains("baz.py").eval(&output));
+    //     assert!(contains("content baz.py").eval(&output));
+    //     assert!(contains("FOO.py").eval(&output));
+    //     assert!(contains("CONTENT FOO.PY").eval(&output));
+    //     assert!(contains("BAZ.py").eval(&output));
+    //     assert!(contains("CONTENT BAZ.PY").eval(&output));
+    // }
+}
