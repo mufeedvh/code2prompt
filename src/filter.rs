@@ -1,8 +1,9 @@
+//! This module contains the logic for filtering files based on include and exclude patterns.
 use std::path::Path;
 use glob::Pattern;
 use colored::*;
 use std::fs;
-use log::{debug, info, error};
+use log::{debug, error};
 
 pub fn should_include_file(
     path: &Path,

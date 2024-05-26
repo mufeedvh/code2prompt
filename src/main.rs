@@ -1,3 +1,4 @@
+//! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 mod filter;
 mod template;
 mod path;

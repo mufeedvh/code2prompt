@@ -1,3 +1,4 @@
+//! This module contains the functions for traversing the directory and processing the files.
 use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::Result;
@@ -5,6 +6,7 @@ use ignore::WalkBuilder;
 use serde_json::json;
 use termtree::Tree;
 use crate::filter::should_include_file;
+use log::{info, error};
 
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations
 pub fn traverse_directory(
@@ -35,8 +37,8 @@ pub fn traverse_directory(
         .map(|s| s.trim().to_string())
         .collect();
 
-    println!("Include patterns: {:?}", include_patterns);
-    println!("Exclude patterns: {:?}", exclude_patterns);
+    debug!("Include patterns: {:?}", include_patterns);
+    debug!("Exclude patterns: {:?}", exclude_patterns);
 
     // ~~~ Build the Tree ~~~
     let tree = WalkBuilder::new(&canonical_root_path)
@@ -81,13 +83,13 @@ pub fn traverse_directory(
                             "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
                             "code": code_block,
                         }));
-                        println!("Included file: {}", file_path);
+                        debug!("Included file: {}", file_path);
 
                     } else {
-                        println!("Excluded file (empty or invalid UTF-8): {}", path.display());
+                        debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
                     }
                 } else {
-                    println!("Excluded file: {:?}", path.display());
+                    debug!("Excluded file: {:?}", path.display());
                 }
             }
 

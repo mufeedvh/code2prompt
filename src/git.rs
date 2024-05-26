@@ -1,3 +1,4 @@
+//! This module handles git operations.
 use std::path::Path;
 use git2::{DiffOptions, Repository};
 use anyhow::Result;

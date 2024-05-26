@@ -1,3 +1,4 @@
+//! This module contains the functions to set up the Handlebars template engine and render the template with the provided data.
 use anyhow::Result;
 use handlebars::{Handlebars, no_escape};
 use regex::Regex;
