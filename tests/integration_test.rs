@@ -25,6 +25,7 @@ fn create_test_hierarchy(base_path: &Path) {
 
     let files = vec![
         ("lowercase/foo.py", "content foo.py"),
+        ("lowercase/bar.py", "content bar.py"),
         ("lowercase/baz.py", "content baz.py"),
         ("lowercase/qux.txt", "content qux.txt"),
         ("lowercase/corge.txt", "content corge.txt"),
@@ -89,7 +90,7 @@ mod tests {
     fn test_include_extensions() {
         let env = TestEnv::new();
         let mut cmd = env.command();
-        cmd.arg("--include=**/*.py").assert().success();
+        cmd.arg("--include=*.py").assert().success();
 
         let output = env.read_output();
         println!("Test include extensions output:\n{}", output);
@@ -101,37 +102,37 @@ mod tests {
 
     }
 
-    #[test]
-    fn test_exclude_extensions() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--exclude=**/*.txt").assert().success();
-
-        let output = env.read_output();
-        println!("Test exclude extensions output:\n{}", output);
-        assert!(contains("foo.py").eval(&output));
-        //assert!(contains("content foo.py").eval(&output));
-        assert!(contains("FOO.py").eval(&output));
-        //assert!(contains("CONTENT FOO.PY").eval(&output));
-        assert!(contains("qux.txt").not().eval(&output));
-        assert!(contains("content qux.txt").not().eval(&output));
-    }
-
     // #[test]
-    // fn test_include_files() {
+    // fn test_exclude_extensions() {
     //     let env = TestEnv::new();
     //     let mut cmd = env.command();
-    //     cmd.arg("--include=**/foo.py,**/bar.py").assert().success();
+    //     cmd.arg("--exclude=*.txt").assert().success();
 
     //     let output = env.read_output();
-    //     println!("Test include files output:\n{}", output);
+    //     println!("Test exclude extensions output:\n{}", output);
     //     assert!(contains("foo.py").eval(&output));
     //     assert!(contains("content foo.py").eval(&output));
-    //     assert!(contains("bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
-    //     assert!(contains("content bar.py").not().eval(&output));
-    //     assert!(contains("baz.py").not().eval(&output));
-    //     assert!(contains("content baz.py").not().eval(&output));
+    //     assert!(contains("FOO.py").eval(&output));
+    //     assert!(contains("CONTENT FOO.PY").eval(&output));
+    //     assert!(contains("lowercase/qux.txt").not().eval(&output));
+    //     assert!(contains("content qux.txt").not().eval(&output));
     // }
+
+    #[test]
+    fn test_include_files() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--include=**/foo.py,**/bar.py").assert().success();
+
+        let output = env.read_output();
+        println!("Test include files output:\n{}", output);
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("bar.py").eval(&output));
+        assert!(contains("content bar.py").eval(&output));
+        assert!(contains("lowercase/baz.py").not().eval(&output));
+        assert!(contains("content baz.py").not().eval(&output));
+    }
 
     // #[test]
     // fn test_exclude_files() {
@@ -149,20 +150,20 @@ mod tests {
     //     assert!(contains("content bar.py").not().eval(&output));
     // }
 
-    // #[test]
-    // fn test_include_folders() {
-    //     let env = TestEnv::new();
-    //     let mut cmd = env.command();
-    //     cmd.arg("--include=**/lowercase/**").assert().success();
+    #[test]
+    fn test_include_folders() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--include=**/lowercase/**").assert().success();
 
-    //     let output = env.read_output();
-    //     println!("Test include folders output:\n{}", output);
-    //     assert!(contains("foo.py").eval(&output));
-    //     assert!(contains("content foo.py").eval(&output));
-    //     assert!(contains("baz.py").eval(&output));
-    //     assert!(contains("content baz.py").eval(&output));
-    //     assert!(contains("uppercase").not().eval(&output));
-    // }
+        let output = env.read_output();
+        println!("Test include folders output:\n{}", output);
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("baz.py").eval(&output));
+        assert!(contains("content baz.py").eval(&output));
+        assert!(contains("uppercase/FOO").not().eval(&output));
+    }
 
     // #[test]
     // fn test_exclude_folders() {
@@ -183,8 +184,9 @@ mod tests {
     // fn test_include_exclude_combinations() {
     //     let env = TestEnv::new();
     //     let mut cmd = env.command();
-    //     cmd.arg("--include=**/*.py,**/lowercase/**")
+    //     cmd.arg("--include=*.py,**/lowercase/**")
     //         .arg("--exclude=**/foo.py,**/uppercase/**")
+    //         .arg("--conflict-include")
     //         .assert().success();
 
     //     let output = env.read_output();

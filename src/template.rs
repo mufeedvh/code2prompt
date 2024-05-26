@@ -1,20 +1,18 @@
-use std::fs;
 use anyhow::Result;
 use handlebars::{Handlebars, no_escape};
 use regex::Regex;
 
-/// Set up the Handlebars template engine with a default template
-pub fn handlebars_setup(template_path: &str) -> Result<Handlebars<'static>> {
-    let default_template = fs::read_to_string(template_path)?;
-
+/// Set up the Handlebars template engine with a default template string
+pub fn handlebars_setup(template_str: &str) -> Result<Handlebars<'static>> {
     let mut handlebars = Handlebars::new();
     handlebars.register_escape_fn(no_escape);
     handlebars
-        .register_template_string("default", default_template)
+        .register_template_string("default", template_str)
         .expect("Failed to register default template");
 
     Ok(handlebars)
 }
+
 
 /// Extracts the undefined variables from the template string
 pub fn extract_undefined_variables(template: &str) -> Vec<String> {

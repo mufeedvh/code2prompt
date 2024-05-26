@@ -35,6 +35,9 @@ pub fn traverse_directory(
         .map(|s| s.trim().to_string())
         .collect();
 
+    println!("Include patterns: {:?}", include_patterns);
+    println!("Exclude patterns: {:?}", exclude_patterns);
+
     // ~~~ Build the Tree ~~~
     let tree = WalkBuilder::new(&canonical_root_path)
         .git_ignore(true)
@@ -78,7 +81,13 @@ pub fn traverse_directory(
                             "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
                             "code": code_block,
                         }));
+                        println!("Included file: {}", file_path);
+
+                    } else {
+                        println!("Excluded file (empty or invalid UTF-8): {}", path.display());
                     }
+                } else {
+                    println!("Excluded file: {:?}", path.display());
                 }
             }
 
