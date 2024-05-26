@@ -1,6 +1,5 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
 use colored::*;
-use log::info;
 use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
 
 pub fn count_tokens(rendered: &str, encoding: &Option<String>) {
@@ -20,7 +19,7 @@ pub fn count_tokens(rendered: &str, encoding: &Option<String>) {
 
     let token_count = bpe.unwrap().encode_with_special_tokens(rendered).len();
 
-    info!(
+    println!(
         "{}{}{} Token count: {}, Model info: {}",
         "[".bold().white(),
         "i".bold().blue(),

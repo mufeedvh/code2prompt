@@ -1,5 +1,6 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 use anyhow::Result;
+use arboard::Clipboard;
 use clap::Parser;
 use code2prompt::{
     count_tokens, extract_undefined_variables, get_git_diff, handlebars_setup, label,
@@ -12,7 +13,6 @@ use log::debug;
 use serde_json::json;
 use std::io::Write;
 use std::path::PathBuf;
-use arboard::Clipboard;
 
 /// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 ///
@@ -174,7 +174,6 @@ fn main() -> Result<()> {
 
     // ~~~ Clipboard ~~~
     if !args.no_clipboard {
-
         let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
 
         match clipboard.set_text(rendered.to_string()) {
