@@ -13,7 +13,7 @@ pub fn traverse_directory(
     root_path: &PathBuf,
     include: &[String],
     exclude: &[String],
-    conflict_include: bool,
+    include_priority: bool,
     line_number: bool,
     relative_paths: bool,
 ) -> Result<(String, Vec<serde_json::Value>)> {
@@ -47,7 +47,7 @@ pub fn traverse_directory(
                 }
 
                 // ~~~ Process the file ~~~
-                if path.is_file() && should_include_file(path, &include, &exclude, conflict_include) {
+                if path.is_file() && should_include_file(path, &include, &exclude, include_priority) {
                     let code_bytes = fs::read(&path).expect("Failed to read file");
                     let code = String::from_utf8_lossy(&code_bytes);
 

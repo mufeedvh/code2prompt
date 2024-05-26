@@ -163,71 +163,89 @@ mod tests {
         assert!(contains("uppercase/FOO").not().eval(&output));
     }
 
-    // #[test]
-    // fn test_exclude_files() {
-    //     let env = TestEnv::new();
-    //     let mut cmd = env.command();
-    //     cmd.arg("--exclude=**/foo.py,**/bar.py").assert().success();
+    #[test]
+    fn test_exclude_files() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--exclude=**/foo.py,**/bar.py").assert().success();
 
-    //     let output = env.read_output();
-    //     debug!("Test exclude files output:\n{}", output);
-    //     assert!(contains("baz.py").eval(&output));
-    //     assert!(contains("content baz.py").eval(&output));
-    //     assert!(contains("foo.py").not().eval(&output));
-    //     assert!(contains("content foo.py").not().eval(&output));
-    //     assert!(contains("bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
-    //     assert!(contains("content bar.py").not().eval(&output));
-    // }
+        let output = env.read_output();
+        debug!("Test exclude files output:\n{}", output);
+        assert!(contains("baz.py").eval(&output));
+        assert!(contains("content baz.py").eval(&output));
+        assert!(contains("lowercase/foo.py").not().eval(&output));
+        assert!(contains("content foo.py").not().eval(&output));
+        assert!(contains("lowercase/bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
+        assert!(contains("content bar.py").not().eval(&output));
+    }
     
-    // #[test]
-    // fn test_exclude_folders() {
-    //     let env = TestEnv::new();
-    //     let mut cmd = env.command();
-    //     cmd.arg("--exclude=**/uppercase/**").assert().success();
+    #[test]
+    fn test_exclude_folders() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--exclude=**/uppercase/**").assert().success();
 
-    //     let output = env.read_output();
-    //     debug!("Test exclude folders output:\n{}", output);
-    //     assert!(contains("foo.py").eval(&output));
-    //     assert!(contains("content foo.py").eval(&output));
-    //     assert!(contains("baz.py").eval(&output));
-    //     assert!(contains("content baz.py").eval(&output));
-    //     assert!(contains("uppercase").not().eval(&output));
-    // }
+        let output = env.read_output();
+        debug!("Test exclude folders output:\n{}", output);
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("baz.py").eval(&output));
+        assert!(contains("content baz.py").eval(&output));
+        assert!(contains("CONTENT FOO.py").not().eval(&output));
+    }
 
-    // #[test]
-    // fn test_include_exclude_combinations() {
-    //     let env = TestEnv::new();
-    //     let mut cmd = env.command();
-    //     cmd.arg("--include=*.py,**/lowercase/**")
-    //         .arg("--exclude=**/foo.py,**/uppercase/**")
-    //         .arg("--conflict-include")
-    //         .assert().success();
+    #[test]
+    fn test_include_exclude_with_include_priority() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--include=*.py,**/lowercase/**")
+            .arg("--exclude=**/foo.py,**/uppercase/**")
+            .arg("--include-priority")
+            .assert().success();
 
-    //     let output = env.read_output();
-    //     debug!("Test include and exclude combinations output:\n{}", output);
-    //     assert!(contains("baz.py").eval(&output));
-    //     assert!(contains("content baz.py").eval(&output));
-    //     assert!(contains("foo.py").not().eval(&output));
-    //     assert!(contains("content foo.py").not().eval(&output));
-    //     assert!(contains("FOO.py").not().eval(&output));
-    //     assert!(contains("CONTENT FOO.PY").not().eval(&output));
-    // }
+        let output = env.read_output();
+        debug!("Test include and exclude combinations output:\n{}", output);
+        assert!(contains("lowercase/baz.py").eval(&output));
+        assert!(contains("content baz.py").eval(&output));
+        assert!(contains("lowercase/foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("uppercase/FOO.py").eval(&output));
+        assert!(contains("CONTENT FOO.PY").eval(&output));
+    }
 
-    // #[test]
-    // fn test_no_filters() {
-    //     let env = TestEnv::new();
-    //     let mut cmd = env.command();
-    //     cmd.assert().success();
+    #[test]
+    fn test_include_exclude_with_exclude_priority() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--include=*.py,**/lowercase/**")
+            .arg("--exclude=**/foo.py,**/uppercase/**")
+            .assert().success();
 
-    //     let output = env.read_output();
-    //     debug!("Test no filters output:\n{}", output);
-    //     assert!(contains("foo.py").eval(&output));
-    //     assert!(contains("content foo.py").eval(&output));
-    //     assert!(contains("baz.py").eval(&output));
-    //     assert!(contains("content baz.py").eval(&output));
-    //     assert!(contains("FOO.py").eval(&output));
-    //     assert!(contains("CONTENT FOO.PY").eval(&output));
-    //     assert!(contains("BAZ.py").eval(&output));
-    //     assert!(contains("CONTENT BAZ.PY").eval(&output));
-    // }
+        let output = env.read_output();
+        debug!("Test include and exclude combinations output:\n{}", output);
+        assert!(contains("lowercase/baz.py").eval(&output));
+        assert!(contains("content baz.py").eval(&output));
+        assert!(contains("lowercase/foo.py").not().eval(&output));
+        assert!(contains("content foo.py").not().eval(&output));
+        assert!(contains("uppercase/FOO.py").not().eval(&output));
+        assert!(contains("CONTENT FOO.PY").not().eval(&output));
+    }
+
+    #[test]
+    fn test_no_filters() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.assert().success();
+
+        let output = env.read_output();
+        debug!("Test no filters output:\n{}", output);
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("baz.py").eval(&output));
+        assert!(contains("content baz.py").eval(&output));
+        assert!(contains("FOO.py").eval(&output));
+        assert!(contains("CONTENT FOO.PY").eval(&output));
+        assert!(contains("BAZ.py").eval(&output));
+        assert!(contains("CONTENT BAZ.PY").eval(&output));
+    }
 }

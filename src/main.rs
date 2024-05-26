@@ -34,7 +34,7 @@ struct Cli {
 
     /// Include files in case of conflict between include and exclude patterns
     #[clap(long)]
-    conflict_include: bool,
+    include_priority: bool,
 
     /// Display the token count of the generated prompt
     #[clap(long)]
@@ -101,7 +101,7 @@ fn main() -> Result<()> {
         &args.path,
         &include_patterns,
         &exclude_patterns,
-        args.conflict_include,
+        args.include_priority,
         args.line_number,
         args.relative_paths,
     );

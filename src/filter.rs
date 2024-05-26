@@ -9,7 +9,7 @@ pub fn should_include_file(
     path: &Path,
     include_patterns: &[String],
     exclude_patterns: &[String],
-    conflict_include: bool,
+    include_priority: bool,
 ) -> bool {
     // ~~~ Clean path ~~~
     let canonical_path = match fs::canonicalize(path) {
@@ -36,7 +36,7 @@ pub fn should_include_file(
 
     // ~~~ Decision ~~~
     let result = match (included, excluded) {
-        (true, true) => conflict_include, // If both include and exclude patterns match, use the conflict_include flag
+        (true, true) => include_priority, // If both include and exclude patterns match, use the include_priority flag
         (true, false) => true, // If the path is included and not excluded, include it
         (false, true) => false, // If the path is excluded, exclude it
         (false, false) => include_patterns.is_empty(), // If no include patterns are provided, include everything
