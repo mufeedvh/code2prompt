@@ -16,7 +16,7 @@ pub fn handlebars_setup(template_str: &str) -> Result<Handlebars<'static>> {
 
 /// Extracts the undefined variables from the template string
 pub fn extract_undefined_variables(template: &str) -> Vec<String> {
-    let registered_identifiers = vec!["path", "code", "git_diff"];
+    let registered_identifiers = ["path", "code", "git_diff"];
     let re = Regex::new(r"\{\{\s*(?P<var>[a-zA-Z_][a-zA-Z_0-9]*)\s*\}\}").unwrap();
     re.captures_iter(template)
         .map(|cap| cap["var"].to_string())

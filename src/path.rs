@@ -5,12 +5,12 @@ use ignore::WalkBuilder;
 use log::debug;
 use serde_json::json;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use termtree::Tree;
 
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations
 pub fn traverse_directory(
-    root_path: &PathBuf,
+    root_path: &Path,
     include: &[String],
     exclude: &[String],
     include_priority: bool,
@@ -47,8 +47,8 @@ pub fn traverse_directory(
                 }
 
                 // ~~~ Process the file ~~~
-                if path.is_file() && should_include_file(path, &include, &exclude, include_priority) {
-                    let code_bytes = fs::read(&path).expect("Failed to read file");
+                if path.is_file() && should_include_file(path, include, exclude, include_priority) {
+                    let code_bytes = fs::read(path).expect("Failed to read file");
                     let code = String::from_utf8_lossy(&code_bytes);
 
                     let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number);
