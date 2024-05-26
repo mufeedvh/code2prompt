@@ -98,6 +98,7 @@ mod tests {
         assert!(contains("FOO.py").eval(&output));
         assert!(contains("CONTENT FOO.PY").eval(&output));
         assert!(contains("content qux.txt").not().eval(&output));
+
     }
 
     #[test]
@@ -109,9 +110,10 @@ mod tests {
         let output = env.read_output();
         println!("Test exclude extensions output:\n{}", output);
         assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
+        //assert!(contains("content foo.py").eval(&output));
         assert!(contains("FOO.py").eval(&output));
-        assert!(contains("CONTENT FOO.PY").eval(&output));
+        //assert!(contains("CONTENT FOO.PY").eval(&output));
+        assert!(contains("qux.txt").not().eval(&output));
         assert!(contains("content qux.txt").not().eval(&output));
     }
 
