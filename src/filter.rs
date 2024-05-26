@@ -35,10 +35,13 @@ pub fn should_include_file(
     );
 
     // ~~~ Decision ~~~
-    match (included, excluded) {
+    let result = match (included, excluded) {
         (true, true) => conflict_include, // If both include and exclude patterns match, use the conflict_include flag
         (true, false) => true, // If the path is included and not excluded, include it
         (false, true) => false, // If the path is excluded, exclude it
         (false, false) => include_patterns.is_empty(), // If no include patterns are provided, include everything
-    }
+    };
+
+    debug!("Final decision for path {}: {}", path_str, result);
+    result
 }

@@ -27,7 +27,7 @@ fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let parent_dir = file_path.parent().unwrap();
     fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
     let mut file = File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
-    debug!("Writing to file: {:?}", file_path);
+    //debug!("Writing to file: {:?}", file_path);
     writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
 }
 
@@ -163,7 +163,6 @@ mod tests {
         assert!(contains("uppercase/FOO").not().eval(&output));
     }
 
-
     // #[test]
     // fn test_exclude_files() {
     //     let env = TestEnv::new();
@@ -171,7 +170,7 @@ mod tests {
     //     cmd.arg("--exclude=**/foo.py,**/bar.py").assert().success();
 
     //     let output = env.read_output();
-        // debug!("Test exclude files output:\n{}", output);
+    //     debug!("Test exclude files output:\n{}", output);
     //     assert!(contains("baz.py").eval(&output));
     //     assert!(contains("content baz.py").eval(&output));
     //     assert!(contains("foo.py").not().eval(&output));

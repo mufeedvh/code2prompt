@@ -1,10 +1,4 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
-mod filter;
-mod template;
-mod path;
-mod git;
-mod token;
-
 use std::path::PathBuf;
 use clap::Parser;
 use anyhow::Result;
@@ -13,11 +7,12 @@ use colored::*;
 use inquire::Text;
 use serde_json::json;
 use std::io::Write;
-use log::{debug};
-use crate::path::{traverse_directory, label};
-use crate::git::get_git_diff;
-use crate::token::count_tokens;
-use crate::template::{handlebars_setup, render_template, extract_undefined_variables};
+use log::{debug,info};
+use code2prompt::{
+    traverse_directory, label, get_git_diff, count_tokens, handlebars_setup, render_template, extract_undefined_variables,
+};
+use env_logger;
+
 
 /// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 ///
@@ -73,12 +68,18 @@ struct Cli {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     let args = Cli::parse();
 
-    // Embed the template file
+    info!("Include patterns: {:?}", args.include);
+    info!("Exclude patterns: {:?}", args.exclude);
+
+    // ~~~ Handlebars Template Setup ~~~
     let default_template = include_str!("default_template.hbs");
     let handlebars = handlebars_setup(default_template).expect("Failed to set up Handlebars");
 
+    // ~~~ Progress Bar Setup ~~~
     let spinner = ProgressBar::new_spinner();
     spinner.enable_steady_tick(std::time::Duration::from_millis(120));
     spinner.set_style(
@@ -90,10 +91,16 @@ fn main() -> Result<()> {
 
     spinner.set_message("Traversing directory and building tree...");
 
+    // ~~~ Parse Patterns ~~~
+    let include_patterns = parse_patterns(&args.include);
+    let exclude_patterns = parse_patterns(&args.exclude);
+
+
+    // ~~~ Traverse the directory ~~~
     let create_tree = traverse_directory(
         &args.path,
-        &args.include,
-        &args.exclude,
+        &include_patterns,
+        &exclude_patterns,
         args.conflict_include,
         args.line_number,
         args.relative_paths,
@@ -111,6 +118,7 @@ fn main() -> Result<()> {
         std::process::exit(1);
     });
 
+    // ~~~ Git Diff ~~~
     let mut git_diff = String::new();
     if args.diff {
         spinner.set_message("Generating git diff...");
@@ -119,6 +127,7 @@ fn main() -> Result<()> {
 
     spinner.finish_with_message(format!("{}", "Done!".green()));
 
+    // ~~~ Prepare JSON Data ~~~
     let mut data = json!({
         "absolute_code_path": if args.relative_paths {
             label(args.path.canonicalize().unwrap())
@@ -130,12 +139,13 @@ fn main() -> Result<()> {
         "git_diff": git_diff,
     });
 
-    // Log the JSON object before rendering
     debug!("JSON Data: {}", serde_json::to_string_pretty(&data).unwrap());
 
+    // Handle undefined variables
     let undefined_variables = extract_undefined_variables(default_template);
     let mut user_defined_vars = serde_json::Map::new();
 
+    // Prompt user for undefined variables
     for var in undefined_variables.iter() {
         if !data.as_object().unwrap().contains_key(var) {
             let prompt = format!("Enter value for '{}': ", var);
@@ -155,12 +165,15 @@ fn main() -> Result<()> {
         }
     }
 
+    // ~~~ Render the template ~~~
     let rendered = render_template(&handlebars, "default", &data);
 
+    // ~~~ Display Token Count ~~~
     if args.tokens {
         count_tokens(&rendered, &args.encoding);
     }
 
+    // ~~~ Clipboard ~~~
     if !args.no_clipboard {
         match cli_clipboard::set_contents(rendered.to_string()) {
             Ok(_) => {
@@ -185,6 +198,7 @@ fn main() -> Result<()> {
         }
     }
 
+    // ~~~ Output File ~~~
     if let Some(output_path) = args.output {
         let file = std::fs::File::create(&output_path).expect("Failed to create output file");
         let mut writer = std::io::BufWriter::new(file);
@@ -200,4 +214,11 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
+    match patterns {
+        Some(patterns) if !patterns.is_empty() => patterns.split(',').map(|s| s.trim().to_string()).collect(),
+        _ => vec![],
+    }
 }

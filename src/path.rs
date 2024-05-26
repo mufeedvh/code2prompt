@@ -6,13 +6,13 @@ use ignore::WalkBuilder;
 use serde_json::json;
 use termtree::Tree;
 use crate::filter::should_include_file;
-use log::{info, error};
+use log::{debug};
 
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations
 pub fn traverse_directory(
     root_path: &PathBuf,
-    include: &Option<String>,
-    exclude: &Option<String>,
+    include: &[String],
+    exclude: &[String],
     conflict_include: bool,
     line_number: bool,
     relative_paths: bool,
@@ -21,24 +21,6 @@ pub fn traverse_directory(
     let mut files = Vec::new();
     let canonical_root_path = root_path.canonicalize()?;
     let parent_directory = label(&canonical_root_path);
-
-    // ~~~ Parse Patterns ~~~
-    let include_patterns: Vec<String> = include
-        .as_deref()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .collect();
-
-    let exclude_patterns: Vec<String> = exclude
-        .as_deref()
-        .unwrap_or("")
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .collect();
-
-    debug!("Include patterns: {:?}", include_patterns);
-    debug!("Exclude patterns: {:?}", exclude_patterns);
 
     // ~~~ Build the Tree ~~~
     let tree = WalkBuilder::new(&canonical_root_path)
@@ -65,7 +47,7 @@ pub fn traverse_directory(
                 }
 
                 // ~~~ Process the file ~~~
-                if path.is_file() && should_include_file(path, &include_patterns, &exclude_patterns, conflict_include) {
+                if path.is_file() && should_include_file(path, &include, &exclude, conflict_include) {
                     let code_bytes = fs::read(&path).expect("Failed to read file");
                     let code = String::from_utf8_lossy(&code_bytes);
 
@@ -98,6 +80,7 @@ pub fn traverse_directory(
 
     Ok((tree.to_string(), files))
 }
+
 
 /// Returns the file name or the string representation of the path
 pub fn label<P: AsRef<Path>>(p: P) -> String {
