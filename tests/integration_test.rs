@@ -6,6 +6,20 @@ use assert_cmd::Command;
 use predicates::prelude::*;
 use predicates::str::contains;
 use colored::*;
+use log::{info, debug};
+use std::sync::Once;
+
+static INIT: Once = Once::new();
+
+fn init_logger() {
+    INIT.call_once(|| {
+        env_logger::builder()
+            .is_test(true)
+            .filter_level(log::LevelFilter::Debug)
+            .try_init()
+            .expect("Failed to initialize logger");
+    });
+}
 
 
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
@@ -13,6 +27,7 @@ fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let parent_dir = file_path.parent().unwrap();
     fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
     let mut file = File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
+    debug!("Writing to file: {:?}", file_path);
     writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
 }
 
@@ -41,14 +56,13 @@ fn create_test_hierarchy(base_path: &Path) {
     for (file_path, content) in files {
         create_temp_file(base_path, file_path, content);
     }
-    println!(
+    info!(
         "{}{}{} {}",
         "[".bold().white(),
         "✓".bold().green(),
         "]".bold().white(),
         "Tempfiles created".green()
     );
-
 }
 
 fn read_output_file(dir: &Path, file_name: &str) -> String {
@@ -67,6 +81,7 @@ mod tests {
 
     impl TestEnv {
         fn new() -> Self {
+            init_logger();
             let dir = tempdir().unwrap();
             create_test_hierarchy(dir.path());
             let output_file = dir.path().join("output.txt").to_str().unwrap().to_string();
@@ -93,30 +108,29 @@ mod tests {
         cmd.arg("--include=*.py").assert().success();
 
         let output = env.read_output();
-        println!("Test include extensions output:\n{}", output);
+        debug!("Test include extensions output:\n{}", output);
         assert!(contains("foo.py").eval(&output));
         assert!(contains("content foo.py").eval(&output));
         assert!(contains("FOO.py").eval(&output));
         assert!(contains("CONTENT FOO.PY").eval(&output));
         assert!(contains("content qux.txt").not().eval(&output));
-
     }
 
-    // #[test]
-    // fn test_exclude_extensions() {
-    //     let env = TestEnv::new();
-    //     let mut cmd = env.command();
-    //     cmd.arg("--exclude=*.txt").assert().success();
+    #[test]
+    fn test_exclude_extensions() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--exclude=*.txt").assert().success();
 
-    //     let output = env.read_output();
-    //     println!("Test exclude extensions output:\n{}", output);
-    //     assert!(contains("foo.py").eval(&output));
-    //     assert!(contains("content foo.py").eval(&output));
-    //     assert!(contains("FOO.py").eval(&output));
-    //     assert!(contains("CONTENT FOO.PY").eval(&output));
-    //     assert!(contains("lowercase/qux.txt").not().eval(&output));
-    //     assert!(contains("content qux.txt").not().eval(&output));
-    // }
+        let output = env.read_output();
+        debug!("Test exclude files output:\n{}", output);
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("FOO.py").eval(&output));
+        assert!(contains("CONTENT FOO.PY").eval(&output));
+        assert!(contains("lowercase/qux.txt").not().eval(&output));
+        assert!(contains("content qux.txt").not().eval(&output));
+    }
 
     #[test]
     fn test_include_files() {
@@ -125,7 +139,7 @@ mod tests {
         cmd.arg("--include=**/foo.py,**/bar.py").assert().success();
 
         let output = env.read_output();
-        println!("Test include files output:\n{}", output);
+        debug!("Test include files output:\n{}", output);
         assert!(contains("foo.py").eval(&output));
         assert!(contains("content foo.py").eval(&output));
         assert!(contains("bar.py").eval(&output));
@@ -134,22 +148,6 @@ mod tests {
         assert!(contains("content baz.py").not().eval(&output));
     }
 
-    // #[test]
-    // fn test_exclude_files() {
-    //     let env = TestEnv::new();
-    //     let mut cmd = env.command();
-    //     cmd.arg("--exclude=**/foo.py,**/bar.py").assert().success();
-
-    //     let output = env.read_output();
-    //     println!("Test exclude files output:\n{}", output);
-    //     assert!(contains("baz.py").eval(&output));
-    //     assert!(contains("content baz.py").eval(&output));
-    //     assert!(contains("foo.py").not().eval(&output));
-    //     assert!(contains("content foo.py").not().eval(&output));
-    //     assert!(contains("bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
-    //     assert!(contains("content bar.py").not().eval(&output));
-    // }
-
     #[test]
     fn test_include_folders() {
         let env = TestEnv::new();
@@ -157,7 +155,7 @@ mod tests {
         cmd.arg("--include=**/lowercase/**").assert().success();
 
         let output = env.read_output();
-        println!("Test include folders output:\n{}", output);
+        debug!("Test include folders output:\n{}", output);
         assert!(contains("foo.py").eval(&output));
         assert!(contains("content foo.py").eval(&output));
         assert!(contains("baz.py").eval(&output));
@@ -165,6 +163,23 @@ mod tests {
         assert!(contains("uppercase/FOO").not().eval(&output));
     }
 
+
+    // #[test]
+    // fn test_exclude_files() {
+    //     let env = TestEnv::new();
+    //     let mut cmd = env.command();
+    //     cmd.arg("--exclude=**/foo.py,**/bar.py").assert().success();
+
+    //     let output = env.read_output();
+        // debug!("Test exclude files output:\n{}", output);
+    //     assert!(contains("baz.py").eval(&output));
+    //     assert!(contains("content baz.py").eval(&output));
+    //     assert!(contains("foo.py").not().eval(&output));
+    //     assert!(contains("content foo.py").not().eval(&output));
+    //     assert!(contains("bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
+    //     assert!(contains("content bar.py").not().eval(&output));
+    // }
+    
     // #[test]
     // fn test_exclude_folders() {
     //     let env = TestEnv::new();
@@ -172,7 +187,7 @@ mod tests {
     //     cmd.arg("--exclude=**/uppercase/**").assert().success();
 
     //     let output = env.read_output();
-    //     println!("Test exclude folders output:\n{}", output);
+    //     debug!("Test exclude folders output:\n{}", output);
     //     assert!(contains("foo.py").eval(&output));
     //     assert!(contains("content foo.py").eval(&output));
     //     assert!(contains("baz.py").eval(&output));
@@ -190,7 +205,7 @@ mod tests {
     //         .assert().success();
 
     //     let output = env.read_output();
-    //     println!("Test include and exclude combinations output:\n{}", output);
+    //     debug!("Test include and exclude combinations output:\n{}", output);
     //     assert!(contains("baz.py").eval(&output));
     //     assert!(contains("content baz.py").eval(&output));
     //     assert!(contains("foo.py").not().eval(&output));
@@ -206,7 +221,7 @@ mod tests {
     //     cmd.assert().success();
 
     //     let output = env.read_output();
-    //     println!("Test no filters output:\n{}", output);
+    //     debug!("Test no filters output:\n{}", output);
     //     assert!(contains("foo.py").eval(&output));
     //     assert!(contains("content foo.py").eval(&output));
     //     assert!(contains("baz.py").eval(&output));

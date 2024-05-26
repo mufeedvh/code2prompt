@@ -12,6 +12,7 @@ use colored::*;
 use inquire::Text;
 use serde_json::json;
 use std::io::Write;
+use log::{debug};
 use crate::path::{traverse_directory, label};
 use crate::git::get_git_diff;
 use crate::token::count_tokens;
@@ -129,7 +130,7 @@ fn main() -> Result<()> {
     });
 
     // Log the JSON object before rendering
-    println!("JSON Data: {}", serde_json::to_string_pretty(&data).unwrap());
+    debug!("JSON Data: {}", serde_json::to_string_pretty(&data).unwrap());
 
     let undefined_variables = extract_undefined_variables(default_template);
     let mut user_defined_vars = serde_json::Map::new();

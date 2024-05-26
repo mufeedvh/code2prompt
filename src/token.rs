@@ -1,5 +1,6 @@
 use colored::*;
 use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
+use log::{info, debug};
 
 pub fn count_tokens(rendered: &str, encoding: &Option<String>) {
     let (bpe, model_info) = match encoding.as_deref().unwrap_or("cl100k") {
@@ -18,7 +19,7 @@ pub fn count_tokens(rendered: &str, encoding: &Option<String>) {
 
     let token_count = bpe.unwrap().encode_with_special_tokens(rendered).len();
 
-    println!(
+    info!(
         "{}{}{} Token count: {}, Model info: {}",
         "[".bold().white(),
         "i".bold().blue(),
