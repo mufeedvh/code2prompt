@@ -1,13 +1,13 @@
-use std::fs::{self, File, read_to_string};
-use std::io::Write;
-use std::path::Path;
-use tempfile::{tempdir};
 use assert_cmd::Command;
+use colored::*;
+use log::{debug, info};
 use predicates::prelude::*;
 use predicates::str::contains;
-use colored::*;
-use log::{info, debug};
+use std::fs::{self, read_to_string, File};
+use std::io::Write;
+use std::path::Path;
 use std::sync::Once;
+use tempfile::tempdir;
 
 static INIT: Once = Once::new();
 
@@ -21,12 +21,12 @@ fn init_logger() {
     });
 }
 
-
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let file_path = dir.join(name);
     let parent_dir = file_path.parent().unwrap();
     fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
-    let mut file = File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
+    let mut file =
+        File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
     //debug!("Writing to file: {:?}", file_path);
     writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
 }
@@ -89,10 +89,12 @@ mod tests {
         }
 
         fn command(&self) -> Command {
-            let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+            let mut cmd =
+                Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
             cmd.arg(&self.dir.path().to_str().unwrap())
-               .arg("--output").arg(&self.output_file)
-               .arg("--no-clipboard");
+                .arg("--output")
+                .arg(&self.output_file)
+                .arg("--no-clipboard");
             cmd
         }
 
@@ -175,10 +177,10 @@ mod tests {
         assert!(contains("content baz.py").eval(&output));
         assert!(contains("lowercase/foo.py").not().eval(&output));
         assert!(contains("content foo.py").not().eval(&output));
-        assert!(contains("lowercase/bar.py").not().eval(&output));  // `bar.py` isn't created in the test hierarchy
+        assert!(contains("lowercase/bar.py").not().eval(&output)); // `bar.py` isn't created in the test hierarchy
         assert!(contains("content bar.py").not().eval(&output));
     }
-    
+
     #[test]
     fn test_exclude_folders() {
         let env = TestEnv::new();
@@ -201,7 +203,8 @@ mod tests {
         cmd.arg("--include=*.py,**/lowercase/**")
             .arg("--exclude=**/foo.py,**/uppercase/**")
             .arg("--include-priority")
-            .assert().success();
+            .assert()
+            .success();
 
         let output = env.read_output();
         debug!("Test include and exclude combinations output:\n{}", output);
@@ -219,7 +222,8 @@ mod tests {
         let mut cmd = env.command();
         cmd.arg("--include=*.py,**/lowercase/**")
             .arg("--exclude=**/foo.py,**/uppercase/**")
-            .assert().success();
+            .assert()
+            .success();
 
         let output = env.read_output();
         debug!("Test include and exclude combinations output:\n{}", output);

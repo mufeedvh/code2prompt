@@ -1,10 +1,19 @@
 //! This module handles git operations.
-use std::path::Path;
-use git2::{DiffOptions, Repository};
+
 use anyhow::Result;
-use log::{info, error};
+use git2::{DiffOptions, Repository};
+use log::{error, info};
+use std::path::Path;
 
 /// Generates a git diff for the repository at the provided path
+///
+/// # Arguments
+///
+/// * `repo_path` - A reference to the path of the git repository
+///
+/// # Returns
+///
+/// * `Result<String, git2::Error>` - The generated git diff as a string or an error
 pub fn get_git_diff(repo_path: &Path) -> Result<String, git2::Error> {
     info!("Opening repository at path: {:?}", repo_path);
     let repo = match Repository::open(repo_path) {

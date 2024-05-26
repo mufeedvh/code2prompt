@@ -1,6 +1,6 @@
 //! This module contains the functions to set up the Handlebars template engine and render the template with the provided data.
 use anyhow::Result;
-use handlebars::{Handlebars, no_escape};
+use handlebars::{no_escape, Handlebars};
 use regex::Regex;
 
 /// Set up the Handlebars template engine with a default template string
@@ -14,7 +14,6 @@ pub fn handlebars_setup(template_str: &str) -> Result<Handlebars<'static>> {
     Ok(handlebars)
 }
 
-
 /// Extracts the undefined variables from the template string
 pub fn extract_undefined_variables(template: &str) -> Vec<String> {
     let registered_identifiers = vec!["path", "code", "git_diff"];
@@ -26,7 +25,11 @@ pub fn extract_undefined_variables(template: &str) -> Vec<String> {
 }
 
 /// Renders the template with the provided data
-pub fn render_template(handlebars: &Handlebars, template_name: &str, data: &serde_json::Value) -> String {
+pub fn render_template(
+    handlebars: &Handlebars,
+    template_name: &str,
+    data: &serde_json::Value,
+) -> String {
     handlebars
         .render(template_name, data)
         .expect("Failed to render template")

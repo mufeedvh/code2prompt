@@ -1,12 +1,12 @@
 //! This module contains the functions for traversing the directory and processing the files.
-use std::fs;
-use std::path::{Path, PathBuf};
+use crate::filter::should_include_file;
 use anyhow::Result;
 use ignore::WalkBuilder;
+use log::debug;
 use serde_json::json;
+use std::fs;
+use std::path::{Path, PathBuf};
 use termtree::Tree;
-use crate::filter::should_include_file;
-use log::{debug};
 
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations
 pub fn traverse_directory(
@@ -81,7 +81,6 @@ pub fn traverse_directory(
     Ok((tree.to_string(), files))
 }
 
-
 /// Returns the file name or the string representation of the path
 pub fn label<P: AsRef<Path>>(p: P) -> String {
     let path = p.as_ref();
@@ -99,7 +98,7 @@ pub fn label<P: AsRef<Path>>(p: P) -> String {
 fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
     let delimiter = "`".repeat(3);
     let mut code_with_line_numbers = String::new();
-    
+
     if line_numbers {
         for (line_number, line) in code.lines().enumerate() {
             code_with_line_numbers.push_str(&format!("{:4} | {}\n", line_number + 1, line));
@@ -107,6 +106,9 @@ fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
     } else {
         code_with_line_numbers = code.to_string();
     }
-    
-    format!("{}{}\n{}\n{}", delimiter, extension, code_with_line_numbers, delimiter)
+
+    format!(
+        "{}{}\n{}\n{}",
+        delimiter, extension, code_with_line_numbers, delimiter
+    )
 }

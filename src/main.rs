@@ -1,18 +1,17 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
-use std::path::PathBuf;
-use clap::Parser;
 use anyhow::Result;
-use indicatif::{ProgressBar, ProgressStyle};
+use clap::Parser;
+use code2prompt::{
+    count_tokens, extract_undefined_variables, get_git_diff, handlebars_setup, label,
+    render_template, traverse_directory,
+};
 use colored::*;
+use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Text;
+use log::debug;
 use serde_json::json;
 use std::io::Write;
-use log::{debug,info};
-use code2prompt::{
-    traverse_directory, label, get_git_diff, count_tokens, handlebars_setup, render_template, extract_undefined_variables,
-};
-use env_logger;
-
+use std::path::PathBuf;
 
 /// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 ///
@@ -68,12 +67,9 @@ struct Cli {
 }
 
 fn main() -> Result<()> {
+    // ~~~ CLI Setup ~~~
     env_logger::init();
-
     let args = Cli::parse();
-
-    info!("Include patterns: {:?}", args.include);
-    info!("Exclude patterns: {:?}", args.exclude);
 
     // ~~~ Handlebars Template Setup ~~~
     let default_template = include_str!("default_template.hbs");
@@ -94,7 +90,6 @@ fn main() -> Result<()> {
     // ~~~ Parse Patterns ~~~
     let include_patterns = parse_patterns(&args.include);
     let exclude_patterns = parse_patterns(&args.exclude);
-
 
     // ~~~ Traverse the directory ~~~
     let create_tree = traverse_directory(
@@ -139,7 +134,10 @@ fn main() -> Result<()> {
         "git_diff": git_diff,
     });
 
-    debug!("JSON Data: {}", serde_json::to_string_pretty(&data).unwrap());
+    debug!(
+        "JSON Data: {}",
+        serde_json::to_string_pretty(&data).unwrap()
+    );
 
     // Handle undefined variables
     let undefined_variables = extract_undefined_variables(default_template);
@@ -184,7 +182,7 @@ fn main() -> Result<()> {
                     "]".bold().white(),
                     "Prompt copied to clipboard!".green()
                 );
-            },
+            }
             Err(e) => {
                 eprintln!(
                     "{}{}{} {}: {}",
@@ -218,7 +216,9 @@ fn main() -> Result<()> {
 
 fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
     match patterns {
-        Some(patterns) if !patterns.is_empty() => patterns.split(',').map(|s| s.trim().to_string()).collect(),
+        Some(patterns) if !patterns.is_empty() => {
+            patterns.split(',').map(|s| s.trim().to_string()).collect()
+        }
         _ => vec![],
     }
 }
