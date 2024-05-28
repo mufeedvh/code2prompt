@@ -9,7 +9,7 @@ use code2prompt::{
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Text;
-use log::debug;
+use log::{debug, error};
 use serde_json::json;
 use std::io::Write;
 use std::path::PathBuf;
@@ -73,26 +73,15 @@ struct Cli {
     #[clap(short, long)]
     template: Option<PathBuf>,
 }
+
 fn main() -> Result<()> {
     // ~~~ CLI Setup ~~~
     env_logger::init();
     let args = Cli::parse();
 
     // ~~~ Handlebars Template Setup ~~~
-    let (template_content, template_name) = if let Some(template_path) = &args.template {
-        (
-            std::fs::read_to_string(template_path).expect("Failed to read custom template file"),
-            CUSTOM_TEMPLATE_NAME,
-        )
-    } else {
-        (
-            include_str!("default_template.hbs").to_string(),
-            DEFAULT_TEMPLATE_NAME,
-        )
-    };
-
-    let handlebars =
-        handlebars_setup(&template_content, template_name).expect("Failed to set up Handlebars");
+    let (template_content, template_name) = get_template(&args);
+    let handlebars = handlebars_setup(&template_content, template_name)?;
 
     // ~~~ Progress Bar Setup ~~~
     let spinner = ProgressBar::new_spinner();
@@ -183,7 +172,7 @@ fn main() -> Result<()> {
     }
 
     // ~~~ Render the template ~~~
-    let rendered = render_template(&handlebars, template_name, &data);
+    let rendered = render_template(&handlebars, template_name, &data)?;
 
     // ~~~ Display Token Count ~~~
     if args.tokens {
@@ -219,9 +208,9 @@ fn main() -> Result<()> {
 
     // ~~~ Output File ~~~
     if let Some(output_path) = args.output {
-        let file = std::fs::File::create(&output_path).expect("Failed to create output file");
+        let file = std::fs::File::create(&output_path)?;
         let mut writer = std::io::BufWriter::new(file);
-        write!(writer, "{}", rendered).expect("Failed to write to output file");
+        write!(writer, "{}", rendered)?;
 
         println!(
             "{}{}{} {}",
@@ -233,6 +222,23 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn get_template(args: &Cli) -> (String, &str) {
+    if let Some(template_path) = &args.template {
+        (
+            std::fs::read_to_string(template_path).unwrap_or_else(|_| {
+                error!("Failed to read custom template file at {:?}", template_path);
+                std::process::exit(1);
+            }),
+            CUSTOM_TEMPLATE_NAME,
+        )
+    } else {
+        (
+            include_str!("default_template.hbs").to_string(),
+            DEFAULT_TEMPLATE_NAME,
+        )
+    }
 }
 
 fn parse_patterns(patterns: &Option<String>) -> Vec<String> {

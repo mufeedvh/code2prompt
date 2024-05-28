@@ -7,12 +7,22 @@ mod tests {
 
     #[test]
     fn test_handlebars_setup() {
-        let template_str = "{{name}} is learning Rust!";
+        let template_str = "Hello, {{name}}!";
         let template_name = "test_template";
-        let handlebars = handlebars_setup(template_str, template_name).unwrap();
-        let data = json!({ "name": "Bernard" });
-        let rendered = handlebars.render(template_name, &data).unwrap();
-        assert_eq!(rendered, "Bernard is learning Rust!");
+    
+        // Call the handlebars_setup function
+        let handlebars = handlebars_setup(template_str, template_name).expect("Failed to set up Handlebars");
+    
+        // Prepare the data
+        let data = json!({
+            "name": "Bernard"
+        });
+    
+        // Render the template
+        let rendered = handlebars.render(template_name, &data).expect("Failed to render template");
+    
+        // Assert the result
+        assert_eq!(rendered, "Hello, Bernard!");
     }
 
     #[test]

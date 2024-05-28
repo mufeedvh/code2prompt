@@ -16,41 +16,31 @@ use std::path::Path;
 /// * `Result<String, git2::Error>` - The generated git diff as a string or an error
 pub fn get_git_diff(repo_path: &Path) -> Result<String, git2::Error> {
     info!("Opening repository at path: {:?}", repo_path);
-    let repo = match Repository::open(repo_path) {
-        Ok(repo) => repo,
-        Err(e) => {
-            error!("Failed to open repository: {}", e);
-            return Err(e);
-        }
-    };
+    let repo = Repository::open(repo_path).map_err(|e| {
+        error!("Failed to open repository: {}", e);
+        e
+    })?;
 
-    let head = match repo.head() {
-        Ok(head) => head,
-        Err(e) => {
-            error!("Failed to get repository head: {}", e);
-            return Err(e);
-        }
-    };
+    let head = repo.head().map_err(|e| {
+        error!("Failed to get repository head: {}", e);
+        e
+    })?;
 
-    let head_tree = match head.peel_to_tree() {
-        Ok(tree) => tree,
-        Err(e) => {
-            error!("Failed to peel to tree: {}", e);
-            return Err(e);
-        }
-    };
+    let head_tree = head.peel_to_tree().map_err(|e| {
+        error!("Failed to peel to tree: {}", e);
+        e
+    })?;
 
-    let diff = match repo.diff_tree_to_index(
-        Some(&head_tree),
-        None,
-        Some(DiffOptions::new().ignore_whitespace(true)),
-    ) {
-        Ok(diff) => diff,
-        Err(e) => {
+    let diff = repo
+        .diff_tree_to_index(
+            Some(&head_tree),
+            None,
+            Some(DiffOptions::new().ignore_whitespace(true)),
+        )
+        .map_err(|e| {
             error!("Failed to generate diff: {}", e);
-            return Err(e);
-        }
-    };
+            e
+        })?;
 
     let mut diff_text = Vec::new();
     diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {

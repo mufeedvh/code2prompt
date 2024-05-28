@@ -7,9 +7,10 @@ use regex::Regex;
 pub fn handlebars_setup(template_str: &str, template_name: &str) -> Result<Handlebars<'static>> {
     let mut handlebars = Handlebars::new();
     handlebars.register_escape_fn(no_escape);
+
     handlebars
         .register_template_string(template_name, template_str)
-        .expect("Failed to register template");
+        .map_err(|e| anyhow::anyhow!("Failed to register template: {}", e))?;
 
     Ok(handlebars)
 }
@@ -29,10 +30,9 @@ pub fn render_template(
     handlebars: &Handlebars,
     template_name: &str,
     data: &serde_json::Value,
-) -> String {
-    handlebars
+) -> Result<String> {
+    let rendered = handlebars
         .render(template_name, data)
-        .expect("Failed to render template")
-        .trim()
-        .to_string()
+        .map_err(|e| anyhow::anyhow!("Failed to render template: {}", e))?;
+    Ok(rendered.trim().to_string())
 }

@@ -8,7 +8,20 @@ use std::fs;
 use std::path::Path;
 use termtree::Tree;
 
-/// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations
+/// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
+///
+/// # Arguments
+///
+/// * `root_path` - The path to the root directory.
+/// * `include` - The patterns of files to include.
+/// * `exclude` - The patterns of files to exclude.
+/// * `include_priority` - Whether to give priority to include patterns.
+/// * `line_number` - Whether to add line numbers to the code.
+/// * `relative_paths` - Whether to use relative paths.
+///
+/// # Returns
+///
+/// A tuple containing the string representation of the directory tree and a vector of JSON representations of the files.
 pub fn traverse_directory(
     root_path: &Path,
     include: &[String],
@@ -48,30 +61,32 @@ pub fn traverse_directory(
 
                 // ~~~ Process the file ~~~
                 if path.is_file() && should_include_file(path, include, exclude, include_priority) {
-                    let code_bytes = fs::read(path).expect("Failed to read file");
-                    let code = String::from_utf8_lossy(&code_bytes);
+                    if let Ok(code_bytes) = fs::read(path) {
+                        let code = String::from_utf8_lossy(&code_bytes);
 
-                    let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number);
+                        let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number);
 
-                    if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
-                        let file_path = if relative_paths {
-                            format!("{}/{}", parent_directory, relative_path.display())
+                        if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
+                            let file_path = if relative_paths {
+                                format!("{}/{}", parent_directory, relative_path.display())
+                            } else {
+                                path.display().to_string()
+                            };
+
+                            files.push(json!({
+                                "path": file_path,
+                                "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
+                                "code": code_block,
+                            }));
+                            debug!(target: "included_files", "Included file: {}", file_path);
                         } else {
-                            path.display().to_string()
-                        };
-
-                        files.push(json!({
-                            "path": file_path,
-                            "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
-                            "code": code_block,
-                        }));
-                        debug!("Included file: {}", file_path);
-
+                            debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
+                        }
                     } else {
-                        //debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
+                        debug!("Failed to read file: {}", path.display());
                     }
                 } else {
-                    //debug!("Excluded file: {:?}", path.display());
+                    debug!("Excluded file: {:?}", path.display());
                 }
             }
 
