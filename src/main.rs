@@ -14,6 +14,9 @@ use serde_json::json;
 use std::io::Write;
 use std::path::PathBuf;
 
+const DEFAULT_TEMPLATE_NAME: &str = "default";
+const CUSTOM_TEMPLATE_NAME: &str = "custom";
+
 /// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 ///
 /// Author: Mufeed VH (@mufeedvh)
@@ -65,16 +68,31 @@ struct Cli {
     /// Disable copying to clipboard
     #[clap(long)]
     no_clipboard: bool,
-}
 
+    /// Path to a custom Handlebars template
+    #[clap(long)]
+    template: Option<PathBuf>,
+}
 fn main() -> Result<()> {
     // ~~~ CLI Setup ~~~
     env_logger::init();
     let args = Cli::parse();
 
     // ~~~ Handlebars Template Setup ~~~
-    let default_template = include_str!("default_template.hbs");
-    let handlebars = handlebars_setup(default_template).expect("Failed to set up Handlebars");
+    let (template_content, template_name) = if let Some(template_path) = &args.template {
+        (
+            std::fs::read_to_string(template_path).expect("Failed to read custom template file"),
+            CUSTOM_TEMPLATE_NAME,
+        )
+    } else {
+        (
+            include_str!("default_template.hbs").to_string(),
+            DEFAULT_TEMPLATE_NAME,
+        )
+    };
+
+    let handlebars =
+        handlebars_setup(&template_content, template_name).expect("Failed to set up Handlebars");
 
     // ~~~ Progress Bar Setup ~~~
     let spinner = ProgressBar::new_spinner();
@@ -141,7 +159,7 @@ fn main() -> Result<()> {
     );
 
     // Handle undefined variables
-    let undefined_variables = extract_undefined_variables(default_template);
+    let undefined_variables = extract_undefined_variables(&template_content);
     let mut user_defined_vars = serde_json::Map::new();
 
     // Prompt user for undefined variables
@@ -165,7 +183,7 @@ fn main() -> Result<()> {
     }
 
     // ~~~ Render the template ~~~
-    let rendered = render_template(&handlebars, "default", &data);
+    let rendered = render_template(&handlebars, template_name, &data);
 
     // ~~~ Display Token Count ~~~
     if args.tokens {

@@ -3,13 +3,13 @@ use anyhow::Result;
 use handlebars::{no_escape, Handlebars};
 use regex::Regex;
 
-/// Set up the Handlebars template engine with a default template string
-pub fn handlebars_setup(template_str: &str) -> Result<Handlebars<'static>> {
+/// Set up the Handlebars template engine with a template string and a template name
+pub fn handlebars_setup(template_str: &str, template_name: &str) -> Result<Handlebars<'static>> {
     let mut handlebars = Handlebars::new();
     handlebars.register_escape_fn(no_escape);
     handlebars
-        .register_template_string("default", template_str)
-        .expect("Failed to register default template");
+        .register_template_string(template_name, template_str)
+        .expect("Failed to register template");
 
     Ok(handlebars)
 }
