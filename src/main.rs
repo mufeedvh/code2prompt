@@ -58,19 +58,19 @@ struct Cli {
     diff: bool,
 
     /// Add line numbers to the source code
-    #[clap(short, long)]
+    #[clap(short = 'l', long)]
     line_number: bool,
 
     /// Use relative paths instead of absolute paths, including the parent directory
     #[clap(long)]
     relative_paths: bool,
 
-    /// Disable copying to clipboard
+    /// Optional Disable copying to clipboard
     #[clap(long)]
     no_clipboard: bool,
 
-    /// Path to a custom Handlebars template
-    #[clap(long)]
+    /// Optional Path to a custom Handlebars template
+    #[clap(short, long)]
     template: Option<PathBuf>,
 }
 fn main() -> Result<()> {
