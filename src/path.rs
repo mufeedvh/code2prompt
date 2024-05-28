@@ -68,10 +68,10 @@ pub fn traverse_directory(
                         debug!("Included file: {}", file_path);
 
                     } else {
-                        debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
+                        //debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
                     }
                 } else {
-                    debug!("Excluded file: {:?}", path.display());
+                    //debug!("Excluded file: {:?}", path.display());
                 }
             }
 

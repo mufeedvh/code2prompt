@@ -29,15 +29,6 @@ pub fn should_include_file(
         .iter()
         .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
 
-    debug!(
-        "Checking path: {:?}, {}: {}, {}: {}",
-        path_str,
-        "included".bold().green(),
-        included,
-        "excluded".bold().red(),
-        excluded
-    );
-
     // ~~~ Decision ~~~
     let result = match (included, excluded) {
         (true, true) => include_priority, // If both include and exclude patterns match, use the include_priority flag
@@ -46,6 +37,14 @@ pub fn should_include_file(
         (false, false) => include_patterns.is_empty(), // If no include patterns are provided, include everything
     };
 
-    debug!("Final decision for path {}: {}", path_str, result);
+    debug!(
+        "Checking path: {:?}, {}: {}, {}: {}, decision: {}",
+        path_str,
+        "included".bold().green(),
+        included,
+        "excluded".bold().red(),
+        excluded,
+        result
+    );
     result
 }
