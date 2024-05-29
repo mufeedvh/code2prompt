@@ -9,7 +9,7 @@ use code2prompt::{
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Text;
-use log::{debug, error};
+use log::{debug};
 use serde_json::json;
 use std::io::Write;
 use std::path::PathBuf;
@@ -73,33 +73,22 @@ struct Cli {
     #[clap(short, long)]
     template: Option<PathBuf>,
 }
-
 fn main() -> Result<()> {
-    // ~~~ CLI Setup ~~~
     env_logger::init();
     let args = Cli::parse();
 
-    // ~~~ Handlebars Template Setup ~~~
-    let (template_content, template_name) = get_template(&args);
+    // Handlebars Template Setup
+    let (template_content, template_name) = get_template(&args)?;
     let handlebars = handlebars_setup(&template_content, template_name)?;
 
-    // ~~~ Progress Bar Setup ~~~
-    let spinner = ProgressBar::new_spinner();
-    spinner.enable_steady_tick(std::time::Duration::from_millis(120));
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&["▹▹▹▹▹", "▸▹▹▹▹", "▹▸▹▹▹", "▹▹▸▹▹", "▹▹▹▸▹", "▹▹▹▹▸"])
-            .template("{spinner:.blue} {msg}")
-            .unwrap(),
-    );
+    // Progress Bar Setup
+    let spinner = setup_spinner("Traversing directory and building tree...");
 
-    spinner.set_message("Traversing directory and building tree...");
-
-    // ~~~ Parse Patterns ~~~
+    // Parse Patterns
     let include_patterns = parse_patterns(&args.include);
     let exclude_patterns = parse_patterns(&args.exclude);
 
-    // ~~~ Traverse the directory ~~~
+    // Traverse the directory
     let create_tree = traverse_directory(
         &args.path,
         &include_patterns,
@@ -110,7 +99,7 @@ fn main() -> Result<()> {
     );
 
     let (tree, files) = create_tree.unwrap_or_else(|e| {
-        spinner.finish_with_message(format!("{}", "Failed!".red()));
+        spinner.finish_with_message("Failed!".red().to_string());
         eprintln!(
             "{}{}{} {}",
             "[".bold().white(),
@@ -121,22 +110,19 @@ fn main() -> Result<()> {
         std::process::exit(1);
     });
 
-    // ~~~ Git Diff ~~~
-    let mut git_diff = String::new();
-    if args.diff {
+    // Git Diff
+    let git_diff = if args.diff {
         spinner.set_message("Generating git diff...");
-        git_diff = get_git_diff(&args.path).unwrap();
-    }
+        get_git_diff(&args.path).unwrap_or_default()
+    } else {
+        String::new()
+    };
 
-    spinner.finish_with_message(format!("{}", "Done!".green()));
+    spinner.finish_with_message("Done!".green().to_string());
 
-    // ~~~ Prepare JSON Data ~~~
+    // Prepare JSON Data
     let mut data = json!({
-        "absolute_code_path": if args.relative_paths {
-            label(args.path.canonicalize().unwrap())
-        } else {
-            args.path.canonicalize().unwrap().display().to_string()
-        },
+        "absolute_code_path": label(&args.path),
         "source_tree": tree,
         "files": files,
         "git_diff": git_diff,
@@ -148,97 +134,105 @@ fn main() -> Result<()> {
     );
 
     // Handle undefined variables
-    let undefined_variables = extract_undefined_variables(&template_content);
+    handle_undefined_variables(&mut data, &template_content)?;
+
+    // Render the template
+    let rendered = render_template(&handlebars, template_name, &data)?;
+
+    // Display Token Count
+    if args.tokens {
+        count_tokens(&rendered, &args.encoding);
+    }
+
+    // Copy to Clipboard
+    if !args.no_clipboard {
+        copy_to_clipboard(&rendered)?;
+    }
+
+    // Output File
+    if let Some(output_path) = &args.output {
+        write_to_file(output_path, &rendered)?;
+    }
+
+    Ok(())
+}
+
+fn setup_spinner(message: &str) -> ProgressBar {
+    let spinner = ProgressBar::new_spinner();
+    spinner.enable_steady_tick(std::time::Duration::from_millis(120));
+    spinner.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&["▹▹▹▹▹", "▸▹▹▹▹", "▹▸▹▹▹", "▹▹▸▹▹", "▹▹▹▸▹", "▹▹▹▹▸"])
+            .template("{spinner:.blue} {msg}")
+            .unwrap(),
+    );
+    spinner.set_message(message.to_string());
+    spinner
+}
+
+fn get_template(args: &Cli) -> Result<(String, &str)> {
+    if let Some(template_path) = &args.template {
+        let content = std::fs::read_to_string(template_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read custom template file: {}", e))?;
+        Ok((content, CUSTOM_TEMPLATE_NAME))
+    } else {
+        Ok((include_str!("default_template.hbs").to_string(), DEFAULT_TEMPLATE_NAME))
+    }
+}
+
+fn handle_undefined_variables(data: &mut serde_json::Value, template_content: &str) -> Result<()> {
+    let undefined_variables = extract_undefined_variables(template_content);
     let mut user_defined_vars = serde_json::Map::new();
 
-    // Prompt user for undefined variables
     for var in undefined_variables.iter() {
         if !data.as_object().unwrap().contains_key(var) {
             let prompt = format!("Enter value for '{}': ", var);
             let answer = Text::new(&prompt)
                 .with_help_message("Fill user defined variable in template")
                 .prompt()
-                .unwrap_or_else(|_| "".to_string());
-
+                .unwrap_or_default();
             user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
         }
     }
 
-    // Merge user_defined_vars into the existing `data` JSON object
     if let Some(obj) = data.as_object_mut() {
         for (key, value) in user_defined_vars {
             obj.insert(key, value);
         }
     }
-
-    // ~~~ Render the template ~~~
-    let rendered = render_template(&handlebars, template_name, &data)?;
-
-    // ~~~ Display Token Count ~~~
-    if args.tokens {
-        count_tokens(&rendered, &args.encoding);
-    }
-
-    // ~~~ Clipboard ~~~
-    if !args.no_clipboard {
-        let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
-
-        match clipboard.set_text(rendered.to_string()) {
-            Ok(_) => {
-                println!(
-                    "{}{}{} {}",
-                    "[".bold().white(),
-                    "✓".bold().green(),
-                    "]".bold().white(),
-                    "Prompt copied to clipboard!".green()
-                );
-            }
-            Err(e) => {
-                eprintln!(
-                    "{}{}{} {}: {}",
-                    "[".bold().white(),
-                    "!".bold().red(),
-                    "]".bold().white(),
-                    "Failed to copy to clipboard".red(),
-                    e
-                );
-            }
-        }
-    }
-
-    // ~~~ Output File ~~~
-    if let Some(output_path) = args.output {
-        let file = std::fs::File::create(&output_path)?;
-        let mut writer = std::io::BufWriter::new(file);
-        write!(writer, "{}", rendered)?;
-
-        println!(
-            "{}{}{} {}",
-            "[".bold().white(),
-            "✓".bold().green(),
-            "]".bold().white(),
-            format!("Prompt written to file: {}", output_path).green()
-        );
-    }
-
     Ok(())
 }
 
-fn get_template(args: &Cli) -> (String, &str) {
-    if let Some(template_path) = &args.template {
-        (
-            std::fs::read_to_string(template_path).unwrap_or_else(|_| {
-                error!("Failed to read custom template file at {:?}", template_path);
-                std::process::exit(1);
-            }),
-            CUSTOM_TEMPLATE_NAME,
+fn copy_to_clipboard(rendered: &str) -> Result<()> {
+    let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
+    clipboard.set_text(rendered.to_string()).map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to copy to clipboard: {}",
+            e
         )
-    } else {
-        (
-            include_str!("default_template.hbs").to_string(),
-            DEFAULT_TEMPLATE_NAME,
-        )
-    }
+    })?;
+    println!(
+        "{}{}{} {}",
+        "[".bold().white(),
+        "✓".bold().green(),
+        "]".bold().white(),
+        "Prompt copied to clipboard!".green()
+    );
+    Ok(())
+}
+
+fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
+    let file = std::fs::File::create(output_path)?;
+    let mut writer = std::io::BufWriter::new(file);
+    write!(writer, "{}", rendered)?;
+    println!(
+        "{}{}{} {}",
+        "[".bold().white(),
+        "✓".bold().green(),
+        "]".bold().white(),
+        format!("Prompt written to file: {}", output_path).green()
+    );
+    Ok(())
 }
 
 fn parse_patterns(patterns: &Option<String>) -> Vec<String> {

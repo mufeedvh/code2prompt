@@ -19,10 +19,13 @@ mod tests {
         });
     
         // Render the template
-        let rendered = handlebars.render(template_name, &data).expect("Failed to render template");
+        let rendered = render_template(&handlebars, "test_template", &data);
     
         // Assert the result
-        assert_eq!(rendered, "Hello, Bernard!");
+        match rendered {
+            Ok(output) => assert_eq!(output, "Hello, Bernard!"),
+            Err(e) => panic!("Template rendering failed: {}", e),
+        }
     }
 
     #[test]
@@ -39,6 +42,10 @@ mod tests {
         let handlebars = handlebars_setup(template_str, template_name).unwrap();
         let data = json!({ "greeting": "Hello", "name": "Bernard" });
         let rendered = render_template(&handlebars, template_name, &data);
-        assert_eq!(rendered, "Hello, Bernard!");
+
+        match rendered {
+            Ok(output) => assert_eq!(output, "Hello, Bernard!"),
+            Err(e) => panic!("Template rendering failed: {}", e),
+        }
     }
 }
