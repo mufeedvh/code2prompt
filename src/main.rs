@@ -1,5 +1,5 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
-use anyhow::Result;
+use anyhow::{Context, Result};
 use arboard::Clipboard;
 use clap::Parser;
 use code2prompt::{
@@ -9,7 +9,7 @@ use code2prompt::{
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Text;
-use log::{debug};
+use log::debug;
 use serde_json::json;
 use std::io::Write;
 use std::path::PathBuf;
@@ -73,6 +73,7 @@ struct Cli {
     #[clap(short, long)]
     template: Option<PathBuf>,
 }
+
 fn main() -> Result<()> {
     env_logger::init();
     let args = Cli::parse();
@@ -98,17 +99,20 @@ fn main() -> Result<()> {
         args.relative_paths,
     );
 
-    let (tree, files) = create_tree.unwrap_or_else(|e| {
-        spinner.finish_with_message("Failed!".red().to_string());
-        eprintln!(
-            "{}{}{} {}",
-            "[".bold().white(),
-            "!".bold().red(),
-            "]".bold().white(),
-            format!("Failed to build directory tree: {}", e).red()
-        );
-        std::process::exit(1);
-    });
+    let (tree, files) = match create_tree {
+        Ok(result) => result,
+        Err(e) => {
+            spinner.finish_with_message("Failed!".red().to_string());
+            eprintln!(
+                "{}{}{} {}",
+                "[".bold().white(),
+                "!".bold().red(),
+                "]".bold().white(),
+                format!("Failed to build directory tree: {}", e).red()
+            );
+            std::process::exit(1);
+        }
+    };
 
     // Git Diff
     let git_diff = if args.diff {
@@ -173,10 +177,13 @@ fn setup_spinner(message: &str) -> ProgressBar {
 fn get_template(args: &Cli) -> Result<(String, &str)> {
     if let Some(template_path) = &args.template {
         let content = std::fs::read_to_string(template_path)
-            .map_err(|e| anyhow::anyhow!("Failed to read custom template file: {}", e))?;
+            .context("Failed to read custom template file")?;
         Ok((content, CUSTOM_TEMPLATE_NAME))
     } else {
-        Ok((include_str!("default_template.hbs").to_string(), DEFAULT_TEMPLATE_NAME))
+        Ok((
+            include_str!("default_template.hbs").to_string(),
+            DEFAULT_TEMPLATE_NAME,
+        ))
     }
 }
 
@@ -205,12 +212,9 @@ fn handle_undefined_variables(data: &mut serde_json::Value, template_content: &s
 
 fn copy_to_clipboard(rendered: &str) -> Result<()> {
     let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
-    clipboard.set_text(rendered.to_string()).map_err(|e| {
-        anyhow::anyhow!(
-            "Failed to copy to clipboard: {}",
-            e
-        )
-    })?;
+    clipboard
+        .set_text(rendered.to_string())
+        .context("Failed to copy to clipboard")?;
     println!(
         "{}{}{} {}",
         "[".bold().white(),

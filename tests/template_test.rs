@@ -9,18 +9,19 @@ mod tests {
     fn test_handlebars_setup() {
         let template_str = "Hello, {{name}}!";
         let template_name = "test_template";
-    
+
         // Call the handlebars_setup function
-        let handlebars = handlebars_setup(template_str, template_name).expect("Failed to set up Handlebars");
-    
+        let handlebars =
+            handlebars_setup(template_str, template_name).expect("Failed to set up Handlebars");
+
         // Prepare the data
         let data = json!({
             "name": "Bernard"
         });
-    
+
         // Render the template
         let rendered = render_template(&handlebars, "test_template", &data);
-    
+
         // Assert the result
         match rendered {
             Ok(output) => assert_eq!(output, "Hello, Bernard!"),
