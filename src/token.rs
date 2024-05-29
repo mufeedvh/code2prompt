@@ -1,7 +1,15 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
+
 use colored::*;
 use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
 
+/// Counts the tokens in the rendered text using the specified encoding and prints the result.
+///
+/// # Arguments
+///
+/// * `rendered` - The rendered template string.
+/// * `encoding` - An optional string specifying the encoding to use for token counting.
+///                Supported encodings: "cl100k" (default), "p50k", "p50k_edit", "r50k", "gpt2".
 pub fn count_tokens(rendered: &str, encoding: &Option<String>) {
     let (bpe, model_info) = match encoding.as_deref().unwrap_or("cl100k") {
         "cl100k" => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),

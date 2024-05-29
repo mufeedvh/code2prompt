@@ -1,25 +1,25 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
+//!
+//! Author: Mufeed VH (@mufeedvh)
+//! Contributor: Olivier D'Ancona (@ODAncona)
+
 use anyhow::{Context, Result};
-use arboard::Clipboard;
 use clap::Parser;
 use code2prompt::{
-    count_tokens, extract_undefined_variables, get_git_diff, handlebars_setup, label,
-    render_template, traverse_directory,
+    copy_to_clipboard, count_tokens, get_git_diff, handle_undefined_variables, handlebars_setup,
+    label, render_template, traverse_directory, write_to_file,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
-use inquire::Text;
 use log::debug;
 use serde_json::json;
-use std::io::Write;
 use std::path::PathBuf;
 
+// Constants
 const DEFAULT_TEMPLATE_NAME: &str = "default";
 const CUSTOM_TEMPLATE_NAME: &str = "custom";
 
-/// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
-///
-/// Author: Mufeed VH (@mufeedvh)
+// CLI Arguments
 #[derive(Parser)]
 #[clap(name = "code2prompt", version = "1.0.0", author = "Mufeed VH")]
 struct Cli {
@@ -58,7 +58,7 @@ struct Cli {
     diff: bool,
 
     /// Add line numbers to the source code
-    #[clap(short = 'l', long)]
+    #[clap(short, long)]
     line_number: bool,
 
     /// Use relative paths instead of absolute paths, including the parent directory
@@ -161,6 +161,15 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Sets up a progress spinner with a given message
+///
+/// # Arguments
+///
+/// * `message` - A message to display with the spinner
+///
+/// # Returns
+///
+/// * `ProgressBar` - The configured progress spinner
 fn setup_spinner(message: &str) -> ProgressBar {
     let spinner = ProgressBar::new_spinner();
     spinner.enable_steady_tick(std::time::Duration::from_millis(120));
@@ -174,6 +183,33 @@ fn setup_spinner(message: &str) -> ProgressBar {
     spinner
 }
 
+/// Parses comma-separated patterns into a vector of strings
+///
+/// # Arguments
+///
+/// * `patterns` - An optional string containing comma-separated patterns
+///
+/// # Returns
+///
+/// * `Vec<String>` - A vector of parsed patterns
+fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
+    match patterns {
+        Some(patterns) if !patterns.is_empty() => {
+            patterns.split(',').map(|s| s.trim().to_string()).collect()
+        }
+        _ => vec![],
+    }
+}
+
+/// Retrieves the template content and name based on the CLI arguments
+///
+/// # Arguments
+///
+/// * `args` - The parsed CLI arguments
+///
+/// # Returns
+///
+/// * `Result<(String, &str)>` - A tuple containing the template content and name
 fn get_template(args: &Cli) -> Result<(String, &str)> {
     if let Some(template_path) = &args.template {
         let content = std::fs::read_to_string(template_path)
@@ -184,66 +220,5 @@ fn get_template(args: &Cli) -> Result<(String, &str)> {
             include_str!("default_template.hbs").to_string(),
             DEFAULT_TEMPLATE_NAME,
         ))
-    }
-}
-
-fn handle_undefined_variables(data: &mut serde_json::Value, template_content: &str) -> Result<()> {
-    let undefined_variables = extract_undefined_variables(template_content);
-    let mut user_defined_vars = serde_json::Map::new();
-
-    for var in undefined_variables.iter() {
-        if !data.as_object().unwrap().contains_key(var) {
-            let prompt = format!("Enter value for '{}': ", var);
-            let answer = Text::new(&prompt)
-                .with_help_message("Fill user defined variable in template")
-                .prompt()
-                .unwrap_or_default();
-            user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
-        }
-    }
-
-    if let Some(obj) = data.as_object_mut() {
-        for (key, value) in user_defined_vars {
-            obj.insert(key, value);
-        }
-    }
-    Ok(())
-}
-
-fn copy_to_clipboard(rendered: &str) -> Result<()> {
-    let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
-    clipboard
-        .set_text(rendered.to_string())
-        .context("Failed to copy to clipboard")?;
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Prompt copied to clipboard!".green()
-    );
-    Ok(())
-}
-
-fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
-    let file = std::fs::File::create(output_path)?;
-    let mut writer = std::io::BufWriter::new(file);
-    write!(writer, "{}", rendered)?;
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        format!("Prompt written to file: {}", output_path).green()
-    );
-    Ok(())
-}
-
-fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
-    match patterns {
-        Some(patterns) if !patterns.is_empty() => {
-            patterns.split(',').map(|s| s.trim().to_string()).collect()
-        }
-        _ => vec![],
     }
 }

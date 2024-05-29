@@ -1,4 +1,5 @@
 //! This module contains the functions for traversing the directory and processing the files.
+
 use crate::filter::should_include_file;
 use anyhow::Result;
 use ignore::WalkBuilder;
@@ -96,7 +97,15 @@ pub fn traverse_directory(
     Ok((tree.to_string(), files))
 }
 
-/// Returns the file name or the string representation of the path
+/// Returns the file name or the string representation of the path.
+///
+/// # Arguments
+///
+/// * `p` - The path to label.
+///
+/// # Returns
+///
+/// * `String` - The file name or string representation of the path.
 pub fn label<P: AsRef<Path>>(p: P) -> String {
     let path = p.as_ref();
     if path.file_name().is_none() {
@@ -109,7 +118,17 @@ pub fn label<P: AsRef<Path>>(p: P) -> String {
     }
 }
 
-/// Wraps the code block with a delimiter and adds line numbers if required
+/// Wraps the code block with a delimiter and adds line numbers if required.
+///
+/// # Arguments
+///
+/// * `code` - The code block to wrap.
+/// * `extension` - The file extension of the code block.
+/// * `line_numbers` - Whether to add line numbers to the code.
+///
+/// # Returns
+///
+/// * `String` - The wrapped code block.
 fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
     let delimiter = "`".repeat(3);
     let mut code_with_line_numbers = String::new();

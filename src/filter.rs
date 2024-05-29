@@ -1,10 +1,23 @@
 //! This module contains the logic for filtering files based on include and exclude patterns.
+
 use colored::*;
 use glob::Pattern;
 use log::{debug, error};
 use std::fs;
 use std::path::Path;
 
+/// Determines whether a file should be included based on include and exclude patterns.
+///
+/// # Arguments
+///
+/// * `path` - The path to the file to be checked.
+/// * `include_patterns` - A slice of strings representing the include patterns.
+/// * `exclude_patterns` - A slice of strings representing the exclude patterns.
+/// * `include_priority` - A boolean indicating whether to give priority to include patterns if both include and exclude patterns match.
+///
+/// # Returns
+///
+/// * `bool` - `true` if the file should be included, `false` otherwise.
 pub fn should_include_file(
     path: &Path,
     include_patterns: &[String],
