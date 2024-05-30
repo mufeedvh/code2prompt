@@ -97,6 +97,12 @@ Exclude files using glob patterns:
 code2prompt path/to/codebase --exclude="*.txt,*.md"
 ```
 
+Exclude files/folders from the source tree based on exclude patterns:
+
+```sh
+code2prompt path/to/codebase --exclude="*.npy,*.wav" --exclude-from-tree
+```
+
 Display the token count of the generated prompt:
 
 ```sh

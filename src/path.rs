@@ -30,6 +30,7 @@ pub fn traverse_directory(
     include_priority: bool,
     line_number: bool,
     relative_paths: bool,
+    exclude_from_tree: bool,
 ) -> Result<(String, Vec<serde_json::Value>)> {
     // ~~~ Initialization ~~~
     let mut files = Vec::new();
@@ -47,6 +48,12 @@ pub fn traverse_directory(
                 let mut current_tree = &mut root;
                 for component in relative_path.components() {
                     let component_str = component.as_os_str().to_string_lossy().to_string();
+
+                    // Check if the current component should be excluded from the tree
+                    if exclude_from_tree && !should_include_file(path, include, exclude, include_priority) {
+                        break;
+                    }
+
                     current_tree = if let Some(pos) = current_tree
                         .leaves
                         .iter_mut()

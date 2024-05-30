@@ -39,6 +39,10 @@ struct Cli {
     #[clap(long)]
     include_priority: bool,
 
+    /// Exclude files/folders from the source tree based on exclude patterns
+    #[clap(long)]
+    exclude_from_tree: bool,    
+
     /// Display the token count of the generated prompt
     #[clap(long)]
     tokens: bool,
@@ -97,6 +101,7 @@ fn main() -> Result<()> {
         args.include_priority,
         args.line_number,
         args.relative_paths,
+        args.exclude_from_tree,
     );
 
     let (tree, files) = match create_tree {
