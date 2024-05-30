@@ -1,7 +1,7 @@
 [package]
 name = "code2prompt"
-version = "1.1.0"
-authors = ["Mufeed VH <mufeed@lyminal.space>"]
+version = "2.0.0"
+authors = ["Mufeed VH <mufeed@lyminal.space>","Olivier D'Ancona <olivier.dancona@master.hes-so.ch>"]
 description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
 keywords = ["code", "prompt", "llm", "gpt", "ai"]
 categories = ["command-line-utilities", "development-tools"]
@@ -17,6 +17,7 @@ edition = "2021"
 name = "code2prompt"
 test = false
 bench = false
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
@@ -32,6 +33,10 @@ anyhow = "1.0.80"
 inquire = "0.7.1"
 regex = "1.10.3"
 git2 = { version = "0.18.2", default_features = false, features = [ "https", "vendored-libgit2", "vendored-openssl" ] }
+glob = "0.3.1"
+once_cell = "1.19.0"
+log = "0.4"
+env_logger = "0.11.3"
 arboard = "3.4.0"
 
 [profile.release]
@@ -44,3 +49,9 @@ section = "utility"
 assets = [
     ["target/release/code2prompt", "/usr/bin/", "755"],
 ]
+
+[dev-dependencies]
+tempfile = "3.3"
+assert_cmd = "2.0"
+predicates = "2.0"
+env_logger = "0.11.3"

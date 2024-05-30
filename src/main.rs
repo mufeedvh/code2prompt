@@ -1,50 +1,43 @@
-use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+//! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
+//!
+//! Author: Mufeed VH (@mufeedvh)
+//! Contributor: Olivier D'Ancona (@ODAncona)
 
-use anyhow::Result;
-use arboard::Clipboard;
+use anyhow::{Context, Result};
 use clap::Parser;
+use code2prompt::{
+    copy_to_clipboard, count_tokens, get_git_diff, handle_undefined_variables, handlebars_setup,
+    label, render_template, traverse_directory, write_to_file,
+};
 use colored::*;
-use git2::{DiffOptions, Repository};
-use handlebars::{no_escape, Handlebars};
-use ignore::WalkBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
-use inquire::Text;
-use regex::Regex;
+use log::debug;
 use serde_json::json;
-use termtree::Tree;
-use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base};
+use std::path::PathBuf;
 
-/// code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
-///
-/// Author: Mufeed VH (@mufeedvh)
+// Constants
+const DEFAULT_TEMPLATE_NAME: &str = "default";
+const CUSTOM_TEMPLATE_NAME: &str = "custom";
+
+// CLI Arguments
 #[derive(Parser)]
-#[clap(name = "code2prompt", version = "1.0.0", author = "Mufeed VH")]
+#[clap(name = "code2prompt", version = "2.0.0", author = "Mufeed VH")]
 struct Cli {
     /// Path to the codebase directory
     #[arg()]
     path: PathBuf,
 
-    /// Optional custom Handlebars template file path
-    #[clap(short, long)]
-    template: Option<PathBuf>,
+    /// Patterns to include
+    #[clap(long)]
+    include: Option<String>,
 
-    /// Optional comma-separated list of file extensions to filter
-    #[clap(short, long)]
-    filter: Option<String>,
-
-    /// Optional comma-separated list of file extensions to exclude
-    #[clap(short, long)]
+    /// Patterns to exclude
+    #[clap(long)]
     exclude: Option<String>,
 
-    /// Optional comma-separated list of file names to exclude
+    /// Include files in case of conflict between include and exclude patterns
     #[clap(long)]
-    exclude_files: Option<String>,
-
-    /// Optional comma-separated list of folder paths to exclude
-    #[clap(long)]
-    exclude_folders: Option<String>,
+    include_priority: bool,
 
     /// Display the token count of the generated prompt
     #[clap(long)]
@@ -61,38 +54,123 @@ struct Cli {
     output: Option<String>,
 
     /// Include git diff
-    #[clap(short = 'd', long)]
+    #[clap(short, long)]
     diff: bool,
 
     /// Add line numbers to the source code
-    #[clap(short = 'l', long)]
+    #[clap(short, long)]
     line_number: bool,
 
     /// Use relative paths instead of absolute paths, including the parent directory
     #[clap(long)]
     relative_paths: bool,
+
+    /// Optional Disable copying to clipboard
+    #[clap(long)]
+    no_clipboard: bool,
+
+    /// Optional Path to a custom Handlebars template
+    #[clap(short, long)]
+    template: Option<PathBuf>,
 }
 
-fn main() {
+fn main() -> Result<()> {
+    env_logger::init();
     let args = Cli::parse();
 
-    let default_template = include_str!("default_template.hbs");
+    // Handlebars Template Setup
+    let (template_content, template_name) = get_template(&args)?;
+    let handlebars = handlebars_setup(&template_content, template_name)?;
 
-    let mut handlebars = Handlebars::new();
-    handlebars.register_escape_fn(no_escape);
-    handlebars
-        .register_template_string("default", default_template)
-        .expect("Failed to register default template");
+    // Progress Bar Setup
+    let spinner = setup_spinner("Traversing directory and building tree...");
 
-    let mut template = String::new();
+    // Parse Patterns
+    let include_patterns = parse_patterns(&args.include);
+    let exclude_patterns = parse_patterns(&args.exclude);
 
-    if let Some(template_path) = args.template.as_ref() {
-        template = std::fs::read_to_string(template_path).expect("Failed to read template file");
-        handlebars
-            .register_template_string("custom", &template)
-            .expect("Failed to register custom template");
+    // Traverse the directory
+    let create_tree = traverse_directory(
+        &args.path,
+        &include_patterns,
+        &exclude_patterns,
+        args.include_priority,
+        args.line_number,
+        args.relative_paths,
+    );
+
+    let (tree, files) = match create_tree {
+        Ok(result) => result,
+        Err(e) => {
+            spinner.finish_with_message("Failed!".red().to_string());
+            eprintln!(
+                "{}{}{} {}",
+                "[".bold().white(),
+                "!".bold().red(),
+                "]".bold().white(),
+                format!("Failed to build directory tree: {}", e).red()
+            );
+            std::process::exit(1);
+        }
+    };
+
+    // Git Diff
+    let git_diff = if args.diff {
+        spinner.set_message("Generating git diff...");
+        get_git_diff(&args.path).unwrap_or_default()
+    } else {
+        String::new()
+    };
+
+    spinner.finish_with_message("Done!".green().to_string());
+
+    // Prepare JSON Data
+    let mut data = json!({
+        "absolute_code_path": label(&args.path),
+        "source_tree": tree,
+        "files": files,
+        "git_diff": git_diff,
+    });
+
+    debug!(
+        "JSON Data: {}",
+        serde_json::to_string_pretty(&data).unwrap()
+    );
+
+    // Handle undefined variables
+    handle_undefined_variables(&mut data, &template_content)?;
+
+    // Render the template
+    let rendered = render_template(&handlebars, template_name, &data)?;
+
+    // Display Token Count
+    if args.tokens {
+        count_tokens(&rendered, &args.encoding);
     }
 
+    // Copy to Clipboard
+    if !args.no_clipboard {
+        copy_to_clipboard(&rendered)?;
+    }
+
+    // Output File
+    if let Some(output_path) = &args.output {
+        write_to_file(output_path, &rendered)?;
+    }
+
+    Ok(())
+}
+
+/// Sets up a progress spinner with a given message
+///
+/// # Arguments
+///
+/// * `message` - A message to display with the spinner
+///
+/// # Returns
+///
+/// * `ProgressBar` - The configured progress spinner
+fn setup_spinner(message: &str) -> ProgressBar {
     let spinner = ProgressBar::new_spinner();
     spinner.enable_steady_tick(std::time::Duration::from_millis(120));
     spinner.set_style(
@@ -101,304 +179,46 @@ fn main() {
             .template("{spinner:.blue} {msg}")
             .unwrap(),
     );
+    spinner.set_message(message.to_string());
+    spinner
+}
 
-    spinner.set_message("Traversing directory and building tree...");
-
-    let create_tree = traverse_directory(
-        &args.path,
-        &args.filter,
-        &args.exclude,
-        &args.exclude_files,
-        &args.exclude_folders,
-        args.line_number,
-        args.relative_paths,
-    );
-
-    let (tree, files) = create_tree.unwrap_or_else(|e| {
-        spinner.finish_with_message(format!("{}", "Failed!".red()));
-        eprintln!(
-            "{}{}{} {}",
-            "[".bold().white(),
-            "!".bold().red(),
-            "]".bold().white(),
-            format!("Failed to build directory tree: {}", e).red()
-        );
-        std::process::exit(1);
-    });
-
-    let mut git_diff = String::default();
-    if args.diff {
-        spinner.set_message("Generating git diff...");
-        git_diff = get_git_diff(&args.path).unwrap();
-    }
-
-    spinner.finish_with_message(format!("{}", "Done!".green()));
-
-    let mut data = json!({
-        "absolute_code_path": if args.relative_paths {
-            label(args.path.canonicalize().unwrap())
-        } else {
-            args.path.canonicalize().unwrap().display().to_string()
-        },
-        "source_tree": tree,
-        "files": files,
-        "git_diff": git_diff,
-    });
-
-    let undefined_variables = extract_undefined_variables(&template);
-    let mut user_defined_vars = serde_json::Map::new();
-
-    for var in undefined_variables.iter() {
-        if !data.as_object().unwrap().contains_key(var) {
-            let prompt = format!("Enter value for '{}': ", var);
-            let answer = Text::new(&prompt)
-                .with_help_message("Fill user defined variable in template")
-                .prompt()
-                .unwrap_or_else(|_| "".to_string());
-
-            user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
+/// Parses comma-separated patterns into a vector of strings
+///
+/// # Arguments
+///
+/// * `patterns` - An optional string containing comma-separated patterns
+///
+/// # Returns
+///
+/// * `Vec<String>` - A vector of parsed patterns
+fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
+    match patterns {
+        Some(patterns) if !patterns.is_empty() => {
+            patterns.split(',').map(|s| s.trim().to_string()).collect()
         }
+        _ => vec![],
     }
+}
 
-    // Merge user_defined_vars into the existing `data` JSON object
-    if let Some(obj) = data.as_object_mut() {
-        for (key, value) in user_defined_vars {
-            obj.insert(key, value);
-        }
-    }
-
-    let rendered = if args.template.is_some() {
-        handlebars
-            .render("custom", &data)
-            .expect("Failed to render custom template")
+/// Retrieves the template content and name based on the CLI arguments
+///
+/// # Arguments
+///
+/// * `args` - The parsed CLI arguments
+///
+/// # Returns
+///
+/// * `Result<(String, &str)>` - A tuple containing the template content and name
+fn get_template(args: &Cli) -> Result<(String, &str)> {
+    if let Some(template_path) = &args.template {
+        let content = std::fs::read_to_string(template_path)
+            .context("Failed to read custom template file")?;
+        Ok((content, CUSTOM_TEMPLATE_NAME))
     } else {
-        handlebars
-            .render("default", &data)
-            .expect("Failed to render default template")
-    };
-    let rendered = rendered.trim();
-
-    if args.tokens {
-        let (bpe, model_info) = match args.encoding.as_deref().unwrap_or("cl100k") {
-            "cl100k" => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),
-            "p50k" => (
-                p50k_base(),
-                "Code models, text-davinci-002, text-davinci-003",
-            ),
-            "p50k_edit" => (
-                p50k_edit(),
-                "Edit models like text-davinci-edit-001, code-davinci-edit-001",
-            ),
-            "r50k" | "gpt2" => (r50k_base(), "GPT-3 models like davinci"),
-            _ => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),
-        };
-
-        let token_count = bpe.unwrap().encode_with_special_tokens(&rendered).len();
-
-        println!(
-            "{}{}{} Token count: {}, Model info: {}",
-            "[".bold().white(),
-            "i".bold().blue(),
-            "]".bold().white(),
-            token_count.to_string().bold().yellow(),
-            model_info
-        );
+        Ok((
+            include_str!("default_template.hbs").to_string(),
+            DEFAULT_TEMPLATE_NAME,
+        ))
     }
-
-    let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
-    clipboard.set_text(rendered).expect("Failed to copy output to clipboard");
-
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Prompt copied to clipboard!".green()
-    );
-
-    if let Some(output_path) = args.output {
-        let file = std::fs::File::create(&output_path).expect("Failed to create output file");
-        let mut writer = std::io::BufWriter::new(file);
-        write!(writer, "{}", rendered).expect("Failed to write to output file");
-
-        println!(
-            "{}{}{} {}",
-            "[".bold().white(),
-            "✓".bold().green(),
-            "]".bold().white(),
-            format!("Prompt written to file: {}", output_path).green()
-        );
-    }
-}
-
-/// Extracts undefined variable names from the template string.
-#[inline]
-fn extract_undefined_variables(template: &str) -> Vec<String> {
-    let registered_identifiers = vec!["path", "code", "git_diff"];
-    let re = Regex::new(r"\{\{\s*(?P<var>[a-zA-Z_][a-zA-Z_0-9]*)\s*\}\}").unwrap();
-    re.captures_iter(template)
-        .map(|cap| cap["var"].to_string())
-        .filter(|var| !registered_identifiers.contains(&var.as_str()))
-        .collect()
-}
-
-/// Wraps the code block with backticks and adds the file extension as a label
-#[inline]
-fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
-    let backticks = "`".repeat(7);
-    let mut code_with_line_numbers = String::new();
-    
-    if line_numbers {
-        for (line_number, line) in code.lines().enumerate() {
-            code_with_line_numbers.push_str(&format!("{:4} | {}\n", line_number + 1, line));
-        }
-    } else {
-        code_with_line_numbers = code.to_string();
-    }
-    
-    format!("{}{}\n{}\n{}", backticks, extension, code_with_line_numbers, backticks)
-}
-
-/// Returns the directory name as a label
-#[inline]
-fn label<P: AsRef<Path>>(p: P) -> String {
-    let path = p.as_ref();
-    if path.file_name().is_none() {
-        // If the path is the current directory or a root directory
-        path.to_str().unwrap_or(".").to_owned()
-    } else {
-        // Otherwise, use the file name as the label
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("")
-            .to_owned()
-    }
-}
-
-/// Traverses the directory, builds the tree, and collects information about each file.
-fn traverse_directory(
-    root_path: &PathBuf,
-    filter: &Option<String>,
-    exclude: &Option<String>,
-    exclude_files: &Option<String>,
-    exclude_folders: &Option<String>,
-    line_number: bool,
-    relative_paths: bool,
-) -> Result<(String, Vec<serde_json::Value>)> {
-    let mut files = Vec::new();
-
-    let canonical_root_path = root_path.canonicalize()?;
-
-    let parent_directory = label(&canonical_root_path);
-
-    let tree = WalkBuilder::new(&canonical_root_path)
-        .git_ignore(true)
-        .build()
-        .filter_map(|e| e.ok())
-        .fold(Tree::new(parent_directory.to_owned()), |mut root, entry| {
-            let path = entry.path();
-            // Calculate the relative path from the root directory to this entry
-            if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
-                let mut current_tree = &mut root;
-                for component in relative_path.components() {
-                    let component_str = component.as_os_str().to_string_lossy().to_string();
-
-                    current_tree = if let Some(pos) = current_tree
-                        .leaves
-                        .iter_mut()
-                        .position(|child| child.root == component_str)
-                    {
-                        &mut current_tree.leaves[pos]
-                    } else {
-                        let new_tree = Tree::new(component_str.clone());
-                        current_tree.leaves.push(new_tree);
-                        current_tree.leaves.last_mut().unwrap()
-                    };
-                }
-
-                if path.is_file() {
-                    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-
-                    if let Some(ref exclude_ext) = exclude {
-                        let exclude_extensions: Vec<&str> =
-                            exclude_ext.split(',').map(|s| s.trim()).collect();
-                        if exclude_extensions.contains(&extension) {
-                            return root;
-                        }
-                    }
-
-                    if let Some(ref filter_ext) = filter {
-                        let filter_extensions: Vec<&str> =
-                            filter_ext.split(',').map(|s| s.trim()).collect();
-                        if !filter_extensions.contains(&extension) {
-                            return root;
-                        }
-                    }
-
-                    if let Some(ref exclude_files_str) = exclude_files {
-                        let exclude_files_list: Vec<&str> =
-                            exclude_files_str.split(',').map(|s| s.trim()).collect();
-                        if exclude_files_list.contains(&path.file_name().unwrap().to_str().unwrap())
-                        {
-                            return root;
-                        }
-                    }
-
-                    if let Some(ref exclude_folders_str) = exclude_folders {
-                        let exclude_folders_list: Vec<&str> =
-                            exclude_folders_str.split(',').map(|s| s.trim()).collect();
-                        if let Some(parent_path) = path.parent() {
-                            let relative_parent_path =
-                                parent_path.strip_prefix(&canonical_root_path).unwrap();
-                            if exclude_folders_list
-                                .iter()
-                                .any(|folder| relative_parent_path.starts_with(folder))
-                            {
-                                return root;
-                            }
-                        }
-                    }
-
-                    let code_bytes = fs::read(&path).expect("Failed to read file");
-                    let code = String::from_utf8_lossy(&code_bytes);
-
-                    let code_block = wrap_code_block(&code, extension, line_number);
-
-                    if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
-                        let file_path = if relative_paths {
-                            format!("{}/{}", parent_directory, relative_path.display())
-                        } else {
-                            path.display().to_string()
-                        };
-
-                        files.push(json!({
-                            "path": file_path,
-                            "extension": extension,
-                            "code": code_block,
-                        }));
-                    }
-                }
-            }
-
-            root
-        });
-
-    Ok((tree.to_string(), files))
-}
-
-fn get_git_diff(repo_path: &Path) -> Result<String, git2::Error> {
-    let repo = Repository::open(repo_path)?;
-    let head = repo.head()?;
-    let head_tree = head.peel_to_tree()?;
-    let diff = repo.diff_tree_to_index(
-        Some(&head_tree),
-        None,
-        Some(DiffOptions::new().ignore_whitespace(true)),
-    )?;
-    let mut diff_text = Vec::new();
-    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-        diff_text.extend_from_slice(line.content());
-        true
-    })?;
-    Ok(String::from_utf8_lossy(&diff_text).into_owned())
 }
