@@ -164,15 +164,26 @@ fn main() -> Result<()> {
         .filter_map(|file| file.get("path").and_then(|p| p.as_str()).map(|s| s.to_string()))
         .collect();
 
+    let model_info = get_model_info(&args.encoding);
+
     if args.json {
         let json_output = json!({
             "directory_name": label(&args.path),
             "token_count": token_count,
-            "model_info": get_model_info(&args.encoding),
+            "model_info": model_info,
             "files": paths,
         });
         println!("{}", serde_json::to_string_pretty(&json_output)?);
         return Ok(());
+    } else {
+        println!(
+            "{}{}{} Token count: {}, Model info: {}",
+            "[".bold().white(),
+            "i".bold().blue(),
+            "]".bold().white(),
+            token_count.to_string().bold().yellow(),
+            model_info
+        );        
     }
 
     // Copy to Clipboard
