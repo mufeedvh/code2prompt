@@ -116,7 +116,11 @@ pub fn traverse_directory(
 pub fn label<P: AsRef<Path>>(p: P) -> String {
     let path = p.as_ref();
     if path.file_name().is_none() {
-        path.to_str().unwrap_or(".").to_owned()
+        let current_dir = std::env::current_dir().unwrap();
+        current_dir.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or(".")
+            .to_owned()
     } else {
         path.file_name()
             .and_then(|name| name.to_str())

@@ -6,7 +6,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use code2prompt::{
-    copy_to_clipboard, count_tokens, get_git_diff, handle_undefined_variables, handlebars_setup,
+    copy_to_clipboard, get_model_info, get_tokenizer, get_git_diff, handle_undefined_variables, handlebars_setup,
     label, render_template, traverse_directory, write_to_file,
 };
 use colored::*;
@@ -76,6 +76,10 @@ struct Cli {
     /// Optional Path to a custom Handlebars template
     #[clap(short, long)]
     template: Option<PathBuf>,
+
+    /// Print output as JSON
+    #[clap(long)]
+    json: bool,    
 }
 
 fn main() -> Result<()> {
@@ -128,7 +132,7 @@ fn main() -> Result<()> {
     };
 
     spinner.finish_with_message("Done!".green().to_string());
-
+    
     // Prepare JSON Data
     let mut data = json!({
         "absolute_code_path": label(&args.path),
@@ -149,8 +153,26 @@ fn main() -> Result<()> {
     let rendered = render_template(&handlebars, template_name, &data)?;
 
     // Display Token Count
-    if args.tokens {
-        count_tokens(&rendered, &args.encoding);
+    let token_count = if args.tokens {
+        let bpe = get_tokenizer(&args.encoding);
+        bpe.encode_with_special_tokens(&rendered).len()
+    } else {
+        0
+    };
+
+    let paths: Vec<String> = files.iter()
+        .filter_map(|file| file.get("path").and_then(|p| p.as_str()).map(|s| s.to_string()))
+        .collect();
+
+    if args.json {
+        let json_output = json!({
+            "directory_name": label(&args.path),
+            "token_count": token_count,
+            "model_info": get_model_info(&args.encoding),
+            "files": paths,
+        });
+        println!("{}", serde_json::to_string_pretty(&json_output)?);
+        return Ok(());
     }
 
     // Copy to Clipboard

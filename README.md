@@ -125,6 +125,23 @@ Save the generated prompt to an output file:
 code2prompt path/to/codebase --output=output.txt
 ```
 
+Print output as JSON:
+
+```sh
+code2prompt path/to/codebase --json
+```
+
+The JSON output will have the following structure:
+
+```json
+{
+  "directory_name": "codebase",
+  "token_count": 1234,
+  "model_info": "ChatGPT models, text-embedding-ada-002",
+  "files": [...]
+}
+```
+
 Generate a Git commit message (for staged files):
 
 ```sh

@@ -10,4 +10,4 @@ pub use path::{label, traverse_directory};
 pub use template::{
     copy_to_clipboard, handle_undefined_variables, handlebars_setup, render_template, write_to_file,
 };
-pub use token::count_tokens;
+pub use token::{count_tokens, get_model_info, get_tokenizer};
