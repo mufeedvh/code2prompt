@@ -65,6 +65,10 @@ struct Cli {
     #[clap(short, long)]
     line_number: bool,
 
+    /// Disable wrapping code inside markdown code blocks
+    #[clap(long)]
+    no_codeblock: bool,
+
     /// Use relative paths instead of absolute paths, including the parent directory
     #[clap(long)]
     relative_paths: bool,
@@ -106,6 +110,7 @@ fn main() -> Result<()> {
         args.line_number,
         args.relative_paths,
         args.exclude_from_tree,
+        args.no_codeblock,
     );
 
     let (tree, files) = match create_tree {

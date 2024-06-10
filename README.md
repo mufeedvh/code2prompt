@@ -154,6 +154,12 @@ Add line numbers to source code blocks:
 code2prompt path/to/codebase --line-number
 ```
 
+Disable wrapping code inside markdown code blocks:
+
+```sh
+code2prompt path/to/codebase --no-codeblock
+```
+
 - Rewrite the code to another language.
 - Find bugs/security vulnerabilities.
 - Document the code.

@@ -31,6 +31,7 @@ pub fn traverse_directory(
     line_number: bool,
     relative_paths: bool,
     exclude_from_tree: bool,
+    no_codeblock: bool,
 ) -> Result<(String, Vec<serde_json::Value>)> {
     // ~~~ Initialization ~~~
     let mut files = Vec::new();
@@ -72,7 +73,7 @@ pub fn traverse_directory(
                     if let Ok(code_bytes) = fs::read(path) {
                         let code = String::from_utf8_lossy(&code_bytes);
 
-                        let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number);
+                        let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number, no_codeblock);
 
                         if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
                             let file_path = if relative_paths {
@@ -117,7 +118,8 @@ pub fn label<P: AsRef<Path>>(p: P) -> String {
     let path = p.as_ref();
     if path.file_name().is_none() {
         let current_dir = std::env::current_dir().unwrap();
-        current_dir.file_name()
+        current_dir
+            .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or(".")
             .to_owned()
@@ -136,11 +138,12 @@ pub fn label<P: AsRef<Path>>(p: P) -> String {
 /// * `code` - The code block to wrap.
 /// * `extension` - The file extension of the code block.
 /// * `line_numbers` - Whether to add line numbers to the code.
+/// * `no_codeblock` - Whether to not wrap the code block with a delimiter.
 ///
 /// # Returns
 ///
 /// * `String` - The wrapped code block.
-fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
+fn wrap_code_block(code: &str, extension: &str, line_numbers: bool, no_codeblock: bool) -> String {
     let delimiter = "`".repeat(3);
     let mut code_with_line_numbers = String::new();
 
@@ -152,8 +155,12 @@ fn wrap_code_block(code: &str, extension: &str, line_numbers: bool) -> String {
         code_with_line_numbers = code.to_string();
     }
 
-    format!(
-        "{}{}\n{}\n{}",
-        delimiter, extension, code_with_line_numbers, delimiter
-    )
+    if no_codeblock {
+        code_with_line_numbers
+    } else {
+        format!(
+            "{}{}\n{}\n{}",
+            delimiter, extension, code_with_line_numbers, delimiter
+        )
+    }
 }
