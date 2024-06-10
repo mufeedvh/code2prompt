@@ -173,6 +173,7 @@ fn main() -> Result<()> {
 
     if args.json {
         let json_output = json!({
+            "prompt": rendered,
             "directory_name": label(&args.path),
             "token_count": token_count,
             "model_info": model_info,

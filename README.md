@@ -135,6 +135,7 @@ The JSON output will have the following structure:
 
 ```json
 {
+  "prompt": "<Generated Prompt>", 
   "directory_name": "codebase",
   "token_count": 1234,
   "model_info": "ChatGPT models, text-embedding-ada-002",
