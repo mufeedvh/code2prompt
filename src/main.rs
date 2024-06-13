@@ -6,12 +6,12 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use code2prompt::{
-    copy_to_clipboard, get_model_info, get_tokenizer, get_git_diff, handle_undefined_variables, handlebars_setup,
-    label, render_template, traverse_directory, write_to_file,
+    copy_to_clipboard, get_model_info, get_tokenizer, get_git_diff, get_git_diff_between_branches, get_git_log,
+    handle_undefined_variables, handlebars_setup, label, render_template, traverse_directory, write_to_file,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
-use log::debug;
+use log::{debug, error};
 use serde_json::json;
 use std::path::PathBuf;
 
@@ -60,6 +60,14 @@ struct Cli {
     /// Include git diff
     #[clap(short, long)]
     diff: bool,
+
+    /// Generate git diff between two branches
+    #[clap(long, value_name = "BRANCHES")]
+    git_diff_branch: Option<String>,
+
+    /// Retrieve git log between two branches
+    #[clap(long, value_name = "BRANCHES")]
+    git_log_branch: Option<String>,
 
     /// Add line numbers to the source code
     #[clap(short, long)]
@@ -136,6 +144,30 @@ fn main() -> Result<()> {
         String::new()
     };
 
+    // git diff two get_git_diff_between_branches
+    let mut git_diff_branch: String = String::new();
+    if let Some(branches) = &args.git_diff_branch {
+        spinner.set_message("Generating git diff between two branches...");
+        let branches = parse_patterns(&Some(branches.to_string()));
+        if branches.len() != 2 {
+            error!("Please provide exactly two branches separated by a comma.");
+            std::process::exit(1);
+        }
+        git_diff_branch = get_git_diff_between_branches(&args.path, &branches[0], &branches[1]).unwrap_or_default()
+    }
+
+    // git diff two get_git_diff_between_branches
+    let mut git_log_branch: String = String::new();
+    if let Some(branches) = &args.git_log_branch {
+        spinner.set_message("Generating git log between two branches...");
+        let branches = parse_patterns(&Some(branches.to_string()));
+        if branches.len() != 2 {
+            error!("Please provide exactly two branches separated by a comma.");
+            std::process::exit(1);
+        }
+        git_log_branch = get_git_log(&args.path, &branches[0], &branches[1]).unwrap_or_default()
+    }
+
     spinner.finish_with_message("Done!".green().to_string());
     
     // Prepare JSON Data
@@ -144,6 +176,8 @@ fn main() -> Result<()> {
         "source_tree": tree,
         "files": files,
         "git_diff": git_diff,
+        "git_diff_branch": git_diff_branch,
+        "git_log_branch": git_log_branch
     });
 
     debug!(

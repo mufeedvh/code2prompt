@@ -149,6 +149,12 @@ Generate a Git commit message (for staged files):
 code2prompt path/to/codebase --diff -t templates/write-git-commit.hbs
 ```
 
+Generate a Pull Request with branch comparing (for staged files):
+
+```sh
+code2prompt path/to/codebase --git-diff-branch 'main, development' --git-log-branch 'main, development' -t templates/write-github-pull-request.hbs
+```
+
 Add line numbers to source code blocks:
 
 ```sh
@@ -187,6 +193,10 @@ Use this template to generate prompts for cleaning up and improving the code qua
 ### [`fix-bugs.hbs`](templates/fix-bugs.hbs)
 
 Use this template to generate prompts for fixing bugs in the codebase. It will help diagnose issues, provide fix suggestions, and update the code with proposed fixes.
+
+### [`write-github-pull-request.hbs`](templates/write-github-pull-request.hbs)
+
+Use this template to create GitHub pull request description in markdown by comparing the git diff and git log of two branches.
 
 ### [`write-github-readme.hbs`](templates/write-github-readme.hbs)
 
