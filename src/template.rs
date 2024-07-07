@@ -116,18 +116,15 @@ pub fn handle_undefined_variables(
 ///
 /// * `Result<()>` - An empty result indicating success or an error.
 pub fn copy_to_clipboard(rendered: &str) -> Result<()> {
-    let mut clipboard = Clipboard::new().expect("Failed to initialize clipboard");
-    clipboard
-        .set_text(rendered.to_string())
-        .context("Failed to copy to clipboard")?;
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Prompt copied to clipboard!".green()
-    );
-    Ok(())
+    match Clipboard::new() {
+        Ok(mut clipboard) => {
+            clipboard
+                .set_text(rendered.to_string())
+                .context("Failed to copy to clipboard")?;
+            Ok(())
+        }
+        Err(e) => Err(anyhow::anyhow!("Failed to initialize clipboard: {}", e)),
+    }
 }
 
 /// Writes the rendered template to a specified output file.
