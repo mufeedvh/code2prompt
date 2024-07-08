@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use git2::{DiffOptions, Repository};
-use log::{info, error};
+use log::info;
 use std::path::Path;
 
 /// Generates a git diff for the repository at the provided path
@@ -50,14 +50,17 @@ pub fn get_git_diff(repo_path: &Path) -> Result<String> {
 /// # Returns
 ///
 /// * `Result<String, git2::Error>` - The generated git diff as a string or an error
-pub fn get_git_diff_between_branches(repo_path: &Path, branch1: &str, branch2: &str) -> Result<String> {
+pub fn get_git_diff_between_branches(
+    repo_path: &Path,
+    branch1: &str,
+    branch2: &str,
+) -> Result<String> {
     info!("Opening repository at path: {:?}", repo_path);
     let repo = Repository::open(repo_path).context("Failed to open repository")?;
 
     for branch in [branch1, branch2].iter() {
         if !branch_exists(&repo, branch) {
-            error!("{}",format!("Branch {} doesn't exist!", branch));
-            std::process::exit(1);
+            return Err(anyhow::anyhow!("Branch {} doesn't exist!", branch));
         }
     }
 
@@ -103,8 +106,7 @@ pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<Str
 
     for branch in [branch1, branch2].iter() {
         if !branch_exists(&repo, branch) {
-            error!("{}",format!("Branch {} doesn't exist!", branch));
-            std::process::exit(1);
+            return Err(anyhow::anyhow!("Branch {} doesn't exist!", branch));
         }
     }
 
@@ -112,8 +114,12 @@ pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<Str
     let branch2_commit = repo.revparse_single(branch2)?.peel_to_commit()?;
 
     let mut revwalk = repo.revwalk().context("Failed to create revwalk")?;
-    revwalk.push(branch2_commit.id()).context("Failed to push branch2 commit to revwalk")?;
-    revwalk.hide(branch1_commit.id()).context("Failed to hide branch1 commit from revwalk")?;
+    revwalk
+        .push(branch2_commit.id())
+        .context("Failed to push branch2 commit to revwalk")?;
+    revwalk
+        .hide(branch1_commit.id())
+        .context("Failed to hide branch1 commit from revwalk")?;
     revwalk.set_sorting(git2::Sort::REVERSE)?;
 
     let mut log_text = String::new();

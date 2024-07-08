@@ -3,7 +3,7 @@ use code2prompt::git::{get_git_diff, get_git_diff_between_branches, get_git_log}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use git2::{Repository, Signature};
+    use git2::{Repository, RepositoryInitOptions, Signature};
     use std::fs;
     use tempfile::TempDir;
 
@@ -69,7 +69,10 @@ mod tests {
         let repo_path = temp_dir.path();
 
         // Initialize a new Git repository
-        let repo = Repository::init(repo_path).expect("Failed to initialize repository");
+        let mut binding = RepositoryInitOptions::new();
+        let init_options = binding.initial_head("master");
+        let repo = Repository::init_opts(repo_path, init_options)
+            .expect("Failed to initialize repository");
 
         // Create a new file in the repository
         let file_path = repo_path.join("test_file.txt");
@@ -99,13 +102,21 @@ mod tests {
             .expect("Failed to commit");
 
         // Create a new branch and make a commit on the master branch
-        repo.branch("development", &repo.find_commit(master_commit).expect("Failed to find commit"), false)
-            .expect("Failed to create new branch");
+        repo.branch(
+            "development",
+            &repo
+                .find_commit(master_commit)
+                .expect("Failed to find commit"),
+            false,
+        )
+        .expect("Failed to create new branch");
 
         // Modify the file in the new branch
-        repo.set_head("refs/heads/development").expect("Failed to set HEAD");
+        repo.set_head("refs/heads/development")
+            .expect("Failed to set HEAD");
         repo.checkout_head(None).expect("Failed to checkout HEAD");
-        fs::write(&file_path, "Content in new branch").expect("Failed to modify test file in new branch");
+        fs::write(&file_path, "Content in new branch")
+            .expect("Failed to modify test file in new branch");
 
         let mut index = repo.index().expect("Failed to get repository index");
         index
@@ -122,7 +133,9 @@ mod tests {
             &signature,
             "New commit in branch development",
             &tree,
-            &[&repo.find_commit(master_commit).expect("Failed to find commit")],
+            &[&repo
+                .find_commit(master_commit)
+                .expect("Failed to find commit")],
         )
         .expect("Failed to commit in new branch");
 
@@ -145,7 +158,10 @@ mod tests {
         let repo_path = temp_dir.path();
 
         // Initialize a new Git repository
-        let repo = Repository::init(repo_path).expect("Failed to initialize repository");
+        let mut binding = RepositoryInitOptions::new();
+        let init_options = binding.initial_head("master");
+        let repo = Repository::init_opts(repo_path, init_options)
+            .expect("Failed to initialize repository");
 
         // Create a new file in the repository
         let file_path = repo_path.join("test_file.txt");
@@ -175,13 +191,21 @@ mod tests {
             .expect("Failed to commit");
 
         // Create a new branch and make a commit on the master branch
-        repo.branch("development", &repo.find_commit(master_commit).expect("Failed to find commit"), false)
-            .expect("Failed to create new branch");
+        repo.branch(
+            "development",
+            &repo
+                .find_commit(master_commit)
+                .expect("Failed to find commit"),
+            false,
+        )
+        .expect("Failed to create new branch");
 
         // Modify the file in the new branch
-        repo.set_head("refs/heads/development").expect("Failed to set HEAD");
+        repo.set_head("refs/heads/development")
+            .expect("Failed to set HEAD");
         repo.checkout_head(None).expect("Failed to checkout HEAD");
-        fs::write(&file_path, "Content in development").expect("Failed to modify test file in new branch");
+        fs::write(&file_path, "Content in development")
+            .expect("Failed to modify test file in new branch");
 
         let mut index = repo.index().expect("Failed to get repository index");
         index
@@ -198,12 +222,15 @@ mod tests {
             &signature,
             "First commit in development",
             &tree,
-            &[&repo.find_commit(master_commit).expect("Failed to find commit")],
+            &[&repo
+                .find_commit(master_commit)
+                .expect("Failed to find commit")],
         )
         .expect("Failed to commit in new branch");
 
         // Make a second commit in the development branch
-        fs::write(&file_path, "Second content in development").expect("Failed to modify test file in new branch");
+        fs::write(&file_path, "Second content in development")
+            .expect("Failed to modify test file in new branch");
 
         let mut index = repo.index().expect("Failed to get repository index");
         index
@@ -220,7 +247,9 @@ mod tests {
             &signature,
             "Second commit in development",
             &tree,
-            &[&repo.find_commit(repo.head().unwrap().target().unwrap()).expect("Failed to find commit")],
+            &[&repo
+                .find_commit(repo.head().unwrap().target().unwrap())
+                .expect("Failed to find commit")],
         )
         .expect("Failed to commit second change in new branch");
 
