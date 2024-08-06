@@ -6,8 +6,9 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use code2prompt::{
-    copy_to_clipboard, get_model_info, get_tokenizer, get_git_diff, get_git_diff_between_branches, get_git_log,
-    handle_undefined_variables, handlebars_setup, label, render_template, traverse_directory, write_to_file,
+    copy_to_clipboard, get_git_diff, get_git_diff_between_branches, get_git_log, get_model_info,
+    get_tokenizer, handle_undefined_variables, handlebars_setup, label, render_template,
+    traverse_directory, write_to_file,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -41,7 +42,7 @@ struct Cli {
 
     /// Exclude files/folders from the source tree based on exclude patterns
     #[clap(long)]
-    exclude_from_tree: bool,    
+    exclude_from_tree: bool,
 
     /// Display the token count of the generated prompt
     #[clap(long)]
@@ -91,7 +92,7 @@ struct Cli {
 
     /// Print output as JSON
     #[clap(long)]
-    json: bool,    
+    json: bool,
 }
 
 fn main() -> Result<()> {
@@ -153,7 +154,8 @@ fn main() -> Result<()> {
             error!("Please provide exactly two branches separated by a comma.");
             std::process::exit(1);
         }
-        git_diff_branch = get_git_diff_between_branches(&args.path, &branches[0], &branches[1]).unwrap_or_default()
+        git_diff_branch = get_git_diff_between_branches(&args.path, &branches[0], &branches[1])
+            .unwrap_or_default()
     }
 
     // git diff two get_git_diff_between_branches
@@ -169,7 +171,7 @@ fn main() -> Result<()> {
     }
 
     spinner.finish_with_message("Done!".green().to_string());
-    
+
     // Prepare JSON Data
     let mut data = json!({
         "absolute_code_path": label(&args.path),
@@ -199,8 +201,13 @@ fn main() -> Result<()> {
         0
     };
 
-    let paths: Vec<String> = files.iter()
-        .filter_map(|file| file.get("path").and_then(|p| p.as_str()).map(|s| s.to_string()))
+    let paths: Vec<String> = files
+        .iter()
+        .filter_map(|file| {
+            file.get("path")
+                .and_then(|p| p.as_str())
+                .map(|s| s.to_string())
+        })
         .collect();
 
     let model_info = get_model_info(&args.encoding);
@@ -230,7 +237,27 @@ fn main() -> Result<()> {
 
     // Copy to Clipboard
     if !args.no_clipboard {
-        copy_to_clipboard(&rendered)?;
+        match copy_to_clipboard(&rendered) {
+            Ok(_) => {
+                println!(
+                    "{}{}{} {}",
+                    "[".bold().white(),
+                    "✓".bold().green(),
+                    "]".bold().white(),
+                    "Copied to clipboard successfully.".green()
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "{}{}{} {}",
+                    "[".bold().white(),
+                    "!".bold().red(),
+                    "]".bold().white(),
+                    format!("Failed to copy to clipboard: {}", e).red()
+                );
+                println!("{}", &rendered);
+            }
+        }
     }
 
     // Output File
