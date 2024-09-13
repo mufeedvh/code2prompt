@@ -1,6 +1,6 @@
 # code2prompt
 
-[![crates.io](https://img.shields.io/crates/v/code2prompt.svg#cache1)](https://crates.io/crates/code2prompt)
+[![crates.io](https://img.shields.io/crates/v/code2prompt.svg)](https://crates.io/crates/code2prompt)
 [![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
 
 <h1 align="center">
