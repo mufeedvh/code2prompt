@@ -17,7 +17,6 @@
 - [Templates](#templates)
 - [User Defined Variables](#user-defined-variables)
 - [Tokenizers](#tokenizers)
-- [Build From Source](#build-from-source)
 - [Contribution](#contribution)
 - [License](#license)
 - [Support The Author](#support-the-author)
@@ -41,9 +40,23 @@ You can customize the prompt template to achieve any of the desired use cases. I
 
 ## Installation
 
-### Latest Release
+### Binary releases
 
-Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases) OR install with `cargo`:
+Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases). 
+
+### Source build
+Requires:
+
+- [Git](https://git-scm.org/downloads), [Rust](https://rust-lang.org/tools/install) and Cargo.
+
+```sh
+git clone https://github.com/mufeedvh/code2prompt.git
+cd code2prompt/
+cargo build --release
+```
+
+## cargo
+installs from the [`crates.io`](https://crates.io) registry. 
 
 ```sh
 cargo install code2prompt
@@ -55,21 +68,22 @@ For unpublished builds:
 cargo install --git https://github.com/mufeedvh/code2prompt
 ```
 
-### Prerequisites
-
-For building `code2prompt` from source, you need to have these tools installed:
-
-- [Git](https://git-scm.org/downloads)
-- [Rust](https://rust-lang.org/tools/install)
-- Cargo (Automatically installed when installing Rust)
+### AUR
+`code2prompt` is available in the [`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt). Install it via any AUR helpers.
 
 ```sh
-git clone https://github.com/mufeedvh/code2prompt.git
-cd code2prompt/
-cargo build --release
+paru/yay -S code2prompt
 ```
 
-The first command clones the `code2prompt` repository to your local machine. The next two commands change into the `code2prompt` directory and build it in release mode.
+### Nix
+If you are on nix, You can use `nix-env` or `profile` to install. 
+
+```sh
+# without flakes:
+nix-env -iA nixpkgs.code2prompt
+# with flakes:
+nix profile install nixpkgs#code2prompt
+```
 
 ## Usage
 
