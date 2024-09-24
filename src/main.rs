@@ -223,8 +223,7 @@ fn main() -> Result<()> {
         });
         println!("{}", serde_json::to_string_pretty(&json_output)?);
         return Ok(());
-    } else {
-        if args.tokens {
+    } else if args.tokens {
             println!(
                 "{}{}{} Token count: {}, Model info: {}",
                 "[".bold().white(),
@@ -233,7 +232,6 @@ fn main() -> Result<()> {
                 token_count.to_string().bold().yellow(),
                 model_info
             );
-        }
     }
 
     // Copy to Clipboard

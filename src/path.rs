@@ -23,6 +23,7 @@ use termtree::Tree;
 /// # Returns
 ///
 /// A tuple containing the string representation of the directory tree and a vector of JSON representations of the files.
+#[allow(clippy::too_many_arguments)]
 pub fn traverse_directory(
     root_path: &Path,
     include: &[String],
