@@ -1,0 +1,40 @@
+<project_path>{{ absolute_code_path }}</project_path>
+
+{{#if source_tree}}
+    <source_tree>
+        ```
+        {{{source_tree}}}
+        ```
+    </source_tree>
+{{/if}}
+
+<files>
+    {{#each files}}
+        {{#if code}}
+            <file>
+                <path>{{path}}</path>
+                <code>
+                    {{{code}}}
+                </code>
+            </file>
+        {{/if}}
+    {{/each}}
+</files>
+
+{{#if instructions}}
+    <instructions>
+        {{{instructions}}}
+    </instructions>
+{{/if}}
+
+{{#if questions}}
+    <questions>
+        {{{questions}}}
+    </questions>
+{{/if}}
+
+{{#if final_instruction}}
+    <final_instruction>
+        {{{final_instruction}}}
+    </final_instruction>
+{{/if}}
