@@ -87,6 +87,14 @@ struct Cli {
     #[clap(long)]
     no_clipboard: bool,
 
+    // Used internally for maintaining clipboard on linux.
+    #[clap(long, hide = true)]
+    daemon: bool,
+
+    // Used internally for maintaining clipboard on linux.
+    #[clap(long, hide = true)]
+    clipboard_content: Option<String>,
+
     /// Optional Path to a custom Handlebars template
     #[clap(short, long)]
     template: Option<PathBuf>,
@@ -99,6 +107,18 @@ struct Cli {
 fn main() -> Result<()> {
     env_logger::init();
     let args = Cli::parse();
+
+    if args.daemon {
+        if let Some(clipboard_content) = args.clipboard_content.as_ref() {
+            return match copy_to_clipboard(&clipboard_content) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1)
+                }
+            }
+        }
+    }
 
     // Handlebars Template Setup
     let (template_content, template_name) = get_template(&args)?;
