@@ -94,6 +94,10 @@ struct Cli {
     /// Print output as JSON
     #[clap(long)]
     json: bool,
+
+    /// Follow symlinks
+    #[clap(short = 'f', long)]
+    follow_symlinks: bool,
 }
 
 fn main() -> Result<()> {
@@ -121,6 +125,7 @@ fn main() -> Result<()> {
         args.relative_paths,
         args.exclude_from_tree,
         args.no_codeblock,
+        args.follow_symlinks,
     );
 
     let (tree, files) = match create_tree {
