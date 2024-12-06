@@ -36,6 +36,7 @@ pub fn get_tokenizer(encoding: &Option<String>) -> CoreBPE {
 /// * `&'static str` - A string describing the models associated with the specified encoding.
 pub fn get_model_info(encoding: &Option<String>) -> &'static str {
     match encoding.as_deref().unwrap_or("cl100k") {
+        "o200k" => "OpenAI models, ChatGPT-4o",
         "cl100k" => "ChatGPT models, text-embedding-ada-002",
         "p50k" => "Code models, text-davinci-002, text-davinci-003",
         "p50k_edit" => "Edit models like text-davinci-edit-001, code-davinci-edit-001",
@@ -53,6 +54,7 @@ pub fn get_model_info(encoding: &Option<String>) -> &'static str {
 ///                Supported encodings: "cl100k" (default), "p50k", "p50k_edit", "r50k", "gpt2".
 pub fn count_tokens(rendered: &str, encoding: &Option<String>) {
     let (bpe, model_info) = match encoding.as_deref().unwrap_or("cl100k") {
+        "o200k" => (o200k_base(), "OpenAI models, ChatGPT-4o"),
         "cl100k" => (cl100k_base(), "ChatGPT models, text-embedding-ada-002"),
         "p50k" => (
             p50k_base(),
