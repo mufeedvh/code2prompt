@@ -1,7 +1,7 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
 
 use colored::*;
-use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
+use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
 
 /// Returns the appropriate tokenizer based on the provided encoding.
 ///
@@ -15,6 +15,7 @@ use tiktoken_rs::{cl100k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
 /// * `CoreBPE` - The tokenizer corresponding to the specified encoding.
 pub fn get_tokenizer(encoding: &Option<String>) -> CoreBPE {
     match encoding.as_deref().unwrap_or("cl100k") {
+        "o200k" => o200k_base().unwrap(),
         "cl100k" => cl100k_base().unwrap(),
         "p50k" => p50k_base().unwrap(),
         "p50k_edit" => p50k_edit().unwrap(),
