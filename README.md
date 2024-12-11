@@ -250,6 +250,7 @@ Tokenization is implemented using [`tiktoken-rs`](https://github.com/zurawiki/ti
 | `p50k_base`             | Code models, `text-davinci-002`, `text-davinci-003`                       |
 | `p50k_edit`             | Use for edit models like `text-davinci-edit-001`, `code-davinci-edit-001` |
 | `r50k_base` (or `gpt2`) | GPT-3 models like `davinci`                                               |
+| `o200k_base`            | GPT-4o models                                                             |
 
 For more context on the different tokenizers, see the [OpenAI Cookbook](https://github.com/openai/openai-cookbook/blob/66b988407d8d13cad5060a881dc8c892141f2d5c/examples/How_to_count_tokens_with_tiktoken.ipynb)
 
