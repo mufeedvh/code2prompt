@@ -1,0 +1,9 @@
+[book]
+authors = ["ODAncona","Mufeed VH"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Code2prompt Documentation"
+
+[output.html]
+mathjax-support = true
