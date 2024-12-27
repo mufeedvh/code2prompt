@@ -33,6 +33,7 @@ pub fn traverse_directory(
     relative_paths: bool,
     exclude_from_tree: bool,
     no_codeblock: bool,
+    text_filter: Option<&str>,
 ) -> Result<(String, Vec<serde_json::Value>)> {
     // ~~~ Initialization ~~~
     let mut files = Vec::new();
@@ -52,7 +53,7 @@ pub fn traverse_directory(
                     let component_str = component.as_os_str().to_string_lossy().to_string();
 
                     // Check if the current component should be excluded from the tree
-                    if exclude_from_tree && !should_include_file(path, include, exclude, include_priority) {
+                    if exclude_from_tree && !should_include_file(path, include, exclude, include_priority, text_filter) {
                         break;
                     }
 
@@ -70,7 +71,7 @@ pub fn traverse_directory(
                 }
 
                 // ~~~ Process the file ~~~
-                if path.is_file() && should_include_file(path, include, exclude, include_priority) {
+                if path.is_file() && should_include_file(path, include, exclude, include_priority, text_filter) {
                     if let Ok(code_bytes) = fs::read(path) {
                         let code = String::from_utf8_lossy(&code_bytes);
 

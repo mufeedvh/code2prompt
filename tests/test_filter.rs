@@ -86,7 +86,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
     }
@@ -112,7 +113,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
 
@@ -129,7 +131,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
     }
@@ -155,7 +158,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
 
@@ -172,7 +176,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
     }
@@ -191,7 +196,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
 
@@ -212,7 +218,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
     }
@@ -231,7 +238,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
 
@@ -252,7 +260,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
     }
@@ -271,7 +280,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
 
@@ -293,7 +303,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
     }
@@ -319,7 +330,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
 
@@ -336,7 +348,8 @@ mod tests {
                 &path,
                 &include_patterns,
                 &exclude_patterns,
-                include_priority
+                include_priority,
+                None
             ));
         }
     }
@@ -351,7 +364,8 @@ mod tests {
             &path,
             &include_patterns,
             &exclude_patterns,
-            include_priority
+            include_priority,
+            None
         ));
     }
 
@@ -365,7 +379,96 @@ mod tests {
             &path,
             &include_patterns,
             &exclude_patterns,
-            include_priority
+            include_priority,
+            None
+        ));
+    }
+
+    #[test]
+    fn test_text_filter_inclusion() {
+        let base_path = TEST_DIR.path();
+        let path = base_path.join("lowercase/foo.py");
+        let include_patterns = vec![];
+        let exclude_patterns = vec![];
+        let include_priority = false;
+        
+        // File contains "content foo.py"
+        assert!(should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority,
+            Some("content foo.py")
+        ));
+    }
+
+    #[test]
+    fn test_text_filter_exclusion() {
+        let base_path = TEST_DIR.path();
+        let path = base_path.join("lowercase/foo.py");
+        let include_patterns = vec![];
+        let exclude_patterns = vec![];
+        let include_priority = false;
+        
+        // File does not contain "missing text"
+        assert!(!should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority,
+            Some("missing text")
+        ));
+    }
+
+    #[test]
+    fn test_text_filter_case_sensitivity() {
+        let base_path = TEST_DIR.path();
+        let path = base_path.join("uppercase/FOO.py");
+        let include_patterns = vec![];
+        let exclude_patterns = vec![];
+        let include_priority = false;
+        
+        // File contains "CONTENT FOO.PY" but not "content foo.py"
+        assert!(should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority,
+            Some("CONTENT FOO.PY")
+        ));
+        assert!(!should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority,
+            Some("content foo.py")
+        ));
+    }
+
+    #[test]
+    fn test_text_filter_with_patterns() {
+        let base_path = TEST_DIR.path();
+        let path = base_path.join("lowercase/foo.py");
+        let include_patterns = vec!["*.py".to_string()];
+        let exclude_patterns = vec![];
+        let include_priority = false;
+        
+        // File matches pattern and contains text
+        assert!(should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority,
+            Some("content foo.py")
+        ));
+        
+        // File matches pattern but doesn't contain text
+        assert!(!should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority,
+            Some("missing text")
         ));
     }
 }
