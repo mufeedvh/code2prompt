@@ -24,9 +24,11 @@ static TEST_DIR: Lazy<TempDir> = Lazy::new(|| {
 fn create_test_hierarchy(base_path: &Path) {
     let lowercase_dir = base_path.join("lowercase");
     let uppercase_dir = base_path.join("uppercase");
+    let secret_dir = base_path.join(".secret");
 
     fs::create_dir_all(&lowercase_dir).expect("Failed to create lowercase directory");
     fs::create_dir_all(&uppercase_dir).expect("Failed to create uppercase directory");
+    fs::create_dir_all(&secret_dir).expect("Failed to create secret directory");
 
     let files = vec![
         ("lowercase/foo.py", "content foo.py"),
@@ -41,6 +43,7 @@ fn create_test_hierarchy(base_path: &Path) {
         ("uppercase/QUX.txt", "CONTENT QUX.TXT"),
         ("uppercase/CORGE.txt", "CONTENT CORGE.TXT"),
         ("uppercase/GRAULT.txt", "CONTENT GRAULT.TXT"),
+        (".secret/secret.txt", "SECRET"),
     ];
 
     for (file_path, content) in files {
@@ -95,6 +98,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(should_include_file(
@@ -136,6 +140,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
@@ -193,6 +198,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(should_include_file(
@@ -231,6 +237,7 @@ mod tests {
         for file in [
             "uppercase/FOO.py",
             "uppercase/QUX.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(should_include_file(
@@ -275,6 +282,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
@@ -313,6 +321,7 @@ mod tests {
         for file in [
             "uppercase/FOO.py",
             "uppercase/QUX.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
@@ -353,6 +362,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
@@ -395,6 +405,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
@@ -438,6 +449,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
@@ -481,6 +493,7 @@ mod tests {
             "uppercase/QUX.txt",
             "uppercase/CORGE.txt",
             "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
         ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
@@ -512,7 +525,7 @@ mod tests {
         }
     
         // Ces fichiers doivent être exclus
-        for file in ["lowercase/qux.txt", "uppercase/QUX.txt"] {
+        for file in ["lowercase/qux.txt", "uppercase/QUX.txt", ".secret/secret.txt"] {
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
@@ -544,7 +557,7 @@ mod tests {
         }
 
         // Ces fichiers doivent être exclus car priorité à l'exclusion
-        for file in ["uppercase/FOO.py", "uppercase/BAR.py"] {
+        for file in ["uppercase/FOO.py", "uppercase/BAR.py",".secret/secret.txt"] {
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
