@@ -98,6 +98,14 @@ struct Cli {
     /// Follow symlinks
     #[clap(short = 'f', long)]
     follow_symlinks: bool,
+
+    /// Include hidden directories and files
+    #[clap(long)]
+    hidden: bool,
+
+    /// Skip .gitignore rules
+    #[clap(long)]
+    no_ignore: bool,
 }
 
 fn main() -> Result<()> {
@@ -126,6 +134,8 @@ fn main() -> Result<()> {
         args.exclude_from_tree,
         args.no_codeblock,
         args.follow_symlinks,
+        args.hidden,
+        args.no_ignore,
     );
 
     let (tree, files) = match create_tree {
