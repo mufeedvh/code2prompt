@@ -1,0 +1,37 @@
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "code2prompt"
+version = "2.0.0"
+description = "Python bindings for code2prompt - A tool to generate LLM prompts from codebases"
+authors = [
+    {name = "Mufeed VH", email = "mufeed@lyminal.space"},
+]
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/mufeedvh/code2prompt"
+Documentation = "https://github.com/mufeedvh/code2prompt"
+Repository = "https://github.com/mufeedvh/code2prompt"
+
+[tool.maturin]
+python-source = "python-sdk"
+features = ["pyo3/extension-module"]
+module-name = "code2prompt.code2prompt"

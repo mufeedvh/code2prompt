@@ -17,6 +17,7 @@
 - [Templates](#templates)
 - [User Defined Variables](#user-defined-variables)
 - [Tokenizers](#tokenizers)
+- [Python SDK](#python-sdk)
 - [Contribution](#contribution)
 - [License](#license)
 - [Support The Author](#support-the-author)
@@ -27,8 +28,9 @@ You can run this tool on the entire directory and it would generate a well-forma
 
 - Quickly generate LLM prompts from codebases of any size.
 - Customize prompt generation with Handlebars templates. (See the [default template](src/default_template.hbs))
-- Respects `.gitignore`.
+- Respects `.gitignore` (can be disabled with `--no-ignore`).
 - Filter and exclude files using glob patterns.
+- Control hidden file inclusion with `--hidden` flag.
 - Display the token count of the generated prompt. (See [Tokenizers](#tokenizers) for more details)
 - Optionally include Git diff output (staged files) in the generated prompt.
 - Automatically copy the generated prompt to the clipboard.
@@ -138,7 +140,6 @@ Save the generated prompt to an output file:
 ```sh
 code2prompt path/to/codebase --output=output.txt
 ```
-
 Print output as JSON:
 
 ```sh
@@ -179,6 +180,18 @@ Disable wrapping code inside markdown code blocks:
 
 ```sh
 code2prompt path/to/codebase --no-codeblock
+```
+
+Include hidden files and directories:
+
+```sh
+code2prompt path/to/codebase --hidden
+```
+
+Skip .gitignore rules:
+
+```sh
+code2prompt path/to/codebase --no-ignore
 ```
 
 - Rewrite the code to another language.
@@ -253,6 +266,21 @@ Tokenization is implemented using [`tiktoken-rs`](https://github.com/zurawiki/ti
 | `o200k_base`            | GPT-4o models                                                             |
 
 For more context on the different tokenizers, see the [OpenAI Cookbook](https://github.com/openai/openai-cookbook/blob/66b988407d8d13cad5060a881dc8c892141f2d5c/examples/How_to_count_tokens_with_tiktoken.ipynb)
+
+## Python SDK
+
+code2prompt also provides Python bindings for seamless integration into Python applications. The Python SDK offers all the functionality of the CLI tool through an intuitive object-oriented interface.
+
+See [python-sdk/README.md](python-sdk/README.md) for detailed documentation and usage examples.
+
+Example usage:
+```python
+from code2prompt import CodePrompt
+
+prompt = CodePrompt("./my_project", include_patterns=["*.py"])
+result = prompt.generate(encoding="cl100k")
+print(result["prompt"])
+```
 
 ## How is it useful?
 
