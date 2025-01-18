@@ -6,6 +6,20 @@ use log::{debug, error};
 use std::fs;
 use std::path::Path;
 
+/// Helper function to check if a path matches any pattern
+fn matches_any_pattern(path: &Path, patterns: &[String]) -> bool {
+    let path_str = path.to_str().unwrap_or("");
+
+    patterns.iter().any(|pattern| {
+        // Extract the file name
+        let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        // Normalize the pattern to an absolute path
+        let absolute_pattern = fs::canonicalize(Path::new(pattern)).unwrap_or_else(|_| Path::new(pattern).to_path_buf());
+        // Match either the file name or the full path
+        pattern == file_name || Pattern::new(absolute_pattern.to_str().unwrap_or(pattern)).unwrap().matches(path_str)
+    })
+}
+
 /// Determines whether a file should be included based on include and exclude patterns.
 ///
 /// # Arguments
@@ -25,25 +39,15 @@ pub fn should_include_file(
     include_priority: bool,
 ) -> bool {
     // ~~~ Clean path ~~~
-    let canonical_path = match fs::canonicalize(path) {
-        Ok(path) => path,
-        Err(e) => {
-            error!("Failed to canonicalize path: {}", e);
-            return false;
-        }
-    };
-    let path_str = canonical_path.to_str().unwrap();
+    let canonical_path = fs::canonicalize(path).unwrap_or_else(|e| {
+        error!("Failed to canonicalize path {:?}: {}", path, e);
+        path.to_path_buf() // Fall back to the original path if canonicalization fails
+    });
+    let path_str = canonical_path.to_str().unwrap_or("");
 
     // ~~~ Check glob patterns ~~~
-    let included = include_patterns
-        .iter()
-        .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
-    let excluded = exclude_patterns
-        .iter()
-        .any(|pattern|  {
-            let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
-            pattern == file_name || Pattern::new(pattern).unwrap().matches(path_str)
-        });
+    let included = matches_any_pattern(&canonical_path, include_patterns);
+    let excluded = matches_any_pattern(&canonical_path, exclude_patterns);
 
     // ~~~ Decision ~~~
     let result = match (included, excluded) {

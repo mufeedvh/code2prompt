@@ -64,6 +64,66 @@ mod tests {
 
     // ¬Include && ¬Exclude
     #[test]
+    fn test_exclude_by_file_name() {
+        let path = Path::new("/Users/test/code2prompt/output.txt");
+        let include_patterns = vec![];
+        let exclude_patterns = vec!["output.txt".to_string()];
+        let include_priority = false;
+
+        assert!(!should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority
+        ));
+    }
+
+    #[test]
+    fn test_exclude_by_glob_pattern() {
+        let path = Path::new("/Users/test/code2prompt/output.txt");
+        let include_patterns = vec![];
+        let exclude_patterns = vec!["**/output.txt".to_string()];
+        let include_priority = false;
+
+        assert!(!should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority
+        ));
+    }
+
+    #[test]
+    fn test_include_by_file_name() {
+        let path = Path::new("/Users/test/code2prompt/output.txt");
+        let include_patterns = vec!["output.txt".to_string()];
+        let exclude_patterns = vec![];
+        let include_priority = true;
+
+        assert!(should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority
+        ));
+    }
+
+    #[test]
+    fn test_include_and_exclude_conflict() {
+        let path = Path::new("/Users/test/code2prompt/output.txt");
+        let include_patterns = vec!["output.txt".to_string()];
+        let exclude_patterns = vec!["**/output.txt".to_string()];
+        let include_priority = true;
+
+        assert!(should_include_file(
+            &path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority
+        ));
+    }
+
+    #[test]
     fn test_no_include_no_exclude_path() {
         let path = Path::new("src/main.rs");
         let include_patterns: Vec<String> = vec![];
