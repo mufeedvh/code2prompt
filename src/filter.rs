@@ -40,7 +40,10 @@ pub fn should_include_file(
         .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
     let excluded = exclude_patterns
         .iter()
-        .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
+        .any(|pattern|  {
+            let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+            pattern == file_name || Pattern::new(pattern).unwrap().matches(path_str)
+        });
 
     // ~~~ Decision ~~~
     let result = match (included, excluded) {
