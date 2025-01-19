@@ -22,7 +22,7 @@ const CUSTOM_TEMPLATE_NAME: &str = "custom";
 
 // CLI Arguments
 #[derive(Parser)]
-#[clap(name = "code2prompt", version = "2.0.0", author = "Mufeed VH")]
+#[clap(name = "code2prompt", version = "2.0.1", author = "Mufeed VH")]
 #[command(arg_required_else_help = true)]
 struct Cli {
     /// Path to the codebase directory

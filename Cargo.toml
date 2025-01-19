@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["Mufeed VH <mufeed@lyminal.space>","Olivier D'Ancona <olivier.dancona@master.hes-so.ch>"]
 description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
 keywords = ["code", "prompt", "llm", "gpt", "ai"]
