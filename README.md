@@ -67,7 +67,7 @@ cargo install code2prompt
 For unpublished builds:
 
 ```sh
-cargo install --git https://github.com/mufeedvh/code2prompt
+cargo install --git https://github.com/mufeedvh/code2prompt --force
 ```
 
 ### AUR
