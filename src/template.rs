@@ -3,11 +3,16 @@
 
 use anyhow::{Context, Result};
 use arboard::Clipboard;
+
+#[cfg(target_os = "linux")]
+use arboard::SetExtLinux;
+
 use colored::*;
 use handlebars::{no_escape, Handlebars};
 use inquire::Text;
 use regex::Regex;
 use std::io::Write;
+use std::{env, process};
 
 /// Set up the Handlebars template engine with a template string and a template name.
 ///
@@ -116,14 +121,31 @@ pub fn handle_undefined_variables(
 ///
 /// * `Result<()>` - An empty result indicating success or an error.
 pub fn copy_to_clipboard(rendered: &str) -> Result<()> {
-    match Clipboard::new() {
-        Ok(mut clipboard) => {
-            clipboard
-                .set_text(rendered.to_string())
-                .context("Failed to copy to clipboard")?;
-            Ok(())
+    #[cfg(target_os = "linux")]
+    if env::args().any(|arg| arg == "--daemon") {
+        let mut clipboard = Clipboard::new().context("Failed to initialize clipboard in daemon")?;
+        clipboard.set().wait().text(rendered).context("Failed to copy to clipboard in daemon")?;
+        return Ok(());
+    }
+
+    if cfg!(target_os = "linux") {
+        process::Command::new(env::current_exe()?)
+            .arg(".") // Path is required arg. Can be set as anything here.
+            .arg("--daemon")
+            .arg("--clipboard-content")
+            .arg(rendered)
+            .spawn().context("Failed to spawn daemon process")?;
+        return Ok(())
+    } else {
+        match Clipboard::new() {
+            Ok(mut clipboard) => {
+                clipboard
+                    .set_text(rendered.to_string())
+                    .context("Failed to copy to clipboard")?;
+                Ok(())
+            }
+            Err(e) => Err(anyhow::anyhow!("Failed to initialize clipboard: {}", e)),
         }
-        Err(e) => Err(anyhow::anyhow!("Failed to initialize clipboard: {}", e)),
     }
 }
 
