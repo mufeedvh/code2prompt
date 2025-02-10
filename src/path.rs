@@ -1,6 +1,7 @@
 //! This module contains the functions for traversing the directory and processing the files.
 
 use crate::filter::should_include_file;
+use crate::util::strip_utf8_bom;
 use anyhow::Result;
 use ignore::WalkBuilder;
 use log::debug;
@@ -8,6 +9,7 @@ use serde_json::json;
 use std::fs;
 use std::path::Path;
 use termtree::Tree;
+
 
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
 ///
@@ -78,7 +80,8 @@ pub fn traverse_directory(
                 // ~~~ Process the file ~~~
                 if path.is_file() {
                     if let Ok(code_bytes) = fs::read(path) {
-                        let code = String::from_utf8_lossy(&code_bytes);
+                        let clean_bytes = strip_utf8_bom(&code_bytes);
+                        let code = String::from_utf8_lossy(&clean_bytes);
 
                         let code_block = wrap_code_block(&code, path.extension().and_then(|ext| ext.to_str()).unwrap_or(""), line_number, no_codeblock);
 
