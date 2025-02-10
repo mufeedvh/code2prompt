@@ -44,9 +44,10 @@ You can customize the prompt template to achieve any of the desired use cases. I
 
 ### Binary releases
 
-Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases). 
+Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases).
 
 ### Source build
+
 Requires:
 
 - [Git](https://git-scm.org/downloads), [Rust](https://rust-lang.org/tools/install) and Cargo.
@@ -58,7 +59,8 @@ cargo build --release
 ```
 
 ## cargo
-installs from the [`crates.io`](https://crates.io) registry. 
+
+installs from the [`crates.io`](https://crates.io) registry.
 
 ```sh
 cargo install code2prompt
@@ -71,6 +73,7 @@ cargo install --git https://github.com/mufeedvh/code2prompt --force
 ```
 
 ### AUR
+
 `code2prompt` is available in the [`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt). Install it via any AUR helpers.
 
 ```sh
@@ -78,7 +81,8 @@ paru/yay -S code2prompt
 ```
 
 ### Nix
-If you are on nix, You can use `nix-env` or `profile` to install. 
+
+If you are on nix, You can use `nix-env` or `profile` to install.
 
 ```sh
 # without flakes:
@@ -140,6 +144,7 @@ Save the generated prompt to an output file:
 ```sh
 code2prompt path/to/codebase --output=output.txt
 ```
+
 Print output as JSON:
 
 ```sh
@@ -274,6 +279,7 @@ code2prompt also provides Python bindings for seamless integration into Python a
 See [python-sdk/README.md](python-sdk/README.md) for detailed documentation and usage examples.
 
 Example usage:
+
 ```python
 from code2prompt import CodePrompt
 
@@ -281,6 +287,10 @@ prompt = CodePrompt("./my_project", include_patterns=["*.py"])
 result = prompt.generate(encoding="cl100k")
 print(result["prompt"])
 ```
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=mufeedvh/code2prompt&type=Date)](https://star-history.com/#mufeedvh/code2prompt&Date)
 
 ## How is it useful?
 
