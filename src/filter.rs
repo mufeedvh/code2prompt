@@ -18,10 +18,6 @@ use std::path::Path;
 /// # Returns
 ///
 /// * A `globset::GlobSet` containing all valid glob patterns from the input.
-///
-/// # Panics
-///
-/// * If the `GlobSetBuilder` fails to build the `GlobSet`, the function will panic.
 fn build_globset(patterns: &[String]) -> GlobSet {
     let mut builder = GlobSetBuilder::new();
 
