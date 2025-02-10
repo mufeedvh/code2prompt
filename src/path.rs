@@ -48,7 +48,8 @@ pub fn traverse_directory(
         .git_ignore(!no_ignore) // By default no_ignore=false, so we invert the flag
         .follow_links(follow_symlinks)
         .build()
-        .filter_map(|e| e.ok())
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| should_include_file(entry.path(), include, exclude, include_priority))
         .fold(Tree::new(parent_directory.to_owned()), |mut root, entry| {
             let path = entry.path();
             if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
@@ -57,7 +58,7 @@ pub fn traverse_directory(
                     let component_str = component.as_os_str().to_string_lossy().to_string();
 
                     // Check if the current component should be excluded from the tree
-                    if exclude_from_tree && !should_include_file(path, include, exclude, include_priority) {
+                    if exclude_from_tree {
                         break;
                     }
 
@@ -75,7 +76,7 @@ pub fn traverse_directory(
                 }
 
                 // ~~~ Process the file ~~~
-                if path.is_file() && should_include_file(path, include, exclude, include_priority) {
+                if path.is_file() {
                     if let Ok(code_bytes) = fs::read(path) {
                         let code = String::from_utf8_lossy(&code_bytes);
 

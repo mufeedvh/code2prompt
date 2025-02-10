@@ -1,10 +1,49 @@
 //! This module contains the logic for filtering files based on include and exclude patterns.
 
 use colored::*;
-use glob::Pattern;
-use log::{debug, error};
-use std::fs;
+use globset::{Glob, GlobSetBuilder, GlobSet};
+use log::{info, warn, debug};
 use std::path::Path;
+
+/// Constructs a `GlobSet` from a list of glob patterns.
+///
+/// This function takes a slice of `String` patterns, attempts to convert each
+/// pattern into a `Glob`, and adds it to a `GlobSetBuilder`. If any pattern is
+/// invalid, it is ignored. The function then builds and returns a `GlobSet`.
+///
+/// # Arguments
+///
+/// * `patterns` - A slice of `String` containing glob patterns.
+///
+/// # Returns
+///
+/// * A `globset::GlobSet` containing all valid glob patterns from the input.
+fn build_globset(patterns: &[String]) -> GlobSet {
+    let mut builder = GlobSetBuilder::new();
+
+    for pattern in patterns {
+        // If the pattern does not contain a '/' or the platform’s separator, prepend "**/"
+        let normalized_pattern = if !pattern.contains('/') && !pattern.contains(std::path::MAIN_SEPARATOR) {
+            format!("**/{}", pattern)
+        } else {
+            pattern.clone()
+        };
+
+        match Glob::new(&normalized_pattern) {
+            Ok(glob) => {
+                builder.add(glob);
+                debug!("✅ Glob pattern added: '{}'", normalized_pattern);
+            }
+            Err(_) => {
+                warn!("⚠️ Invalid pattern: '{}'", normalized_pattern);
+            }
+        }
+    }
+
+    builder.build().expect("❌ Impossible to build GlobSet")
+}
+
+
 
 /// Determines whether a file should be included based on include and exclude patterns.
 ///
@@ -24,23 +63,14 @@ pub fn should_include_file(
     exclude_patterns: &[String],
     include_priority: bool,
 ) -> bool {
-    // ~~~ Clean path ~~~
-    let canonical_path = match fs::canonicalize(path) {
-        Ok(path) => path,
-        Err(e) => {
-            error!("Failed to canonicalize path: {}", e);
-            return false;
-        }
-    };
-    let path_str = canonical_path.to_str().unwrap();
 
-    // ~~~ Check glob patterns ~~~
-    let included = include_patterns
-        .iter()
-        .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
-    let excluded = exclude_patterns
-        .iter()
-        .any(|pattern| Pattern::new(pattern).unwrap().matches(path_str));
+    // ~~~ Initialization ~~~
+    let include_globset = build_globset(include_patterns);
+    let exclude_globset = build_globset(exclude_patterns);
+
+    // ~~~ Matching ~~~
+    let included = include_globset.is_match(path);
+    let excluded = exclude_globset.is_match(path);
 
     // ~~~ Decision ~~~
     let result = match (included, excluded) {
@@ -50,14 +80,14 @@ pub fn should_include_file(
         (false, false) => include_patterns.is_empty(), // If no include patterns are provided, include everything
     };
 
-    debug!(
-        "Checking path: {:?}, {}: {}, {}: {}, decision: {}",
-        path_str,
+    info!(
+        "Result: {}, {}: {}, {}: {}, Path: {:?}",
+        result,
         "included".bold().green(),
         included,
         "excluded".bold().red(),
         excluded,
-        result
+        path.display()
     );
     result
 }

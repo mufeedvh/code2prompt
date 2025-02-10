@@ -177,7 +177,7 @@ mod tests {
         assert!(contains("content baz.py").eval(&output));
         assert!(contains("lowercase/foo.py").not().eval(&output));
         assert!(contains("content foo.py").not().eval(&output));
-        assert!(contains("lowercase/bar.py").not().eval(&output)); // `bar.py` isn't created in the test hierarchy
+        assert!(contains("lowercase/bar.py").not().eval(&output));
         assert!(contains("content bar.py").not().eval(&output));
     }
 
