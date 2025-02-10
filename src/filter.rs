@@ -67,17 +67,14 @@ pub fn should_include_file(
     exclude_patterns: &[String],
     include_priority: bool,
 ) -> bool {
-    // Vérifie si on doit travailler avec des chemins relatifs
-    let base_dir = std::env::current_dir().unwrap_or_else(|_| path.to_path_buf());
-    let relative_path = path.strip_prefix(&base_dir).unwrap_or(path);
 
-    // Construire les ensembles de motifs globaux
+    // ~~~ Initialization ~~~
     let include_globset = build_globset(include_patterns);
     let exclude_globset = build_globset(exclude_patterns);
 
-    // Vérification des correspondances
-    let included = include_globset.is_match(relative_path) || include_globset.is_match(path);
-    let excluded = exclude_globset.is_match(relative_path) || exclude_globset.is_match(path);
+    // ~~~ Matching ~~~
+    let included = include_globset.is_match(path);
+    let excluded = exclude_globset.is_match(path);
 
     // ~~~ Decision ~~~
     let result = match (included, excluded) {
