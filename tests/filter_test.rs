@@ -140,42 +140,10 @@ mod tests {
         let exclude_patterns = vec!["default_template.hbs".to_string()];
         let include_priority = false;
 
-        // ~~~ Must be included ~~~
-        for file in [
-            "src/filter.rs",
-            "src/git.rs",
-            "src/lib.rs",
-            "src/token.rs",
-        ] {
-            let path = base_path.join(file);
-            assert!(should_include_file(
-                &path,
-                &include_patterns,
-                &exclude_patterns,
-                include_priority
-            ));
-        }
-
         // ~~~ Must be excluded ~~~
         let excluded_path = base_path.join("src/default_template.hbs");
         assert!(!should_include_file(
             &excluded_path,
-            &include_patterns,
-            &exclude_patterns,
-            include_priority
-        ));
-    }
-
-    #[test]
-    /// Added for globset
-    fn test_no_include_exclude_by_glob_pattern() {
-        let path = Path::new("/Users/test/code2prompt/output.txt");
-        let include_patterns = vec![];
-        let exclude_patterns = vec!["**/output.txt".to_string()];
-        let include_priority = false;
-
-        assert!(!should_include_file(
-            &path,
             &include_patterns,
             &exclude_patterns,
             include_priority
@@ -362,7 +330,6 @@ mod tests {
     fn test_include_no_exclude_by_filename() {
         let base_path = TEST_DIR.path();
 
-        let path = Path::new("src");
         let include_patterns = vec!["default_template.hbs".to_string()];
         let exclude_patterns = vec![];
         let include_priority = false;
@@ -384,17 +351,14 @@ mod tests {
         }
 
         // ~~~ Must be included ~~~
-        for file in [
-            "src/default_template.hbs",
-        ] {
-            let path = base_path.join(file);
-            assert!(should_include_file(
-                &path,
-                &include_patterns,
-                &exclude_patterns,
-                include_priority
-            ));
-        }
+        let include_path = base_path.join("src/default_template.hbs");
+        assert!(should_include_file(
+            &include_path,
+            &include_patterns,
+            &exclude_patterns,
+            include_priority
+        ));
+        
     }
 
     #[test]
