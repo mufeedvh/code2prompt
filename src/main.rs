@@ -8,7 +8,7 @@ use clap::Parser;
 use code2prompt::{
     copy_to_clipboard, get_git_diff, get_git_diff_between_branches, get_git_log, get_model_info,
     get_tokenizer, handle_undefined_variables, handlebars_setup, label, render_template,
-    traverse_directory, write_to_file,
+    traverse_directory, write_to_file, FileSortMethod,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -110,6 +110,10 @@ struct Cli {
     /// Skip .gitignore rules
     #[clap(long)]
     no_ignore: bool,
+
+    /// Sort order for files: one of "name_asc", "name_desc", "date_asc", or "date_desc"
+    #[clap(long)]
+    sort: Option<String>,
 }
 
 fn main() -> Result<()> {
@@ -127,6 +131,19 @@ fn main() -> Result<()> {
     let include_patterns = parse_patterns(&args.include);
     let exclude_patterns = parse_patterns(&args.exclude);
 
+    // Sort Method
+    let sort_method: Option<FileSortMethod> = match args.sort.as_deref() {
+        Some("name_asc") => Some(FileSortMethod::NameAsc),
+        Some("name_desc") => Some(FileSortMethod::NameDesc),
+        Some("date_asc") => Some(FileSortMethod::DateAsc),
+        Some("date_desc") => Some(FileSortMethod::DateDesc),
+        Some(other) => {
+            eprintln!("Invalid sort method: {}. Supported values: name_asc, name_desc, date_asc, date_desc", other);
+            std::process::exit(1);
+        }
+        None => None,
+    };
+
     // Traverse the directory
     let create_tree = traverse_directory(
         &args.path,
@@ -140,6 +157,7 @@ fn main() -> Result<()> {
         args.follow_symlinks,
         args.hidden,
         args.no_ignore,
+        sort_method,
     );
 
     let (tree, files) = match create_tree {
@@ -243,14 +261,14 @@ fn main() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&json_output)?);
         return Ok(());
     } else if args.tokens {
-            println!(
-                "{}{}{} Token count: {}, Model info: {}",
-                "[".bold().white(),
-                "i".bold().blue(),
-                "]".bold().white(),
-                token_count.to_string().bold().yellow(),
-                model_info
-            );
+        println!(
+            "{}{}{} Token count: {}, Model info: {}",
+            "[".bold().white(),
+            "i".bold().blue(),
+            "]".bold().white(),
+            token_count.to_string().bold().yellow(),
+            model_info
+        );
     }
 
     // Copy to Clipboard
