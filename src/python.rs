@@ -60,7 +60,7 @@ impl CodePrompt {
         no_codeblock = false,
         follow_symlinks = false,
         hidden = false,
-        no_ignore = false
+        no_ignore = false,
     ))]
     fn new(
         path: String,
@@ -114,11 +114,13 @@ impl CodePrompt {
                 self.follow_symlinks,
                 self.hidden,
                 self.no_ignore,
+                None,
             )
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
             // Setup template
-            let template_content = template.unwrap_or_else(|| include_str!("default_template.hbs").to_string());
+            let template_content =
+                template.unwrap_or_else(|| include_str!("default_template.hbs").to_string());
             let handlebars = handlebars_setup(&template_content, "template")
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
