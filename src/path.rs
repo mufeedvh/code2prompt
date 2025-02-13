@@ -1,7 +1,7 @@
 //! This module contains the functions for traversing the directory and processing the files.
 
 use crate::filter::should_include_file;
-use crate::sort::{sort_files, FileSortMethod};
+use crate::sort::{sort_files, sort_tree, FileSortMethod};
 use crate::util::strip_utf8_bom;
 use anyhow::Result;
 use ignore::WalkBuilder;
@@ -46,7 +46,7 @@ pub fn traverse_directory(
     let parent_directory = label(&canonical_root_path);
 
     // ~~~ Build the Tree ~~~
-    let tree = WalkBuilder::new(&canonical_root_path)
+    let mut tree = WalkBuilder::new(&canonical_root_path)
         .hidden(!hidden) // By default hidden=false, so we invert the flag
         .git_ignore(!no_ignore) // By default no_ignore=false, so we invert the flag
         .follow_links(follow_symlinks)
@@ -56,14 +56,14 @@ pub fn traverse_directory(
         .fold(Tree::new(parent_directory.to_owned()), |mut root, entry| {
             let path = entry.path();
             if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
+                // ~~~ Process the tree ~~~
                 let mut current_tree = &mut root;
                 for component in relative_path.components() {
-                    let component_str = component.as_os_str().to_string_lossy().to_string();
-
-                    // Check if the current component should be excluded from the tree
                     if exclude_from_tree {
                         break;
                     }
+
+                    let component_str = component.as_os_str().to_string_lossy().to_string();
 
                     current_tree = if let Some(pos) = current_tree
                         .leaves
@@ -92,13 +92,14 @@ pub fn traverse_directory(
                         );
 
                         if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
+                            // ~~~ Filepath ~~~
                             let file_path = if relative_paths {
                                 format!("{}/{}", parent_directory, relative_path.display())
                             } else {
                                 path.display().to_string()
                             };
 
-                            // Create a JSON object for the file.
+                            // ~~~ File JSON Representation ~~~
                             let mut file_entry = serde_json::Map::new();
                             file_entry.insert("path".to_string(), json!(file_path));
                             file_entry.insert(
@@ -137,14 +138,15 @@ pub fn traverse_directory(
                         debug!("Failed to read file: {}", path.display());
                     }
                 } else {
-                    debug!("Excluded file: {:?}", path.display());
+                    debug!("Excluded path: {:?}", path.display());
                 }
             }
 
             root
         });
 
-    // ~~~ Sort Files ~~~
+    // ~~~ Sorting ~~~
+    sort_tree(&mut tree, sort_method);
     sort_files(&mut files, sort_method);
 
     Ok((tree.to_string(), files))

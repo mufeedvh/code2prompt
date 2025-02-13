@@ -1,9 +1,10 @@
-use code2prompt::{sort_files, FileSortMethod};
+use code2prompt::{sort_files, sort_tree, FileSortMethod};
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+    use termtree::Tree;
 
     #[test]
     fn test_sort_files_name_asc() {
@@ -122,5 +123,71 @@ mod tests {
         // Sorting with None should leave the order unchanged.
         sort_files(&mut files, None);
         assert_eq!(files, original_files);
+    }
+
+    #[test]
+    fn test_sort_tree_name_asc() {
+        // Build a simple tree with unsorted leaf nodes.
+        let mut tree = Tree::new("root".to_string());
+        tree.leaves.push(Tree::new("zeta".to_string()));
+        tree.leaves.push(Tree::new("alpha".to_string()));
+        tree.leaves.push(Tree::new("beta".to_string()));
+
+        // Sort the tree using NameAsc.
+        sort_tree(&mut tree, Some(FileSortMethod::NameAsc));
+
+        // Extract the sorted names.
+        let sorted: Vec<String> = tree.leaves.iter().map(|node| node.root.clone()).collect();
+        let expected = vec!["alpha".to_string(), "beta".to_string(), "zeta".to_string()];
+        assert_eq!(sorted, expected);
+    }
+
+    #[test]
+    fn test_sort_tree_name_desc() {
+        let mut tree = Tree::new("root".to_string());
+        tree.leaves.push(Tree::new("alpha".to_string()));
+        tree.leaves.push(Tree::new("zeta".to_string()));
+        tree.leaves.push(Tree::new("beta".to_string()));
+
+        // Sort the tree using NameDesc.
+        sort_tree(&mut tree, Some(FileSortMethod::NameDesc));
+
+        let sorted: Vec<String> = tree.leaves.iter().map(|node| node.root.clone()).collect();
+        let expected = vec!["zeta".to_string(), "beta".to_string(), "alpha".to_string()];
+        assert_eq!(sorted, expected);
+    }
+
+    #[test]
+    fn test_sort_tree_date_asc_falls_back_to_name() {
+        // For directory trees, date-based sorting should fall back to name-based sorting.
+        let mut tree = Tree::new("root".to_string());
+        tree.leaves.push(Tree::new("delta".to_string()));
+        tree.leaves.push(Tree::new("charlie".to_string()));
+        tree.leaves.push(Tree::new("bravo".to_string()));
+
+        sort_tree(&mut tree, Some(FileSortMethod::DateAsc));
+
+        let sorted: Vec<String> = tree.leaves.iter().map(|node| node.root.clone()).collect();
+        let expected = vec![
+            "bravo".to_string(),
+            "charlie".to_string(),
+            "delta".to_string(),
+        ];
+        assert_eq!(sorted, expected);
+    }
+
+    #[test]
+    fn test_sort_tree_none() {
+        // If sort_method is None, the tree should remain in its original order.
+        let mut tree = Tree::new("root".to_string());
+        tree.leaves.push(Tree::new("zeta".to_string()));
+        tree.leaves.push(Tree::new("alpha".to_string()));
+        tree.leaves.push(Tree::new("beta".to_string()));
+
+        let original: Vec<String> = tree.leaves.iter().map(|node| node.root.clone()).collect();
+        sort_tree(&mut tree, None);
+        let after: Vec<String> = tree.leaves.iter().map(|node| node.root.clone()).collect();
+
+        assert_eq!(original, after);
     }
 }

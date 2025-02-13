@@ -1,4 +1,5 @@
 use serde_json::Value;
+use termtree::Tree;
 
 ///! Sorting methods for files.
 
@@ -44,5 +45,43 @@ pub fn sort_files(files: &mut Vec<Value>, sort_method: Option<FileSortMethod>) {
                 b_time.cmp(&a_time)
             }
         });
+    }
+}
+
+/// Recursively sorts a directory tree (represented by `termtree::Tree<D>`) in place using the specified
+/// `FileSortMethod`. For directory nodes, since modification time is typically unavailable, this function
+/// falls back to sorting by name. In effect, DateAsc is treated as NameAsc and DateDesc as NameDesc for directories.
+///
+/// If `sort_method` is `None`, no sorting is performed.
+///
+/// # Arguments
+///
+/// * `tree` - A mutable reference to the directory tree.
+/// * `sort_method` - An optional `FileSortMethod` that determines the sorting order.
+pub fn sort_tree<D: Ord + std::fmt::Display>(
+    tree: &mut Tree<D>,
+    sort_method: Option<FileSortMethod>,
+) {
+    if let Some(method) = sort_method {
+        // For directories we only have the name (the root), so date-based sorts fall back to name sorting.
+        let ascending = match method {
+            FileSortMethod::NameAsc | FileSortMethod::DateAsc => true,
+            FileSortMethod::NameDesc | FileSortMethod::DateDesc => false,
+        };
+        sort_tree_impl(tree, ascending);
+    }
+}
+
+/// Internal helper: recursively sorts the leaves of a directory tree in the specified order.
+fn sort_tree_impl<D: Ord + std::fmt::Display>(tree: &mut Tree<D>, ascending: bool) {
+    tree.leaves.sort_by(|a, b| {
+        if ascending {
+            a.root.cmp(&b.root)
+        } else {
+            b.root.cmp(&a.root)
+        }
+    });
+    for leaf in &mut tree.leaves {
+        sort_tree_impl(leaf, ascending);
     }
 }
