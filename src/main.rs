@@ -15,6 +15,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error};
 use serde_json::json;
 use std::path::PathBuf;
+use num_format::{Locale, ToFormattedString};
 
 // Constants
 const DEFAULT_TEMPLATE_NAME: &str = "default";
@@ -23,8 +24,8 @@ const CUSTOM_TEMPLATE_NAME: &str = "custom";
 // CLI Arguments
 #[derive(Parser)]
 #[clap(
-    name = env!("CARGO_PKG_NAME"), 
-    version = env!("CARGO_PKG_VERSION"), 
+    name = env!("CARGO_PKG_NAME"),
+    version = env!("CARGO_PKG_VERSION"),
     author = env!("CARGO_PKG_AUTHORS")
 )]
 #[command(arg_required_else_help = true)]
@@ -261,12 +262,13 @@ fn main() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&json_output)?);
         return Ok(());
     } else if args.tokens {
+        let formatted_token_count = token_count.to_formatted_string(&Locale::en);
         println!(
             "{}{}{} Token count: {}, Model info: {}",
             "[".bold().white(),
             "i".bold().blue(),
             "]".bold().white(),
-            token_count.to_string().bold().yellow(),
+            formatted_token_count.bold().yellow(),
             model_info
         );
     }
