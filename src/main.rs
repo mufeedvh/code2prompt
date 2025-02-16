@@ -6,9 +6,9 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use code2prompt::{
-    copy_to_clipboard, get_git_diff, get_git_diff_between_branches, get_git_log, get_model_info,
-    get_tokenizer, handle_undefined_variables, handlebars_setup, label, render_template,
-    traverse_directory, write_to_file, FileSortMethod,
+    get_git_diff, get_git_diff_between_branches, get_git_log, get_model_info, get_tokenizer,
+    handle_undefined_variables, handlebars_setup, label, render_template, serve_clipboard_daemon,
+    spawn_clipboard_daemon, traverse_directory, write_to_file, FileSortMethod,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -114,11 +114,23 @@ struct Cli {
     /// Sort order for files: one of "name_asc", "name_desc", "date_asc", or "date_desc"
     #[clap(long)]
     sort: Option<String>,
+
+    #[arg(long, hide = true)]
+    clipboard_daemon: bool,
 }
 
 fn main() -> Result<()> {
     env_logger::init();
     let args = Cli::parse();
+
+    // ~~~ Clipboard Daemon ~~~
+    #[cfg(target_os = "linux")]
+    {
+        if args.clipboard_daemon {
+            serve_clipboard_daemon()?;
+            return Ok(());
+        }
+    }
 
     // Handlebars Template Setup
     let (template_content, template_name) = get_template(&args)?;
@@ -273,25 +285,33 @@ fn main() -> Result<()> {
 
     // Copy to Clipboard
     if !args.no_clipboard {
-        match copy_to_clipboard(&rendered) {
-            Ok(_) => {
-                println!(
-                    "{}{}{} {}",
-                    "[".bold().white(),
-                    "✓".bold().green(),
-                    "]".bold().white(),
-                    "Copied to clipboard successfully.".green()
-                );
-            }
-            Err(e) => {
-                eprintln!(
-                    "{}{}{} {}",
-                    "[".bold().white(),
-                    "!".bold().red(),
-                    "]".bold().white(),
-                    format!("Failed to copy to clipboard: {}", e).red()
-                );
-                println!("{}", &rendered);
+        #[cfg(target_os = "linux")]
+        {
+            spawn_clipboard_daemon(&rendered)?;
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            use code2prompt::copy_text_to_clipboard;
+            match copy_to_clipboard(&rendered) {
+                Ok(_) => {
+                    println!(
+                        "{}{}{} {}",
+                        "[".bold().white(),
+                        "✓".bold().green(),
+                        "]".bold().white(),
+                        "Copied to clipboard successfully.".green()
+                    );
+                }
+                Err(e) => {
+                    eprintln!(
+                        "{}{}{} {}",
+                        "[".bold().white(),
+                        "!".bold().red(),
+                        "]".bold().white(),
+                        format!("Failed to copy to clipboard: {}", e).red()
+                    );
+                    println!("{}", &rendered);
+                }
             }
         }
     }

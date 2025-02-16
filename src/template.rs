@@ -1,8 +1,6 @@
 //! This module contains the functions to set up the Handlebars template engine and render the template with the provided data.
 //! It also includes functions for handling user-defined variables, copying the rendered output to the clipboard, and writing it to a file.
-
-use anyhow::{Context, Result};
-use arboard::Clipboard;
+use anyhow::Result;
 use colored::*;
 use handlebars::{no_escape, Handlebars};
 use inquire::Text;
@@ -104,27 +102,6 @@ pub fn handle_undefined_variables(
         }
     }
     Ok(())
-}
-
-/// Copies the rendered template to the clipboard.
-///
-/// # Arguments
-///
-/// * `rendered` - The rendered template string.
-///
-/// # Returns
-///
-/// * `Result<()>` - An empty result indicating success or an error.
-pub fn copy_to_clipboard(rendered: &str) -> Result<()> {
-    match Clipboard::new() {
-        Ok(mut clipboard) => {
-            clipboard
-                .set_text(rendered.to_string())
-                .context("Failed to copy to clipboard")?;
-            Ok(())
-        }
-        Err(e) => Err(anyhow::anyhow!("Failed to initialize clipboard: {}", e)),
-    }
 }
 
 /// Writes the rendered template to a specified output file.
