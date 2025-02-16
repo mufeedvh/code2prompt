@@ -47,22 +47,22 @@ use arboard::SetExtLinux;
 /// * `Result<()>` - Returns Ok if the daemon process was spawned and the content was sent successfully,
 ///   or an error if the process could not be launched or written to.
 pub fn spawn_clipboard_daemon(content: &str) -> anyhow::Result<()> {
-    // Get the current executable path
-    let current_exe = std::env::current_exe().context("Failed to get current executable path")?;
-    // Flag to launch the daemon
-    const DAEMON_FLAG: &str = "--clipboard-daemon";
+    // ~~~ Setting up the command to run the daemon ~~~
+    let current_exe: std::path::PathBuf =
+        std::env::current_exe().context("Failed to get current executable path")?;
+    let mut args: Vec<String> = std::env::args().collect();
+    args.push("--clipboard-daemon".to_string());
 
-    // Launch the daemon process
+    // ~~~ Spawn the clipboard daemon process ~~~
     let mut child = Command::new(current_exe)
-        .arg(DAEMON_FLAG)
+        .args(&args[1..])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .current_dir("/") // Set the current directory to root
         .spawn()
         .context("Failed to launch clipboard daemon process")?;
 
-    // Write the content to the daemon's standard input
+    // ~~~ Write the content to the daemon's standard input ~~~
     if let Some(mut stdin) = child.stdin.take() {
         use std::io::Write;
         stdin

@@ -12,7 +12,7 @@ use code2prompt::{
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
-use log::{debug, error};
+use log::{debug, error, info};
 use serde_json::json;
 use std::path::PathBuf;
 
@@ -121,12 +121,14 @@ struct Cli {
 
 fn main() -> Result<()> {
     env_logger::init();
+    info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
     let args = Cli::parse();
 
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
     {
         if args.clipboard_daemon {
+            info! {"Serving clipboard daemon..."};
             serve_clipboard_daemon()?;
             return Ok(());
         }

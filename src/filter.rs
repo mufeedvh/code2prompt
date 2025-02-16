@@ -1,8 +1,8 @@
 //! This module contains the logic for filtering files based on include and exclude patterns.
 
 use colored::*;
-use globset::{Glob, GlobSetBuilder, GlobSet};
-use log::{info, warn, debug};
+use globset::{Glob, GlobSet, GlobSetBuilder};
+use log::{debug, warn};
 use std::path::Path;
 
 /// Constructs a `GlobSet` from a list of glob patterns.
@@ -23,11 +23,12 @@ fn build_globset(patterns: &[String]) -> GlobSet {
 
     for pattern in patterns {
         // If the pattern does not contain a '/' or the platform’s separator, prepend "**/"
-        let normalized_pattern = if !pattern.contains('/') && !pattern.contains(std::path::MAIN_SEPARATOR) {
-            format!("**/{}", pattern)
-        } else {
-            pattern.clone()
-        };
+        let normalized_pattern =
+            if !pattern.contains('/') && !pattern.contains(std::path::MAIN_SEPARATOR) {
+                format!("**/{}", pattern)
+            } else {
+                pattern.clone()
+            };
 
         match Glob::new(&normalized_pattern) {
             Ok(glob) => {
@@ -42,8 +43,6 @@ fn build_globset(patterns: &[String]) -> GlobSet {
 
     builder.build().expect("❌ Impossible to build GlobSet")
 }
-
-
 
 /// Determines whether a file should be included based on include and exclude patterns.
 ///
@@ -63,7 +62,6 @@ pub fn should_include_file(
     exclude_patterns: &[String],
     include_priority: bool,
 ) -> bool {
-
     // ~~~ Initialization ~~~
     let include_globset = build_globset(include_patterns);
     let exclude_globset = build_globset(exclude_patterns);
@@ -80,7 +78,7 @@ pub fn should_include_file(
         (false, false) => include_patterns.is_empty(), // If no include patterns are provided, include everything
     };
 
-    info!(
+    debug!(
         "Result: {}, {}: {}, {}: {}, Path: {:?}",
         result,
         "included".bold().green(),
