@@ -130,6 +130,7 @@ fn main() -> Result<()> {
         if args.clipboard_daemon {
             info! {"Serving clipboard daemon..."};
             serve_clipboard_daemon()?;
+            info! {"Shutting down gracefully..."};
             return Ok(());
         }
     }
@@ -290,6 +291,13 @@ fn main() -> Result<()> {
         #[cfg(target_os = "linux")]
         {
             spawn_clipboard_daemon(&rendered)?;
+            println!(
+                "{}{}{} {}",
+                "[".bold().white(),
+                "✓".bold().green(),
+                "]".bold().white(),
+                "Copied to clipboard successfully.".green()
+            );
         }
         #[cfg(not(target_os = "linux"))]
         {

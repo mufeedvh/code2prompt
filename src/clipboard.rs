@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use arboard::{Clipboard, LinuxClipboardKind};
-use colored::*;
 use log::info;
 use std::process::{Command, Stdio};
 
@@ -98,13 +97,5 @@ pub fn serve_clipboard_daemon() -> anyhow::Result<()> {
         .wait()
         .text(content_from_stdin)
         .context("Failed to set clipboard content")?;
-
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Copied to clipboard successfully.".green()
-    );
     Ok(())
 }
