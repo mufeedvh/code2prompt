@@ -291,13 +291,6 @@ fn main() -> Result<()> {
         #[cfg(target_os = "linux")]
         {
             spawn_clipboard_daemon(&rendered)?;
-            println!(
-                "{}{}{} {}",
-                "[".bold().white(),
-                "✓".bold().green(),
-                "]".bold().white(),
-                "Copied to clipboard successfully.".green()
-            );
         }
         #[cfg(not(target_os = "linux"))]
         {

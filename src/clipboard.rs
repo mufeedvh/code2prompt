@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use arboard::{Clipboard, LinuxClipboardKind};
+use colored::*;
 use log::info;
 use std::process::{Command, Stdio};
 
@@ -69,6 +70,13 @@ pub fn spawn_clipboard_daemon(content: &str) -> anyhow::Result<()> {
             .context("Failed to write content to clipboard daemon process")?;
     }
     info!("Clipboard daemon launched successfully");
+    println!(
+        "{}{}{} {}",
+        "[".bold().white(),
+        "✓".bold().green(),
+        "]".bold().white(),
+        "Copied to clipboard successfully.".green()
+    );
     Ok(())
 }
 
