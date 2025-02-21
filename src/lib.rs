@@ -9,7 +9,7 @@ pub mod token;
 pub mod util;
 
 #[cfg(target_os = "linux")]
-pub use clipboard::{copy_text_to_clipboard, serve_clipboard_daemon, spawn_clipboard_daemon};
+pub use clipboard::{serve_clipboard_daemon, spawn_clipboard_daemon};
 
 pub use clipboard::copy_text_to_clipboard;
 pub use filter::should_include_file;
