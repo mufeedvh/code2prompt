@@ -7,8 +7,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use code2prompt::{
     get_git_diff, get_git_diff_between_branches, get_git_log, get_model_info, get_tokenizer,
-    handle_undefined_variables, handlebars_setup, label, render_template, serve_clipboard_daemon,
-    spawn_clipboard_daemon, traverse_directory, write_to_file, FileSortMethod,
+    handle_undefined_variables, handlebars_setup, label, render_template, traverse_directory,
+    write_to_file, FileSortMethod,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -23,8 +23,8 @@ const CUSTOM_TEMPLATE_NAME: &str = "custom";
 // CLI Arguments
 #[derive(Parser)]
 #[clap(
-    name = env!("CARGO_PKG_NAME"), 
-    version = env!("CARGO_PKG_VERSION"), 
+    name = env!("CARGO_PKG_NAME"),
+    version = env!("CARGO_PKG_VERSION"),
     author = env!("CARGO_PKG_AUTHORS")
 )]
 #[command(arg_required_else_help = true)]
@@ -127,6 +127,7 @@ fn main() -> Result<()> {
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
     {
+        use code2prompt::serve_clipboard_daemon;
         if args.clipboard_daemon {
             info! {"Serving clipboard daemon..."};
             serve_clipboard_daemon()?;
@@ -290,12 +291,13 @@ fn main() -> Result<()> {
     if !args.no_clipboard {
         #[cfg(target_os = "linux")]
         {
+            use code2prompt::spawn_clipboard_daemon;
             spawn_clipboard_daemon(&rendered)?;
         }
         #[cfg(not(target_os = "linux"))]
         {
             use code2prompt::copy_text_to_clipboard;
-            match copy_to_clipboard(&rendered) {
+            match copy_text_to_clipboard(&rendered) {
                 Ok(_) => {
                     println!(
                         "{}{}{} {}",

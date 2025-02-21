@@ -8,7 +8,10 @@ pub mod template;
 pub mod token;
 pub mod util;
 
-pub use clipboard::{copy_text_to_clipboard, serve_clipboard_daemon, spawn_clipboard_daemon};
+#[cfg(target_os = "linux")]
+pub use clipboard::{serve_clipboard_daemon, spawn_clipboard_daemon};
+
+pub use clipboard::copy_text_to_clipboard;
 pub use filter::should_include_file;
 pub use git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 pub use path::{label, traverse_directory};

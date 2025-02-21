@@ -1,8 +1,5 @@
 use anyhow::{Context, Result};
-use arboard::{Clipboard, LinuxClipboardKind};
-use colored::*;
-use log::info;
-use std::process::{Command, Stdio};
+use arboard::Clipboard;
 
 /// Copies the provided text to the system clipboard.
 ///
@@ -29,8 +26,36 @@ pub fn copy_text_to_clipboard(rendered: &str) -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-use arboard::SetExtLinux;
+/// Entry point for the clipboard daemon process on Linux.
+///
+/// This function reads clipboard content from its standard input, sets it as the system clipboard,
+/// and then waits to serve clipboard requests. This ensures that the clipboard content remains available
+/// even after the main application exits. The daemon will exit automatically once the clipboard is overwritten.
+///
+/// # Returns
+///
+/// * `Result<()>` - Returns Ok on success or an error if clipboard operations fail.
+pub fn serve_clipboard_daemon() -> anyhow::Result<()> {
+    use arboard::{Clipboard, LinuxClipboardKind, SetExtLinux};
+    use std::io::Read;
+    // Read content from stdin
+    let mut content_from_stdin = String::new();
+    std::io::stdin()
+        .read_to_string(&mut content_from_stdin)
+        .context("Failed to read from stdin")?;
+    // Initialize the clipboard
+    let mut clipboard = Clipboard::new().context("Failed to initialize clipboard")?;
+    // Explicitly set the clipboard selection to Clipboard (not Primary)
+    clipboard
+        .set()
+        .clipboard(LinuxClipboardKind::Clipboard)
+        .wait()
+        .text(content_from_stdin)
+        .context("Failed to set clipboard content")?;
+    Ok(())
+}
 
+#[cfg(target_os = "linux")]
 /// Spawns a daemon process to maintain clipboard content on Linux.
 ///
 /// On Linux (Wayland/X11), the clipboard content is owned by the process that defined it.
@@ -47,6 +72,10 @@ use arboard::SetExtLinux;
 /// * `Result<()>` - Returns Ok if the daemon process was spawned and the content was sent successfully,
 ///   or an error if the process could not be launched or written to.
 pub fn spawn_clipboard_daemon(content: &str) -> anyhow::Result<()> {
+    use colored::*;
+    use log::info;
+    use std::process::{Command, Stdio};
+
     // ~~~ Setting up the command to run the daemon ~~~
     let current_exe: std::path::PathBuf =
         std::env::current_exe().context("Failed to get current executable path")?;
@@ -77,33 +106,5 @@ pub fn spawn_clipboard_daemon(content: &str) -> anyhow::Result<()> {
         "]".bold().white(),
         "Copied to clipboard successfully.".green()
     );
-    Ok(())
-}
-
-/// Entry point for the clipboard daemon process on Linux.
-///
-/// This function reads clipboard content from its standard input, sets it as the system clipboard,
-/// and then waits to serve clipboard requests. This ensures that the clipboard content remains available
-/// even after the main application exits. The daemon will exit automatically once the clipboard is overwritten.
-///
-/// # Returns
-///
-/// * `Result<()>` - Returns Ok on success or an error if clipboard operations fail.
-pub fn serve_clipboard_daemon() -> anyhow::Result<()> {
-    use std::io::Read;
-    // Read content from stdin
-    let mut content_from_stdin = String::new();
-    std::io::stdin()
-        .read_to_string(&mut content_from_stdin)
-        .context("Failed to read from stdin")?;
-    // Initialize the clipboard
-    let mut clipboard = arboard::Clipboard::new().context("Failed to initialize clipboard")?;
-    // Explicitly set the clipboard selection to Clipboard (not Primary)
-    clipboard
-        .set()
-        .clipboard(LinuxClipboardKind::Clipboard)
-        .wait()
-        .text(content_from_stdin)
-        .context("Failed to set clipboard content")?;
     Ok(())
 }
