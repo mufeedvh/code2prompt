@@ -1,15 +1,36 @@
-# code2prompt
+<h1>Code2prompt</h1>
 
-[![crates.io](https://img.shields.io/crates/v/code2prompt.svg)](https://crates.io/crates/code2prompt)
-[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
+Convert your codebase into a single LLM prompt !
 
 <h1 align="center">
   <a href="https://github.com/mufeedvh/code2prompt"><img src=".assets/code2prompt-screenshot.png" alt="code2prompt"></a>
 </h1>
 
-`code2prompt` is a command-line tool (CLI) that converts your codebase into a single LLM prompt with a source tree, prompt templating, and token counting.
+<hr />
 
-## Table of Contents
+<p align="center">
+  Want to engage with us ? Join our <a href="https://discord.com/invite/rE4GFg9A">Discord</a> channel!<br>
+  <i>Stay updated on new features</i> 📢<br>
+  <i>Give your insight and suggestion</i> 💬<br>
+  <i>Get help with configuration and usage</i> 🛠️<br>
+  <i>Report Bug</i> 🐛<br>
+</p>
+
+<hr />
+
+[![crates.io](https://img.shields.io/crates/v/code2prompt.svg)](https://crates.io/crates/code2prompt)
+[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/user/repo/pulls)
+[![Lines of Code](https://tokei.rs/b1/github/mufeedvh/code2prompt)](https://github.com/mufeedvh/code2prompt)
+[![Discord](https://img.shields.io/discord/123456789?logo=discord)](https://discord.gg/zxVMKtsFbK)
+
+<hr />
+
+## Documentation 📚
+
+Check our online [documentation](https://odancona.github.io/code2prompt/) for usage
+
+## Table of Contents ⛩️
 
 - [Features](#features)
 - [Installation](#installation)
@@ -20,7 +41,6 @@
 - [Python SDK](#python-sdk)
 - [Contribution](#contribution)
 - [License](#license)
-- [Support The Author](#support-the-author)
 
 ## Features
 
@@ -312,4 +332,4 @@ Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2pr
 
 ## Liked the project?
 
-If you liked the project and found it useful, please give it a :star: and consider supporting the authors!
+If you liked the project and found it useful, please give it a :star: !
