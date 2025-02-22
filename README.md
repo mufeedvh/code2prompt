@@ -9,7 +9,7 @@ Convert your codebase into a single LLM prompt !
 <hr />
 
 <p align="center">
-  Want to engage with us ? Join our <a href="https://discord.com/invite/rE4GFg9A">Discord</a> channel!<br>
+  Want to engage with us ? Join our <a href="https://discord.com/invite/zxVMKtsFbK">Discord</a> channel!<br>
   <i>Stay updated on new features</i> 📢<br>
   <i>Give your insight and suggestion</i> 💬<br>
   <i>Get help with configuration and usage</i> 🛠️<br>
@@ -22,7 +22,7 @@ Convert your codebase into a single LLM prompt !
 [![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/user/repo/pulls)
 [![Lines of Code](https://tokei.rs/b1/github/mufeedvh/code2prompt)](https://github.com/mufeedvh/code2prompt)
-[![Discord](https://img.shields.io/discord/123456789?logo=discord)](https://discord.gg/zxVMKtsFbK)
+[![Discord](https://img.shields.io/discord/1342336677905039451?logo=discord)](https://discord.com/invite/zxVMKtsFbK)
 
 <hr />
 
