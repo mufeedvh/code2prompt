@@ -3,10 +3,11 @@ use pyo3::types::PyDict;
 use std::path::PathBuf;
 
 use crate::{
+    count_tokens,
     git::{get_git_diff, get_git_diff_between_branches, get_git_log},
     path::traverse_directory,
     template::{handlebars_setup, render_template},
-    token::{get_model_info, get_tokenizer},
+    TokenizerType,
 };
 
 /// Python module for code2prompt
@@ -135,22 +136,24 @@ impl CodePrompt {
             let rendered = render_template(&handlebars, "template", &data)
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
-            // Count tokens if encoding is provided
-            let token_count = if let Some(enc) = &encoding {
-                let bpe = get_tokenizer(&Some(enc.to_string()));
-                bpe.encode_with_special_tokens(&rendered).len()
-            } else {
-                0
-            };
+            // Select tokenizer type
+            let tokenizer_type = encoding
+                .as_deref()
+                .unwrap_or("cl100k")
+                .parse::<TokenizerType>()
+                .unwrap_or(TokenizerType::Cl100kBase); // Fallback to `cl100k`
+
+            let model_info = tokenizer_type.description();
+
+            // Count tokens
+            let token_count = count_tokens(&rendered, &tokenizer_type);
 
             // Create return dictionary
             let result = PyDict::new(py);
             result.set_item("prompt", rendered)?;
             result.set_item("directory", self.path.display().to_string())?;
             result.set_item("token_count", token_count)?;
-            if let Some(enc) = &encoding {
-                result.set_item("model_info", get_model_info(&Some(enc.to_string())))?;
-            }
+            result.set_item("model_info", model_info)?;
 
             Ok(result.into())
         })

@@ -1,14 +1,13 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 //!
-//! Author: Mufeed VH (@mufeedvh)
-//! Contributor: Olivier D'Ancona (@ODAncona)
+//! Authors: Mufeed VH (@mufeedvh), Olivier D'Ancona (@ODAncona)
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use code2prompt::{
-    get_git_diff, get_git_diff_between_branches, get_git_log, get_model_info, get_tokenizer,
+    count_tokens, get_git_diff, get_git_diff_between_branches, get_git_log,
     handle_undefined_variables, handlebars_setup, label, render_template, traverse_directory,
-    write_to_file, FileSortMethod,
+    write_to_file, FileSortMethod, TokenFormat, TokenizerType,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -50,9 +49,10 @@ struct Cli {
     #[clap(long)]
     exclude_from_tree: bool,
 
-    /// Display the token count of the generated prompt
-    #[clap(long)]
-    tokens: bool,
+    /// Display the token count of the generated prompt.
+    /// Accepts a format: "raw" (machine parsable) or "format" (human readable).
+    #[clap(long, value_name = "FORMAT", default_value = "format")]
+    tokens: TokenFormat,
 
     /// Optional tokenizer to use for token count
     ///
@@ -137,6 +137,7 @@ fn main() -> Result<()> {
         }
     }
 
+    // ~~~ Initialization ~~~
     // Handlebars Template Setup
     let (template_content, template_name) = get_template(&args)?;
     let handlebars = handlebars_setup(&template_content, template_name)?;
@@ -161,7 +162,7 @@ fn main() -> Result<()> {
         None => None,
     };
 
-    // Traverse the directory
+    // ~~~ Traverse the directory ~~~
     let create_tree = traverse_directory(
         &args.path,
         &include_patterns,
@@ -248,14 +249,32 @@ fn main() -> Result<()> {
     // Render the template
     let rendered = render_template(&handlebars, template_name, &data)?;
 
-    // Display Token Count
-    let token_count = if args.tokens {
-        let bpe = get_tokenizer(&args.encoding);
-        bpe.encode_with_special_tokens(&rendered).len()
-    } else {
-        0
+    // ~~~ Token Count ~~~
+    let tokenizer_type = args
+        .encoding
+        .as_deref()
+        .unwrap_or("cl100k")
+        .parse::<TokenizerType>()
+        .unwrap_or(TokenizerType::Cl100kBase);
+
+    let token_count = count_tokens(&rendered, &tokenizer_type);
+    let model_info = tokenizer_type.description();
+
+    let formatted_token_count: String = match args.tokens {
+        TokenFormat::Raw => token_count.to_string(),
+        TokenFormat::Format => token_count.to_formatted_string(&SystemLocale::default().unwrap()),
     };
 
+    println!(
+        "{}{}{} Token count: {}, Model info: {}",
+        "[".bold().white(),
+        "i".bold().blue(),
+        "]".bold().white(),
+        formatted_token_count,
+        model_info
+    );
+
+    // ~~~ Output ~~~
     let paths: Vec<String> = files
         .iter()
         .filter_map(|file| {
@@ -264,8 +283,6 @@ fn main() -> Result<()> {
                 .map(|s| s.to_string())
         })
         .collect();
-
-    let model_info = get_model_info(&args.encoding);
 
     if args.json {
         let json_output = json!({
@@ -277,20 +294,9 @@ fn main() -> Result<()> {
         });
         println!("{}", serde_json::to_string_pretty(&json_output)?);
         return Ok(());
-    } else if args.tokens {
-        let formatted_token_count =
-            token_count.to_formatted_string(&SystemLocale::default().unwrap());
-        println!(
-            "{}{}{} Token count: {}, Model info: {}",
-            "[".bold().white(),
-            "i".bold().blue(),
-            "]".bold().white(),
-            formatted_token_count.bold().yellow(),
-            model_info
-        );
     }
 
-    // Copy to Clipboard
+    // ~~~ Copy to Clipboard ~~~
     if !args.no_clipboard {
         #[cfg(target_os = "linux")]
         {
@@ -324,7 +330,7 @@ fn main() -> Result<()> {
         }
     }
 
-    // Output File
+    // ~~~ Output File ~~~
     if let Some(output_path) = &args.output {
         write_to_file(output_path, &rendered)?;
     }
