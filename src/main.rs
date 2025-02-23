@@ -13,9 +13,9 @@ use code2prompt::{
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
+use num_format::{SystemLocale, ToFormattedString};
 use serde_json::json;
 use std::path::PathBuf;
-use num_format::{Locale, ToFormattedString};
 
 // Constants
 const DEFAULT_TEMPLATE_NAME: &str = "default";
@@ -35,11 +35,11 @@ struct Cli {
     path: PathBuf,
 
     /// Patterns to include
-    #[clap(long)]
+    #[clap(short = 'i', long)]
     include: Option<String>,
 
     /// Patterns to exclude
-    #[clap(long)]
+    #[clap(short = 'e', long)]
     exclude: Option<String>,
 
     /// Include files in case of conflict between include and exclude patterns
@@ -278,7 +278,8 @@ fn main() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&json_output)?);
         return Ok(());
     } else if args.tokens {
-        let formatted_token_count = token_count.to_formatted_string(&Locale::en);
+        let formatted_token_count =
+            token_count.to_formatted_string(&SystemLocale::default().unwrap());
         println!(
             "{}{}{} Token count: {}, Model info: {}",
             "[".bold().white(),

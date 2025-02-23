@@ -45,7 +45,8 @@ env_logger = "0.11.3"
 arboard = "3.4.0"
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py312", "generate-import-lib"] }
 globset = "0.4.15"
-num-format = "0.4"
+num-format = { version = "0.4.4", features = ["with-system-locale"] }
+
 
 [profile.release]
 lto = "thin"

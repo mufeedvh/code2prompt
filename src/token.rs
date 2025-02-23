@@ -1,8 +1,8 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
 
 use colored::*;
+use num_format::{SystemLocale, ToFormattedString};
 use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
-use num_format::{Locale, ToFormattedString};
 
 /// Returns the appropriate tokenizer based on the provided encoding.
 ///
@@ -70,7 +70,7 @@ pub fn count_tokens(rendered: &str, encoding: &Option<String>) {
     };
 
     let token_count = bpe.unwrap().encode_with_special_tokens(rendered).len();
-    let formatted_token_count = token_count.to_formatted_string(&Locale::en);
+    let formatted_token_count = token_count.to_formatted_string(&SystemLocale::default().unwrap());
 
     println!(
         "{}{}{} Token count: {}, Model info: {}",
