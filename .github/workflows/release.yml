@@ -1,0 +1,110 @@
+# Build and publish release on tags push
+
+name: Code2prompt Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
+    runs-on: ${{ matrix.os }}
+    outputs:
+      asset-path: ${{ steps.set_asset.outputs.asset-path }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Install extra dependencies on Ubuntu
+        if: runner.os == 'Linux'
+        run: |
+          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # Packaging for Windows (PowerShell)
+      - name: Package Binary (Windows)
+        if: runner.os == 'Windows'
+        id: package_windows
+        shell: pwsh
+        run: |
+          $BIN_DIR = "target/${{ matrix.target }}/release"
+          $BIN_NAME = "code2prompt"
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Copy-Item "$BIN_DIR\$BIN_NAME.exe" "release/${BIN_NAME}-${{ matrix.target }}.exe"
+          # Enregistrer le chemin de l'artefact dans un fichier
+          Set-Content -Path asset_windows.txt -Value "release/${BIN_NAME}-${{ matrix.target }}.exe"
+
+      # Packaging for Linux/macOS (bash)
+      - name: Package Binary (Unix)
+        if: runner.os != 'Windows'
+        id: package_unix
+        shell: bash
+        run: |
+          BIN_DIR=target/${{ matrix.target }}/release
+          BIN_NAME=code2prompt
+          mkdir -p release
+          cp "$BIN_DIR/$BIN_NAME" "release/${BIN_NAME}-${{ matrix.target }}"
+          echo "release/${BIN_NAME}-${{ matrix.target }}" > asset_unix.txt
+
+      # Get Artifact's path according to OS and defines it as output
+      - name: Set asset output
+        id: set_asset
+        shell: bash
+        run: |
+          if [ -f asset_windows.txt ]; then
+            ASSET_PATH=$(cat asset_windows.txt)
+          else
+            ASSET_PATH=$(cat asset_unix.txt)
+          fi
+          echo "Asset path: $ASSET_PATH"
+          echo "::set-output name=asset-path::$ASSET_PATH"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-${{ matrix.target }}
+          path: ${{ steps.set_asset.outputs.asset-path }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release and upload assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref }}
+          body: "Automatically generated release for ${{ github.ref }}"
+          files: |
+            artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
