@@ -15,6 +15,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
 use serde_json::json;
 use std::path::PathBuf;
+use num_format::{Locale, ToFormattedString};
 
 // Constants
 const DEFAULT_TEMPLATE_NAME: &str = "default";
@@ -277,12 +278,13 @@ fn main() -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&json_output)?);
         return Ok(());
     } else if args.tokens {
+        let formatted_token_count = token_count.to_formatted_string(&Locale::en);
         println!(
             "{}{}{} Token count: {}, Model info: {}",
             "[".bold().white(),
             "i".bold().blue(),
             "]".bold().white(),
-            token_count.to_string().bold().yellow(),
+            formatted_token_count.bold().yellow(),
             model_info
         );
     }
