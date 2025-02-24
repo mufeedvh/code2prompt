@@ -44,18 +44,23 @@ fn build_globset(patterns: &[String]) -> GlobSet {
     builder.build().expect("❌ Impossible to build GlobSet")
 }
 
-/// Determines whether a file should be included based on include and exclude patterns.
+/// Determines whether a file should be included based on the provided glob patterns.
+///
+/// Note: The `path` argument must be a relative path (i.e. relative to the base directory)
+/// for the patterns to match as expected. Absolute paths will not yield correct matching.
 ///
 /// # Arguments
 ///
-/// * `path` - The path to the file to be checked.
-/// * `include_patterns` - A slice of strings representing the include patterns.
-/// * `exclude_patterns` - A slice of strings representing the exclude patterns.
-/// * `include_priority` - A boolean indicating whether to give priority to include patterns if both include and exclude patterns match.
+/// * `path` - A relative path to the file that will be checked against the patterns.
+/// * `include_patterns` - A slice of glob pattern strings specifying which files to include.
+///                        If empty, all files are considered included unless excluded.
+/// * `exclude_patterns` - A slice of glob pattern strings specifying which files to exclude.
+/// * `include_priority` - A boolean flag that, when set to `true`, gives include patterns
+///                        precedence over exclude patterns in cases where both match.
 ///
 /// # Returns
 ///
-/// * `bool` - `true` if the file should be included, `false` otherwise.
+/// * `bool` - Returns `true` if the file should be included; otherwise, returns `false`.
 pub fn should_include_file(
     path: &Path,
     include_patterns: &[String],
