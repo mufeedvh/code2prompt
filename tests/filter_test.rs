@@ -1,6 +1,6 @@
 /// This file tests the filter logic
 /// Code2prompt uses the file globbing and globpattern to match files
-/// Therefore you can match files: 
+/// Therefore you can match files:
 use code2prompt::filter::should_include_file;
 use colored::*;
 use once_cell::sync::Lazy;
@@ -115,7 +115,7 @@ mod tests {
             ));
         }
     }
-    
+
     // ¬Include && Exclude
     #[test]
     fn test_no_include_exclude_path() {
@@ -148,6 +148,56 @@ mod tests {
             &exclude_patterns,
             include_priority
         ));
+    }
+
+    #[test]
+    fn test_no_include_exclude_path_patterns() {
+        let base_path = TEST_DIR.path();
+
+        let include_patterns = vec![];
+        let exclude_patterns = vec!["lowercase/{*.txt,*.py}".to_string()];
+        let include_priority = false;
+
+        // ~~~ Must be excluded ~~~
+        for file in [
+            "lowercase/qux.txt",
+            "lowercase/corge.txt",
+            "lowercase/grault.txt",
+            "lowercase/foo.py",
+            "lowercase/bar.py",
+            "lowercase/baz.py",
+        ] {
+            let path = base_path.join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+
+            assert!(!should_include_file(
+                &relative_path,
+                &include_patterns,
+                &exclude_patterns,
+                include_priority
+            ));
+        }
+
+        // ~~~ Must be included ~~~
+        for file in [
+            "uppercase/QUX.txt",
+            "uppercase/CORGE.txt",
+            "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
+            "uppercase/FOO.py",
+            "uppercase/BAR.py",
+            "uppercase/BAZ.py",
+        ] {
+            let path = base_path.join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+
+            assert!(should_include_file(
+                &relative_path,
+                &include_patterns,
+                &exclude_patterns,
+                include_priority
+            ));
+        }
     }
 
     #[test]
@@ -248,11 +298,7 @@ mod tests {
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
-        for file in [
-            "lowercase/foo.py",
-            "lowercase/bar.py",
-            "lowercase/qux.txt",
-        ] {
+        for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/qux.txt"] {
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
@@ -335,12 +381,7 @@ mod tests {
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
-        for file in [
-            "src/filter.rs",
-            "src/git.rs",
-            "src/lib.rs",
-            "src/token.rs",
-        ] {
+        for file in ["src/filter.rs", "src/git.rs", "src/lib.rs", "src/token.rs"] {
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
@@ -358,7 +399,56 @@ mod tests {
             &exclude_patterns,
             include_priority
         ));
-        
+    }
+
+    #[test]
+    fn test_include_no_exclude_by_path_pattern() {
+        let base_path = TEST_DIR.path();
+
+        let include_patterns = vec!["lowercase/*.txt".to_string(), "lowercase/*.py".to_string()];
+        let exclude_patterns = vec![];
+        let include_priority = false;
+
+        // ~~~ Must be included ~~~
+        for file in [
+            "lowercase/qux.txt",
+            "lowercase/corge.txt",
+            "lowercase/grault.txt",
+            "lowercase/foo.py",
+            "lowercase/bar.py",
+            "lowercase/baz.py",
+        ] {
+            let path = base_path.join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+
+            assert!(should_include_file(
+                &relative_path,
+                &include_patterns,
+                &exclude_patterns,
+                include_priority
+            ));
+        }
+
+        // ~~~ Must be excluded ~~~
+        for file in [
+            "uppercase/QUX.txt",
+            "uppercase/CORGE.txt",
+            "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
+            "uppercase/FOO.py",
+            "uppercase/BAR.py",
+            "uppercase/BAZ.py",
+        ] {
+            let path = base_path.join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+
+            assert!(!should_include_file(
+                &relative_path,
+                &include_patterns,
+                &exclude_patterns,
+                include_priority
+            ));
+        }
     }
 
     #[test]
@@ -370,11 +460,7 @@ mod tests {
         let include_priority = true;
 
         // ~~~ Must be included ~~~
-        for file in [
-            "lowercase/foo.py",
-            "lowercase/bar.py",
-            "lowercase/qux.txt",
-        ] {
+        for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/qux.txt"] {
             let path = base_path.join(file);
             assert!(should_include_file(
                 &path,
@@ -579,15 +665,15 @@ mod tests {
             ));
         }
     }
-    
+
     #[test]
     fn test_include_exclude_priority_include() {
         let base_path = TEST_DIR.path();
-    
+
         let include_patterns = vec!["**/*.py".to_string()];
         let exclude_patterns = vec!["**/uppercase/*".to_string()];
         let include_priority = true;
-    
+
         // ~~~ Must be included ~~~ priority
         for file in ["lowercase/foo.py", "uppercase/FOO.py"] {
             let path = base_path.join(file);
@@ -598,9 +684,13 @@ mod tests {
                 include_priority
             ));
         }
-    
+
         // ~~~ Must be excluded ~~~
-        for file in ["lowercase/qux.txt", "uppercase/QUX.txt", ".secret/secret.txt"] {
+        for file in [
+            "lowercase/qux.txt",
+            "uppercase/QUX.txt",
+            ".secret/secret.txt",
+        ] {
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
@@ -632,7 +722,7 @@ mod tests {
         }
 
         // ~~~ Must be excluded ~~~ priority
-        for file in ["uppercase/FOO.py", "uppercase/BAR.py",".secret/secret.txt"] {
+        for file in ["uppercase/FOO.py", "uppercase/BAR.py", ".secret/secret.txt"] {
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
@@ -642,5 +732,4 @@ mod tests {
             ));
         }
     }
-
 }

@@ -51,11 +51,19 @@ pub fn traverse_directory(
         .follow_links(follow_symlinks)
         .build()
         .filter_map(|entry| match entry {
-            Ok(entry)
+            Ok(entry) => {
+                // Convert to a relative path using the canonical root as the base.
+                let relative_path = entry
+                    .path()
+                    .strip_prefix(&canonical_root_path)
+                    .unwrap_or(entry.path());
                 if full_directory_tree
-                    || should_include_file(entry.path(), include, exclude, include_priority) =>
-            {
-                Some(entry)
+                    || should_include_file(relative_path, include, exclude, include_priority)
+                {
+                    Some(entry)
+                } else {
+                    None
+                }
             }
             _ => None,
         })
