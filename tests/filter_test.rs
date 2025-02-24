@@ -405,7 +405,8 @@ mod tests {
     fn test_include_no_exclude_by_path_pattern() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["lowercase/*.txt".to_string(), "lowercase/*.py".to_string()];
+        // let include_patterns = vec!["lowercase/*.txt".to_string(), "lowercase/*.py".to_string()];
+        let include_patterns = vec!["lowercase/{*.txt,*.py}".to_string()];
         let exclude_patterns = vec![];
         let include_priority = false;
 
