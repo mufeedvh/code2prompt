@@ -53,9 +53,9 @@ struct Cli {
     #[clap(short, long)]
     template: Option<PathBuf>,
 
-    /// Exclude files/folders from the source tree based on exclude patterns
+    /// List the full directory tree
     #[clap(long)]
-    exclude_from_tree: bool,
+    full_directory_tree: bool,
 
     /// Optional tokenizer to use for token count
     ///
@@ -163,7 +163,7 @@ fn main() -> Result<()> {
         args.include_priority,
         args.line_number,
         args.relative_paths,
-        args.exclude_from_tree,
+        args.full_directory_tree,
         args.no_codeblock,
         args.follow_symlinks,
         args.hidden,
