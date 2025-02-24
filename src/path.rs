@@ -32,7 +32,7 @@ pub fn traverse_directory(
     include_priority: bool,
     line_number: bool,
     relative_paths: bool,
-    exclude_from_tree: bool,
+    full_directory_tree: bool,
     no_codeblock: bool,
     follow_symlinks: bool,
     hidden: bool,
@@ -50,18 +50,21 @@ pub fn traverse_directory(
         .git_ignore(!no_ignore) // By default no_ignore=false, so we invert the flag
         .follow_links(follow_symlinks)
         .build()
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| should_include_file(entry.path(), include, exclude, include_priority))
+        .filter_map(|entry| match entry {
+            Ok(entry)
+                if full_directory_tree
+                    || should_include_file(entry.path(), include, exclude, include_priority) =>
+            {
+                Some(entry)
+            }
+            _ => None,
+        })
         .fold(Tree::new(parent_directory.to_owned()), |mut root, entry| {
             let path = entry.path();
             if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
                 // ~~~ Process the tree ~~~
                 let mut current_tree = &mut root;
                 for component in relative_path.components() {
-                    if exclude_from_tree {
-                        break;
-                    }
-
                     let component_str = component.as_os_str().to_string_lossy().to_string();
 
                     current_tree = if let Some(pos) = current_tree
