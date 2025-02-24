@@ -121,7 +121,7 @@ impl CodePrompt {
 
             // Setup template
             let template_content =
-                template.unwrap_or_else(|| include_str!("default_template.hbs").to_string());
+                template.unwrap_or_else(|| include_str!("default_template_md.hbs").to_string());
             let handlebars = handlebars_setup(&template_content, "template")
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 

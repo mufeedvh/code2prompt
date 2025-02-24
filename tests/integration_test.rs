@@ -92,7 +92,7 @@ mod tests {
             let mut cmd =
                 Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
             cmd.arg(&self.dir.path().to_str().unwrap())
-                .arg("--output")
+                .arg("--output-file")
                 .arg(&self.output_file)
                 .arg("--no-clipboard");
             cmd
