@@ -156,6 +156,7 @@ fn main() -> Result<()> {
     };
 
     // ~~~ Traverse the directory ~~~
+
     let create_tree = traverse_directory(
         &args.path,
         &include_patterns,
@@ -192,10 +193,10 @@ fn main() -> Result<()> {
         spinner.set_message("Generating git diff...");
         get_git_diff(&args.path).unwrap_or_default()
     } else {
-        String::new()
+        String::from("no git diff")
     };
 
-    // git diff between two branches
+    // Git diff between two branches
     let mut git_diff_branch: String = String::new();
     if let Some(branches) = &args.git_diff_branch {
         spinner.set_message("Generating git diff between two branches...");
@@ -208,7 +209,7 @@ fn main() -> Result<()> {
             .unwrap_or_default()
     }
 
-    // git log between two branches
+    // Git log between two branches
     let mut git_log_branch: String = String::new();
     if let Some(branches) = &args.git_log_branch {
         spinner.set_message("Generating git log between two branches...");

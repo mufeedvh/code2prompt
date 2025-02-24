@@ -5,38 +5,77 @@ use git2::{DiffOptions, Repository};
 use log::info;
 use std::path::Path;
 
-/// Generates a git diff for the repository at the provided path
+/// Generates a git diff for the repository at the provided path.
+///
+/// This function compares the repository's HEAD tree with the index to produce a diff of staged changes.
+/// It also checks for unstaged changes (differences between the index and the working directory) and,
+/// if found, appends a notification to the output.
+///
+/// If there are no staged changes, the function returns a message in the format:
+/// `"no diff between HEAD and index"`.
 ///
 /// # Arguments
 ///
-/// * `repo_path` - A reference to the path of the git repository
+/// * `repo_path` - A reference to the path of the git repository.
 ///
 /// # Returns
 ///
-/// * `Result<String, git2::Error>` - The generated git diff as a string or an error
+/// * `Result<String>` - On success, returns either the diff (with an appended note if unstaged changes exist)
+///   or a message indicating that there is no diff between the compared git objects.
+///   In case of error, returns an appropriate error.
 pub fn get_git_diff(repo_path: &Path) -> Result<String> {
     info!("Opening repository at path: {:?}", repo_path);
     let repo = Repository::open(repo_path).context("Failed to open repository")?;
+
     let head = repo.head().context("Failed to get repository head")?;
     let head_tree = head.peel_to_tree().context("Failed to peel to tree")?;
 
-    let diff = repo
+    // Generate diff for staged changes (HEAD vs. index)
+    let staged_diff = repo
         .diff_tree_to_index(
             Some(&head_tree),
             None,
             Some(DiffOptions::new().ignore_whitespace(true)),
         )
-        .context("Failed to generate diff")?;
+        .context("Failed to generate diff for staged changes")?;
 
-    let mut diff_text = Vec::new();
-    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-        diff_text.extend_from_slice(line.content());
-        true
-    })
-    .context("Failed to print diff")?;
+    let mut staged_diff_text = Vec::new();
+    staged_diff
+        .print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+            staged_diff_text.extend_from_slice(line.content());
+            true
+        })
+        .context("Failed to print staged diff")?;
+
+    let staged_diff_output = String::from_utf8_lossy(&staged_diff_text).into_owned();
+
+    // If there is no staged diff, return a message indicating so.
+    if staged_diff_output.trim().is_empty() {
+        return Ok("no diff between HEAD and index".to_string());
+    }
+
+    // Generate diff for unstaged changes (index vs. working directory)
+    let unstaged_diff = repo
+        .diff_index_to_workdir(None, Some(DiffOptions::new().ignore_whitespace(true)))
+        .context("Failed to generate diff for unstaged changes")?;
+
+    let mut unstaged_diff_text = Vec::new();
+    unstaged_diff
+        .print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+            unstaged_diff_text.extend_from_slice(line.content());
+            true
+        })
+        .context("Failed to print unstaged diff")?;
+
+    let unstaged_diff_output = String::from_utf8_lossy(&unstaged_diff_text).into_owned();
+
+    let mut output = staged_diff_output;
+    if !unstaged_diff_output.trim().is_empty() {
+        output.push_str("\nNote: Some changes are not staged.");
+    }
 
     info!("Generated git diff successfully");
-    Ok(String::from_utf8_lossy(&diff_text).into_owned())
+    Ok(output)
 }
 
 /// Generates a git diff between two branches for the repository at the provided path
