@@ -10,7 +10,6 @@ use serde_json::json;
 use std::fs;
 use std::path::Path;
 use termtree::Tree;
-
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
 ///
 /// # Arguments

@@ -1,11 +1,12 @@
 //! This module contains the functions to set up the Handlebars template engine and render the template with the provided data.
 //! It also includes functions for handling user-defined variables, copying the rendered output to the clipboard, and writing it to a file.
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::*;
 use handlebars::{no_escape, Handlebars};
 use inquire::Text;
 use regex::Regex;
 use std::io::Write;
+use std::str::FromStr;
 
 /// Set up the Handlebars template engine with a template string and a template name.
 ///
@@ -126,4 +127,28 @@ pub fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
         format!("Prompt written to file: {}", output_path).green()
     );
     Ok(())
+}
+
+/// Enum to represent the output format.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OutputFormat {
+    Markdown,
+    Json,
+    Xml,
+}
+
+impl FromStr for OutputFormat {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s.to_lowercase().as_str() {
+            "markdown" | "md" => Ok(OutputFormat::Markdown),
+            "json" => Ok(OutputFormat::Json),
+            "xml" => Ok(OutputFormat::Xml),
+            _ => Err(anyhow!(
+                "Invalid output format: {}. Allowed values: markdown, json, xml",
+                s
+            )),
+        }
+    }
 }
