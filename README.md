@@ -162,7 +162,7 @@ Supported tokenizers: `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
 Save the generated prompt to an output file:
 
 ```sh
-code2prompt path/to/codebase --output=output.txt
+code2prompt path/to/codebase --output-file=output.txt
 ```
 
 Print output as JSON:
