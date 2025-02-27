@@ -52,4 +52,4 @@ When you specify an `--exclude` list and/or an `--include` list, the following l
 
 Let (A) and (B) overlap. Depending on the priority, the intersection $$( A \cap B )$$ is either included or excluded based on the `include_priority` parameter.
 
-![Visual Representation of Case 4](../../../assets/filter.png)
+![Visual Representation of Case 4](../../../../../assets/filter.png)

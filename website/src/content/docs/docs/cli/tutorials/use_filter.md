@@ -5,13 +5,13 @@ description: Learn how to exclude or include files in your LLM prompts using pow
 
 # Using the Glob Pattern Filter
 
-This tutorial demonstrates how to use the **glob pattern tool** in `code2prompt` to filter and manage files based on include and exclude patterns. Glob patterns work similarly to tools like `tree` or `grep`, providing powerful filtering capabilities. Check out the [detailed explanation](../explanations/glob_pattern_tool.md) for more information.
+This tutorial demonstrates how to use the **glob pattern tool** in `code2prompt` to filter and manage files based on include and exclude patterns. Glob patterns work similarly to tools like `tree` or `grep`, providing powerful filtering capabilities. Check out the [detailed explanation](../explanations/glob_pattern_tool) for more information.
 
 ---
 
 ## Prerequisites
 
-Ensure you have `code2prompt` installed. If you haven’t installed it yet, refer to the [Installation Guide](../how_to/install.md).
+Ensure you have `code2prompt` installed. If you haven’t installed it yet, refer to the [Installation Guide](../how_to/install).
 
 ---
 
