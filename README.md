@@ -1,10 +1,23 @@
-<h1>Code2prompt</h1>
-
-Convert your codebase into a single LLM prompt !
+<div align="center">
+  <a href="https://code2prompt.dev">
+  <img align="center" width="550px" src=".assets/logo_dark_v0.0.2.svg" alt="Code2prompt"/>
+  </a>
+  <p align="center">
+  <b>Convert your codebase into a single LLM prompt !</b>
+  </p>
+</div>
 
 <h1 align="center">
-  <a href="https://github.com/mufeedvh/code2prompt"><img src=".assets/code2prompt-screenshot.png" alt="code2prompt"></a>
+  <a href="https://code2prompt.dev"><img src=".assets/CLI.png" alt="code2prompt"></a>
 </h1>
+
+<hr />
+
+[![crates.io](https://img.shields.io/crates/v/code2prompt.svg)](https://crates.io/crates/code2prompt)
+[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/user/repo/pulls)
+[![Lines of Code](https://tokei.rs/b1/github/mufeedvh/code2prompt)](https://github.com/mufeedvh/code2prompt)
+[![Discord](https://img.shields.io/discord/1342336677905039451?logo=discord)](https://discord.com/invite/zxVMKtsFbK)
 
 <hr />
 
@@ -16,15 +29,25 @@ Convert your codebase into a single LLM prompt !
   <i>Report Bug</i> 🐛<br>
 </p>
 
-<hr />
 
-[![crates.io](https://img.shields.io/crates/v/code2prompt.svg)](https://crates.io/crates/code2prompt)
-[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/user/repo/pulls)
-[![Lines of Code](https://tokei.rs/b1/github/mufeedvh/code2prompt)](https://github.com/mufeedvh/code2prompt)
-[![Discord](https://img.shields.io/discord/1342336677905039451?logo=discord)](https://discord.com/invite/zxVMKtsFbK)
+## Quick Install
 
-<hr />
+With cargo:
+
+```bash
+cargo install code2prompt
+```
+<!--
+With python:
+
+```bash
+pip install code2prompt-rs
+```
+!-->
+
+## How is it useful?
+
+`code2prompt` makes it easy to generate prompts for LLMs from your codebase. It traverses the directory, builds a tree structure, and collects information about each file. You can customize the prompt generation using Handlebars templates. The generated prompt is automatically copied to your clipboard and can also be saved to an output file. `code2prompt` helps streamline the process of creating LLM prompts for code analysis, generation, and other tasks.
 
 ## Documentation 📚
 
@@ -111,7 +134,7 @@ nix-env -iA nixpkgs.code2prompt
 nix profile install nixpkgs#code2prompt
 ```
 
-## Usage
+## Usages
 
 Generate a prompt from a codebase directory:
 
@@ -122,7 +145,7 @@ code2prompt path/to/codebase
 Use a custom Handlebars template file:
 
 ```sh
-code2prompt path/to/codebase -t path/to/template.hbs
+code2prompt path/to/codebase --template path/to/template.hbs
 ```
 
 Filter files using glob patterns:
@@ -135,12 +158,6 @@ Exclude files using glob patterns:
 
 ```sh
 code2prompt path/to/codebase --exclude="*.txt,*.md"
-```
-
-Exclude files/folders from the source tree based on exclude patterns:
-
-```sh
-code2prompt path/to/codebase --exclude="*.npy,*.wav" --exclude-from-tree
 ```
 
 Display the token count of the generated prompt:
@@ -162,13 +179,13 @@ Supported tokenizers: `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
 Save the generated prompt to an output file:
 
 ```sh
-code2prompt path/to/codebase --output=output.txt
+code2prompt path/to/codebase --output-file=output.txt
 ```
 
 Print output as JSON:
 
 ```sh
-code2prompt path/to/codebase --json
+code2prompt path/to/codebase -O json
 ```
 
 The JSON output will have the following structure:
@@ -186,13 +203,13 @@ The JSON output will have the following structure:
 Generate a Git commit message (for staged files):
 
 ```sh
-code2prompt path/to/codebase --diff -t templates/write-git-commit.hbs
+code2prompt path/to/codebase --diff --template templates/write-git-commit.hbs
 ```
 
 Generate a Pull Request with branch comparing (for staged files):
 
 ```sh
-code2prompt path/to/codebase --git-diff-branch 'main, development' --git-log-branch 'main, development' -t templates/write-github-pull-request.hbs
+code2prompt path/to/codebase --git-diff-branch 'main, development' --git-log-branch 'main, development' --template templates/write-github-pull-request.hbs
 ```
 
 Add line numbers to source code blocks:
@@ -218,13 +235,6 @@ Skip .gitignore rules:
 ```sh
 code2prompt path/to/codebase --no-ignore
 ```
-
-- Rewrite the code to another language.
-- Find bugs/security vulnerabilities.
-- Document the code.
-- Implement new features.
-
-> I initially wrote this for personal use to utilize Claude 3.0's 200K context window and it has proven to be pretty useful so I decided to open-source it!
 
 ## Templates
 
@@ -312,9 +322,14 @@ print(result["prompt"])
 
 [![Star History Chart](https://api.star-history.com/svg?repos=mufeedvh/code2prompt&type=Date)](https://star-history.com/#mufeedvh/code2prompt&Date)
 
-## How is it useful?
 
-`code2prompt` makes it easy to generate prompts for LLMs from your codebase. It traverses the directory, builds a tree structure, and collects information about each file. You can customize the prompt generation using Handlebars templates. The generated prompt is automatically copied to your clipboard and can also be saved to an output file. `code2prompt` helps streamline the process of creating LLM prompts for code analysis, generation, and other tasks.
+## License
+
+Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2prompt/blob/master/LICENSE">LICENSE</a> for more information.
+
+## Liked the project?
+
+If you liked the project and found it useful, please give it a :star: !
 
 ## Contribution
 
@@ -326,10 +341,3 @@ Ways to contribute:
 - Help me document the code
 - Spread the word
 
-## License
-
-Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2prompt/blob/master/LICENSE">LICENSE</a> for more information.
-
-## Liked the project?
-
-If you liked the project and found it useful, please give it a :star: !
