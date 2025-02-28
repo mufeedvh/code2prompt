@@ -1,12 +1,12 @@
 [project]
-name = "code2prompt-rs"
+name = "code2prompt"
 version = "3.0.0"
 description = "Python bindings for code2prompt"
 authors = [
     { name = "Mufeed VH", email = "contact@mufeedvh.com" },
     { name = "Olivier D'Ancona", email = "olivier.dancona@master.hes-so.ch" },
 ]
-dependencies = ["maturin>=1.8.2", "pytest>=8.3.4"]
+dependencies = ["maturin>=1.8.2", "pytest>=8.3.4", "pip>=25.0.1"]
 readme = "README.md"
 requires-python = ">= 3.11"
 classifiers = [
@@ -29,7 +29,7 @@ build-backend = "maturin"
 bindings = "pyo3"
 manifest-path = "Cargo.toml"
 python-source = "python-sdk"
-module-name = "code2prompt_rs"
+module-name = "code2prompt"
 features = ["pyo3/extension-module"]
 
 [tool.rye]

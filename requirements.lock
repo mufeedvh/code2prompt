@@ -16,6 +16,8 @@ maturin==1.8.2
     # via code2prompt-rs
 packaging==24.2
     # via pytest
+pip==25.0.1
+    # via code2prompt-rs
 pluggy==1.5.0
     # via pytest
 pytest==8.3.4
