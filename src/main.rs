@@ -4,117 +4,22 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use code2prompt::{
-    count_tokens, get_git_diff, get_git_diff_between_branches, get_git_log,
-    handle_undefined_variables, handlebars_setup, label, render_template, traverse_directory,
-    write_to_file, FileSortMethod, OutputFormat, TokenFormat, TokenizerType,
+use code2prompt::cli::args::Cli;
+
+use code2prompt::engine::{
+    git::{get_git_diff, get_git_diff_between_branches, get_git_log},
+    path::{label, traverse_directory},
+    sort::FileSortMethod,
+    template::{
+        handle_undefined_variables, handlebars_setup, render_template, write_to_file, OutputFormat,
+    },
+    tokenizer::{count_tokens, TokenFormat, TokenizerType},
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
 use serde_json::json;
-use std::path::PathBuf;
-
-// ~~~ CLI Arguments ~~~
-#[derive(Parser)]
-#[clap(
-    name = env!("CARGO_PKG_NAME"),
-    version = env!("CARGO_PKG_VERSION"),
-    author = env!("CARGO_PKG_AUTHORS")
-)]
-#[command(arg_required_else_help = true)]
-struct Cli {
-    /// Path to the codebase directory
-    #[arg()]
-    path: PathBuf,
-
-    /// Patterns to include
-    #[clap(short = 'i', long)]
-    include: Option<String>,
-
-    /// Patterns to exclude
-    #[clap(short = 'e', long)]
-    exclude: Option<String>,
-
-    /// Include files in case of conflict between include and exclude patterns
-    #[clap(long)]
-    include_priority: bool,
-
-    /// Optional output file path
-    #[clap(short = 'O', long = "output-file")]
-    output_file: Option<String>,
-
-    /// Output format: markdown, json, or xml
-    #[clap(short = 'F', long = "output-format", default_value = "markdown")]
-    output_format: OutputFormat,
-
-    /// Optional Path to a custom Handlebars template
-    #[clap(short, long)]
-    template: Option<PathBuf>,
-
-    /// List the full directory tree
-    #[clap(long)]
-    full_directory_tree: bool,
-
-    /// Optional tokenizer to use for token count
-    ///
-    /// Supported tokenizers: cl100k (default), p50k, p50k_edit, r50k, gpt2
-    #[clap(short = 'c', long)]
-    encoding: Option<String>,
-
-    /// Display the token count of the generated prompt.
-    /// Accepts a format: "raw" (machine parsable) or "format" (human readable).
-    #[clap(long, value_name = "FORMAT", default_value = "format")]
-    tokens: TokenFormat,
-
-    /// Include git diff
-    #[clap(short, long)]
-    diff: bool,
-
-    /// Generate git diff between two branches
-    #[clap(long, value_name = "BRANCHES")]
-    git_diff_branch: Option<String>,
-
-    /// Retrieve git log between two branches
-    #[clap(long, value_name = "BRANCHES")]
-    git_log_branch: Option<String>,
-
-    /// Add line numbers to the source code
-    #[clap(short, long)]
-    line_number: bool,
-
-    /// Use relative paths instead of absolute paths, including the parent directory
-    #[clap(long)]
-    relative_paths: bool,
-
-    /// Follow symlinks
-    #[clap(short = 'L', long)]
-    follow_symlinks: bool,
-
-    /// Include hidden directories and files
-    #[clap(long)]
-    hidden: bool,
-
-    /// Disable wrapping code inside markdown code blocks
-    #[clap(long)]
-    no_codeblock: bool,
-
-    /// Optional Disable copying to clipboard
-    #[clap(long)]
-    no_clipboard: bool,
-
-    /// Skip .gitignore rules
-    #[clap(long)]
-    no_ignore: bool,
-
-    /// Sort order for files: one of "name_asc", "name_desc", "date_asc", or "date_desc"
-    #[clap(long)]
-    sort: Option<String>,
-
-    #[arg(long, hide = true)]
-    clipboard_daemon: bool,
-}
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -124,7 +29,7 @@ fn main() -> Result<()> {
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
     {
-        use code2prompt::serve_clipboard_daemon;
+        use code2prompt::cli::clipboard::serve_clipboard_daemon;
         if args.clipboard_daemon {
             info! {"Serving clipboard daemon..."};
             serve_clipboard_daemon()?;
@@ -156,7 +61,6 @@ fn main() -> Result<()> {
     };
 
     // ~~~ Traverse the directory ~~~
-
     let create_tree = traverse_directory(
         &args.path,
         &include_patterns,
@@ -300,7 +204,7 @@ fn main() -> Result<()> {
     if !args.no_clipboard {
         #[cfg(target_os = "linux")]
         {
-            use code2prompt::spawn_clipboard_daemon;
+            use code2prompt::cli::clipboard::spawn_clipboard_daemon;
             spawn_clipboard_daemon(&rendered)?;
         }
         #[cfg(not(target_os = "linux"))]

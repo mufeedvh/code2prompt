@@ -1,4 +1,4 @@
-use code2prompt::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
+use code2prompt::engine::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 
 #[cfg(test)]
 mod tests {

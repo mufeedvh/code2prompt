@@ -1,8 +1,8 @@
 //! This module contains the functions for traversing the directory and processing the files.
 
-use crate::filter::should_include_file;
-use crate::sort::{sort_files, sort_tree, FileSortMethod};
-use crate::util::strip_utf8_bom;
+use crate::engine::filter::should_include_file;
+use crate::engine::sort::{sort_files, sort_tree, FileSortMethod};
+use crate::engine::util::strip_utf8_bom;
 use anyhow::Result;
 use ignore::WalkBuilder;
 use log::debug;

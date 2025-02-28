@@ -2,12 +2,11 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::path::PathBuf;
 
-use crate::{
-    count_tokens,
+use crate::engine::{
     git::{get_git_diff, get_git_diff_between_branches, get_git_log},
     path::traverse_directory,
     template::{handlebars_setup, render_template},
-    TokenizerType,
+    tokenizer::{count_tokens, TokenizerType},
 };
 
 /// Python module for code2prompt
@@ -121,7 +120,7 @@ impl CodePrompt {
 
             // Setup template
             let template_content =
-                template.unwrap_or_else(|| include_str!("default_template_md.hbs").to_string());
+                template.unwrap_or_else(|| include_str!("../default_template_md.hbs").to_string());
             let handlebars = handlebars_setup(&template_content, "template")
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 

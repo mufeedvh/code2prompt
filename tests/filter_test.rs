@@ -1,7 +1,7 @@
 /// This file tests the filter logic
 /// Code2prompt uses the file globbing and globpattern to match files
 /// Therefore you can match files:
-use code2prompt::filter::should_include_file;
+use code2prompt::engine::filter::should_include_file;
 use colored::*;
 use once_cell::sync::Lazy;
 use std::fs::{self, File};

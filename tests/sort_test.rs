@@ -1,4 +1,4 @@
-use code2prompt::{sort_files, sort_tree, FileSortMethod};
+use code2prompt::engine::sort::{sort_files, sort_tree, FileSortMethod};
 
 #[cfg(test)]
 mod tests {
