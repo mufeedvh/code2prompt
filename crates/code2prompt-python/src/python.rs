@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use std::path::PathBuf;
 
-use crate::{
+use code2prompt_core::{
     git::{get_git_diff, get_git_diff_between_branches, get_git_log},
     path::traverse_directory,
     template::{handlebars_setup, render_template},
@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Python module for code2prompt
-#[pymodule]
+#[pymodule(name = "code2prompt_rs")]
 fn code2prompt(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<CodePrompt>()?;
     Ok(())

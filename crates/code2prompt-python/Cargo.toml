@@ -8,5 +8,6 @@ name = "code2prompt_python"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.23", features = ["extension-module", "abi3-py312"] }
-code2prompt = { path = "../code2prompt" }
+serde_json = { workspace = true }
+code2prompt_core = { path = "../code2prompt-core" }
+pyo3 = { workspace = true }

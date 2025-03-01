@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["code2prompt-core", "code2prompt"]
+members = ["crates/*"]
+default-members = ["crates/code2prompt-core", "crates/code2prompt"]
 
 [profile.release]
 lto = "thin"
 panic = 'abort'
 codegen-units = 1
-
 
 [workspace.dependencies]
 anyhow = "1.0.80"
@@ -29,3 +29,4 @@ git2 = { version = "0.18.2", default-features = false, features = [
 ] }
 once_cell = "1.19.0"
 globset = "0.4.15"
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py312"] }
