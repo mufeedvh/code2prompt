@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
 
-use code2prompt::engine::{
+use code2prompt_core::{
     git::{get_git_diff, get_git_diff_between_branches, get_git_log},
     path::{label, traverse_directory},
     sort::FileSortMethod,

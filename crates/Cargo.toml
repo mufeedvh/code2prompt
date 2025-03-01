@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["code2prompt", "code2prompt-cli"]
+members = ["code2prompt-core", "code2prompt"]
 
 [profile.release]
 lto = "thin"

@@ -1,5 +1,5 @@
 use clap::Parser;
-use code2prompt::engine::{template::OutputFormat, tokenizer::TokenFormat};
+use code2prompt_core::{template::OutputFormat, tokenizer::TokenFormat};
 use std::path::PathBuf;
 
 // ~~~ CLI Arguments ~~~

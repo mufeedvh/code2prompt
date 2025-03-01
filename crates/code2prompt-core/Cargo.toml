@@ -1,0 +1,55 @@
+[package]
+name = "code2prompt_core"
+version = "3.0.0"
+authors = [
+    "Mufeed VH <mufeed@lyminal.space>",
+    "Olivier D'Ancona <olivier.dancona@master.hes-so.ch>",
+]
+description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
+keywords = ["code", "prompt", "llm", "gpt", "ai", "agent", "glob"]
+categories = ["command-line-utilities", "development-tools"]
+homepage = "https://code2prompt.dev"
+documentation = "https://code2prompt.dev/docs/welcome"
+repository = "https://github.com/mufeedvh/code2prompt"
+license = "MIT"
+readme = "README.md"
+exclude = [".github/*", ".assets/*"]
+edition = "2021"
+build = "build.rs"
+
+[features]
+default = []
+
+[dependencies]
+anyhow = { workspace = true }
+colored = { workspace = true }
+indicatif = { workspace = true }
+log = { workspace = true }
+num-format = { workspace = true }
+serde_json = { workspace = true }
+handlebars = { workspace = true }
+jwalk = { workspace = true }
+termtree = { workspace = true }
+tiktoken-rs = { workspace = true }
+ignore = { workspace = true }
+inquire = { workspace = true }
+regex = { workspace = true }
+git2 = { workspace = true }
+once_cell = { workspace = true }
+globset = { workspace = true }
+
+[lib]
+name = "code2prompt_core"
+path = "src/lib.rs"
+# crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
+
+[package.metadata.deb]
+section = "utility"
+assets = [["target/release/code2prompt_core", "/usr/bin/", "755"]]
+
+[dev-dependencies]
+tempfile = "3.3"
+assert_cmd = "2.0"
+predicates = "2.0"
+env_logger = "0.11.3"

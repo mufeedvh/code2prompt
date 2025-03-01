@@ -1,6 +1,4 @@
-use code2prompt::engine::template::{
-    extract_undefined_variables, handlebars_setup, render_template,
-};
+use code2prompts::template::{extract_undefined_variables, handlebars_setup, render_template};
 
 #[cfg(test)]
 mod tests {

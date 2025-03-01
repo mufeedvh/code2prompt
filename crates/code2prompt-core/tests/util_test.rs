@@ -1,4 +1,4 @@
-use code2prompt::engine::util::strip_utf8_bom;
+use code2prompt::util::strip_utf8_bom;
 
 #[cfg(test)]
 mod tests {

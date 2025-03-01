@@ -1,5 +1,5 @@
-use code2prompt::engine::path::traverse_directory;
-use code2prompt::engine::template::render_template;
+use code2prompt::path::traverse_directory;
+use code2prompt::template::render_template;
 use pyo3::prelude::*;
 
 /// A Python module implemented in Rust.

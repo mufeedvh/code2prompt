@@ -318,6 +318,22 @@ name = "code2prompt"
 version = "3.0.0"
 dependencies = [
  "anyhow",
+ "arboard",
+ "clap",
+ "code2prompt_core",
+ "colored",
+ "env_logger",
+ "indicatif",
+ "log",
+ "num-format",
+ "serde_json",
+]
+
+[[package]]
+name = "code2prompt_core"
+version = "3.0.0"
+dependencies = [
+ "anyhow",
  "assert_cmd",
  "colored",
  "env_logger",
@@ -337,22 +353,6 @@ dependencies = [
  "tempfile",
  "termtree 0.4.1",
  "tiktoken-rs",
-]
-
-[[package]]
-name = "code2prompt-cli"
-version = "3.0.0"
-dependencies = [
- "anyhow",
- "arboard",
- "clap",
- "code2prompt",
- "colored",
- "env_logger",
- "indicatif",
- "log",
- "num-format",
- "serde_json",
 ]
 
 [[package]]
