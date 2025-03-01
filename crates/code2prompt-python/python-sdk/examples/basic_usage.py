@@ -1,10 +1,10 @@
 """Example usage of the code2prompt Python SDK."""
 
-from code2prompt_rs import CodePrompt
+from code2prompt_rs import Code2Prompt
 
 def main():
-    # Create a CodePrompt instance for the current directory
-    prompt = CodePrompt(
+    # Create a Code2Prompt instance for the current directory
+    prompt = Code2Prompt(
         path=".",
         include_patterns=["*.py", "*.rs"],  # Only include Python and Rust files
         exclude_patterns=["**/tests/*"],     # Exclude test files

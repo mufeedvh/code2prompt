@@ -4,7 +4,7 @@ version = "3.0.0"
 edition = "2021"
 
 [lib]
-name = "code2prompt_python"
+name = "code2prompt_rs"
 crate-type = ["cdylib"]
 
 [dependencies]

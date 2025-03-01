@@ -11,14 +11,14 @@ use code2prompt_core::{
 
 /// Python module for code2prompt
 #[pymodule(name = "code2prompt_rs")]
-fn code2prompt(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<CodePrompt>()?;
+fn code2prompt_rs(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<Code2Prompt>()?;
     Ok(())
 }
 
 /// Main class for generating prompts from code
 #[pyclass]
-struct CodePrompt {
+struct Code2Prompt {
     path: PathBuf,
     include_patterns: Vec<String>,
     exclude_patterns: Vec<String>,
@@ -33,8 +33,8 @@ struct CodePrompt {
 }
 
 #[pymethods]
-impl CodePrompt {
-    /// Create a new CodePrompt instance
+impl Code2Prompt {
+    /// Create a new Code2Prompt instance
     ///
     /// Args:
     ///     path (str): Path to the codebase directory

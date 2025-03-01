@@ -12,7 +12,7 @@ dependencies = [
     "pip>=25.0.1",
     "patchelf>=0.17.2.1",
 ]
-readme = "README.md"
+readme = "../../README.md"
 requires-python = ">= 3.11"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -27,12 +27,12 @@ classifiers = [
 ]
 
 [build-system]
-requires = ["maturin"]
+requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [tool.maturin]
 bindings = "pyo3"
-module-name = "code2prompt"
+module-name = "code2prompt_rs"
 manifest-path = "Cargo.toml"
 python-source = "python-sdk"
 features = ["pyo3/extension-module"]
