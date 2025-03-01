@@ -1,0 +1,3 @@
+[workspace]
+members = ["code2prompt", "code2prompt-cli", "code2prompt-python"]
+resolver = "2"

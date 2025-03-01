@@ -16,6 +16,8 @@ maturin==1.8.2
     # via code2prompt-rs
 packaging==24.2
     # via pytest
+patchelf==0.17.2.1
+    # via code2prompt-rs
 pip==25.0.1
     # via code2prompt-rs
 pluggy==1.5.0

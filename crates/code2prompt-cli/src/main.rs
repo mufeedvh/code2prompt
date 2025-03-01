@@ -4,7 +4,7 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use code2prompt::cli::args::Cli;
+use code2prompt-cli::args::Cli;
 
 use code2prompt::engine::{
     git::{get_git_diff, get_git_diff_between_branches, get_git_log},
@@ -29,7 +29,7 @@ fn main() -> Result<()> {
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
     {
-        use code2prompt::cli::clipboard::serve_clipboard_daemon;
+        use code2prompt-cli::clipboard::serve_clipboard_daemon;
         if args.clipboard_daemon {
             info! {"Serving clipboard daemon..."};
             serve_clipboard_daemon()?;
@@ -204,7 +204,7 @@ fn main() -> Result<()> {
     if !args.no_clipboard {
         #[cfg(target_os = "linux")]
         {
-            use code2prompt::cli::clipboard::spawn_clipboard_daemon;
+            use code2prompt-cli::clipboard::spawn_clipboard_daemon;
             spawn_clipboard_daemon(&rendered)?;
         }
         #[cfg(not(target_os = "linux"))]

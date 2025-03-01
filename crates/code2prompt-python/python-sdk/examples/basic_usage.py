@@ -1,6 +1,6 @@
 """Example usage of the code2prompt Python SDK."""
 
-from code2prompt import CodePrompt
+from code2prompt_rs import CodePrompt
 
 def main():
     # Create a CodePrompt instance for the current directory

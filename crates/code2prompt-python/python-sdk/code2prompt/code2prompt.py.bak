@@ -1,5 +1,5 @@
 # Import the Rust module
-from code2prompt import CodePrompt as RustCodePrompt
+from code2prompt_rs import CodePrompt as RustCodePrompt
 
 class CodePrompt:
     def __init__(self, path, include_patterns=None, exclude_patterns=None, 

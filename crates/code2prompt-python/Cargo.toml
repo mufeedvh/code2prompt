@@ -1,0 +1,12 @@
+[package]
+name = "code2prompt-python"
+version = "3.0.0"
+edition = "2021"
+
+[lib]
+name = "code2prompt_python"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py312"] }
+code2prompt-core = { path = "../code2prompt-core" }
