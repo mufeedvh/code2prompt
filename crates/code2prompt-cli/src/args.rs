@@ -1,6 +1,5 @@
-use crate::engine::template::OutputFormat;
-use crate::engine::tokenizer::TokenFormat;
 use clap::Parser;
+use code2prompt::engine::{template::OutputFormat, tokenizer::TokenFormat};
 use std::path::PathBuf;
 
 // ~~~ CLI Arguments ~~~

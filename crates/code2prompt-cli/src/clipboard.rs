@@ -1,6 +1,6 @@
-use anyhow::{Context, Result};
-use arboard::Clipboard;
+use anyhow::Context;
 
+#[cfg(not(target_os = "linux"))]
 /// Copies the provided text to the system clipboard.
 ///
 /// This is a simple, one-shot copy operation suitable for non-Linux platforms
@@ -14,6 +14,8 @@ use arboard::Clipboard;
 ///
 /// * `Result<()>` - Returns Ok on success, or an error if the clipboard could not be accessed.
 pub fn copy_text_to_clipboard(rendered: &str) -> Result<()> {
+    use anyhow::Result;
+    use arboard::Clipboard;
     match Clipboard::new() {
         Ok(mut clipboard) => {
             clipboard

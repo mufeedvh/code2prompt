@@ -9,7 +9,14 @@ repository = "https://github.com/mufeedvh/code2prompt"
 [dependencies]
 code2prompt = { path = "../code2prompt" }
 clap = { version = "4.0", features = ["derive"] }
-env_logger = "0.11"
+env_logger = { version = "0.11.3" }
+arboard = { version = "3.4.0" }
+anyhow = { workspace = true }
+colored = { workspace = true }
+indicatif = { workspace = true }
+log = { workspace = true }
+num-format = { workspace = true }
+serde_json = { workspace = true }
 
 [[bin]]
 name = "code2prompt"

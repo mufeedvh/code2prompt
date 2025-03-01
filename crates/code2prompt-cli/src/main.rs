@@ -1,10 +1,12 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 //!
 //! Authors: Mufeed VH (@mufeedvh), Olivier D'Ancona (@ODAncona)
+mod args;
+mod clipboard;
 
 use anyhow::{Context, Result};
+use args::Cli;
 use clap::Parser;
-use code2prompt-cli::args::Cli;
 
 use code2prompt::engine::{
     git::{get_git_diff, get_git_diff_between_branches, get_git_log},
@@ -29,7 +31,7 @@ fn main() -> Result<()> {
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
     {
-        use code2prompt-cli::clipboard::serve_clipboard_daemon;
+        use clipboard::serve_clipboard_daemon;
         if args.clipboard_daemon {
             info! {"Serving clipboard daemon..."};
             serve_clipboard_daemon()?;
@@ -204,7 +206,7 @@ fn main() -> Result<()> {
     if !args.no_clipboard {
         #[cfg(target_os = "linux")]
         {
-            use code2prompt-cli::clipboard::spawn_clipboard_daemon;
+            use clipboard::spawn_clipboard_daemon;
             spawn_clipboard_daemon(&rendered)?;
         }
         #[cfg(not(target_os = "linux"))]
@@ -300,11 +302,11 @@ fn get_template(args: &Cli) -> Result<(String, String)> {
     } else {
         match format {
             OutputFormat::Markdown | OutputFormat::Json => Ok((
-                include_str!("default_template_md.hbs").to_string(),
+                include_str!("../../default_template_md.hbs").to_string(),
                 "markdown".to_string(),
             )),
             OutputFormat::Xml => Ok((
-                include_str!("default_template_xml.hbs").to_string(),
+                include_str!("../../default_template_xml.hbs").to_string(),
                 "xml".to_string(),
             )),
         }

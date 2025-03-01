@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py312"] }
-code2prompt-core = { path = "../code2prompt-core" }
+code2prompt = { path = "../code2prompt" }
