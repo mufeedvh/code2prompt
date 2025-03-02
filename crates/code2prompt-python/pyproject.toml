@@ -12,7 +12,6 @@ dependencies = [
     "pip>=25.0.1",
     "patchelf>=0.17.2.1",
 ]
-readme = "../../README.md"
 requires-python = ">= 3.11"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
