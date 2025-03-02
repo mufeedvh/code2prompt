@@ -8,9 +8,9 @@ repository = "https://github.com/mufeedvh/code2prompt"
 
 [dependencies]
 code2prompt_core = { path = "../code2prompt-core" }
-clap = { version = "4.0", features = ["derive"] }
-env_logger = { version = "0.11.3" }
-arboard = { version = "3.4.0" }
+clap = { workspace = true }
+env_logger = { workspace = true }
+arboard = { workspace = true }
 anyhow = { workspace = true }
 colored = { workspace = true }
 indicatif = { workspace = true }
@@ -19,5 +19,11 @@ num-format = { workspace = true }
 serde_json = { workspace = true }
 
 [[bin]]
-name = "code2prompt_core"
+name = "code2prompt"
 path = "src/main.rs"
+
+[dev-dependencies]
+tempfile = "3.3"
+assert_cmd = "2.0"
+predicates = "2.0"
+env_logger = "0.11.3"
