@@ -1,0 +1,13 @@
+[package]
+name = "code2prompt-python"
+version = "3.0.0"
+edition = "2021"
+
+[lib]
+name = "code2prompt_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json = { workspace = true }
+code2prompt_core = { path = "../code2prompt-core" }
+pyo3 = { workspace = true }
