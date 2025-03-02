@@ -1,0 +1,29 @@
+[package]
+name = "code2prompt"
+version = "3.0.0"
+edition = "2021"
+description = "Command-line interface for code2prompt"
+license = "MIT"
+repository = "https://github.com/mufeedvh/code2prompt"
+
+[dependencies]
+code2prompt_core = { path = "../code2prompt-core" }
+clap = { workspace = true }
+env_logger = { workspace = true }
+arboard = { workspace = true }
+anyhow = { workspace = true }
+colored = { workspace = true }
+indicatif = { workspace = true }
+log = { workspace = true }
+num-format = { workspace = true }
+serde_json = { workspace = true }
+
+[[bin]]
+name = "code2prompt"
+path = "src/main.rs"
+
+[dev-dependencies]
+tempfile = "3.3"
+assert_cmd = "2.0"
+predicates = "2.0"
+env_logger = "0.11.3"

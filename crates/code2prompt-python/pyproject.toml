@@ -1,0 +1,55 @@
+[project]
+name = "code2prompt_rs"
+version = "3.0.0"
+description = "Python bindings for code2prompt"
+authors = [
+    { name = "Mufeed VH", email = "contact@mufeedvh.com" },
+    { name = "Olivier D'Ancona", email = "olivier.dancona@master.hes-so.ch" },
+]
+dependencies = [
+    "maturin>=1.8.2",
+    "pytest>=8.3.4",
+    "pip>=25.0.1",
+    "patchelf>=0.17.2.1",
+]
+requires-python = ">= 3.11"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "pyo3"
+module-name = "code2prompt_rs"
+manifest-path = "Cargo.toml"
+python-source = "python-sdk"
+features = ["pyo3/extension-module"]
+
+[tool.rye]
+managed = true
+dev-dependencies = ["maturin>=1.8.2"]
+
+[tool.rye.scripts]
+build = "maturin develop"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/python_sdk"]
+
+[project.urls]
+Homepage = "https://code2prompt.dev"
+Documentation = "https://code2prompt.dev/docs/welcome"
+Repository = "https://github.com/mufeedvh/code2prompt"
