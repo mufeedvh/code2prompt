@@ -6,16 +6,17 @@ authors = [
     "Olivier D'Ancona <olivier.dancona@master.hes-so.ch>",
 ]
 description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
-keywords = ["code", "prompt", "llm", "gpt", "ai", "agent", "glob"]
+keywords = ["code", "ingestion", "prompt", "llm", "agent"]
 categories = ["command-line-utilities", "development-tools"]
 homepage = "https://code2prompt.dev"
 documentation = "https://code2prompt.dev/docs/welcome"
 repository = "https://github.com/mufeedvh/code2prompt"
 license = "MIT"
-readme = "README.md"
 exclude = [".github/*", ".assets/*"]
 edition = "2021"
 build = "build.rs"
+readme = "../../README.md"
+
 
 [features]
 default = []
