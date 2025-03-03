@@ -30,24 +30,29 @@
 </p>
 
 
-## Quick Install
+## Quick Install ⚡
 
-With cargo:
+CLI with cargo 🦀
 
 ```bash
 cargo install code2prompt
 ```
-<!--
-With python:
+
+SDK with pip 🐍
 
 ```bash
 pip install code2prompt-rs
 ```
-!-->
 
 ## How is it useful?
 
+**CLI**
+
 `code2prompt` makes it easy to generate prompts for LLMs from your codebase. It traverses the directory, builds a tree structure, and collects information about each file. You can customize the prompt generation using Handlebars templates. The generated prompt is automatically copied to your clipboard and can also be saved to an output file. `code2prompt` helps streamline the process of creating LLM prompts for code analysis, generation, and other tasks.
+
+**SDK**
+
+`code2prompt` python binding helps programs to interact with codebase. It's useful to ingest codebase for AI agent or automation scripts.
 
 ## Documentation 📚
 
@@ -134,7 +139,7 @@ nix-env -iA nixpkgs.code2prompt
 nix profile install nixpkgs#code2prompt
 ```
 
-## Usages
+## Usage
 
 Generate a prompt from a codebase directory:
 
