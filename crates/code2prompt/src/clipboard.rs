@@ -13,8 +13,7 @@ use anyhow::Context;
 /// # Returns
 ///
 /// * `Result<()>` - Returns Ok on success, or an error if the clipboard could not be accessed.
-pub fn copy_text_to_clipboard(rendered: &str) -> Result<()> {
-    use anyhow::Result;
+pub fn copy_text_to_clipboard(rendered: &str) -> anyhow::Result<()> {
     use arboard::Clipboard;
     match Clipboard::new() {
         Ok(mut clipboard) => {
