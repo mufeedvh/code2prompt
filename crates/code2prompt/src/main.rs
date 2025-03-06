@@ -211,7 +211,7 @@ fn main() -> Result<()> {
         }
         #[cfg(not(target_os = "linux"))]
         {
-            use code2prompt::copy_text_to_clipboard;
+            use crate::clipboard::copy_text_to_clipboard;
             match copy_text_to_clipboard(&rendered) {
                 Ok(_) => {
                     println!(
