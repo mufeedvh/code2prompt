@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, Result};
 
 #[cfg(not(target_os = "linux"))]
 /// Copies the provided text to the system clipboard.
@@ -14,7 +14,6 @@ use anyhow::Context;
 ///
 /// * `Result<()>` - Returns Ok on success, or an error if the clipboard could not be accessed.
 pub fn copy_text_to_clipboard(rendered: &str) -> Result<()> {
-    use anyhow::Result;
     use arboard::Clipboard;
     match Clipboard::new() {
         Ok(mut clipboard) => {
@@ -37,7 +36,7 @@ pub fn copy_text_to_clipboard(rendered: &str) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<()>` - Returns Ok on success or an error if clipboard operations fail.
-pub fn serve_clipboard_daemon() -> anyhow::Result<()> {
+pub fn serve_clipboard_daemon() -> Result<()> {
     use arboard::{Clipboard, LinuxClipboardKind, SetExtLinux};
     use std::io::Read;
     // Read content from stdin
@@ -73,7 +72,7 @@ pub fn serve_clipboard_daemon() -> anyhow::Result<()> {
 ///
 /// * `Result<()>` - Returns Ok if the daemon process was spawned and the content was sent successfully,
 ///   or an error if the process could not be launched or written to.
-pub fn spawn_clipboard_daemon(content: &str) -> anyhow::Result<()> {
+pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
     use colored::*;
     use log::info;
     use std::process::{Command, Stdio};
