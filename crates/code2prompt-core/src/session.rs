@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
-use crate::template::{handlebars_setup, render_template};
+use crate::template::{handlebars_setup, render_template, OutputFormat};
 use crate::tokenizer::{count_tokens, TokenizerType};
 
 /// Represents a live session that holds stateful data about the user's codebase,
@@ -101,7 +101,6 @@ impl Code2PromptSession {
     }
 
     /// Constructs a JSON object that merges the session data and your config’s path label.
-    /// The caller can then pass it to `render_prompt`.
     pub fn build_template_data(&self) -> serde_json::Value {
         serde_json::json!({
             "absolute_code_path": label(&self.config.path),
@@ -117,19 +116,28 @@ impl Code2PromptSession {
     /// the rendered prompt and the token count information. The session
     /// does not do any printing or user prompting — that’s up to the caller.
     pub fn render_prompt(&self, template_data: &serde_json::Value) -> Result<RenderedPrompt> {
-        // Select template
-        let (template_content, template_name) = match &self.config.custom_template {
-            Some(tpl) => (tpl.clone(), "custom".to_string()),
-            None => match self.config.output_format {
-                crate::template::OutputFormat::Markdown | crate::template::OutputFormat::Json => (
-                    include_str!("../../default_template_md.hbs").to_string(),
-                    "default_md".into(),
-                ),
-                crate::template::OutputFormat::Xml => (
-                    include_str!("../../default_template_xml.hbs").to_string(),
-                    "default_xml".into(),
-                ),
-            },
+        let format: &OutputFormat = &self.config.output_format;
+
+        // Load template
+        let template_content = if let Some(template_path) = &self.config.custom_template {
+            std::fs::read_to_string(template_path).context("Failed to read custom template file")?
+        } else {
+            match format {
+                OutputFormat::Markdown | OutputFormat::Json => {
+                    include_str!("../../default_template_md.hbs").to_string()
+                }
+                OutputFormat::Xml => include_str!("../../default_template_xml.hbs").to_string(),
+            }
+        };
+
+        // Load template name
+        let template_name = if self.config.custom_template.is_some() {
+            "custom".to_string()
+        } else {
+            match format {
+                OutputFormat::Markdown | OutputFormat::Json => "markdown".to_string(),
+                OutputFormat::Xml => "xml".to_string(),
+            }
         };
 
         // Render

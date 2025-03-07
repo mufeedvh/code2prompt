@@ -9,8 +9,8 @@ use args::Cli;
 use clap::Parser;
 
 use code2prompt_core::{
-    configuration::{self, Code2PromptConfig},
-    path::{label, traverse_directory},
+    configuration::Code2PromptConfig,
+    path::label,
     session::Code2PromptSession,
     sort::FileSortMethod,
     template::{
@@ -81,6 +81,7 @@ fn main() -> Result<()> {
             .include_patterns(include_patterns)
             .exclude_patterns(exclude_patterns)
             .sort_method(sort_method)
+            .output_format(args.output_format)
             .diff_enabled(args.diff)
             .diff_branches(diff_branches)
             .log_branches(log_branches)
@@ -290,7 +291,7 @@ fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
 ///
 /// * `Result<(String, &str)>` - A tuple containing the template content and name
 fn get_template(args: &Cli) -> Result<(String, String)> {
-    let format = &args.output_format;
+    let format: &OutputFormat = &args.output_format;
     if let Some(template_path) = &args.template {
         let content = std::fs::read_to_string(template_path)
             .context("Failed to read custom template file")?;
