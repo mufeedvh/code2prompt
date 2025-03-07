@@ -9,8 +9,9 @@ use args::Cli;
 use clap::Parser;
 
 use code2prompt_core::{
-    git::{get_git_diff, get_git_diff_between_branches, get_git_log},
+    configuration::{self, Code2PromptConfig},
     path::{label, traverse_directory},
+    session::Code2PromptSession,
     sort::FileSortMethod,
     template::{
         handle_undefined_variables, handlebars_setup, render_template, write_to_file, OutputFormat,
@@ -41,11 +42,10 @@ fn main() -> Result<()> {
     }
 
     // ~~~ Initialization ~~~
-
     // Progress Bar Setup
     let spinner = setup_spinner("Traversing directory and building tree...");
 
-    // Parse Patterns
+    // Selection Patterns
     let include_patterns = parse_patterns(&args.include);
     let exclude_patterns = parse_patterns(&args.exclude);
 
@@ -62,83 +62,79 @@ fn main() -> Result<()> {
         None => None,
     };
 
-    // ~~~ Traverse the directory ~~~
-    let create_tree = traverse_directory(
-        &args.path,
-        &include_patterns,
-        &exclude_patterns,
-        args.include_priority,
-        args.line_number,
-        args.relative_paths,
-        args.full_directory_tree,
-        args.no_codeblock,
-        args.follow_symlinks,
-        args.hidden,
-        args.no_ignore,
-        sort_method,
+    // Git Branches
+    // Parse diff_branches argument
+    let diff_branches = args.git_diff_branch.as_ref().map(|branches| {
+        let parsed = parse_patterns(&Some(branches.to_string()));
+        (parsed[0].clone(), parsed[1].clone())
+    });
+
+    // Parse log_branches argument
+    let log_branches = args.git_log_branch.as_ref().map(|branches| {
+        let parsed = parse_patterns(&Some(branches.to_string()));
+        (parsed[0].clone(), parsed[1].clone())
+    });
+
+    // Code2Prompt Configuration
+    let mut session = Code2PromptSession::new(
+        Code2PromptConfig::builder(&args.path)
+            .include_patterns(include_patterns)
+            .exclude_patterns(exclude_patterns)
+            .sort_method(sort_method)
+            .diff_enabled(args.diff)
+            .diff_branches(diff_branches)
+            .log_branches(log_branches)
+            .build(),
     );
 
-    let (tree, files) = match create_tree {
-        Ok(result) => result,
-        Err(e) => {
-            spinner.finish_with_message("Failed!".red().to_string());
-            eprintln!(
-                "{}{}{} {}",
-                "[".bold().white(),
-                "!".bold().red(),
-                "]".bold().white(),
-                format!("Failed to build directory tree: {}", e).red()
-            );
-            std::process::exit(1);
-        }
-    };
+    // ~~~ Gather Repository Data ~~~
+
+    // Load Codebase
+    session.load_codebase().unwrap_or_else(|e| {
+        spinner.finish_with_message("Failed!".red().to_string());
+        error!("Failed to build directory tree: {}", e);
+        std::process::exit(1);
+    });
+    spinner.finish_with_message("Done!".green().to_string());
 
     // ~~~ Git Related ~~~
     // Git Diff
-    let git_diff = if args.diff {
+    if session.config.diff_enabled {
         spinner.set_message("Generating git diff...");
-        get_git_diff(&args.path).unwrap_or_default()
-    } else {
-        String::from("no git diff")
-    };
-
-    // Git diff between two branches
-    let mut git_diff_branch: String = String::new();
-    if let Some(branches) = &args.git_diff_branch {
-        spinner.set_message("Generating git diff between two branches...");
-        let branches = parse_patterns(&Some(branches.to_string()));
-        if branches.len() != 2 {
-            error!("Please provide exactly two branches separated by a comma.");
+        session.load_git_diff().unwrap_or_else(|e| {
+            spinner.finish_with_message("Failed!".red().to_string());
+            error!("Failed to generate git diff: {}", e);
             std::process::exit(1);
-        }
-        git_diff_branch = get_git_diff_between_branches(&args.path, &branches[0], &branches[1])
-            .unwrap_or_default()
+        });
     }
 
-    // Git log between two branches
-    let mut git_log_branch: String = String::new();
-    if let Some(branches) = &args.git_log_branch {
+    // Load Git diff between branches if provided
+    if session.config.diff_branches.is_some() {
+        spinner.set_message("Generating git diff between two branches...");
+        session
+            .load_git_diff_between_branches()
+            .unwrap_or_else(|e| {
+                spinner.finish_with_message("Failed!".red().to_string());
+                error!("Failed to generate git diff: {}", e);
+                std::process::exit(1);
+            });
+    }
+
+    // Load Git log between branches if provided
+    if session.config.log_branches.is_some() {
         spinner.set_message("Generating git log between two branches...");
-        let branches = parse_patterns(&Some(branches.to_string()));
-        if branches.len() != 2 {
-            error!("Please provide exactly two branches separated by a comma.");
+        session.load_git_log_between_branches().unwrap_or_else(|e| {
+            spinner.finish_with_message("Failed!".red().to_string());
+            error!("Failed to generate git log: {}", e);
             std::process::exit(1);
-        }
-        git_log_branch = get_git_log(&args.path, &branches[0], &branches[1]).unwrap_or_default()
+        });
     }
 
     spinner.finish_with_message("Done!".green().to_string());
 
     // ~~~ Template ~~~
     // Template Data
-    let mut data = json!({
-        "absolute_code_path": label(&args.path),
-        "source_tree": tree,
-        "files": files,
-        "git_diff": git_diff,
-        "git_diff_branch": git_diff_branch,
-        "git_log_branch": git_log_branch
-    });
+    let mut data = session.build_template_data();
 
     debug!(
         "JSON Data: {}",

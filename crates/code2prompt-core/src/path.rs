@@ -1,4 +1,5 @@
 //! This module contains the functions for traversing the directory and processing the files.
+use crate::configuration::Code2PromptConfig;
 use crate::filter::should_include_file;
 use crate::sort::{sort_files, sort_tree, FileSortMethod};
 use crate::util::strip_utf8_bom;
@@ -24,30 +25,17 @@ use termtree::Tree;
 ///
 /// A tuple containing the string representation of the directory tree and a vector of JSON representations of the files.
 #[allow(clippy::too_many_arguments)]
-pub fn traverse_directory(
-    root_path: &Path,
-    include: &[String],
-    exclude: &[String],
-    include_priority: bool,
-    line_number: bool,
-    relative_paths: bool,
-    full_directory_tree: bool,
-    no_codeblock: bool,
-    follow_symlinks: bool,
-    hidden: bool,
-    no_ignore: bool,
-    sort_method: Option<FileSortMethod>,
-) -> Result<(String, Vec<serde_json::Value>)> {
+pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<serde_json::Value>)> {
     // ~~~ Initialization ~~~
     let mut files = Vec::new();
-    let canonical_root_path = root_path.canonicalize()?;
+    let canonical_root_path = config.path.canonicalize()?;
     let parent_directory = label(&canonical_root_path);
 
     // ~~~ Build the Tree ~~~
     let mut tree = WalkBuilder::new(&canonical_root_path)
-        .hidden(!hidden) // By default hidden=false, so we invert the flag
-        .git_ignore(!no_ignore) // By default no_ignore=false, so we invert the flag
-        .follow_links(follow_symlinks)
+        .hidden(!config.hidden) // By default hidden=false, so we invert the flag
+        .git_ignore(!config.no_ignore) // By default no_ignore=false, so we invert the flag
+        .follow_links(config.follow_symlinks)
         .build()
         .filter_map(|entry| match entry {
             Ok(entry) => {
@@ -56,8 +44,13 @@ pub fn traverse_directory(
                     .path()
                     .strip_prefix(&canonical_root_path)
                     .unwrap_or(entry.path());
-                if full_directory_tree
-                    || should_include_file(relative_path, include, exclude, include_priority)
+                if config.full_directory_tree
+                    || should_include_file(
+                        relative_path,
+                        &config.include_patterns,
+                        &config.exclude_patterns,
+                        config.include_priority,
+                    )
                 {
                     Some(entry)
                 } else {
@@ -96,13 +89,13 @@ pub fn traverse_directory(
                         let code_block = wrap_code_block(
                             &code,
                             path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
-                            line_number,
-                            no_codeblock,
+                            config.line_numbers,
+                            config.no_codeblock,
                         );
 
                         if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
                             // ~~~ Filepath ~~~
-                            let file_path = if relative_paths {
+                            let file_path = if config.relative_paths {
                                 format!("{}/{}", parent_directory, relative_path.display())
                             } else {
                                 path.display().to_string()
@@ -118,7 +111,7 @@ pub fn traverse_directory(
                             file_entry.insert("code".to_string(), json!(code_block));
 
                             // If date sorting is requested, record the file modification time.
-                            if let Some(method) = sort_method {
+                            if let Some(method) = config.sort_method {
                                 if method == FileSortMethod::DateAsc
                                     || method == FileSortMethod::DateDesc
                                 {
@@ -155,8 +148,8 @@ pub fn traverse_directory(
         });
 
     // ~~~ Sorting ~~~
-    sort_tree(&mut tree, sort_method);
-    sort_files(&mut files, sort_method);
+    sort_tree(&mut tree, config.sort_method);
+    sort_files(&mut files, config.sort_method);
 
     Ok((tree.to_string(), files))
 }
