@@ -1,3 +1,5 @@
+//! This module provides sorting methods for files and directory trees.
+
 use serde_json::Value;
 use termtree::Tree;
 
