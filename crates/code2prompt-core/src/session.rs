@@ -124,22 +124,29 @@ impl Code2PromptSession {
         let token_count = count_tokens(&rendered_prompt, &tokenizer_type);
         let model_info = tokenizer_type.description();
         let directory_name = label(&self.config.path);
+        let files: Vec<String> = self
+            .data
+            .files
+            .as_ref()
+            .and_then(|files_json| files_json.as_array())
+            .map(|files| {
+                files
+                    .iter()
+                    .filter_map(|file| {
+                        file.get("path")
+                            .and_then(|p| p.as_str())
+                            .map(|s| s.to_string())
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
 
         Ok(RenderedPrompt {
             prompt: rendered_prompt,
             directory_name: directory_name,
             token_count,
             model_info,
-            files: self
-                .data
-                .files
-                .as_ref()
-                .unwrap()
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|f| f.as_str().unwrap().to_string())
-                .collect(),
+            files: files,
         })
     }
 

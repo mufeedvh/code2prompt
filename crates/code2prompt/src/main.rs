@@ -43,7 +43,9 @@ fn main() -> Result<()> {
     let mut configuration = Code2PromptConfig::builder();
 
     // Configure Path
-    configuration.path(args.path.clone());
+    configuration
+        .path(args.path.clone())
+        .include_priority(args.include_priority);
 
     // Configure Selection Patterns
     configuration
@@ -67,9 +69,10 @@ fn main() -> Result<()> {
         .unwrap_or_else(|err| {
             eprintln!("{}", err);
             std::process::exit(1);
-        });
+        })
+        .unwrap_or(FileSortMethod::NameAsc);
 
-    configuration.sort_method(sort_method.unwrap());
+    configuration.sort_method(sort_method);
 
     // Configure Tokenizer
     let tokenizer_type = args
