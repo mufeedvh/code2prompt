@@ -68,7 +68,7 @@ pub struct Cli {
 
     /// Add line numbers to the source code
     #[clap(short, long)]
-    pub line_number: bool,
+    pub line_numbers: bool,
 
     /// Use relative paths instead of absolute paths, including the parent directory
     #[clap(long)]

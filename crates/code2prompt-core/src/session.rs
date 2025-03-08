@@ -7,15 +7,15 @@ use std::path::PathBuf;
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
-use crate::template::{handlebars_setup, render_template, OutputFormat};
+use crate::template::{handlebars_setup, render_template};
 use crate::tokenizer::{count_tokens, TokenizerType};
 
 /// Represents a live session that holds stateful data about the user's codebase,
 /// including which files have been added or removed, or other data that evolves over time.
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
-    selected_files: Vec<PathBuf>,
-    data: SessionData,
+    pub selected_files: Vec<PathBuf>,
+    pub data: SessionData,
 }
 
 /// Represents the collected data about the code (tree + files) and optional Git info.
@@ -113,31 +113,21 @@ impl Code2PromptSession {
     /// Renders the final prompt given a template-data JSON object. Returns both
     /// the rendered prompt and the token count information. The session
     /// does not do any printing or user prompting — that’s up to the caller.
-    pub fn render_prompt(
-        &self,
-        template_str: &str,
-        template_data: &serde_json::Value,
-    ) -> Result<RenderedPrompt> {
-        let format: &OutputFormat = &self.config.output_format;
+    pub fn render_prompt(&self, template_data: &serde_json::Value) -> Result<RenderedPrompt> {
+        // ~~~ Rendering ~~~
+        let handlebars = handlebars_setup(&self.config.template_str, &self.config.template_name)?;
+        let rendered_prompt =
+            render_template(&handlebars, &self.config.template_name, template_data)?;
 
-        // Render
-        let handlebars = handlebars_setup(&template_str, &template_name)?;
-        let prompt = render_template(&handlebars, &template_name, template_data)?;
-
-        // Count tokens
+        // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
-        let token_count = count_tokens(&prompt, &tokenizer_type);
+        let token_count = count_tokens(&rendered_prompt, &tokenizer_type);
         let model_info = tokenizer_type.description();
+        let directory_name = label(&self.config.path);
 
         Ok(RenderedPrompt {
-            prompt,
-            directory_name: self
-                .config
-                .path
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string(),
+            prompt: rendered_prompt,
+            directory_name: directory_name,
             token_count,
             model_info,
             files: self

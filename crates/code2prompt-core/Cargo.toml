@@ -37,6 +37,7 @@ regex = { workspace = true }
 git2 = { workspace = true }
 once_cell = { workspace = true }
 globset = { workspace = true }
+derive_builder = { workspace = true }
 
 [lib]
 name = "code2prompt_core"

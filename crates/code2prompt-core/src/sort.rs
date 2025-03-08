@@ -1,6 +1,7 @@
 //! This module provides sorting methods for files and directory trees.
 
 use serde_json::Value;
+use std::str::FromStr;
 use termtree::Tree;
 
 ///! Sorting methods for files.
@@ -12,6 +13,23 @@ pub enum FileSortMethod {
     NameDesc, // Sort files alphabetically in reverse (Z → A)
     DateAsc,  // Sort files by modification date (oldest first)
     DateDesc, // Sort files by modification date (newest first)
+}
+
+impl FromStr for FileSortMethod {
+    type Err = String; // On retourne une String en cas d'erreur
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "name_asc" => Ok(FileSortMethod::NameAsc),
+            "name_desc" => Ok(FileSortMethod::NameDesc),
+            "date_asc" => Ok(FileSortMethod::DateAsc),
+            "date_desc" => Ok(FileSortMethod::DateDesc),
+            _ => Err(format!(
+                "Invalid sort method: {}. Supported values: name_asc, name_desc, date_asc, date_desc",
+                s
+            )),
+        }
+    }
 }
 
 /// Sorts the provided `files` in place using the specified `sort_method`.
