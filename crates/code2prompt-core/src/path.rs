@@ -1,6 +1,6 @@
 //! This module contains the functions for traversing the directory and processing the files.
 use crate::configuration::Code2PromptConfig;
-use crate::filter::should_include_file;
+use crate::filter::{build_globset, should_include_file};
 use crate::sort::{sort_files, sort_tree, FileSortMethod};
 use crate::util::strip_utf8_bom;
 use anyhow::Result;
@@ -31,6 +31,9 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
     let canonical_root_path = config.path.canonicalize()?;
     let parent_directory = label(&canonical_root_path);
 
+    let include_globset = build_globset(&config.include_patterns);
+    let exclude_globset = build_globset(&config.exclude_patterns);
+
     // ~~~ Build the Tree ~~~
     let mut tree = WalkBuilder::new(&canonical_root_path)
         .hidden(!config.hidden) // By default hidden=false, so we invert the flag
@@ -47,8 +50,8 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                 if config.full_directory_tree
                     || should_include_file(
                         relative_path,
-                        &config.include_patterns,
-                        &config.exclude_patterns,
+                        &include_globset,
+                        &exclude_globset,
                         config.include_priority,
                     )
                 {
