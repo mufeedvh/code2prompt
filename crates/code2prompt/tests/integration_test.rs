@@ -252,4 +252,27 @@ mod tests {
         assert!(contains("BAZ.py").eval(&output));
         assert!(contains("CONTENT BAZ.PY").eval(&output));
     }
+
+    #[test]
+    fn test_full_directory_tree() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--full-directory-tree")
+            .arg("--exclude")
+            .arg("'**/uppercase/**'")
+            .assert()
+            .success();
+
+        let output = env.read_output();
+        debug!("Test full directory tree output:\n{}", output);
+        assert!(contains("├── lowercase").eval(&output));
+        assert!(contains("└── uppercase").eval(&output));
+        assert!(contains("├── foo.py").eval(&output));
+        assert!(contains("├── bar.py").eval(&output));
+        assert!(contains("├── baz.py").eval(&output));
+        assert!(contains("├── FOO.py").eval(&output));
+        assert!(contains("├── BAR.py").eval(&output));
+        assert!(contains("├── BAZ.py").eval(&output));
+        assert!(!contains("CONTENT BAR.PY").eval(&output));
+    }
 }
