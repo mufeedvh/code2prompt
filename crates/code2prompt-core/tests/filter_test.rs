@@ -1,7 +1,7 @@
 /// This file tests the filter logic
 /// Code2prompt uses the file globbing and globpattern to match files
 /// Therefore you can match files:
-use code2prompt_core::filter::should_include_file;
+use code2prompt_core::filter::{build_globset, should_include_file};
 use colored::*;
 use once_cell::sync::Lazy;
 use std::fs::{self, File};
@@ -69,8 +69,8 @@ mod tests {
     #[test]
     fn test_no_include_no_exclude_path() {
         let path = Path::new("src/main.rs");
-        let include_patterns: Vec<String> = vec![];
-        let exclude_patterns: Vec<String> = vec![];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns = build_globset(&vec![]);
         let include_priority = false;
 
         // ~~~ Must be included ~~~
@@ -86,8 +86,8 @@ mod tests {
     fn test_no_include_no_exclude_empty() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec![];
-        let exclude_patterns = vec![];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns = build_globset(&vec![]);
         let include_priority = true;
 
         // ~~~ Must be included ~~~
@@ -120,8 +120,8 @@ mod tests {
     #[test]
     fn test_no_include_exclude_path() {
         let path = Path::new("src/main.rs");
-        let include_patterns: Vec<String> = vec![];
-        let exclude_patterns: Vec<String> = vec!["*.rs".to_string()];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns = build_globset(&vec!["*.rs".to_string()]);
         let include_priority = false;
         assert!(!should_include_file(
             &path,
@@ -136,8 +136,8 @@ mod tests {
     fn test_no_include_exclude_by_filename() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec![];
-        let exclude_patterns = vec!["default_template.hbs".to_string()];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns = build_globset(&vec!["default_template.hbs".to_string()]);
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
@@ -154,8 +154,8 @@ mod tests {
     fn test_no_include_exclude_path_patterns() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec![];
-        let exclude_patterns = vec!["lowercase/{*.txt,*.py}".to_string()];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns = build_globset(&vec!["lowercase/{*.txt,*.py}".to_string()]);
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
@@ -204,8 +204,8 @@ mod tests {
     fn test_no_include_exclude_patterns() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec![];
-        let exclude_patterns = vec!["*.txt".to_string()];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns = build_globset(&vec!["*.txt".to_string()]);
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
@@ -250,8 +250,9 @@ mod tests {
     fn test_no_include_exclude_files() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec![];
-        let exclude_patterns = vec!["**/foo.py".to_string(), "**/bar.py".to_string()];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns =
+            build_globset(&vec!["**/foo.py".to_string(), "**/bar.py".to_string()]);
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
@@ -293,8 +294,9 @@ mod tests {
     fn test_no_include_exclude_folders() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec![];
-        let exclude_patterns = vec!["**/lowercase/**".to_string()];
+        let include_patterns = build_globset(&vec![]);
+        let exclude_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
+
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
@@ -329,8 +331,8 @@ mod tests {
     fn test_include_no_exclude_patterns() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["*.py".to_string()];
-        let exclude_patterns = vec![];
+        let include_patterns = build_globset(&vec!["*.py".to_string()]);
+        let exclude_patterns = build_globset(&vec![]);
         let include_priority = false;
 
         // ~~~ Must be included ~~~
@@ -376,8 +378,8 @@ mod tests {
     fn test_include_no_exclude_by_filename() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["default_template.hbs".to_string()];
-        let exclude_patterns = vec![];
+        let include_patterns = build_globset(&vec!["default_template.hbs".to_string()]);
+        let exclude_patterns = build_globset(&vec![]);
         let include_priority = false;
 
         // ~~~ Must be excluded ~~~
@@ -406,8 +408,8 @@ mod tests {
         let base_path = TEST_DIR.path();
 
         // let include_patterns = vec!["lowercase/*.txt".to_string(), "lowercase/*.py".to_string()];
-        let include_patterns = vec!["lowercase/{*.txt,*.py}".to_string()];
-        let exclude_patterns = vec![];
+        let include_patterns = build_globset(&vec!["lowercase/{*.txt,*.py}".to_string()]);
+        let exclude_patterns = build_globset(&vec![]);
         let include_priority = false;
 
         // ~~~ Must be included ~~~
@@ -456,8 +458,8 @@ mod tests {
     fn test_include_no_exclude_folders() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["**/lowercase/**".to_string()];
-        let exclude_patterns = vec![];
+        let include_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
+        let exclude_patterns = build_globset(&vec![]);
         let include_priority = true;
 
         // ~~~ Must be included ~~~
@@ -491,8 +493,9 @@ mod tests {
     fn test_include_no_exclude_files() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["**/foo.py".to_string(), "**/bar.py".to_string()];
-        let exclude_patterns = vec![];
+        let include_patterns =
+            build_globset(&vec!["**/foo.py".to_string(), "**/bar.py".to_string()]);
+        let exclude_patterns = build_globset(&vec![]);
         let include_priority = false;
 
         // ~~~ Must be included ~~~
@@ -535,8 +538,8 @@ mod tests {
     fn test_include_exclude_conflict_file() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["**/foo.py".to_string()];
-        let exclude_patterns = vec!["**/foo.py".to_string()];
+        let include_patterns = build_globset(&vec!["**/foo.py".to_string()]);
+        let exclude_patterns = build_globset(&vec!["**/foo.py".to_string()]);
         let include_priority = true;
 
         // ~~~ Must be included ~~~
@@ -579,8 +582,8 @@ mod tests {
     fn test_include_exclude_conflict_extension() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["*.py".to_string()];
-        let exclude_patterns = vec!["*.py".to_string()];
+        let include_patterns = build_globset(&vec!["*.py".to_string()]);
+        let exclude_patterns = build_globset(&vec!["*.py".to_string()]);
         let include_priority = true;
 
         // ~~~ Must be included ~~~
@@ -625,8 +628,8 @@ mod tests {
     fn test_include_exclude_conflict_folder() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["**/lowercase/**".to_string()];
-        let exclude_patterns = vec!["**/lowercase/**".to_string()];
+        let include_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
+        let exclude_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
         let include_priority = true;
 
         // ~~~ Must be included ~~~
@@ -671,8 +674,8 @@ mod tests {
     fn test_include_exclude_priority_include() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["**/*.py".to_string()];
-        let exclude_patterns = vec!["**/uppercase/*".to_string()];
+        let include_patterns = build_globset(&vec!["**/*.py".to_string()]);
+        let exclude_patterns = build_globset(&vec!["**/uppercase/*".to_string()]);
         let include_priority = true;
 
         // ~~~ Must be included ~~~ priority
@@ -707,8 +710,8 @@ mod tests {
     fn test_include_exclude_priority_exclude() {
         let base_path = TEST_DIR.path();
 
-        let include_patterns = vec!["**/*.py".to_string()];
-        let exclude_patterns = vec!["**/uppercase/*".to_string()];
+        let include_patterns = build_globset(&vec!["**/*.py".to_string()]);
+        let exclude_patterns = build_globset(&vec!["**/uppercase/*".to_string()]);
         let include_priority = false;
 
         // ~~~ Must be included ~~~
