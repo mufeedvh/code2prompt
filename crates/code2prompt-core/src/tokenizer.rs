@@ -23,6 +23,12 @@ impl FromStr for TokenFormat {
     }
 }
 
+impl Default for TokenFormat {
+    fn default() -> Self {
+        TokenFormat::Raw
+    }
+}
+
 /// Tokenizer types supported by tiktoken.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenizerType {
@@ -63,6 +69,12 @@ impl FromStr for TokenizerType {
             "r50k" | "gpt2" => Ok(TokenizerType::R50kBase),
             _ => Err(()),
         }
+    }
+}
+
+impl Default for TokenizerType {
+    fn default() -> Self {
+        TokenizerType::Cl100kBase
     }
 }
 

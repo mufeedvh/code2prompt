@@ -80,7 +80,7 @@ impl Code2PromptConfig {
 
 /// A builder struct that allows you to customize `Code2PromptConfig` in a fluent style.
 /// This is helpful if you have a lot of optional parameters.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Code2PromptConfigBuilder {
     path: PathBuf,
     include_patterns: Vec<String>,
@@ -104,162 +104,10 @@ pub struct Code2PromptConfigBuilder {
 }
 
 impl Code2PromptConfigBuilder {
-    /// Creates a new builder with default settings (mostly false or empty).
-    /// The only mandatory parameter is the root `path`.
     pub fn new(path: impl AsRef<Path>) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
-            include_patterns: vec![],
-            exclude_patterns: vec![],
-            include_priority: false,
-            line_numbers: false,
-            relative_paths: false,
-            full_directory_tree: false,
-            no_codeblock: false,
-            follow_symlinks: false,
-            hidden: false,
-            no_ignore: false,
-            sort_method: None,
-            output_format: OutputFormat::Markdown,
-            custom_template: None,
-            encoding: TokenizerType::Cl100kBase,
-            token_format: TokenFormat::Raw,
-            diff_enabled: false,
-            diff_branches: None,
-            log_branches: None,
-        }
-    }
-
-    /// Sets the list of include patterns.
-    pub fn include_patterns(mut self, patterns: Vec<String>) -> Self {
-        self.include_patterns = patterns;
-        self
-    }
-
-    /// Sets the list of exclude patterns.
-    pub fn exclude_patterns(mut self, patterns: Vec<String>) -> Self {
-        self.exclude_patterns = patterns;
-        self
-    }
-
-    /// Specifies whether include patterns should take priority over exclude patterns.
-    pub fn include_priority(mut self, value: bool) -> Self {
-        self.include_priority = value;
-        self
-    }
-
-    /// Specifies whether code lines should be numbered in the output.
-    pub fn line_numbers(mut self, value: bool) -> Self {
-        self.line_numbers = value;
-        self
-    }
-
-    /// Specifies whether paths in the output should be relative instead of absolute.
-    pub fn relative_paths(mut self, value: bool) -> Self {
-        self.relative_paths = value;
-        self
-    }
-
-    /// Includes an entire directory tree (only for display), ignoring filtering for tree purposes.
-    pub fn full_directory_tree(mut self, value: bool) -> Self {
-        self.full_directory_tree = value;
-        self
-    }
-
-    /// Disables Markdown fences (```).
-    pub fn no_codeblock(mut self, value: bool) -> Self {
-        self.no_codeblock = value;
-        self
-    }
-
-    /// Follows symbolic links if set to true.
-    pub fn follow_symlinks(mut self, value: bool) -> Self {
-        self.follow_symlinks = value;
-        self
-    }
-
-    /// Includes hidden files and directories if set to true.
-    pub fn hidden(mut self, value: bool) -> Self {
-        self.hidden = value;
-        self
-    }
-
-    /// If true, .gitignore rules are ignored (all files included unless excluded by patterns).
-    pub fn no_ignore(mut self, value: bool) -> Self {
-        self.no_ignore = value;
-        self
-    }
-
-    /// Sets the file sorting method (by name or by modification time).
-    pub fn sort_method(mut self, method: Option<FileSortMethod>) -> Self {
-        self.sort_method = method;
-        self
-    }
-
-    /// Sets the output format (Markdown, JSON, or XML).
-    pub fn output_format(mut self, format: OutputFormat) -> Self {
-        self.output_format = format;
-        self
-    }
-
-    /// Specifies a custom Handlebars template string, overriding any default template.
-    pub fn custom_template(mut self, template: Option<String>) -> Self {
-        self.custom_template = template;
-        self
-    }
-
-    /// Selects the tokenizer to use for counting tokens.
-    pub fn encoding(mut self, tokenizer: TokenizerType) -> Self {
-        self.encoding = tokenizer;
-        self
-    }
-
-    /// Selects the token counting format (raw or formatted).
-    pub fn token_format(mut self, format: TokenFormat) -> Self {
-        self.token_format = format;
-        self
-    }
-
-    /// Enables or disables git diff retrieval for HEAD vs index.
-    pub fn diff_enabled(mut self, value: bool) -> Self {
-        self.diff_enabled = value;
-        self
-    }
-
-    /// Specifies two branches for which code2prompt should generate a git diff.
-    pub fn diff_branches(mut self, branches: Option<(String, String)>) -> Self {
-        self.diff_branches = branches;
-        self
-    }
-
-    /// Specifies two branches for which code2prompt should retrieve the git log.
-    pub fn log_branches(mut self, branches: Option<(String, String)>) -> Self {
-        self.log_branches = branches;
-        self
-    }
-
-    /// Consumes the builder and returns a fully constructed `Code2PromptConfig`.
-    pub fn build(self) -> Code2PromptConfig {
-        Code2PromptConfig {
-            path: self.path,
-            include_patterns: self.include_patterns,
-            exclude_patterns: self.exclude_patterns,
-            include_priority: self.include_priority,
-            line_numbers: self.line_numbers,
-            relative_paths: self.relative_paths,
-            full_directory_tree: self.full_directory_tree,
-            no_codeblock: self.no_codeblock,
-            follow_symlinks: self.follow_symlinks,
-            hidden: self.hidden,
-            no_ignore: self.no_ignore,
-            sort_method: self.sort_method,
-            output_format: self.output_format,
-            custom_template: self.custom_template,
-            encoding: self.encoding,
-            token_format: self.token_format,
-            diff_enabled: self.diff_enabled,
-            diff_branches: self.diff_branches,
-            log_branches: self.log_branches,
+            ..Default::default()
         }
     }
 }

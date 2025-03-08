@@ -75,10 +75,8 @@ impl Code2PromptSession {
 
     /// Loads the Git diff into the session data.
     pub fn load_git_diff(&mut self) -> Result<()> {
-        if self.config.diff_enabled {
-            let diff = get_git_diff(&self.config.path)?;
-            self.data.git_diff = Some(diff);
-        }
+        let diff = get_git_diff(&self.config.path)?;
+        self.data.git_diff = Some(diff);
         Ok(())
     }
 
@@ -115,33 +113,15 @@ impl Code2PromptSession {
     /// Renders the final prompt given a template-data JSON object. Returns both
     /// the rendered prompt and the token count information. The session
     /// does not do any printing or user prompting — that’s up to the caller.
-    pub fn render_prompt(&self, template_data: &serde_json::Value) -> Result<RenderedPrompt> {
+    pub fn render_prompt(
+        &self,
+        template_str: &str,
+        template_data: &serde_json::Value,
+    ) -> Result<RenderedPrompt> {
         let format: &OutputFormat = &self.config.output_format;
 
-        // Load template
-        let template_content = if let Some(template_path) = &self.config.custom_template {
-            std::fs::read_to_string(template_path).context("Failed to read custom template file")?
-        } else {
-            match format {
-                OutputFormat::Markdown | OutputFormat::Json => {
-                    include_str!("../../default_template_md.hbs").to_string()
-                }
-                OutputFormat::Xml => include_str!("../../default_template_xml.hbs").to_string(),
-            }
-        };
-
-        // Load template name
-        let template_name = if self.config.custom_template.is_some() {
-            "custom".to_string()
-        } else {
-            match format {
-                OutputFormat::Markdown | OutputFormat::Json => "markdown".to_string(),
-                OutputFormat::Xml => "xml".to_string(),
-            }
-        };
-
         // Render
-        let handlebars = handlebars_setup(&template_content, &template_name)?;
+        let handlebars = handlebars_setup(&template_str, &template_name)?;
         let prompt = render_template(&handlebars, &template_name, template_data)?;
 
         // Count tokens

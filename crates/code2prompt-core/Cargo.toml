@@ -33,7 +33,6 @@ jwalk = { workspace = true }
 termtree = { workspace = true }
 tiktoken-rs = { workspace = true }
 ignore = { workspace = true }
-inquire = { workspace = true }
 regex = { workspace = true }
 git2 = { workspace = true }
 once_cell = { workspace = true }
