@@ -16,12 +16,12 @@ pub struct Cli {
     pub path: PathBuf,
 
     /// Patterns to include
-    #[clap(short = 'i', long)]
-    pub include: Option<String>,
+    #[clap(short = 'i', long = "include", value_delimiter = ',')]
+    pub include: Vec<String>,
 
     /// Patterns to exclude
-    #[clap(short = 'e', long)]
-    pub exclude: Option<String>,
+    #[clap(short = 'e', long = "exclude", value_delimiter = ',')]
+    pub exclude: Vec<String>,
 
     /// Include files in case of conflict between include and exclude patterns
     #[clap(long)]
@@ -59,12 +59,12 @@ pub struct Cli {
     pub diff: bool,
 
     /// Generate git diff between two branches
-    #[clap(long, value_name = "BRANCHES")]
-    pub git_diff_branch: Option<String>,
+    #[clap(long, value_name = "BRANCHES", num_args = 2, value_delimiter = ',')]
+    pub git_diff_branch: Option<Vec<String>>,
 
     /// Retrieve git log between two branches
-    #[clap(long, value_name = "BRANCHES")]
-    pub git_log_branch: Option<String>,
+    #[clap(long, value_name = "BRANCHES", num_args = 2, value_delimiter = ',')]
+    pub git_log_branch: Option<Vec<String>>,
 
     /// Add line numbers to the source code
     #[clap(short, long)]

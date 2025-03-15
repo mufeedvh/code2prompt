@@ -10,6 +10,7 @@ use serde_json::json;
 use std::fs;
 use std::path::Path;
 use termtree::Tree;
+
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
 ///
 /// # Arguments
@@ -25,6 +26,7 @@ use termtree::Tree;
 ///
 /// A tuple containing the string representation of the directory tree and a vector of JSON representations of the files.
 #[allow(clippy::too_many_arguments)]
+/// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
 pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<serde_json::Value>)> {
     // ~~~ Initialization ~~~
     let mut files = Vec::new();
@@ -34,42 +36,33 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
     let include_globset = build_globset(&config.include_patterns);
     let exclude_globset = build_globset(&config.exclude_patterns);
 
-    // ~~~ Build the Tree ~~~
-    let mut tree = WalkBuilder::new(&canonical_root_path)
-        .hidden(!config.hidden) // By default hidden=false, so we invert the flag
-        .git_ignore(!config.no_ignore) // By default no_ignore=false, so we invert the flag
+    // ~~~ Build the Walker ~~~
+    let walker = WalkBuilder::new(&canonical_root_path)
+        .hidden(!config.hidden)
+        .git_ignore(!config.no_ignore)
         .follow_links(config.follow_symlinks)
         .build()
-        .filter_map(|entry| match entry {
-            Ok(entry) => {
-                // Convert to a relative path using the canonical root as the base.
-                let relative_path = entry
-                    .path()
-                    .strip_prefix(&canonical_root_path)
-                    .unwrap_or(entry.path());
-                if config.full_directory_tree
-                    || should_include_file(
-                        relative_path,
-                        &include_globset,
-                        &exclude_globset,
-                        config.include_priority,
-                    )
-                {
-                    Some(entry)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        })
-        .fold(Tree::new(parent_directory.to_owned()), |mut root, entry| {
-            let path = entry.path();
-            if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
-                // ~~~ Process the tree ~~~
-                let mut current_tree = &mut root;
+        .filter_map(|entry| entry.ok());
+
+    // ~~~ Build the Tree ~~~
+    let mut tree = Tree::new(parent_directory.to_owned());
+
+    for entry in walker {
+        let path = entry.path();
+        if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
+            // ~~~ Directory Tree ~~~
+            let include_in_tree = config.full_directory_tree
+                || should_include_file(
+                    relative_path,
+                    &include_globset,
+                    &exclude_globset,
+                    config.include_priority,
+                );
+
+            if include_in_tree {
+                let mut current_tree = &mut tree;
                 for component in relative_path.components() {
                     let component_str = component.as_os_str().to_string_lossy().to_string();
-
                     current_tree = if let Some(pos) = current_tree
                         .leaves
                         .iter_mut()
@@ -82,73 +75,71 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                         current_tree.leaves.last_mut().unwrap()
                     };
                 }
-
-                // ~~~ Process the file ~~~
-                if path.is_file() {
-                    if let Ok(code_bytes) = fs::read(path) {
-                        let clean_bytes = strip_utf8_bom(&code_bytes);
-                        let code = String::from_utf8_lossy(&clean_bytes);
-
-                        let code_block = wrap_code_block(
-                            &code,
-                            path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
-                            config.line_numbers,
-                            config.no_codeblock,
-                        );
-
-                        if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
-                            // ~~~ Filepath ~~~
-                            let file_path = if config.relative_paths {
-                                format!("{}/{}", parent_directory, relative_path.display())
-                            } else {
-                                path.display().to_string()
-                            };
-
-                            // ~~~ File JSON Representation ~~~
-                            let mut file_entry = serde_json::Map::new();
-                            file_entry.insert("path".to_string(), json!(file_path));
-                            file_entry.insert(
-                                "extension".to_string(),
-                                json!(path.extension().and_then(|ext| ext.to_str()).unwrap_or("")),
-                            );
-                            file_entry.insert("code".to_string(), json!(code_block));
-
-                            // If date sorting is requested, record the file modification time.
-                            if let Some(method) = config.sort_method {
-                                if method == FileSortMethod::DateAsc
-                                    || method == FileSortMethod::DateDesc
-                                {
-                                    let mod_time = fs::metadata(path)
-                                        .and_then(|m| m.modified())
-                                        .and_then(|mtime| {
-                                            Ok(mtime
-                                                .duration_since(std::time::SystemTime::UNIX_EPOCH))
-                                        })
-                                        .map(|d| d.unwrap().as_secs())
-                                        .unwrap_or(0);
-                                    file_entry.insert("mod_time".to_string(), json!(mod_time));
-                                }
-                            }
-                            files.push(serde_json::Value::Object(file_entry));
-                            // files.push(json!({
-                            //     "path": file_path,
-                            //     "extension": path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
-                            //     "code": code_block,
-                            // }));
-                            debug!(target: "included_files", "Included file: {}", file_path);
-                        } else {
-                            debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
-                        }
-                    } else {
-                        debug!("Failed to read file: {}", path.display());
-                    }
-                } else {
-                    debug!("Excluded path: {:?}", path.display());
-                }
             }
 
-            root
-        });
+            // ~~~ Processing File ~~~
+            if path.is_file()
+                && should_include_file(
+                    relative_path,
+                    &include_globset,
+                    &exclude_globset,
+                    config.include_priority,
+                )
+            {
+                if let Ok(code_bytes) = fs::read(path) {
+                    let clean_bytes = strip_utf8_bom(&code_bytes);
+                    let code = String::from_utf8_lossy(&clean_bytes);
+
+                    let code_block = wrap_code_block(
+                        &code,
+                        path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
+                        config.line_numbers,
+                        config.no_codeblock,
+                    );
+
+                    if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
+                        // ~~~ Filepath ~~~
+                        let file_path = if config.relative_paths {
+                            format!("{}/{}", parent_directory, relative_path.display())
+                        } else {
+                            path.display().to_string()
+                        };
+
+                        // ~~~ File JSON Representation ~~~
+                        let mut file_entry = serde_json::Map::new();
+                        file_entry.insert("path".to_string(), json!(file_path));
+                        file_entry.insert(
+                            "extension".to_string(),
+                            json!(path.extension().and_then(|ext| ext.to_str()).unwrap_or("")),
+                        );
+                        file_entry.insert("code".to_string(), json!(code_block));
+
+                        // If date sorting is requested, record the file modification time.
+                        if let Some(method) = config.sort_method {
+                            if method == FileSortMethod::DateAsc
+                                || method == FileSortMethod::DateDesc
+                            {
+                                let mod_time = fs::metadata(path)
+                                    .and_then(|m| m.modified())
+                                    .and_then(|mtime| {
+                                        Ok(mtime.duration_since(std::time::SystemTime::UNIX_EPOCH))
+                                    })
+                                    .map(|d| d.unwrap().as_secs())
+                                    .unwrap_or(0);
+                                file_entry.insert("mod_time".to_string(), json!(mod_time));
+                            }
+                        }
+                        files.push(serde_json::Value::Object(file_entry));
+                        debug!(target: "included_files", "Included file: {}", file_path);
+                    } else {
+                        debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
+                    }
+                } else {
+                    debug!("Failed to read file: {}", path.display());
+                }
+            }
+        }
+    }
 
     // ~~~ Sorting ~~~
     sort_tree(&mut tree, config.sort_method);

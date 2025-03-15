@@ -259,7 +259,7 @@ mod tests {
         let mut cmd = env.command();
         cmd.arg("--full-directory-tree")
             .arg("--exclude")
-            .arg("'**/uppercase/**'")
+            .arg("**/uppercase/**")
             .assert()
             .success();
 

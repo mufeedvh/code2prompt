@@ -7,12 +7,14 @@ Python bindings for [code2prompt](https://github.com/mufeedvh/code2prompt) - A t
 ### Local Development Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/mufeedvh/code2prompt.git
 cd code2prompt
 ```
 
 2. Install development dependencies:
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -20,6 +22,7 @@ pip install maturin pytest
 ```
 
 3. Build and install the package locally:
+
 ```bash
 cd code2prompt/ # root repo directory
 maturin develop -r
@@ -28,6 +31,7 @@ maturin develop -r
 ### Running Examples
 
 Try out the example script:
+
 ```bash
 python examples/basic_usage.py
 ```
@@ -104,6 +108,7 @@ Generate a prompt from the codebase.
 - `encoding`: Optional token encoding (cl100k, p50k, p50k_edit, r50k, gpt2)
 
 Returns a dictionary containing:
+
 - `prompt`: The generated prompt
 - `directory`: The processed directory path
 - `token_count`: Number of tokens (if encoding was specified)

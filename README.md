@@ -29,7 +29,6 @@
   <i>Report Bug</i> 🐛<br>
 </p>
 
-
 ## Quick Install ⚡
 
 CLI with cargo 🦀
@@ -327,7 +326,6 @@ print(result["prompt"])
 
 [![Star History Chart](https://api.star-history.com/svg?repos=mufeedvh/code2prompt&type=Date)](https://star-history.com/#mufeedvh/code2prompt&Date)
 
-
 ## License
 
 Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2prompt/blob/master/LICENSE">LICENSE</a> for more information.
@@ -345,4 +343,3 @@ Ways to contribute:
 - Fix something and open a pull request
 - Help me document the code
 - Spread the word
-

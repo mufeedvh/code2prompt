@@ -4,7 +4,7 @@
 mod args;
 mod clipboard;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
 use args::Cli;
 use clap::Parser;
 use code2prompt_core::{
@@ -49,8 +49,8 @@ fn main() -> Result<()> {
 
     // Configure Selection Patterns
     configuration
-        .include_patterns(parse_patterns(&args.include))
-        .exclude_patterns(parse_patterns(&args.exclude));
+        .include_patterns(args.include)
+        .exclude_patterns(args.exclude);
 
     // Configure Output Format
     let output_format = args.output_format.clone();
@@ -277,30 +277,13 @@ fn setup_spinner(message: &str) -> ProgressBar {
     spinner
 }
 
-/// Parses comma-separated patterns into a vector of strings
-///
-/// # Arguments
-///
-/// * `patterns` - An optional string containing comma-separated patterns
-///
-/// # Returns
-///
-/// * `Vec<String>` - A vector of parsed patterns
-fn parse_patterns(patterns: &Option<String>) -> Vec<String> {
-    match patterns {
-        Some(patterns) if !patterns.is_empty() => {
-            patterns.split(',').map(|s| s.trim().to_string()).collect()
-        }
-        _ => vec![],
+fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, String)> {
+    match branch_arg {
+        Some(branches) if branches.len() == 2 => Some((branches[0].clone(), branches[1].clone())),
+        _ => None,
     }
 }
 
-fn parse_branch_argument(branch_arg: &Option<String>) -> Option<(String, String)> {
-    branch_arg.as_ref().map(|branches| {
-        let parsed = parse_patterns(&Some(branches.to_string()));
-        (parsed[0].clone(), parsed[1].clone())
-    })
-}
 /// Handles user-defined variables in the template and adds them to the data.
 ///
 /// # Arguments
