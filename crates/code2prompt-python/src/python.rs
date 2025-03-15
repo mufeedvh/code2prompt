@@ -2,8 +2,11 @@ use pyo3::prelude::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use code2prompt_core::configuration::{Code2PromptConfig, Code2PromptConfigBuilder};
-use code2prompt_core::session::{Code2PromptSession, RenderedPrompt};
+use code2prompt_core::configuration::Code2PromptConfigBuilder;
+use code2prompt_core::session::Code2PromptSession;
+use code2prompt_core::sort::FileSortMethod;
+use code2prompt_core::template::OutputFormat;
+use code2prompt_core::tokenizer::{TokenFormat, TokenizerType};
 
 #[pyclass]
 #[derive(Clone)]
@@ -184,15 +187,14 @@ impl PyCode2PromptSession {
     fn sort_by(&mut self, method: &str) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
         match method.to_lowercase().as_str() {
-            "name" => config.sort_method = Some(code2prompt_core::sort::FileSortMethod::Name),
-            "size" => config.sort_method = Some(code2prompt_core::sort::FileSortMethod::Size),
-            "date" => config.sort_method = Some(code2prompt_core::sort::FileSortMethod::Date),
-            _ => {
-                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                    "Invalid sort method: {}",
-                    method
-                )))
-            }
+            "name" | "name_asc" => config.sort_method = Some(FileSortMethod::NameAsc),
+            "name_desc" => config.sort_method = Some(FileSortMethod::NameDesc),
+            "date" | "date_asc" => config.sort_method = Some(FileSortMethod::DateAsc),
+            "date_desc" => config.sort_method = Some(FileSortMethod::DateDesc),
+            _ => return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Invalid sort method: {}. Valid values: name_asc, name_desc, date_asc, date_desc",
+                method
+            ))),
         }
         self.inner = Code2PromptSession::new(config);
 
@@ -209,9 +211,10 @@ impl PyCode2PromptSession {
     fn output_format(&mut self, format: &str) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
         match format.to_lowercase().as_str() {
-            "markdown" => config.output_format = code2prompt_core::template::OutputFormat::Markdown,
-            "plain" => config.output_format = code2prompt_core::template::OutputFormat::Plain,
-            "json" => config.output_format = code2prompt_core::template::OutputFormat::Json,
+            "markdown" => config.output_format = OutputFormat::Markdown,
+            // Assuming from the error that there's a Plain variant - please replace if needed
+            "plain" | "text" => config.output_format = OutputFormat::Plain,
+            "json" => config.output_format = OutputFormat::Json,
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                     "Invalid output format: {}",
@@ -234,8 +237,12 @@ impl PyCode2PromptSession {
     fn with_token_encoding(&mut self, encoding: &str) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
         match encoding.to_lowercase().as_str() {
-            "gpt2" => config.encoding = code2prompt_core::tokenizer::TokenizerType::Gpt2,
-            "cl100k" => config.encoding = code2prompt_core::tokenizer::TokenizerType::Cl100k,
+            "gpt2" => config.encoding = TokenizerType::Gpt2,
+            "cl100k" => config.encoding = TokenizerType::Cl100kBase,
+            "o200k" => config.encoding = TokenizerType::O200kBase,
+            "p50k" => config.encoding = TokenizerType::P50kBase,
+            "p50k_edit" => config.encoding = TokenizerType::P50kEdit,
+            "r50k" => config.encoding = TokenizerType::R50kBase,
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                     "Invalid token encoding: {}",
@@ -258,13 +265,11 @@ impl PyCode2PromptSession {
     fn with_token_format(&mut self, format: &str) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
         match format.to_lowercase().as_str() {
-            "standard" => config.token_format = code2prompt_core::tokenizer::TokenFormat::Standard,
-            "tokens_only" => {
-                config.token_format = code2prompt_core::tokenizer::TokenFormat::TokensOnly
-            }
+            "raw" => config.token_format = TokenFormat::Raw,
+            "format" => config.token_format = TokenFormat::Format,
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                    "Invalid token format: {}",
+                    "Invalid token format: {}. Use 'raw' or 'format'.",
                     format
                 )))
             }
@@ -343,9 +348,9 @@ impl PyCode2PromptSession {
     }
 }
 
-// Module definition
+// Module definition - Updated PyO3 syntax
 #[pymodule]
-fn code2prompt(_py: Python, m: &PyModule) -> PyResult<()> {
+fn code2prompt(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyCode2PromptSession>()?;
     Ok(())
 }
