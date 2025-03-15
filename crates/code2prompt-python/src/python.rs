@@ -191,10 +191,12 @@ impl PyCode2PromptSession {
             "name_desc" => config.sort_method = Some(FileSortMethod::NameDesc),
             "date" | "date_asc" => config.sort_method = Some(FileSortMethod::DateAsc),
             "date_desc" => config.sort_method = Some(FileSortMethod::DateDesc),
-            _ => return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                 "Invalid sort method: {}. Valid values: name_asc, name_desc, date_asc, date_desc",
                 method
-            ))),
+            )))
+            }
         }
         self.inner = Code2PromptSession::new(config);
 
@@ -213,7 +215,7 @@ impl PyCode2PromptSession {
         match format.to_lowercase().as_str() {
             "markdown" => config.output_format = OutputFormat::Markdown,
             // Assuming from the error that there's a Plain variant - please replace if needed
-            "plain" | "text" => config.output_format = OutputFormat::Plain,
+            "xml" | "text" => config.output_format = OutputFormat::Xml,
             "json" => config.output_format = OutputFormat::Json,
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
@@ -349,7 +351,7 @@ impl PyCode2PromptSession {
 }
 
 // Module definition - Updated PyO3 syntax
-#[pymodule]
+#[pymodule(name = "code2prompt_rs")]
 fn code2prompt(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyCode2PromptSession>()?;
     Ok(())
