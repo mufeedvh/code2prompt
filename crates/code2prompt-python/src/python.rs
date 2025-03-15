@@ -352,7 +352,7 @@ impl PyCode2PromptSession {
 
 // Module definition - Updated PyO3 syntax
 #[pymodule(name = "code2prompt_rs")]
-fn code2prompt(py: Python, m: &PyModule) -> PyResult<()> {
+fn code2prompt_rs(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyCode2PromptSession>()?;
     Ok(())
 }
