@@ -12,6 +12,7 @@ use crate::tokenizer::{count_tokens, TokenizerType};
 
 /// Represents a live session that holds stateful data about the user's codebase,
 /// including which files have been added or removed, or other data that evolves over time.
+#[derive(Clone)]
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
     pub selected_files: Vec<PathBuf>,
@@ -20,7 +21,7 @@ pub struct Code2PromptSession {
 
 /// Represents the collected data about the code (tree + files) and optional Git info.
 /// The session loads these pieces separately, so you can manage them step by step.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SessionData {
     pub source_tree: Option<String>,
     pub files: Option<serde_json::Value>,
