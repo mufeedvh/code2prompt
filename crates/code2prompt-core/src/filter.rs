@@ -18,7 +18,7 @@ use std::path::Path;
 /// # Returns
 ///
 /// * A `globset::GlobSet` containing all valid glob patterns from the input.
-fn build_globset(patterns: &[String]) -> GlobSet {
+pub fn build_globset(patterns: &[String]) -> GlobSet {
     let mut builder = GlobSetBuilder::new();
 
     for pattern in patterns {
@@ -63,14 +63,10 @@ fn build_globset(patterns: &[String]) -> GlobSet {
 /// * `bool` - Returns `true` if the file should be included; otherwise, returns `false`.
 pub fn should_include_file(
     path: &Path,
-    include_patterns: &[String],
-    exclude_patterns: &[String],
+    include_globset: &GlobSet,
+    exclude_globset: &GlobSet,
     include_priority: bool,
 ) -> bool {
-    // ~~~ Initialization ~~~
-    let include_globset = build_globset(include_patterns);
-    let exclude_globset = build_globset(exclude_patterns);
-
     // ~~~ Matching ~~~
     let included = include_globset.is_match(path);
     let excluded = exclude_globset.is_match(path);
@@ -80,7 +76,7 @@ pub fn should_include_file(
         (true, true) => include_priority, // If both include and exclude patterns match, use the include_priority flag
         (true, false) => true,            // If the path is included and not excluded, include it
         (false, true) => false,           // If the path is excluded, exclude it
-        (false, false) => include_patterns.is_empty(), // If no include patterns are provided, include everything
+        (false, false) => include_globset.is_empty(), // If no include patterns are provided, include everything
     };
 
     debug!(
