@@ -8,7 +8,7 @@ authors = [
 ]
 dependencies = [
     "maturin>=1.8.2",
-    "pytest>=8.3.4",
+    "pytest>=8.3.5",
     "pip>=25.0.1",
     "patchelf>=0.17.2.1",
 ]
