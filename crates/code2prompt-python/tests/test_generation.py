@@ -74,21 +74,21 @@ def test_generate_with_relative_paths(test_dir):
 def test_generate_with_custom_template(test_dir):
     """Test generation with custom template."""
     template = """# Code Overview
-{% for file in files %}
-## {{ file.path }}
-```{{ file.language }}
-{{ file.content }}" \
-"{% endfor %}"""
+    {% for file in files %}
+    ## {{ file.path }}
+    ```{{ file.language }}
+    {{ file.content }}" \
+    "{% endfor %}"""
 
-prompt = Code2Prompt(
-    path=test_dir,
-    include_patterns=["lowercase/foo.py"]
-)
-result = prompt.generate(template=template)
+    prompt = Code2Prompt(
+        path=test_dir,
+        include_patterns=["lowercase/foo.py"]
+    )
+    result = prompt.generate(template=template)
 
-# Check that custom template was used
-assert "# Code Overview" in result.prompt
-assert "## " in result.prompt
+    # Check that custom template was used
+    assert "# Code Overview" in result.prompt
+    assert "## " in result.prompt
 
 
 def test_token_count(test_dir):
@@ -111,17 +111,17 @@ def test_multiple_encoding_options(test_dir):
     include_patterns=["lowercase/foo.py"]
     )
 
-# Try different encodings
-encodings = ["cl100k", "gpt2", "p50k_base"]
-token_counts = {}
+    # Try different encodings
+    encodings = ["cl100k", "gpt2", "p50k_base"]
+    token_counts = {}
 
-for encoding in encodings:
-    try:
-        count = prompt.token_count(encoding=encoding)
-        token_counts[encoding] = count
-    except Exception as e:
-        # Some encodings might not be available, that's OK
-        print(f"Encoding {encoding} failed: {e}")
+    for encoding in encodings:
+        try:
+            count = prompt.token_count(encoding=encoding)
+            token_counts[encoding] = count
+        except Exception as e:
+            # Some encodings might not be available, that's OK
+            print(f"Encoding {encoding} failed: {e}")
 
     # At least one encoding should work
     assert len(token_counts) > 0

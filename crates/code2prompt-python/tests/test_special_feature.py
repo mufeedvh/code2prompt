@@ -1,6 +1,5 @@
 ## test_special_features.py - Tests pour fonctionnalités spéciales
 
-```python
 """Tests for special features of Code2Prompt."""
 import pytest
 import os

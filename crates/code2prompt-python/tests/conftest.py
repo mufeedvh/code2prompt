@@ -5,7 +5,7 @@ import tempfile
 import shutil
 from pathlib import Path
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def test_hierarchy():
     """Create a test hierarchy of files and directories."""
     # Create a temporary directory
