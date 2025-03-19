@@ -1,195 +1,374 @@
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-use code2prompt_core::{
-    git::{get_git_diff, get_git_diff_between_branches, get_git_log},
-    path::traverse_directory,
-    template::{handlebars_setup, render_template},
-    tokenizer::{count_tokens, TokenizerType},
-};
+use code2prompt_core::configuration::Code2PromptConfigBuilder;
+use code2prompt_core::session::Code2PromptSession;
+use code2prompt_core::sort::FileSortMethod;
+use code2prompt_core::template::OutputFormat;
+use code2prompt_core::tokenizer::{TokenFormat, TokenizerType};
 
-/// Python module for code2prompt
-#[pymodule(name = "code2prompt_rs")]
-fn code2prompt_rs(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<Code2Prompt>()?;
-    Ok(())
-}
-
-/// Main class for generating prompts from code
 #[pyclass]
-struct Code2Prompt {
-    path: PathBuf,
-    include_patterns: Vec<String>,
-    exclude_patterns: Vec<String>,
-    include_priority: bool,
-    line_numbers: bool,
-    relative_paths: bool,
-    exclude_from_tree: bool,
-    no_codeblock: bool,
-    follow_symlinks: bool,
-    hidden: bool,
-    no_ignore: bool,
+#[derive(Clone)]
+struct PyCode2PromptSession {
+    inner: Code2PromptSession,
 }
 
 #[pymethods]
-impl Code2Prompt {
-    /// Create a new Code2Prompt instance
-    ///
-    /// Args:
-    ///     path (str): Path to the codebase directory
-    ///     include_patterns (List[str], optional): Patterns to include. Defaults to [].
-    ///     exclude_patterns (List[str], optional): Patterns to exclude. Defaults to [].
-    ///     include_priority (bool, optional): Give priority to include patterns. Defaults to False.
-    ///     line_numbers (bool, optional): Add line numbers to code. Defaults to False.
-    ///     relative_paths (bool, optional): Use relative paths. Defaults to False.
-    ///     exclude_from_tree (bool, optional): Exclude files from tree based on patterns. Defaults to False.
-    ///     no_codeblock (bool, optional): Don't wrap code in markdown blocks. Defaults to False.
-    ///     follow_symlinks (bool, optional): Follow symbolic links. Defaults to False.
-    ///     hidden (bool, optional): Include hidden directories and files. Defaults to False.
-    ///     no_ignore (bool, optional): Skip .gitignore rules. Defaults to False.
+impl PyCode2PromptSession {
     #[new]
-    #[pyo3(signature = (
-        path,
-        include_patterns = vec![],
-        exclude_patterns = vec![],
-        include_priority = false,
-        line_numbers = false,
-        relative_paths = false,
-        exclude_from_tree = false,
-        no_codeblock = false,
-        follow_symlinks = false,
-        hidden = false,
-        no_ignore = false,
-    ))]
-    fn new(
-        path: String,
-        include_patterns: Vec<String>,
-        exclude_patterns: Vec<String>,
-        include_priority: bool,
-        line_numbers: bool,
-        relative_paths: bool,
-        exclude_from_tree: bool,
-        no_codeblock: bool,
-        follow_symlinks: bool,
-        hidden: bool,
-        no_ignore: bool,
-    ) -> Self {
-        Self {
-            path: PathBuf::from(path),
-            include_patterns,
-            exclude_patterns,
-            include_priority,
-            line_numbers,
-            relative_paths,
-            exclude_from_tree,
-            no_codeblock,
-            follow_symlinks,
-            hidden,
-            no_ignore,
-        }
-    }
+    fn new(path: &str) -> PyResult<Self> {
+        let config = Code2PromptConfigBuilder::default()
+            .path(PathBuf::from(path))
+            .build()
+            .map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                    "Failed to create config: {}",
+                    e
+                ))
+            })?;
 
-    /// Generate a prompt from the codebase
-    ///
-    /// Args:
-    ///     template (str, optional): Custom Handlebars template. Defaults to None.
-    ///     encoding (str, optional): Token encoding to use. Defaults to "cl100k".
-    ///
-    /// Returns:
-    ///     dict: Dictionary containing the rendered prompt and metadata
-    #[pyo3(signature = (template=None, encoding=None))]
-    fn generate(&self, template: Option<String>, encoding: Option<String>) -> PyResult<PyObject> {
-        Python::with_gil(|py| {
-            // Traverse directory
-            let (tree, files) = traverse_directory(
-                &self.path,
-                &self.include_patterns,
-                &self.exclude_patterns,
-                self.include_priority,
-                self.line_numbers,
-                self.relative_paths,
-                self.exclude_from_tree,
-                self.no_codeblock,
-                self.follow_symlinks,
-                self.hidden,
-                self.no_ignore,
-                None,
-            )
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-
-            // Setup template
-            let template_content = template
-                .unwrap_or_else(|| include_str!("../../default_template_md.hbs").to_string());
-            let handlebars = handlebars_setup(&template_content, "template")
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-
-            // Prepare data
-            let data = serde_json::json!({
-                "absolute_code_path": self.path.display().to_string(),
-                "source_tree": tree,
-                "files": files,
-            });
-
-            // Render template
-            let rendered = render_template(&handlebars, "template", &data)
-                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-
-            // Select tokenizer type
-            let tokenizer_type = encoding
-                .as_deref()
-                .unwrap_or("cl100k")
-                .parse::<TokenizerType>()
-                .unwrap_or(TokenizerType::Cl100kBase); // Fallback to `cl100k`
-
-            let model_info = tokenizer_type.description();
-
-            // Count tokens
-            let token_count = count_tokens(&rendered, &tokenizer_type);
-
-            // Create return dictionary
-            let result = PyDict::new(py);
-            result.set_item("prompt", rendered)?;
-            result.set_item("directory", self.path.display().to_string())?;
-            result.set_item("token_count", token_count)?;
-            result.set_item("model_info", model_info)?;
-
-            Ok(result.into())
+        Ok(Self {
+            inner: Code2PromptSession::new(config),
         })
     }
 
-    /// Get git diff for the repository
-    ///
-    /// Returns:
-    ///     str: Git diff output
-    fn get_git_diff(&self) -> PyResult<String> {
-        get_git_diff(&self.path)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    // Configure methods that modify the config
+    fn include(&mut self, patterns: Vec<String>) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.include_patterns = patterns;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
     }
 
-    /// Get git diff between two branches
-    ///
-    /// Args:
-    ///     branch1 (str): First branch name
-    ///     branch2 (str): Second branch name
-    ///
-    /// Returns:
-    ///     str: Git diff output
-    fn get_git_diff_between_branches(&self, branch1: &str, branch2: &str) -> PyResult<String> {
-        get_git_diff_between_branches(&self.path, branch1, branch2)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    fn exclude(&mut self, patterns: Vec<String>) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.exclude_patterns = patterns;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
     }
 
-    /// Get git log between two branches
-    ///
-    /// Args:
-    ///     branch1 (str): First branch name
-    ///     branch2 (str): Second branch name
-    ///
-    /// Returns:
-    ///     str: Git log output
-    fn get_git_log(&self, branch1: &str, branch2: &str) -> PyResult<String> {
-        get_git_log(&self.path, branch1, branch2)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    fn include_priority(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.include_priority = value;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
     }
+
+    fn with_line_numbers(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.line_numbers = value;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn with_absolute_paths(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.absolute_path = value;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn with_full_directory_tree(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.full_directory_tree = value;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn with_code_blocks(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.no_codeblock = !value; // Invert because API is different
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn follow_symlinks(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.follow_symlinks = value;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn include_hidden(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.hidden = value;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn no_ignore(&mut self, value: bool) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.no_ignore = value;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn sort_by(&mut self, method: &str) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        match method.to_lowercase().as_str() {
+            "name" | "name_asc" => config.sort_method = Some(FileSortMethod::NameAsc),
+            "name_desc" => config.sort_method = Some(FileSortMethod::NameDesc),
+            "date" | "date_asc" => config.sort_method = Some(FileSortMethod::DateAsc),
+            "date_desc" => config.sort_method = Some(FileSortMethod::DateDesc),
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Invalid sort method: {}. Valid values: name_asc, name_desc, date_asc, date_desc",
+                method
+            )))
+            }
+        }
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn output_format(&mut self, format: &str) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        match format.to_lowercase().as_str() {
+            "markdown" => config.output_format = OutputFormat::Markdown,
+            // Assuming from the error that there's a Plain variant - please replace if needed
+            "xml" | "text" => config.output_format = OutputFormat::Xml,
+            "json" => config.output_format = OutputFormat::Json,
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "Invalid output format: {}",
+                    format
+                )))
+            }
+        }
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn with_token_encoding(&mut self, encoding: &str) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        match encoding.to_lowercase().as_str() {
+            "gpt2" => config.encoding = TokenizerType::Gpt2,
+            "cl100k" => config.encoding = TokenizerType::Cl100kBase,
+            "o200k" => config.encoding = TokenizerType::O200kBase,
+            "p50k" => config.encoding = TokenizerType::P50kBase,
+            "p50k_edit" => config.encoding = TokenizerType::P50kEdit,
+            "r50k" => config.encoding = TokenizerType::R50kBase,
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "Invalid token encoding: {}",
+                    encoding
+                )))
+            }
+        }
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn with_token_format(&mut self, format: &str) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        match format.to_lowercase().as_str() {
+            "raw" => config.token_format = TokenFormat::Raw,
+            "format" => config.token_format = TokenFormat::Format,
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "Invalid token format: {}. Use 'raw' or 'format'.",
+                    format
+                )))
+            }
+        }
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    #[pyo3(signature = (template, name=None))]
+    fn with_template(&mut self, template: String, name: Option<String>) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.template_str = template;
+        if let Some(name_val) = name {
+            config.template_name = name_val;
+        } else {
+            config.template_name = "custom".to_string();
+        }
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    #[pyo3(signature = (key, value))]
+    fn with_variable(&mut self, key: String, value: String) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.user_variables.insert(key, value);
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    fn generate(&mut self) -> PyResult<String> {
+        match self.inner.generate_prompt() {
+            Ok(rendered) => Ok(rendered.prompt),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to generate prompt: {}",
+                e
+            ))),
+        }
+    }
+
+    fn info(&self) -> PyResult<HashMap<String, String>> {
+        // Since there's no direct info() method, we'll create a simple info map
+        let mut info = HashMap::new();
+        info.insert(
+            "path".to_string(),
+            self.inner.config.path.to_string_lossy().to_string(),
+        );
+        info.insert(
+            "include_patterns".to_string(),
+            format!("{:?}", self.inner.config.include_patterns),
+        );
+        info.insert(
+            "exclude_patterns".to_string(),
+            format!("{:?}", self.inner.config.exclude_patterns),
+        );
+
+        Ok(info)
+    }
+
+    fn token_count(&self) -> PyResult<usize> {
+        // Generate the prompt and count tokens
+        match self.inner.clone().generate_prompt() {
+            Ok(rendered) => Ok(rendered.token_count),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to count tokens: {}",
+                e
+            ))),
+        }
+    }
+}
+
+// Module definition - Updated PyO3 syntax
+#[pymodule(name = "code2prompt_rs")]
+fn code2prompt_rs(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyCode2PromptSession>()?;
+    Ok(())
 }

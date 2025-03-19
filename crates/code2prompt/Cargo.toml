@@ -17,6 +17,8 @@ indicatif = { workspace = true }
 log = { workspace = true }
 num-format = { workspace = true }
 serde_json = { workspace = true }
+inquire = { workspace = true }
+
 
 [[bin]]
 name = "code2prompt"

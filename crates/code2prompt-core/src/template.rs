@@ -3,7 +3,6 @@
 use anyhow::{anyhow, Result};
 use colored::*;
 use handlebars::{no_escape, Handlebars};
-use inquire::Text;
 use regex::Regex;
 use std::io::Write;
 use std::str::FromStr;
@@ -24,7 +23,7 @@ pub fn handlebars_setup(template_str: &str, template_name: &str) -> Result<Handl
 
     handlebars
         .register_template_string(template_name, template_str)
-        .map_err(|e| anyhow::anyhow!("Failed to register template: {}", e))?;
+        .map_err(|e| anyhow!("Failed to register template: {}", e))?;
 
     Ok(handlebars)
 }
@@ -65,44 +64,8 @@ pub fn render_template(
 ) -> Result<String> {
     let rendered = handlebars
         .render(template_name, data)
-        .map_err(|e| anyhow::anyhow!("Failed to render template: {}", e))?;
+        .map_err(|e| anyhow!("Failed to render template: {}", e))?;
     Ok(rendered.trim().to_string())
-}
-
-/// Handles user-defined variables in the template and adds them to the data.
-///
-/// # Arguments
-///
-/// * `data` - The JSON data object.
-/// * `template_content` - The template content string.
-///
-/// # Returns
-///
-/// * `Result<()>` - An empty result indicating success or an error.
-pub fn handle_undefined_variables(
-    data: &mut serde_json::Value,
-    template_content: &str,
-) -> Result<()> {
-    let undefined_variables = extract_undefined_variables(template_content);
-    let mut user_defined_vars = serde_json::Map::new();
-
-    for var in undefined_variables.iter() {
-        if !data.as_object().unwrap().contains_key(var) {
-            let prompt = format!("Enter value for '{}': ", var);
-            let answer = Text::new(&prompt)
-                .with_help_message("Fill user defined variable in template")
-                .prompt()
-                .unwrap_or_default();
-            user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
-        }
-    }
-
-    if let Some(obj) = data.as_object_mut() {
-        for (key, value) in user_defined_vars {
-            obj.insert(key, value);
-        }
-    }
-    Ok(())
 }
 
 /// Writes the rendered template to a specified output file.
@@ -150,5 +113,11 @@ impl FromStr for OutputFormat {
                 s
             )),
         }
+    }
+}
+
+impl Default for OutputFormat {
+    fn default() -> Self {
+        OutputFormat::Markdown
     }
 }
