@@ -11,7 +11,7 @@ use code2prompt_core::{
     configuration::Code2PromptConfig,
     session::Code2PromptSession,
     sort::FileSortMethod,
-    template::{extract_undefined_variables, write_to_file, OutputFormat},
+    template::{extract_undefined_variables, write_to_file},
     tokenizer::{TokenFormat, TokenizerType},
 };
 use colored::*;
@@ -20,7 +20,7 @@ use inquire::Text;
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
 // use serde_json::json;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -269,7 +269,7 @@ fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, St
     }
 }
 
-pub fn parse_template(template_arg: &Option<String>) -> Result<(String, String)> {
+pub fn parse_template(template_arg: &Option<PathBuf>) -> Result<(String, String)> {
     match template_arg {
         Some(path) => {
             let template_str =
