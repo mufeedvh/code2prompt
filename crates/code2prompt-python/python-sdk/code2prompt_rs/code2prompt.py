@@ -11,7 +11,7 @@ class RenderedPrompt:
 
 class Code2Prompt:
     def __init__(self, path, include_patterns=None, exclude_patterns=None, 
-                 include_priority=False, line_numbers=False, relative_paths=False,
+                 include_priority=False, line_numbers=False, absolute_paths=False,
                  full_directory_tree=False, code_blocks=True, follow_symlinks=False, include_hidden=False):
         """
         Initialize a Code2Prompt configuration for generating prompts from code.
@@ -22,7 +22,7 @@ class Code2Prompt:
             exclude_patterns: List of glob patterns for files to exclude
             include_priority: Whether to prioritize include patterns over exclude
             line_numbers: Whether to include line numbers in the output
-            relative_paths: Whether to use relative paths in the output
+            absolute_paths: Whether to use absolute paths in the output
             full_directory_tree: Whether to include the full directory tree
             code_blocks: Whether to wrap code in markdown code blocks
             follow_symlinks: Whether to follow symlinks
@@ -34,7 +34,7 @@ class Code2Prompt:
         self.exclude_patterns = exclude_patterns or []
         self.include_priority = include_priority
         self.line_numbers = line_numbers
-        self.relative_paths = relative_paths
+        self.absolute_paths = absolute_paths
         self.full_directory_tree = full_directory_tree
         self.code_blocks = code_blocks
         self.follow_symlinks = follow_symlinks
@@ -58,7 +58,7 @@ class Code2Prompt:
             
         session = session.include_priority(self.include_priority)
         session = session.with_line_numbers(self.line_numbers)
-        session = session.with_relative_paths(self.relative_paths)
+        session = session.with_absolute_paths(self.absolute_paths)
         session = session.with_full_directory_tree(self.full_directory_tree)
         session = session.with_code_blocks(self.code_blocks)
         session = session.follow_symlinks(self.follow_symlinks)

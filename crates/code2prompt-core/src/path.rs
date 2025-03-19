@@ -20,7 +20,7 @@ use termtree::Tree;
 /// * `exclude` - The patterns of files to exclude.
 /// * `include_priority` - Whether to give priority to include patterns.
 /// * `line_number` - Whether to add line numbers to the code.
-/// * `relative_paths` - Whether to use relative paths.
+/// * `absolute_path` - Whether to use absolute paths.
 ///
 /// # Returns
 ///
@@ -99,10 +99,10 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
 
                     if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
                         // ~~~ Filepath ~~~
-                        let file_path = if config.relative_paths {
-                            format!("{}/{}", parent_directory, relative_path.display())
-                        } else {
+                        let file_path = if config.absolute_path {
                             path.display().to_string()
+                        } else {
+                            format!("{}/{}", parent_directory, relative_path.display())
                         };
 
                         // ~~~ File JSON Representation ~~~

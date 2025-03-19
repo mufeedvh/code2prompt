@@ -94,9 +94,9 @@ impl PyCode2PromptSession {
         })
     }
 
-    fn with_relative_paths(&mut self, value: bool) -> PyResult<Py<Self>> {
+    fn with_absolute_paths(&mut self, value: bool) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
-        config.relative_paths = value;
+        config.absolute_paths = value;
         self.inner = Code2PromptSession::new(config);
 
         Python::with_gil(|py| {

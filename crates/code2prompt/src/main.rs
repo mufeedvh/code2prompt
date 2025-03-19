@@ -56,7 +56,7 @@ fn main() -> Result<()> {
     let output_format = args.output_format.clone();
     configuration
         .line_numbers(args.line_numbers)
-        .relative_paths(args.relative_paths)
+        .absolute_path(args.absolute_paths)
         .full_directory_tree(args.full_directory_tree)
         .output_format(output_format);
 

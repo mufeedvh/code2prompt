@@ -34,9 +34,9 @@ pub struct Code2PromptConfig {
     #[builder(default)]
     pub line_numbers: bool,
 
-    /// If true, paths in the output will be relative instead of absolute.
+    /// If true, paths in the output will be absolute instead of relative.
     #[builder(default)]
-    pub relative_paths: bool,
+    pub absolute_path: bool,
 
     /// If true, code2prompt will generate a full directory tree, ignoring include/exclude rules.
     #[builder(default)]
