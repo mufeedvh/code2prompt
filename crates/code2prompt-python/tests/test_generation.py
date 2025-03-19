@@ -56,20 +56,33 @@ def test_generate_with_line_numbers(test_dir):
     # Check for line numbers in output (either format 1: or 1.|)
     assert "1:" in result.prompt or "1 |" in result.prompt
 
-def test_generate_with_relative_paths(test_dir):
-    """Test generation with relative paths."""
-    prompt = Code2Prompt(
+def test_generate_with_relative_and_absolute_paths(test_dir):
+    """Test generation with absolute paths."""
+    prompt_absolute = Code2Prompt(
         path=test_dir,
         include_patterns=["lowercase/foo.py"],
-        relative_paths=True
+        absolute_paths=True
     )
-    result = prompt.generate()
+    result = prompt_absolute.generate()
     
-    # Should include relative path format
+    # Should include absolute path format
+    assert test_dir in result.prompt
+    
+    # Should include absolute path
     assert "lowercase/foo.py" in result.prompt
+
+    prompt_relative = Code2Prompt(
+        path=test_dir,
+        include_patterns=["lowercase/foo.py"],
+        absolute_paths=False
+    )
+    result = prompt_relative.generate()
     
-    # Should not include absolute path
+    # Should not include absolute path format
     assert test_dir not in result.prompt
+    
+    # Should include absolute path
+    assert "lowercase/foo.py" in result.prompt
 
 def test_generate_with_custom_template(test_dir):
     """Test generation with custom template."""

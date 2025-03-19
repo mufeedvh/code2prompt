@@ -19,7 +19,7 @@ def test_initialization_with_options(test_dir):
         exclude_patterns=["**/uppercase/*"],
         include_priority=True,
         line_numbers=True,
-        relative_paths=True,
+        absolute_paths=True,
         full_directory_tree=True,
         code_blocks=False,
         follow_symlinks=True
@@ -29,7 +29,7 @@ def test_initialization_with_options(test_dir):
     assert prompt.exclude_patterns == ["**/uppercase/*"]
     assert prompt.include_priority is True
     assert prompt.line_numbers is True
-    assert prompt.relative_paths is True
+    assert prompt.absolute_paths is True
     assert prompt.full_directory_tree is True
     assert prompt.code_blocks is False
     assert prompt.follow_symlinks is True
