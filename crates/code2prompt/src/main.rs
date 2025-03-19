@@ -87,25 +87,10 @@ fn main() -> Result<()> {
         .token_format(args.tokens);
 
     // Configure Template
-    let (template_str, template_name) = if let Some(template_path) = args.template.as_ref() {
-        info!("Using custom template");
-        let custom_template_path = template_path.as_path();
-        let template_str = std::fs::read_to_string(custom_template_path)
-            .context("Failed to load custom template file")?;
-        (template_str, "custom".to_string())
-    } else {
-        let template_str = match args.output_format {
-            OutputFormat::Markdown | OutputFormat::Json => {
-                include_str!("../../default_template_md.hbs").to_string()
-            }
-            OutputFormat::Xml => include_str!("../../default_template_xml.hbs").to_string(),
-        };
-        let template_name = match args.output_format {
-            OutputFormat::Markdown | OutputFormat::Json => "markdown".to_string(),
-            OutputFormat::Xml => "xml".to_string(),
-        };
-        (template_str, template_name)
-    };
+    let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
+        error!("Failed to parse template: {}", e);
+        std::process::exit(1);
+    });
 
     configuration
         .template_str(template_str.clone())
@@ -281,6 +266,17 @@ fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, St
     match branch_arg {
         Some(branches) if branches.len() == 2 => Some((branches[0].clone(), branches[1].clone())),
         _ => None,
+    }
+}
+
+pub fn parse_template(template_arg: &Option<String>) -> Result<(String, String)> {
+    match template_arg {
+        Some(path) => {
+            let template_str =
+                std::fs::read_to_string(path).context("Failed to load custom template file")?;
+            Ok((template_str, "custom".to_string()))
+        }
+        None => Ok(("".to_string(), "default".to_string())),
     }
 }
 

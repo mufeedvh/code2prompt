@@ -7,7 +7,7 @@ def test_basic_initialization(test_dir):
     """Test that Code2Prompt can be initialized with minimal settings."""
     prompt = Code2Prompt(path=test_dir)
     assert prompt is not None
-    assert prompt.path == test_dir
+    assert str(prompt.path) == test_dir
     assert prompt.include_patterns == []
     assert prompt.exclude_patterns == []
 

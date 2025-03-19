@@ -6,6 +6,7 @@ use crate::template::OutputFormat;
 use crate::tokenizer::TokenizerType;
 use crate::{sort::FileSortMethod, tokenizer::TokenFormat};
 use derive_builder::Builder;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// A stateless configuration object describing all the preferences and filters
@@ -96,6 +97,10 @@ pub struct Code2PromptConfig {
     /// The template string itself.
     #[builder(default)]
     pub template_str: String,
+
+    /// Extra template data
+    #[builder(default)]
+    pub user_variables: HashMap<String, String>,
 }
 
 impl Code2PromptConfig {

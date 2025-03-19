@@ -309,6 +309,22 @@ impl PyCode2PromptSession {
         })
     }
 
+    #[pyo3(signature = (key, value))]
+    fn with_variable(&mut self, key: String, value: String) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.user_variables.insert(key, value);
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
     fn generate(&mut self) -> PyResult<String> {
         match self.inner.generate_prompt() {
             Ok(rendered) => Ok(rendered.prompt),

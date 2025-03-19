@@ -11,7 +11,7 @@ def test_generate_basic(test_dir):
     assert result.prompt is not None
     assert isinstance(result.prompt, str)
     assert result.token_count >= 0
-    assert result.directory == test_dir
+    assert str(result.directory) == test_dir
 
 def test_generate_with_include_patterns(test_dir):
     """Test generation with include patterns."""
@@ -54,7 +54,7 @@ def test_generate_with_line_numbers(test_dir):
     result = prompt.generate()
     
     # Check for line numbers in output (either format 1: or 1.|)
-    assert "1:" in result.prompt or "1|" in result.prompt
+    assert "1:" in result.prompt or "1 |" in result.prompt
 
 def test_generate_with_relative_paths(test_dir):
     """Test generation with relative paths."""

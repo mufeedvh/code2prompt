@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
-use crate::template::{handlebars_setup, render_template};
+use crate::template::{handlebars_setup, render_template, OutputFormat};
 use crate::tokenizer::{count_tokens, TokenizerType};
 
 /// Represents a live session that holds stateful data about the user's codebase,
@@ -101,24 +101,50 @@ impl Code2PromptSession {
 
     /// Constructs a JSON object that merges the session data and your config’s path label.
     pub fn build_template_data(&self) -> serde_json::Value {
-        serde_json::json!({
+        let mut data = serde_json::json!({
             "absolute_code_path": label(&self.config.path),
             "source_tree": self.data.source_tree,
             "files": self.data.files,
             "git_diff": self.data.git_diff,
             "git_diff_branch": self.data.git_diff_branch,
             "git_log_branch": self.data.git_log_branch
-        })
+        });
+
+        // Add user-defined variables to the template data
+        if self.config.user_variables.len() > 0 {
+            if let Some(obj) = data.as_object_mut() {
+                for (key, value) in &self.config.user_variables {
+                    obj.insert(key.clone(), serde_json::Value::String(value.clone()));
+                }
+            }
+        }
+
+        data
     }
 
     /// Renders the final prompt given a template-data JSON object. Returns both
     /// the rendered prompt and the token count information. The session
     /// does not do any printing or user prompting — that’s up to the caller.
     pub fn render_prompt(&self, template_data: &serde_json::Value) -> Result<RenderedPrompt> {
+        // ~~~ Template selection ~~~
+        let mut template_str = self.config.template_str.clone();
+        let mut template_name = self.config.template_name.clone();
+        if self.config.template_str.is_empty() {
+            template_str = match self.config.output_format {
+                OutputFormat::Markdown | OutputFormat::Json => {
+                    include_str!("./default_template_md.hbs").to_string()
+                }
+                OutputFormat::Xml => include_str!("./default_template_xml.hbs").to_string(),
+            };
+            template_name = match self.config.output_format {
+                OutputFormat::Markdown | OutputFormat::Json => "markdown".to_string(),
+                OutputFormat::Xml => "xml".to_string(),
+            };
+        }
+
         // ~~~ Rendering ~~~
-        let handlebars = handlebars_setup(&self.config.template_str, &self.config.template_name)?;
-        let rendered_prompt =
-            render_template(&handlebars, &self.config.template_name, template_data)?;
+        let handlebars = handlebars_setup(&template_str, &template_name)?;
+        let rendered_prompt = render_template(&handlebars, &template_name, template_data)?;
 
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
@@ -153,9 +179,30 @@ impl Code2PromptSession {
 
     pub fn generate_prompt(&mut self) -> Result<RenderedPrompt> {
         self.load_codebase()?;
-        self.load_git_diff()?;
-        self.load_git_diff_between_branches()?;
-        self.load_git_log_between_branches()?;
+
+        // ~~~~ Load Git info ~~~
+        if self.config.diff_enabled {
+            match self.load_git_diff() {
+                Ok(_) => {}
+                Err(e) => log::warn!("Git diff could not be loaded: {}", e),
+            }
+        }
+
+        // ~~~ Load Git info between branches ~~~
+        if self.config.diff_branches.is_some() {
+            match self.load_git_diff_between_branches() {
+                Ok(_) => {}
+                Err(e) => log::warn!("Git branch diff could not be loaded: {}", e),
+            }
+        }
+
+        // ~~~ Load Git log between branches ~~~
+        if self.config.log_branches.is_some() {
+            match self.load_git_log_between_branches() {
+                Ok(_) => {}
+                Err(e) => log::warn!("Git branch log could not be loaded: {}", e),
+            }
+        }
         let template_data = self.build_template_data();
         let rendered = self.render_prompt(&template_data)?;
         Ok(rendered)
