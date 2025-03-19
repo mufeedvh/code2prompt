@@ -94,9 +94,9 @@ impl PyCode2PromptSession {
         })
     }
 
-    fn with_relative_paths(&mut self, value: bool) -> PyResult<Py<Self>> {
+    fn with_absolute_paths(&mut self, value: bool) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
-        config.relative_paths = value;
+        config.absolute_path = value;
         self.inner = Code2PromptSession::new(config);
 
         Python::with_gil(|py| {
@@ -297,6 +297,22 @@ impl PyCode2PromptSession {
         } else {
             config.template_name = "custom".to_string();
         }
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
+    #[pyo3(signature = (key, value))]
+    fn with_variable(&mut self, key: String, value: String) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.user_variables.insert(key, value);
         self.inner = Code2PromptSession::new(config);
 
         Python::with_gil(|py| {

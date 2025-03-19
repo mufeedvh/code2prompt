@@ -70,9 +70,9 @@ pub struct Cli {
     #[clap(short, long)]
     pub line_numbers: bool,
 
-    /// Use relative paths instead of absolute paths, including the parent directory
+    /// If true, paths in the output will be absolute instead of relative.
     #[clap(long)]
-    pub relative_paths: bool,
+    pub absolute_paths: bool,
 
     /// Follow symlinks
     #[clap(short = 'L', long)]

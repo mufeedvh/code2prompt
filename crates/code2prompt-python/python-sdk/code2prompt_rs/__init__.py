@@ -8,6 +8,7 @@ It provides a simple interface to the Rust-based code2prompt library, allowing y
 - Count tokens for different models
 """
 
-from .code2prompt_rs import Code2Prompt
+# Import the Python wrapper class from the renamed file
+from .code2prompt import Code2Prompt
 
 __all__ = ['Code2Prompt']

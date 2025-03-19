@@ -11,7 +11,7 @@ use code2prompt_core::{
     configuration::Code2PromptConfig,
     session::Code2PromptSession,
     sort::FileSortMethod,
-    template::{extract_undefined_variables, write_to_file, OutputFormat},
+    template::{extract_undefined_variables, write_to_file},
     tokenizer::{TokenFormat, TokenizerType},
 };
 use colored::*;
@@ -20,7 +20,7 @@ use inquire::Text;
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
 // use serde_json::json;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -56,7 +56,7 @@ fn main() -> Result<()> {
     let output_format = args.output_format.clone();
     configuration
         .line_numbers(args.line_numbers)
-        .relative_paths(args.relative_paths)
+        .absolute_path(args.absolute_paths)
         .full_directory_tree(args.full_directory_tree)
         .output_format(output_format);
 
@@ -87,25 +87,10 @@ fn main() -> Result<()> {
         .token_format(args.tokens);
 
     // Configure Template
-    let (template_str, template_name) = if let Some(template_path) = args.template.as_ref() {
-        info!("Using custom template");
-        let custom_template_path = template_path.as_path();
-        let template_str = std::fs::read_to_string(custom_template_path)
-            .context("Failed to load custom template file")?;
-        (template_str, "custom".to_string())
-    } else {
-        let template_str = match args.output_format {
-            OutputFormat::Markdown | OutputFormat::Json => {
-                include_str!("../../default_template_md.hbs").to_string()
-            }
-            OutputFormat::Xml => include_str!("../../default_template_xml.hbs").to_string(),
-        };
-        let template_name = match args.output_format {
-            OutputFormat::Markdown | OutputFormat::Json => "markdown".to_string(),
-            OutputFormat::Xml => "xml".to_string(),
-        };
-        (template_str, template_name)
-    };
+    let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
+        error!("Failed to parse template: {}", e);
+        std::process::exit(1);
+    });
 
     configuration
         .template_str(template_str.clone())
@@ -281,6 +266,17 @@ fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, St
     match branch_arg {
         Some(branches) if branches.len() == 2 => Some((branches[0].clone(), branches[1].clone())),
         _ => None,
+    }
+}
+
+pub fn parse_template(template_arg: &Option<PathBuf>) -> Result<(String, String)> {
+    match template_arg {
+        Some(path) => {
+            let template_str =
+                std::fs::read_to_string(path).context("Failed to load custom template file")?;
+            Ok((template_str, "custom".to_string()))
+        }
+        None => Ok(("".to_string(), "default".to_string())),
     }
 }
 

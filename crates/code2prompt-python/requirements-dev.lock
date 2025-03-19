@@ -22,5 +22,4 @@ pip==25.0.1
     # via code2prompt-rs
 pluggy==1.5.0
     # via pytest
-pytest==8.3.4
-    # via code2prompt-rs
+pytest==8.3.5
