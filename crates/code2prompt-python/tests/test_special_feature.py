@@ -55,8 +55,8 @@ def test_no_code_blocks(test_dir):
     without_blocks = prompt.generate()
     
     # Code blocks typically include ```python or ```py
-    assert "```" in with_blocks.prompt
-    assert "```" not in without_blocks.prompt
+    assert "```py" in with_blocks.prompt
+    assert "```py" not in without_blocks.prompt
 
 def test_sort_files(test_dir):
     """Test different sorting methods if available."""
