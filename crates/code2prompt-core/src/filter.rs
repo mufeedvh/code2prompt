@@ -21,7 +21,13 @@ use std::path::Path;
 pub fn build_globset(patterns: &[String]) -> GlobSet {
     let mut builder = GlobSetBuilder::new();
 
-    for pattern in patterns {
+    let expanded_patterns = if !patterns.is_empty() && patterns[0].contains("/{") {
+        expand_brace_patterns(patterns)
+    } else {
+        patterns.to_vec()
+    };
+    
+    for pattern in expanded_patterns {
         // If the pattern does not contain a '/' or the platform’s separator, prepend "**/"
         let normalized_pattern =
             if !pattern.contains('/') && !pattern.contains(std::path::MAIN_SEPARATOR) {
@@ -89,4 +95,27 @@ pub fn should_include_file(
         path.display()
     );
     result
+}
+
+/// Expands glob patterns containing `{}` into multiple separate patterns.
+///
+/// This function detects patterns with brace expansion (e.g., `"src/{foo,bar}/**"`),
+/// extracts the base prefix, and generates multiple patterns with expanded values.
+///
+/// # Arguments
+///
+/// * `patterns` - A slice of `String` containing glob patterns to be expanded.
+///
+/// # Returns
+///
+/// * A `Vec<String>` containing expanded patterns.
+fn expand_brace_patterns(patterns: &[String]) -> Vec<String> {
+    let joined_patterns = patterns.join(",");
+    let brace_start_index = joined_patterns.find("/{").unwrap();
+    let common_prefix = &joined_patterns[..brace_start_index];
+
+    return joined_patterns[brace_start_index + 2..]
+        .split(',')
+        .map(|expanded_pattern| format!("{}/{}", common_prefix, expanded_pattern))
+        .collect::<Vec<String>>();
 }
