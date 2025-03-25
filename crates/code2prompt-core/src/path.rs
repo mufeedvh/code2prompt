@@ -13,20 +13,17 @@ use termtree::Tree;
 
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
 ///
+/// This function uses the provided configuration to determine which files to include, how to format them,
+/// and how to structure the directory tree.
+///
 /// # Arguments
 ///
-/// * `root_path` - The path to the root directory.
-/// * `include` - The patterns of files to include.
-/// * `exclude` - The patterns of files to exclude.
-/// * `include_priority` - Whether to give priority to include patterns.
-/// * `line_number` - Whether to add line numbers to the code.
-/// * `absolute_path` - Whether to use absolute paths.
+/// * `config` - Configuration object containing path, include/exclude patterns, and other settings
 ///
 /// # Returns
 ///
-/// A tuple containing the string representation of the directory tree and a vector of JSON representations of the files.
-#[allow(clippy::too_many_arguments)]
-/// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
+/// * `Result<(String, Vec<serde_json::Value>)>` - A tuple containing the string representation of the directory
+///   tree and a vector of JSON representations of the files
 pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<serde_json::Value>)> {
     // ~~~ Initialization ~~~
     let mut files = Vec::new();

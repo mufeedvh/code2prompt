@@ -3,8 +3,6 @@ title: Understanding Glob Patterns
 description: A detailed explanation of glob patterns and how they are used in Code2Prompt.
 ---
 
-# Glob Patterns
-
 Glob patterns are a simple yet powerful way to match file names and paths using wildcard characters. They are commonly used in command-line interfaces and programming languages to specify sets of filenames or directories. Here's a breakdown of the most commonly used glob patterns:
 
 ## Basic Wildcards

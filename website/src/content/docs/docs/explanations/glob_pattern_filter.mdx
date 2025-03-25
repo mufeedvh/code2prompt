@@ -3,8 +3,6 @@ title: How the Glob Pattern Filter Works
 description: An in-depth look at how Code2Prompt processes include and exclude patterns.
 ---
 
-# How the Glob Pattern Filter Works
-
 The tool uses glob patterns to include or exclude files and directories, working similarly to tools like `tree` or `grep`. Here’s a detailed explanation:
 
 ## Key Concepts
@@ -43,7 +41,7 @@ When you specify an `--exclude` list and/or an `--include` list, the following l
      A \setminus (A \cap B)
      $$
 
-    - **Include priority != true***:  
+   - **Include priority != true***:  
      $$
      B \setminus (A \cap B)
      $$
@@ -52,4 +50,4 @@ When you specify an `--exclude` list and/or an `--include` list, the following l
 
 Let (A) and (B) overlap. Depending on the priority, the intersection $$( A \cap B )$$ is either included or excluded based on the `include_priority` parameter.
 
-![Visual Representation of Case 4](../../../../../assets/filter.png)
+![Visual Representation of Case 4](../../../../assets/filter.png)

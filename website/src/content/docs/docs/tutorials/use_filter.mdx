@@ -3,7 +3,6 @@ title: Filtering Files with Code2Prompt
 description: Learn how to exclude or include files in your LLM prompts using powerful filtering options.
 ---
 
-# Using the Glob Pattern Filter
 
 This tutorial demonstrates how to use the **glob pattern tool** in `code2prompt` to filter and manage files based on include and exclude patterns. Glob patterns work similarly to tools like `tree` or `grep`, providing powerful filtering capabilities. Check out the [detailed explanation](../explanations/glob_pattern_tool) for more information.
 
@@ -62,6 +61,30 @@ To clean up the structure later, run:
 ```bash
 rm -rf test_dir
 ```
+
+It will create the following directory structure:
+
+import { FileTree } from '@astrojs/starlight/components';
+
+<FileTree>
+- test_dir
+  - lowercase
+    - foo.py
+    - bar.py
+    - baz.py
+    - qux.txt
+    - corge.txt
+    - grault.txt
+  - uppercase
+    - FOO.PY
+    - BAR.PY
+    - BAZ.PY
+    - QUX.txt
+    - CORGE.txt
+    - GRAULT.txt
+  - .secret
+    - secret.txt
+</FileTree>
 
 ---
 

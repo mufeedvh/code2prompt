@@ -736,4 +736,50 @@ mod tests {
             ));
         }
     }
+
+    #[test]
+    fn test_brace_expansion_first_item() {
+        let base_path = TEST_DIR.path();
+
+        // This pattern uses brace expansion to match foo.py, bar.py, and baz.py
+        // The issue was that the first item (foo.py) wasn't being considered
+        let include_patterns = build_globset(&vec!["lowercase/{foo.py,bar.py,baz.py}".to_string()]);
+        let exclude_patterns =
+            build_globset(&vec!["lowercase/{qux.py,corge.py,grault.py}".to_string()]);
+        let include_priority = false;
+
+        // ALL files in the brace expansion should be included
+        for file in ["foo.py", "bar.py", "baz.py"] {
+            let path = base_path.join("lowercase").join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+
+            assert!(
+                should_include_file(
+                    &relative_path,
+                    &include_patterns,
+                    &exclude_patterns,
+                    include_priority
+                ),
+                "Failed to include file: {}",
+                file
+            );
+        }
+
+        // Files not in the brace expansion should be excluded
+        for file in ["qux.txt", "corge.txt", "grault.txt"] {
+            let path = base_path.join("lowercase").join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+
+            assert!(
+                !should_include_file(
+                    &relative_path,
+                    &include_patterns,
+                    &exclude_patterns,
+                    include_priority
+                ),
+                "Incorrectly included non-matching file: {}",
+                file
+            );
+        }
+    }
 }

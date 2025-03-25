@@ -13,7 +13,6 @@
 iniconfig==2.0.0
     # via pytest
 maturin==1.8.2
-    # via code2prompt-rs
 packaging==24.2
     # via pytest
 patchelf==0.17.2.1

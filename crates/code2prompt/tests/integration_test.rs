@@ -275,4 +275,28 @@ mod tests {
         assert!(contains("├── BAZ.py").eval(&output));
         assert!(!contains("CONTENT BAR.PY").eval(&output));
     }
+
+    #[test]
+    fn test_brace_expansion_first_item() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--include")
+            .arg("lowercase/{foo.py,bar.py,baz.py}")
+            .arg("--exclude")
+            .arg("lowercase/{qux.txt,corge.txt,grault.txt}")
+            .assert()
+            .success();
+
+        let output = env.read_output();
+
+        assert!(contains("foo.py").eval(&output));
+        assert!(contains("content foo.py").eval(&output));
+        assert!(contains("bar.py").eval(&output));
+        assert!(contains("content bar.py").eval(&output));
+        assert!(contains("baz.py").eval(&output));
+        assert!(contains("content baz.py").eval(&output));
+        assert!(contains("qux.txt").not().eval(&output));
+        assert!(contains("corge.txt").not().eval(&output));
+        assert!(contains("grault.txt").not().eval(&output));
+    }
 }

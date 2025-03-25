@@ -3,8 +3,6 @@ title: Installing Code2Prompt
 description: A complete installation guide for Code2Prompt on different operating systems.
 ---
 
-# Installation
-
 ## Binary releases
 
 Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases).
@@ -19,6 +17,12 @@ Requires:
 git clone https://github.com/mufeedvh/code2prompt.git
 cd code2prompt/
 cargo build --release
+```
+
+You can install it to globally in your computer using:
+
+```sh
+cargo install --path crates/code2prompt
 ```
 
 # cargo

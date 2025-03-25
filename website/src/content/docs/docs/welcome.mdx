@@ -7,17 +7,43 @@ hero:
   image:
     file: ../../../assets/logo_dark_v0.0.1.svg
   actions:
-    - text: Command Line Interface 🖥️
-      link: cli/welcome
-    - text: Python SDK 📦
-      link: sdk/welcome
+    - text: Get Started
+      link: tutorials/getting_started
 ---
 
-`code2prompt` is a powerful command-line tool designed to generate large language model (LLM) prompts directly from your codebase. It simplifies the process of combining and formatting code, making it easy to analyze, document, or refactor code using LLMs like GPT or Claude.
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import { LinkCard } from '@astrojs/starlight/components';
 
-This tool is built with scalability and customization in mind, allowing you to handle even the largest codebases effortlessly. Whether you are generating documentation, searching for bugs, or refactoring code, `code2prompt` provides the flexibility and precision needed for various development tasks.
+`code2prompt` is a powerful code ingestion tool designed to generate prompts for code analysis, generation, and other tasks. It works by traversing directories, building a tree structure, and gathering informations about each file.
 
+It simplifies the process of combining and formatting code, making it easy to analyze, document, or refactor code using LLMs
+
+You can use `code2prompt` the following ways:
+
+<CardGrid >
+  <Card title="Core" icon="seti:rust">
+    Core library blazingly fast for code ingestion
+  </Card>
+  <Card title="CLI" icon="seti:powershell">
+    Command Line Interface specially designed for humans
+  </Card>
+  <Card title="SDK" icon="seti:python">
+    Software Development Kit for AI agents and automation scripts
+  </Card>
+  <Card title="MCP" icon="seti:folder">
+    Model Context Protocol server for LLMs on steroids
+  </Card>
+</CardGrid>
 ---
+
+## Quick Start
+
+<LinkCard title="Getting Started 🚀" href="tutorials/getting_started" />
+<LinkCard title="Installation 📥" href="how_to/install" />
+<LinkCard title="Filters 🔍" href="tutorials/use_filter" />
+<LinkCard title="Templates 📝" href="/tutorials/using_templates" />
+
+
 
 ## Key Features
 
@@ -27,22 +53,6 @@ This tool is built with scalability and customization in mind, allowing you to h
 - **Token Counting**: Analyze token usage and optimize for LLMs with varying context windows.
 - **Git Integration**: Include Git diffs and commit messages in prompts for code reviews.
 - **Respects `.gitignore`**: Automatically ignores files listed in `.gitignore` to streamline prompt generation.
-
----
-
-## Getting Started
-
-### Installation
-
-Check out the 👉 [Installation Guide](../how_to/install) for detailed instructions on how to install `code2prompt`.
-
-### Usage
-
-Check out the 👉 [Filter Files Guide](../how_to/filter_files) to learn how to filter files using glob patterns.
-
-Check out the 👉 [Templates Guide](../tutorials/templates) to learn how to use custom Handlebars templates.
-
-With `code2prompt`, you can unlock the full potential of LLMs by creating well-structured and meaningful prompts from your codebase. Let's get started!
 
 ---
 
