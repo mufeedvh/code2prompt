@@ -78,12 +78,16 @@ impl Default for TokenizerType {
     }
 }
 
-/// Counts the tokens in the rendered text using the specified encoding and prints the result.
+/// Counts the tokens in the provided text using the specified tokenizer type.
 ///
 /// # Arguments
 ///
-/// * `rendered` - The rendered template string.
-/// * `tokenizer_type` - The tokenizer type to use.
+/// * `rendered` - The text to count tokens in
+/// * `tokenizer_type` - The tokenizer encoding to use
+///
+/// # Returns
+///
+/// * `usize` - The number of tokens in the text
 pub fn count_tokens(rendered: &str, tokenizer_type: &TokenizerType) -> usize {
     let bpe = match tokenizer_type {
         TokenizerType::O200kBase => o200k_base(),
