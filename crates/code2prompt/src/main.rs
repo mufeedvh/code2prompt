@@ -262,6 +262,18 @@ fn setup_spinner(message: &str) -> ProgressBar {
     spinner
 }
 
+/// Parses the branch argument from command line options.
+///
+/// Takes an optional vector of strings and converts it to a tuple of two branch names
+/// if exactly two branches are provided.
+///
+/// # Arguments
+///
+/// * `branch_arg` - An optional vector containing branch names
+///
+/// # Returns
+///
+/// * `Option<(String, String)>` - A tuple of (from_branch, to_branch) if two branches were provided, None otherwise
 fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, String)> {
     match branch_arg {
         Some(branches) if branches.len() == 2 => Some((branches[0].clone(), branches[1].clone())),
@@ -269,6 +281,16 @@ fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, St
     }
 }
 
+/// Loads a template from a file path or returns default values.
+///
+/// # Arguments
+///
+/// * `template_arg` - An optional path to a template file
+///
+/// # Returns
+///
+/// * `Result<(String, String)>` - A tuple containing (template_content, template_name)
+///   where template_name is "custom" for user-provided templates or "default" otherwise
 pub fn parse_template(template_arg: &Option<PathBuf>) -> Result<(String, String)> {
     match template_arg {
         Some(path) => {
