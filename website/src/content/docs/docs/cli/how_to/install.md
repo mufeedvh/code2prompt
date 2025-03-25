@@ -21,6 +21,12 @@ cd code2prompt/
 cargo build --release
 ```
 
+You can install it to globally in your computer using:
+
+```sh
+cargo install --path crates/code2prompt
+```
+
 # cargo
 
 installs from the [`crates.io`](https://crates.io) registry.
