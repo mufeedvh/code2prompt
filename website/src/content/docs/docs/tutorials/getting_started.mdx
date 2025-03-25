@@ -1,9 +1,14 @@
 ---
 title: Getting Started with Code2Prompt
-description: A step-by-step guide to installing and running Code2Prompt for the first time.
+description: A step-by-step guide to installing and running Code2Prompt for the first time
 ---
+import { Aside } from '@astrojs/starlight/components';
 
-# Getting Started
+Welcome to Code2Prompt! This guide will help you get started with installing and running Code2Prompt for the first time.
+
+## Installation
+
+Check out the [installation instructions](../how_to/install.md)
 
 ## Using Code2Prompt
 
@@ -44,8 +49,7 @@ code2prompt path/to/codebase --tokens --encoding=p50k
 ```
 
 Supported tokenizers: `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
-> [!NOTE]  
-> See [Tokenizers](#tokenizers) for more details.
+<Aside>See [Tokenizers](../explanations/tokenizers.md) for more details</Aside>
 
 Save the generated prompt to an output file:
 

@@ -3,8 +3,6 @@ title: Tokenization in Code2Prompt
 description: Learn about tokenization and how Code2Prompt processes text for LLMs.
 ---
 
-# Tokenizers for `code2prompt`
-
 When working with language models, text needs to be transformed into a format that the model can understand—**tokens**, which are sequences of numbers. This transformation is handled by a **tokenizer**.
 
 ---
