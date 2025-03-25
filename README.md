@@ -65,31 +65,6 @@ pip install code2prompt-rs
 
 Check our online [documentation](https://code2prompt.dev/docs/welcome/) for detailed instructions
 
-## Table of Contents ⛩️
-
-- [Features](#features)
-- [Python SDK](#python-sdk)
-- [Contribution](#contribution)
-- [License](#license)
-
-## Features
-
-You can run this tool on the entire directory and it would generate a well-formatted Markdown prompt detailing the source tree structure, and all the code. You can then upload this document to either GPT or Claude models with higher context windows and ask it to:
-
-- Quickly generate LLM prompts from codebases of any size.
-- Customize prompt generation with Handlebars templates. (See the [default template](src/default_template.hbs))
-- Respects `.gitignore` (can be disabled with `--no-ignore`).
-- Filter and exclude files using glob patterns.
-- Control hidden file inclusion with `--hidden` flag.
-- Display the token count of the generated prompt. (See [Tokenizers](#tokenizers) for more details)
-- Optionally include Git diff output (staged files) in the generated prompt.
-- Automatically copy the generated prompt to the clipboard.
-- Save the generated prompt to an output file.
-- Exclude files and folders by name or path.
-- Add line numbers to source code blocks.
-
-You can customize the prompt template to achieve any of the desired use cases. It essentially traverses a codebase and creates a prompt with all source files combined. In short, it automates copy-pasting multiple source files into your prompt and formatting them along with letting you know how many tokens your code consumes.
-
 ## Features
 
 Code2Prompt transforms your entire codebase into a well-structured prompt for large language models. Key features include:
