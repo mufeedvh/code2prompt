@@ -88,7 +88,7 @@
     unist-util-visit "^5.0.0"
     vfile "^6.0.3"
 
-"@astrojs/prism@3.2.0":
+"@astrojs/prism@3.2.0", "@astrojs/prism@^3.2.0":
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/@astrojs/prism/-/prism-3.2.0.tgz#e8ad1698395bd05f8d1177b365a8de899655c912"
   integrity sha512-GilTHKGCW6HMq7y3BUv9Ac7GMe/MO9gi9GW62GzKtth0SwukCu/qp2wLiGpEujhY+VVhaG9v7kv/5vFzvf4NYw==
