@@ -1,5 +1,127 @@
 ---
-import { Prism } from '@astrojs/prism';
+import { Prism } from "@astrojs/prism";
 ---
 
-<section id="one" class="bg-white py-12"> <div class="container mx-auto"> <div class="flex flex-wrap"> <div class="w-full md:w-1/3 px-4"> <header class="mb-4"> <h2 class="text-2xl font-semibold">Use Cases</h2> </header> <p class="mb-2">Code2Prompt simplifies code ingestion, turning your codebase into structured prompts for AI and automation.</p> <p class="mb-2">It introduces a new development workflow, enabling AI and human agents to interact with code efficiently.</p> </div> <div class="w-full md:w-2/3 px-4 relative flex justify-center items-center my-2"> <div class="bg-gray-100 rounded-md p-2 relative"> <Prism code={`code2prompt . --include "*.js,*.html" --exclude "node_modules/"`} lang="js" /> <button class="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 rounded p-1"> <i class="fa fa-clipboard" aria-hidden="true"></i> </button> </div> </div> </div> <div class="scroller" data-speed="slow"> <ul class="tag-list scroller__inner"> <li>Code it</li> <li>Parse it</li> <li>Extract it</li> <li>Format it</li> <li>Analyze it</li> <li>Optimize it</li> <li>Rewrite it</li> <li>Summarize it</li> <li>Filter it</li> <li>Search it</li> <li>Sort it</li> <li>Query it</li> <li>Compare it</li> <li>Deploy it</li> <li>Debug it</li> <li>Refactor it</li> <li>Automate it</li> <li>Run it</li> <li>Monitor it</li> <li>Test it</li> <li>Track it</li> <li>Patch it</li> <li>Secure it</li> <li>Train it</li> <li>Validate it</li> <li>Package it</li> <li>Upgrade it</li> <li>Integrate it</li> <li>Unlock it</li> </ul> </div> <div class="scroller" data-direction="right" data-speed="fast"> <div class="scroller__inner"> <img class="img-scroll" src="/assets/images/Ollama.svg" alt="LLaMA"> <img class="img-scroll" src="/assets/images/Groq.svg" alt="Grok"> <img class="img-scroll" src="/assets/images/Qwen.svg" alt="Qwen"> <img class="img-scroll" src="/assets/images/Mistral.svg" alt="Mistral"> <img class="img-scroll" src="/assets/images/Deepseek.svg" alt="DeepSeek"> <img class="img-scroll" src="/assets/images/Gemini.svg" alt="Gemini"> <img class="img-scroll" src="/assets/images/OpenAI.svg" alt="GPT"> <img class="img-scroll" src="/assets/images/Claude.svg" alt="Claude"> </div> </div> </div> </section>
+<section id="one" class="bg-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="flex flex-col md:flex-row md:gap-6">
+      <!-- Left column (1/3) -->
+      <div class="w-full md:w-1/3 mb-6 md:mb-0 text-center md:text-left">
+        <header class="mb-4">
+          <h2 class="text-2xl font-semibold">Use Cases</h2>
+        </header>
+        <p class="mb-2">
+          Code2Prompt simplifies code ingestion, turning your codebase into
+          structured prompts for AI and automation.
+        </p>
+        <p class="mb-2">
+          It introduces a new development workflow, enabling AI and human agents
+          to interact with code efficiently.
+        </p>
+      </div>
+
+      <!-- Right column (2/3) with background image -->
+      <div class="w-full md:w-2/3">
+        <!-- Full-height container with background image -->
+        <div
+          class="relative w-full aspect-video rounded-lg overflow-hidden bg-[#111827]"
+        >
+          <!-- Background image that fills the container -->
+          <img
+            src="/assets/images/pic04.jpg"
+            alt="Background"
+            class="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-20"
+          />
+
+          <!-- Centered code block container -->
+          <div class="absolute inset-0 flex items-center justify-center px-4">
+            <div class="w-full max-w-2xl relative">
+              <!-- Code block with NO scrolling -->
+              <div class="relative bg-black bg-opacity-50 p-4 rounded m-4">
+                <Prism
+                  code={`code2prompt . --include "*.js,*.html" --exclude "node_modules/"`}
+                  lang="js"
+                  class="text-sm md:text-base whitespace-normal break-words pr-10"
+                />
+
+                <!-- Copy button - positioned to the right -->
+                <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                  <button
+                    class="bg-gray-700 hover:bg-gray-600 text-white rounded p-2 flex items-center justify-center transition-colors"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Marquee sections - keeping the custom classes -->
+    <div class="scroller mt-8" data-speed="slow">
+      <ul class="tag-list scroller__inner flex">
+        <li class="mx-2 whitespace-nowrap">Code it</li>
+        <li class="mx-2 whitespace-nowrap">Parse it</li>
+        <li class="mx-2 whitespace-nowrap">Extract it</li>
+        <li class="mx-2 whitespace-nowrap">Format it</li>
+        <li class="mx-2 whitespace-nowrap">Analyze it</li>
+        <li class="mx-2 whitespace-nowrap">Optimize it</li>
+        <li class="mx-2 whitespace-nowrap">Rewrite it</li>
+        <li class="mx-2 whitespace-nowrap">Summarize it</li>
+        <li class="mx-2 whitespace-nowrap">Filter it</li>
+        <li class="mx-2 whitespace-nowrap">Search it</li>
+        <li class="mx-2 whitespace-nowrap">Sort it</li>
+        <li class="mx-2 whitespace-nowrap">Query it</li>
+        <li class="mx-2 whitespace-nowrap">Compare it</li>
+        <li class="mx-2 whitespace-nowrap">Deploy it</li>
+        <li class="mx-2 whitespace-nowrap">Debug it</li>
+        <li class="mx-2 whitespace-nowrap">Refactor it</li>
+        <li class="mx-2 whitespace-nowrap">Automate it</li>
+        <li class="mx-2 whitespace-nowrap">Run it</li>
+        <li class="mx-2 whitespace-nowrap">Monitor it</li>
+        <li class="mx-2 whitespace-nowrap">Test it</li>
+        <li class="mx-2 whitespace-nowrap">Track it</li>
+        <li class="mx-2 whitespace-nowrap">Patch it</li>
+        <li class="mx-2 whitespace-nowrap">Secure it</li>
+        <li class="mx-2 whitespace-nowrap">Train it</li>
+        <li class="mx-2 whitespace-nowrap">Validate it</li>
+        <li class="mx-2 whitespace-nowrap">Package it</li>
+        <li class="mx-2 whitespace-nowrap">Upgrade it</li>
+        <li class="mx-2 whitespace-nowrap">Integrate it</li>
+        <li class="mx-2 whitespace-nowrap">Unlock it</li>
+      </ul>
+    </div>
+
+    <div class="scroller mt-4" data-direction="right" data-speed="fast">
+      <div class="scroller__inner flex">
+        <img class="h-12 mx-4" src="/assets/images/Ollama.svg" alt="LLaMA" />
+        <img class="h-12 mx-4" src="/assets/images/Groq.svg" alt="Grok" />
+        <img class="h-12 mx-4" src="/assets/images/Qwen.svg" alt="Qwen" />
+        <img class="h-12 mx-4" src="/assets/images/Mistral.svg" alt="Mistral" />
+        <img
+          class="h-12 mx-4"
+          src="/assets/images/Deepseek.svg"
+          alt="DeepSeek"
+        />
+        <img class="h-12 mx-4" src="/assets/images/Gemini.svg" alt="Gemini" />
+        <img class="h-12 mx-4" src="/assets/images/OpenAI.svg" alt="GPT" />
+        <img class="h-12 mx-4" src="/assets/images/Claude.svg" alt="Claude" />
+      </div>
+    </div>
+  </div>
+</section>
