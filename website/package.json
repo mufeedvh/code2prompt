@@ -1,7 +1,8 @@
 {
-  "name": "code2prompt",
+  "name": "code2prompt-website",
   "type": "module",
   "version": "0.0.1",
+  "license": "MIT",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
@@ -10,8 +11,22 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.32.1",
-    "astro": "^5.1.5",
-    "sharp": "^0.32.5"
+    "@astrojs/markdoc": "^0.13.1",
+    "@astrojs/mdx": "^4.2.1",
+    "@astrojs/react": "^4.2.1",
+    "@astrojs/starlight": "^0.32.4",
+    "@astrojs/tailwind": "^6.0.1",
+    "@astrojs/upgrade": "^0.5.1",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "astro": "^5.5.4",
+    "rehype-mathjax": "^7.1.0",
+    "remark-math": "^6.0.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "dlx": "^0.2.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }
