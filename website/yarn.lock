@@ -104,7 +104,7 @@
     ultrahtml "^1.5.3"
     vite "^6.2.0"
 
-"@astrojs/sitemap@^3.2.1":
+"@astrojs/sitemap@^3.2.1", "@astrojs/sitemap@^3.3.0":
   version "3.3.0"
   resolved "https://registry.yarnpkg.com/@astrojs/sitemap/-/sitemap-3.3.0.tgz#8701845fec017f813a855571d7606711705fa170"
   integrity sha512-nYE4lKQtk+Kbrw/w0G0TTgT724co0jUsU4tPlHY9au5HmTBKbwiCLwO/15b1/y13aZ4Kr9ZbMeMHlXuwn0ty4Q==

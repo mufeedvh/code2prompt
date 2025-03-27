@@ -1,49 +1,186 @@
-<section id="three" class="main style1 special">
-  <div class="container">
-    <header class="major">
-      <h2>Why Code2Prompt?</h2>
-    </header>
-    <div class="row">
-      <div class="col-6 col-12-medium">
-        <ul class="major-icons">
-          <li><span class="icon solid style1 major fa-bolt"></span></li>
-          <li><span class="icon solid style2 major fa-scroll"></span></li>
-          <li><span class="icon solid style3 major fa-filter"></span></li>
-          <li><span class="icon solid style4 major fa-file-export"></span></li>
-          <li><span class="icon solid style5 major fa-code-branch"></span></li>
-          <li><span class="icon solid style8 major fa-users"></span></li>
-        </ul>
-      </div>
-      <div class="col-6 col-12-medium">
-        <header class="major">
-          <h2>Why Code2Prompt?</h2>
-        </header>
-        <div class="features">
-          <p>
-            ⚡ <strong>High-Performance:</strong> Written in Rust for speed and efficiency.
-          </p>
-          <p>
-            📜 <strong>Handlebars-Powered:</strong> Customizable prompt generation
-            using Handlebars templates.
-          </p>
-          <p>
-            🔍 <strong>Smart Filtering:</strong> Supports include/exclude patterns
-            with glob matching and Language Server Protocol (LSP).
-          </p>
-          <p>
-            📁 <strong>Multi-Format Support:</strong> Exports structured prompts
-            in JSON, Markdown, or XML with different formatting options.
-          </p>
-          <p>
-            🔗 <strong>Git Integration:</strong> Includes Git diff and log extraction
-            for better context.
-          </p>
-          <p>
-            🌍 <strong>Open-Source & Community-Driven:</strong> Built with developer
-            collaboration under the MIT license.
-          </p>
+<div class="bg-white py-24 sm:py-32">
+  <div class="mx-auto max-w-7xl px-6 lg:px-8">
+    <div class="mx-auto max-w-2xl lg:text-center">
+      <h2 class="text-base font-semibold text-indigo-600">
+        Built for developers
+      </h2>
+      <p
+        class="mt-2 text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance"
+      >
+        Why Code2Prompt?
+      </p>
+      <p class="mt-6 text-lg text-gray-600">
+        Code2Prompt transforms your codebase into structured prompts for AI
+        models, making it easier to get accurate, context-aware responses.
+      </p>
+    </div>
+    <div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
+      <dl
+        class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-2 lg:gap-y-16"
+      >
+        <div class="relative pl-16">
+          <dt class="text-base font-semibold text-gray-900">
+            <div
+              class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600"
+            >
+              <svg
+                class="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
+                ></path>
+              </svg>
+            </div>
+            High-Performance
+          </dt>
+          <dd class="mt-2 text-base text-gray-600">
+            Written in Rust for speed and efficiency, handling large codebases
+            with minimal resource usage.
+          </dd>
         </div>
-      </div>
+        <div class="relative pl-16">
+          <dt class="text-base font-semibold text-gray-900">
+            <div
+              class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600"
+            >
+              <svg
+                class="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                ></path>
+              </svg>
+            </div>
+            Handlebars-Powered
+          </dt>
+          <dd class="mt-2 text-base text-gray-600">
+            Customizable prompt generation using Handlebars templates, giving
+            you full control over output format.
+          </dd>
+        </div>
+        <div class="relative pl-16">
+          <dt class="text-base font-semibold text-gray-900">
+            <div
+              class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600"
+            >
+              <svg
+                class="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z"
+                ></path>
+              </svg>
+            </div>
+            Smart Filtering
+          </dt>
+          <dd class="mt-2 text-base text-gray-600">
+            Supports include/exclude patterns with glob matching and Language
+            Server Protocol (LSP) for precise code selection.
+          </dd>
+        </div>
+        <div class="relative pl-16">
+          <dt class="text-base font-semibold text-gray-900">
+            <div
+              class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600"
+            >
+              <svg
+                class="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                ></path>
+              </svg>
+            </div>
+            Multi-Format Support
+          </dt>
+          <dd class="mt-2 text-base text-gray-600">
+            Exports structured prompts in JSON, Markdown, or XML with different
+            formatting options to suit your workflow.
+          </dd>
+        </div>
+        <div class="relative pl-16">
+          <dt class="text-base font-semibold text-gray-900">
+            <div
+              class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600"
+            >
+              <svg
+                class="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"
+                ></path>
+              </svg>
+            </div>
+            Git Integration
+          </dt>
+          <dd class="mt-2 text-base text-gray-600">
+            Includes Git diff and log extraction for better context, making it
+            easier to understand code changes over time.
+          </dd>
+        </div>
+        <div class="relative pl-16">
+          <dt class="text-base font-semibold text-gray-900">
+            <div
+              class="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600"
+            >
+              <svg
+                class="size-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+                ></path>
+              </svg>
+            </div>
+            Open-Source & Community-Driven
+          </dt>
+          <dd class="mt-2 text-base text-gray-600">
+            Built with developer collaboration under the MIT license,
+            encouraging contributions and extensions.
+          </dd>
+        </div>
+      </dl>
     </div>
   </div>
-</section>
+</div>
