@@ -1,5 +1,6 @@
 ---
 import { Prism } from "@astrojs/prism";
+import { FileTree } from '@astrojs/starlight/components';
 import fs from "node:fs";
 import path from "node:path";
 
@@ -72,107 +73,101 @@ const examples = exampleDirs
 // Default to first example
 const { defaultTab = 1 } = Astro.props;
 ---
-
-<section id="what" class="bg-gray-100 py-12">
-  <div class="container mx-auto px-4">
-    <!-- Section Header -->
-    <div class="text-center mb-10">
-      <h2 class="text-3xl font-bold text-gray-800">What ?</h2>
-      <p class="text-lg text-gray-600 mt-2">Transform any text repositories into meaningful prompts... Check it out !</p>
-    </div>
-    
-    <!-- Tab Navigation -->
-    <div class="mb-6">
-      <div class="border-b border-gray-200 bg-white rounded-t-lg shadow-sm">
-        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="exampleTabs" role="tablist">
-          {examples.map((example, index) => (
-            <li class="mr-2" role="presentation">
-              <button 
-                class={`inline-block p-4 rounded-t-lg border-b-2 ${index === defaultTab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                id={`tab-${index}`}
-                data-tabs-target={`#tab-content-${index}`}
-                type="button"
-                role="tab"
-                aria-controls={`tab-content-${index}`}
-                aria-selected={index === defaultTab}
-                data-index={index}
-              >
-                {example.category}
-              </button>
-            </li>
-          ))}
-        </ul>
+<div class="w-full bg-gray-100">
+  <section id="what" class="bg-gray-100 py-12 max-w-[90vw] mx-auto">
+    <div class="mx-auto px-4">
+      <!-- Section Header -->
+      <div class="text-center mb-10">
+        <h2 class="text-3xl font-bold text-gray-800">What is Code2rompt ?</h2>
+        <p class="text-lg text-gray-600 mt-2">Transform any text repositories into meaningful prompts... Check it out !</p>
       </div>
-    </div>
+      
+      <!-- Tab Navigation -->
+      <div class="mb-6">
+        <div class="border-b border-gray-200 bg-white rounded-t-lg shadow-sm">
+          <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="exampleTabs" role="tablist">
+            {examples.map((example, index) => (
+              <li class="mr-2" role="presentation">
+                <button 
+                  class={`inline-block p-4 rounded-t-lg border-b-2 ${index === defaultTab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  id={`tab-${index}`}
+                  data-tabs-target={`#tab-content-${index}`}
+                  type="button"
+                  role="tab"
+                  aria-controls={`tab-content-${index}`}
+                  aria-selected={index === defaultTab}
+                  data-index={index}
+                >
+                  {example.category}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
 
-    <div class="tab-content">
-      {examples.map((example, index) => (
-        <div 
-          class={`tab-pane ${index === defaultTab ? 'block' : 'hidden'}`} 
-          id={`tab-content-${index}`}
-          role="tabpanel"
-          aria-labelledby={`tab-${index}`}
-        >
-          <div class="flex flex-col md:flex-row md:gap-6">
-            <!-- Left Column: Directory Tree -->
-            <div class="w-full md:w-1/3 mb-6 md:mb-0 p-6 bg-white rounded-md shadow-md">
-              <header class="mb-4 border-b pb-2">
-                <h2 class="text-xl font-bold text-gray-800">{example.category}</h2>
-              </header>
-              <div class="text-gray-800">
-                <div class="directory-tree">
+      <div class="tab-content">
+        {examples.map((example, index) => (
+          <div 
+            class={`tab-pane ${index === defaultTab ? 'block' : 'hidden'}`} 
+            id={`tab-content-${index}`}
+            role="tabpanel"
+            aria-labelledby={`tab-${index}`}
+          >
+            <div class="flex flex-col md:flex-row md:gap-6">
+              <!-- Left Column: Directory Tree -->
+              <div class="w-full md:w-1/3 mb-6 md:mb-0 p-6 bg-white rounded-md shadow-md">
+                <header class="mb-4 border-b pb-2">
+                  <h2 class="text-xl font-bold text-gray-800">{example.category}</h2>
+                </header>
+                <div class="text-gray-800 max-h-96 overflow-auto p-2">
                   <pre class="text-sm font-mono whitespace-pre bg-gray-50 p-4 rounded-md overflow-auto border border-gray-200 max-h-96">{example.directoryTree}</pre>
                 </div>
-              </div>
-              
-              <!-- Command Section -->
-              <div class="mt-6 pt-4 border-t border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">Command</h3>
-                <div class="bg-gray-900 p-3 rounded-md text-gray-200 font-mono text-sm overflow-x-auto">
-                  $ code2prompt {example.name}
+                
+                <!-- Command Section -->
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                  <h3 class="text-lg font-semibold text-gray-800 mb-2">Command</h3>
+                  <div class="bg-gray-900 p-3 rounded-md text-gray-200 font-mono text-sm overflow-x-auto">
+                    $ code2prompt {example.name}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Right Column: Prompt  -->
-            <div class="w-full md:w-2/3 relative p-6 bg-white rounded-md shadow-md">
-              <!-- Code2Prompt Response -->
-              <div id="llm-response" class="mb-6 border-b pb-4">
-                <header class="mb-3">
-                  <h3 class="text-xl font-bold text-gray-800">Output Prompt</h3>
-                </header>
-                <div class="prose max-w-none">
-                  <Prism
-                    code={example.promptContent}
-                    lang="markdown"
-                    class="overflow-auto w-full prism-small-font max-h-96"
-                  />
+              <!-- Right Column: Prompt  -->
+              <div class="w-full md:w-2/3 relative p-6 bg-white rounded-md shadow-md">
+                <!-- Code2Prompt Response -->
+                <div id="llm-response" class="mb-6 border-b pb-4">
+                  <header class="mb-3">
+                    <h3 class="text-xl font-bold text-gray-800">Output Prompt</h3>
+                  </header>
+                  <div class="prose max-w-none">
+                    <Prism
+                      code={example.promptContent}
+                      lang="markdown"
+                      class="overflow-auto w-full prism-small-font max-h-96"
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              <!-- Question Block (moved below output) -->
-              <div>
-                <header class="mb-3">
-                  <h3 class="text-xl font-bold text-gray-800">Question</h3>
-                </header>
-                <div class="bg-gray-800 text-white p-4 rounded-md">
-                  {example.prompt}
+                
+                <!-- Question Block (moved below output) -->
+                <div>
+                  <header class="mb-3">
+                    <h3 class="text-xl font-bold text-gray-800">Question</h3>
+                  </header>
+                  <div class="bg-gray-800 text-white p-4 rounded-md">
+                    {example.prompt}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-</section>
+  </section>
+</div>
 
 <style>
-  /* Directory Tree Styling */
-  .directory-tree {
-    font-family: monospace;
-  }
-
   /* Make Prism styling consistent */
   :global(pre.astro-code) {
     background-color: #2d2d2d !important;
@@ -187,6 +182,17 @@ const { defaultTab = 1 } = Astro.props;
   /* Enforce text color in code blocks */
   :global(.astro-code) :global(code) {
     color: #f8f8f2 !important;
+  }
+
+  /* Custom FileTree styling */
+  :global(.file-tree) {
+    font-size: 0.9rem !important;
+    margin: 0 !important;
+  }
+
+  :global(.file-tree-directory),
+  :global(.file-tree-file) {
+    margin-bottom: 0.25rem !important;
   }
 
   /* Prose settings for markdown content */
@@ -215,25 +221,20 @@ const { defaultTab = 1 } = Astro.props;
     line-height: 1.6;
   }
   
-  /* Directory tree styling for better visibility */
-  .directory-tree pre {
-    line-height: 1.5;
-  }
-  
   /* Scrollbars styling for better visibility */
-  .directory-tree pre::-webkit-scrollbar,
+  pre::-webkit-scrollbar,
   :global(pre.astro-code)::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   
-  .directory-tree pre::-webkit-scrollbar-thumb,
+  pre::-webkit-scrollbar-thumb,
   :global(pre.astro-code)::-webkit-scrollbar-thumb {
     background-color: #cbd5e0;
     border-radius: 4px;
   }
   
-  .directory-tree pre::-webkit-scrollbar-track,
+  pre::-webkit-scrollbar-track,
   :global(pre.astro-code)::-webkit-scrollbar-track {
     background-color: #f1f1f1;
   }
@@ -274,3 +275,4 @@ const { defaultTab = 1 } = Astro.props;
     });
   });
 </script>
+

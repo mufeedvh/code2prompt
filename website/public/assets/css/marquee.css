@@ -118,7 +118,7 @@ body {
 .ml0 {
   margin-left: 0 !important;
 }
- .mr0 {
+.mr0 {
   margin-right: 0 !important;
 }
 
@@ -132,4 +132,9 @@ body {
 
 .cust-h {
   height: 240px;
+}
+
+.img-scroll {
+  max-height: 90px;
+  max-width: 150px;
 }
