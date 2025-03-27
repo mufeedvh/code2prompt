@@ -1,3 +1,10 @@
+---
+import { Image } from "astro:assets";
+import SDK from "/src/assets/SDK.svg";
+import CLI from "/src/assets/CLI.svg";
+import MCP from "/src/assets/MCP.svg";
+---
+
 <section id="two" class="main style2 py-16 bg-gray-50 dark:bg-gray-900">
   <div class="container mx-auto px-4">
     <header class="major text-center mb-12">
@@ -22,9 +29,9 @@
           <div
             class="p-8 flex justify-center items-center bg-white dark:bg-gray-700"
           >
-            <img
+            <Image
               class="w-2/3 max-h-36 filter dark:invert"
-              src="/src/assets/CLI.svg"
+              src={CLI}
               alt="CLI"
             />
           </div>
@@ -49,9 +56,9 @@
           <div
             class="p-8 flex justify-center items-center bg-white dark:bg-gray-700"
           >
-            <img
+            <Image
               class="w-2/3 max-h-36 filter dark:invert"
-              src="/src/assets/SDK.svg"
+              src={SDK}
               alt="SDK"
             />
           </div>
@@ -76,9 +83,9 @@
           <div
             class="p-8 flex justify-center items-center bg-white dark:bg-gray-700"
           >
-            <img
+            <Image
               class="w-2/3 max-h-36 filter dark:invert"
-              src="/src/assets/MCP.svg"
+              src={MCP}
               alt="MCP"
             />
           </div>
