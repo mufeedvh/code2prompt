@@ -45,9 +45,9 @@ function parsePromptMd(promptPath: string) {
 
 // Map directory names to categories
 const categoryMap = {
-  "node_app": "Codebase",
-  "history_notes": "Personal Notes",
-  "recipe_list": "Recipe Database"
+  "node_app": "Codebase 👨‍💻",
+  "history_notes": "Personal Notes 📖",
+  "recipe_list": "Recipe Database 🧑‍🍳"
 };
 
 // Load data for all examples and categorize them
@@ -73,12 +73,49 @@ const examples = exampleDirs
 // Default to first example
 const { defaultTab = 1 } = Astro.props;
 ---
+
+<script>
+  // Tabs functionality
+  const tabButtons = document.querySelectorAll('[role="tab"]');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+  
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Hide all tab content
+      tabPanes.forEach(pane => {
+        pane.classList.add('hidden');
+        pane.classList.remove('block');
+      });
+      
+      // Deactivate all tabs
+      tabButtons.forEach(tab => {
+        tab.classList.remove('border-blue-600', 'text-blue-600');
+        tab.classList.add('border-transparent', 'text-gray-500');
+        tab.setAttribute('aria-selected', 'false');
+      });
+      
+      // Activate the clicked tab
+      button.classList.add('border-blue-600', 'text-blue-600');
+      button.classList.remove('border-transparent', 'text-gray-500');
+      button.setAttribute('aria-selected', 'true');
+      
+      // Show the corresponding content
+      const index = button.getAttribute('data-index');
+      const targetContent = document.getElementById(`tab-content-${index}`);
+      if (targetContent) {
+        targetContent.classList.add('block');
+        targetContent.classList.remove('hidden');
+      }
+    });
+  });
+</script>
+
 <div class="w-full bg-gray-100">
   <section id="what" class="bg-gray-100 py-12 max-w-[90vw] mx-auto">
     <div class="mx-auto px-4">
       <!-- Section Header -->
       <div class="text-center mb-10">
-        <h2 class="text-3xl font-bold text-gray-800">What is Code2rompt ?</h2>
+        <h2 class="text-3xl font-bold text-gray-800">What is Code2Prompt ?</h2>
         <p class="text-lg text-gray-600 mt-2">Transform any text repositories into meaningful prompts... Check it out !</p>
       </div>
       
@@ -167,112 +204,4 @@ const { defaultTab = 1 } = Astro.props;
   </section>
 </div>
 
-<style>
-  /* Make Prism styling consistent */
-  :global(pre.astro-code) {
-    background-color: #2d2d2d !important;
-    padding: 1rem;
-    border-radius: 0.375rem;
-    overflow: auto;
-    margin: 0;
-    color: #f8f8f2 !important;
-    max-height: 400px; /* Add max height with scrolling */
-  }
-
-  /* Enforce text color in code blocks */
-  :global(.astro-code) :global(code) {
-    color: #f8f8f2 !important;
-  }
-
-  /* Custom FileTree styling */
-  :global(.file-tree) {
-    font-size: 0.9rem !important;
-    margin: 0 !important;
-  }
-
-  :global(.file-tree-directory),
-  :global(.file-tree-file) {
-    margin-bottom: 0.25rem !important;
-  }
-
-  /* Prose settings for markdown content */
-  .prose {
-    max-width: 100%;
-  }
-
-  .prose :global(h1, h2, h3, h4, h5, h6) {
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
-    color: #374151;
-  }
-  
-  .prose :global(p) {
-    margin-bottom: 1em;
-    color: #4b5563;
-  }
-  
-  .prose :global(ul, ol) {
-    margin-left: 1.5em;
-    margin-bottom: 1em;
-  }
-
-  .prism-small-font :global(:not(pre) > code[class*="language-"], pre[class*="language-"]) {
-    font-size: 0.85em;
-    line-height: 1.6;
-  }
-  
-  /* Scrollbars styling for better visibility */
-  pre::-webkit-scrollbar,
-  :global(pre.astro-code)::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  pre::-webkit-scrollbar-thumb,
-  :global(pre.astro-code)::-webkit-scrollbar-thumb {
-    background-color: #cbd5e0;
-    border-radius: 4px;
-  }
-  
-  pre::-webkit-scrollbar-track,
-  :global(pre.astro-code)::-webkit-scrollbar-track {
-    background-color: #f1f1f1;
-  }
-</style>
-
-<script>
-  // Tabs functionality
-  const tabButtons = document.querySelectorAll('[role="tab"]');
-  const tabPanes = document.querySelectorAll('.tab-pane');
-  
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      // Hide all tab content
-      tabPanes.forEach(pane => {
-        pane.classList.add('hidden');
-        pane.classList.remove('block');
-      });
-      
-      // Deactivate all tabs
-      tabButtons.forEach(tab => {
-        tab.classList.remove('border-blue-600', 'text-blue-600');
-        tab.classList.add('border-transparent', 'text-gray-500');
-        tab.setAttribute('aria-selected', 'false');
-      });
-      
-      // Activate the clicked tab
-      button.classList.add('border-blue-600', 'text-blue-600');
-      button.classList.remove('border-transparent', 'text-gray-500');
-      button.setAttribute('aria-selected', 'true');
-      
-      // Show the corresponding content
-      const index = button.getAttribute('data-index');
-      const targetContent = document.getElementById(`tab-content-${index}`);
-      if (targetContent) {
-        targetContent.classList.add('block');
-        targetContent.classList.remove('hidden');
-      }
-    });
-  });
-</script>
 
