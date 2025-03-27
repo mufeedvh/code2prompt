@@ -41,7 +41,6 @@ Instructions: Chop ingredients, mix, drizzle oil.
 ```
 
 `my_recipes/recipes/soup.txt`:
-`my_recipes/recipes/soup.txt`:
 
 ```txt
 Ingredients: carrots, potatoes, chicken broth, onions
