@@ -1,27 +1,104 @@
-<section id="two" class="main style2">
-    <div class="container">
-      <header class="major">
-        <h2>CLI & SDK</h2>
-      </header>
-      <p>Code2Prompt provides both a command-line interface and a Python SDK for full flexibility.</p>
-      <div class="row gtr-150">
-        <div class="col-6 col-12-medium">
-          <img class="overlay-image" src="/assets/images/CLI.png" alt="CLI" />
-          <h3>CLI</h3>
-          <p>Easily generate structured prompts from the terminal.</p>
-          <ul class="actions special">
-            <li><a href="docs/cli/welcome" class="button">More</a></li>
-          </ul>
+---
+import { Image } from "astro:assets";
+import SDK from "/src/assets/SDK.svg";
+import CLI from "/src/assets/CLI.svg";
+import MCP from "/src/assets/MCP.svg";
+---
+
+<section id="two" class="main style2 py-16 bg-gray-50 dark:bg-gray-900">
+  <div class="container mx-auto px-4">
+    <header class="major text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-blue-100 dark:text-white">
+        How to use Code2Prompt ?
+      </h2>
+    </header>
+    <p
+      class="text-center text-lg mx-auto mb-12 max-w-3xl text-gray-600 dark:text-gray-300"
+    >
+      Code2Prompt comes with different flavors depending on your needs.
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
+      <!-- CLI Card -->
+      <a
+        href="https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt"
+      >
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 h-full"
+        >
+          <!-- Improved icon container with better contrast -->
+          <div
+            class="p-8 flex justify-center items-center bg-white dark:bg-gray-700"
+          >
+            <Image
+              class="w-2/3 max-h-36 filter dark:invert"
+              src={CLI}
+              alt="CLI"
+            />
+          </div>
+          <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 class="text-xl font-bold mb-3 text-blue-100 dark:text-white">
+              CLI
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              For Humans. Generate structured prompts from the terminal at light
+              speed ⚡
+            </p>
+          </div>
         </div>
-        <div class="col-6 col-12-medium">
-          <img class="overlay-image" src="/assets/images/SDK.png" alt="SDK" />
-          <h3>Python SDK</h3>
-          <p>Integrate Code2Prompt into Python applications for advanced automation.</p>
-          <ul class="actions special">
-            <li><a href="docs/sdk/welcome" class="button">More</a></li>
-          </ul>
+      </a>
+
+      <!-- SDK Card -->
+      <a href="https://pypi.org/project/code2prompt-rs/">
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 h-full"
+        >
+          <!-- Improved icon container with better contrast -->
+          <div
+            class="p-8 flex justify-center items-center bg-white dark:bg-gray-700"
+          >
+            <Image
+              class="w-2/3 max-h-36 filter dark:invert"
+              src={SDK}
+              alt="SDK"
+            />
+          </div>
+          <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 class="text-xl font-bold mb-3 text-blue-100 dark:text-white">
+              Python SDK
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              For programs. Integrate Code2Prompt into Python applications for
+              advanced automation 🖥️
+            </p>
+          </div>
         </div>
-      </div>
+      </a>
+
+      <!-- MCP Card -->
+      <a href="https://github.com/ODAncona/code2prompt-mcp">
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 h-full"
+        >
+          <!-- Improved icon container with better contrast -->
+          <div
+            class="p-8 flex justify-center items-center bg-white dark:bg-gray-700"
+          >
+            <Image
+              class="w-2/3 max-h-36 filter dark:invert"
+              src={MCP}
+              alt="MCP"
+            />
+          </div>
+          <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 class="text-xl font-bold mb-3 text-blue-100 dark:text-white">
+              MCP
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              For Agents. Model Context Protocol to dope agents context 🤖
+            </p>
+          </div>
+        </div>
+      </a>
     </div>
-  </section>
-  
+  </div>
+</section>

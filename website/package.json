@@ -13,19 +13,24 @@
   "dependencies": {
     "@astrojs/markdoc": "^0.13.1",
     "@astrojs/mdx": "^4.2.1",
+    "@astrojs/prism": "^3.2.0",
     "@astrojs/react": "^4.2.1",
+    "@astrojs/sitemap": "^3.3.0",
     "@astrojs/starlight": "^0.32.4",
     "@astrojs/tailwind": "^6.0.1",
     "@astrojs/upgrade": "^0.5.1",
+    "@tailwindcss/vite": "^4.0.17",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "astro": "^5.5.4",
     "rehype-mathjax": "^7.1.0",
     "remark-math": "^6.0.0",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "tailwindcss": "^4.0.17"
   },
   "devDependencies": {
     "dlx": "^0.2.1",
+    "prettier-plugin-astro": "^0.14.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

@@ -7,12 +7,22 @@ hero:
   image:
     file: ../../../assets/logo_dark_v0.0.1.svg
   actions:
-    - text: Get Started
-      link: tutorials/getting_started
+    - text: Get Started 🚀
+      link: /docs/tutorials/getting_started
+    - text: Installation 📥
+      link: /docs/how_to/install
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
-import { LinkCard } from '@astrojs/starlight/components';
+import { Card, CardGrid } from "@astrojs/starlight/components";
+import { LinkCard } from "@astrojs/starlight/components";
+
+## Quick Start
+
+<LinkCard title="Getting Started 🚀" href="/docs/tutorials/getting_started" />
+<LinkCard title="Installation 📥" href="/docs/how_to/install" />
+<LinkCard title="Filters 🔍" href="/docs/tutorials/use_filter" />
+<LinkCard title="Templates 📝" href="/docs/tutorials/using_templates" />
+<LinkCard title="Vision 🔮" href="/docs/vision" />
 
 `code2prompt` is a powerful code ingestion tool designed to generate prompts for code analysis, generation, and other tasks. It works by traversing directories, building a tree structure, and gathering informations about each file.
 
@@ -20,7 +30,7 @@ It simplifies the process of combining and formatting code, making it easy to an
 
 You can use `code2prompt` the following ways:
 
-<CardGrid >
+<CardGrid>
   <Card title="Core" icon="seti:rust">
     Core library blazingly fast for code ingestion
   </Card>
@@ -36,15 +46,6 @@ You can use `code2prompt` the following ways:
 </CardGrid>
 ---
 
-## Quick Start
-
-<LinkCard title="Getting Started 🚀" href="tutorials/getting_started" />
-<LinkCard title="Installation 📥" href="how_to/install" />
-<LinkCard title="Filters 🔍" href="tutorials/use_filter" />
-<LinkCard title="Templates 📝" href="/tutorials/using_templates" />
-
-
-
 ## Key Features
 
 - **Generate LLM Prompts**: Quickly convert entire codebases into structured LLM prompts.
@@ -59,14 +60,17 @@ You can use `code2prompt` the following ways:
 ## Why `code2prompt`?
 
 1. **Save Time**:
+
    - Automates the process of traversing a codebase and formatting files for LLMs.
    - Avoids repetitive copy-pasting of code.
 
 2. **Improve Productivity**:
+
    - Provides a structured and consistent format for code analysis.
    - Helps identify bugs, refactor code, and write documentation faster.
 
 3. **Handle Large Codebases**:
+
    - Designed to work seamlessly with large codebases, respecting context limits of LLMs.
 
 4. **Customizable Workflows**:

@@ -1,0 +1,212 @@
+---
+import { Prism } from "@astrojs/prism";
+import { FileTree } from '@astrojs/starlight/components';
+import fs from "node:fs";
+import path from "node:path";
+
+// Configuration for examples dir
+const EXAMPLES_DIR = "src/assets/examples";
+const exampleDirs = fs
+  .readdirSync(EXAMPLES_DIR)
+  .filter((dir) => fs.statSync(path.join(EXAMPLES_DIR, dir)).isDirectory());
+
+// Function to extract directory structure from prompt.md
+function extractDirectoryTree(promptContent: string) {
+  const treeMatch = promptContent.match(/```txt\n([\s\S]*?)```/);
+  return treeMatch ? treeMatch[1].trim() : "";
+}
+
+// Function to parse prompt.md to get example data
+function parsePromptMd(promptPath: string) {
+  try {
+    const promptContent = fs.readFileSync(promptPath, "utf-8");
+    const directoryTree = extractDirectoryTree(promptContent);
+
+    // Extract question if it exists in a separate file
+    let question = "";
+    const questionPath = path.dirname(promptPath) + "/question.txt";
+    if (fs.existsSync(questionPath)) {
+      question = fs.readFileSync(questionPath, "utf-8").trim();
+    } else {
+      // Default to a generated question
+      question = `Add me a this cool feature`;
+    }
+
+    return {
+      promptContent,
+      directoryTree,
+      question,
+    };
+  } catch (error) {
+    console.error(`Error parsing prompt.md: ${error}`);
+    return null;
+  }
+}
+
+// Map directory names to categories
+const categoryMap = {
+  "node_app": "Codebase 👨‍💻",
+  "history_notes": "Personal Notes 📖",
+  "recipe_list": "Recipe Database 🧑‍🍳"
+};
+
+// Load data for all examples and categorize them
+const examples = exampleDirs
+  .map((dir) => {
+    const promptPath = path.join(EXAMPLES_DIR, dir, "prompt.md");
+    if (fs.existsSync(promptPath)) {
+      const data = parsePromptMd(promptPath);
+      if (data) {
+        return {
+          name: dir,
+          category: categoryMap[dir] || "Other",
+          directoryTree: data.directoryTree,
+          prompt: data.question,
+          promptContent: data.promptContent.trim()
+        };
+      }
+    }
+    return null;
+  })
+  .filter(Boolean);
+
+// Default to first example
+const { defaultTab = 1 } = Astro.props;
+---
+
+<script>
+  // Tabs functionality
+  const tabButtons = document.querySelectorAll('[role="tab"]');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+  
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Hide all tab content
+      tabPanes.forEach(pane => {
+        pane.classList.add('hidden');
+        pane.classList.remove('block');
+      });
+      
+      // Deactivate all tabs
+      tabButtons.forEach(tab => {
+        tab.classList.remove('border-blue-600', 'text-blue-600');
+        tab.classList.add('border-transparent', 'text-gray-500');
+        tab.setAttribute('aria-selected', 'false');
+      });
+      
+      // Activate the clicked tab
+      button.classList.add('border-blue-600', 'text-blue-600');
+      button.classList.remove('border-transparent', 'text-gray-500');
+      button.setAttribute('aria-selected', 'true');
+      
+      // Show the corresponding content
+      const index = button.getAttribute('data-index');
+      const targetContent = document.getElementById(`tab-content-${index}`);
+      if (targetContent) {
+        targetContent.classList.add('block');
+        targetContent.classList.remove('hidden');
+      }
+    });
+  });
+</script>
+
+<div class="w-full bg-gray-100">
+  <section id="what" class="bg-gray-100 py-12 max-w-[90vw] mx-auto">
+    <div class="mx-auto px-4">
+      <!-- Section Header -->
+      <div class="text-center mb-10">
+        <h2 class="text-3xl font-bold text-gray-800">What is Code2Prompt ?</h2>
+        <p class="mb-2 m-4 text-gray-800">
+          Code2Prompt simplifies code ingestion, turning your repository into
+          structured prompts for AI and automation.
+        </p>
+
+        <p class="text-lg text-gray-600 mt-2">Code2prompt transforms any text repositories into meaningful prompts... Check it out !</p>
+      </div>
+      
+      <!-- Tab Navigation -->
+      <div class="mb-6">
+        <div class="border-b border-gray-200 bg-white rounded-t-lg shadow-sm">
+          <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="exampleTabs" role="tablist">
+            {examples.map((example, index) => (
+              <li class="mr-2" role="presentation">
+                <button 
+                  class={`inline-block p-4 rounded-t-lg border-b-2 ${index === defaultTab ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  id={`tab-${index}`}
+                  data-tabs-target={`#tab-content-${index}`}
+                  type="button"
+                  role="tab"
+                  aria-controls={`tab-content-${index}`}
+                  aria-selected={index === defaultTab}
+                  data-index={index}
+                >
+                  {example.category}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div class="tab-content">
+        {examples.map((example, index) => (
+          <div 
+            class={`tab-pane ${index === defaultTab ? 'block' : 'hidden'}`} 
+            id={`tab-content-${index}`}
+            role="tabpanel"
+            aria-labelledby={`tab-${index}`}
+          >
+            <div class="flex flex-col md:flex-row md:gap-6">
+              <!-- Left Column: Directory Tree -->
+              <div class="w-full md:w-1/3 mb-6 md:mb-0 p-6 bg-white rounded-md shadow-md">
+                <header class="mb-4 border-b pb-2">
+                  <h2 class="text-xl font-bold text-gray-800">{example.category}</h2>
+                </header>
+                <div class="text-gray-800 max-h-96 overflow-auto p-2">
+                  <pre class="text-sm font-mono whitespace-pre bg-gray-50 p-4 rounded-md overflow-auto border border-gray-200 max-h-96">{example.directoryTree}</pre>
+                </div>
+                
+                <!-- Command Section -->
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                  <h3 class="text-lg font-semibold text-gray-800 mb-2">Command</h3>
+                  <div class="bg-gray-900 p-3 rounded-md text-gray-200 font-mono text-sm overflow-x-auto">
+                    $ code2prompt {example.name}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Column: Prompt  -->
+              <div class="w-full md:w-2/3 relative p-6 bg-white rounded-md shadow-md">
+                <!-- Code2Prompt Response -->
+                <div id="llm-response" class="mb-6 border-b pb-4">
+                  <header class="mb-3">
+                    <h3 class="text-xl font-bold text-gray-800">Output Prompt</h3>
+                  </header>
+                  <div class="prose max-w-none">
+                    <Prism
+                      code={example.promptContent}
+                      lang="markdown"
+                      class="overflow-auto w-full prism-small-font max-h-96"
+                    />
+                  </div>
+                </div>
+                
+                <!-- Question Block (moved below output) -->
+                <div>
+                  <header class="mb-3">
+                    <h3 class="text-xl font-bold text-gray-800">Question</h3>
+                  </header>
+                  <div class="bg-gray-800 text-white p-4 rounded-md">
+                    {example.prompt}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</div>
+
+

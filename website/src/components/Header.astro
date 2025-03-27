@@ -1,13 +1,42 @@
-<section id="header">
-    <div class="inner">
-      <span><a href="/docs/welcome"><img src="/assets/images/code2prompt.webp" alt="Code2Prompt Logo" style="height: 300px;"></a></span>
-      <h1><strong>Code2Prompt</strong></h1>
-      <p>Transform Your Code into AI-Optimized Prompts in Seconds</p>
-    </br>
-      <a href="/docs/welcome" class="button">Documentation</a>
-      <ul class="actions special">
-          <li><a href="#one" class="button scrolly">Discover</a></li>
-        </ul>
+---
+import { Image } from "astro:assets";
+import Code2promptLogo from "/src/assets/logo_light_v0.0.1.svg";
+---
+
+<section
+  id="header"
+  class="w-full bg-gradient-to-b from-gray-900 to-blue-900 text-white py-16 min-h-[100vh]"
+>
+  <div class="flex flex-col items-center justify-center p-8">
+    <a href="/docs/welcome">
+      <Image
+        src={Code2promptLogo}
+        alt="Code2Prompt Logo"
+        class="h-[180px] mx-auto"
+      />
+    </a>
+
+    <h1 class="text-4xl font-bold mt-6 mb-2">Code2Prompt</h1>
+
+    <p class="text-xl text-center mt-2 mb-8 max-w-2xl">
+      Transform Your Code into AI-Optimized Prompts in Seconds
+    </p>
+
+    <div class="flex gap-4 flex-wrap">
+      <a href="/docs/welcome">
+        <button
+          class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-200"
+        >
+          Documentation
+        </button>
+      </a>
+      <a href="/docs/how_to/install">
+        <button
+          class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-200"
+        >
+          Installation
+        </button>
+      </a>
     </div>
-  </section>
-  
+  </div>
+</section>

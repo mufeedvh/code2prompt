@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Basic typography improvements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-bold tracking-tight;
+}
+
+h1 {
+  @apply text-4xl md:text-5xl mb-6;
+}
+
+h2 {
+  @apply text-3xl md:text-4xl mb-4;
+}
+
+p {
+  @apply leading-relaxed;
+}

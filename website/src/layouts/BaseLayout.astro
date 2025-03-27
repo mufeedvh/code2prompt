@@ -1,29 +1,29 @@
 ---
 const title = "Code2Prompt";
-const description = "Transform your codebase into AI-optimized prompts effortlessly.";
+const description =
+  "Transform your codebase into AI-optimized prompts effortlessly.";
+import "/src/styles/global.css";
 ---
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
 
-    <link rel="stylesheet" href="/assets/css/main.css" />
     <link rel="stylesheet" href="/assets/css/marquee.css" />
-    <link rel="stylesheet" href="/assets/css/noscript.css" />
+    <link rel="stylesheet" href="/prism-theme.css" />
 
     <script src="/assets/js/jquery.min.js" defer></script>
     <script src="/assets/js/jquery.scrolly.min.js" defer></script>
-    <script src="/assets/js/browser.min.js" defer></script>
-    <script src="/assets/js/breakpoints.min.js" defer></script>
-    <script src="/assets/js/util.js" defer></script>
     <script src="/assets/js/main.js" defer></script>
   </head>
 
   <body>
-      <slot />
+    <slot />
   </body>
 </html>

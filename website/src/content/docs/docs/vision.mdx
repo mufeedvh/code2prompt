@@ -1,0 +1,56 @@
+---
+title: Code2Prompt's Vision
+description: Discover the vision behind Code2Prompt and how it enhances LLM interactions with code.
+---
+import { Card } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
+
+<Card title="Purpose 🎯">`code2prompt` was created to help developers and AI agents interact with codebases more effectively.</Card>
+
+## The Problem 🚩
+
+Large Language Models (LLMs) have revolutionized the way we interact with code. However, they still face significant challenges with code generation:
+
+- **Planning and Reasoning**: LLMs lacks the ability to plan and reason, which is crucial for tasks like code generation, refactoring, and debugging. They often struggle to get the big picture and are short sighted.
+- **Context size**: LLMs have a limited context window, which restricts their ability to analyze and understand large codebases.
+- **Hallucination**: LLMs can generate code that appears correct but is actually incorrect or nonsensical. This phenomenon, known as hallucination, occurs when the model lacks sufficient context or understanding of the codebase.
+
+This is where `code2prompt` comes in.
+
+## The Solution ✅
+
+We believe that planning and reasoning can be achieved by human or AI agents with scaffolding techniques. These agents needs to gather a **high quality context** of the codebase that is filtered, structured, and formatted for the task at hand.
+
+The thumb rule would be:
+
+<Aside type="tip">
+> provide as little context as possible, but as much as necessary
+</Aside>
+
+This is practically difficult to achieve, especially for large codebases. However, `code2prompt` is a simple tool that can help developers and AI agents ingest codebase more effectively.
+
+It automates the process of traversing a codebase, filtering files, and formatting them into structured prompts that LLMs can understand. By doing so, it helps to mitigate the challenges of planning, reasoning, and hallucination.
+
+You can understand how `code2prompt` is designed to tackles these challenges in the following section.
+
+## Architecture ⛩️
+
+<img src="/src/assets/architecture.svg" alt="Architecture of code2prompt" style="width: 75%;" />
+
+`code2prompt` is designed in a modular way, allowing for easy integration into various workflows. It can be used as a core library, a command line interface (CLI), a software development kit (SDK), or even as a Model Context Protocol (MCP) server.
+
+### Core
+
+`code2prompt` is a code ingestion tool that streamline the process of creating LLM prompts for code analysis, generation, and other tasks. It works by traversing directories, building a tree structure, and gathering informations about each file. The core library can easily be integrated into other applications.
+
+### CLI
+
+`code2prompt` command line interface (CLI) was designed for humans to generate prompts directly from your codebase. The generated prompt is automatically copied to your clipboard and can also be saved to an output file. Furthermore, you can customize the prompt generation using Handlebars templates. Check out the provided prompts in the doc !
+
+### SDK
+
+`code2prompt` software development kit (SDK) offers python binding to the core library. This is perfect for AI agents or automation scripts that want to interact with codebase seamlessly. The SDK is hosted on Pypi and can be installed via pip.
+
+### MCP
+
+`code2prompt` is also available as a Model Context Protocol (MCP) server, which allows you to run it as a local service. This enables LLMs on steroids by providing them a tool to automatically gather a well-structured context of your codebase.

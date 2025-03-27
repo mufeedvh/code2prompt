@@ -1,67 +1,97 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
-import react from '@astrojs/react';
-import remarkMath from 'remark-math';
-import rehypeMathjax from 'rehype-mathjax';
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
+import react from "@astrojs/react";
+import remarkMath from "remark-math";
+import rehypeMathjax from "rehype-mathjax";
 import mdx from "@astrojs/mdx";
+import tailwindcss from "@tailwindcss/vite";
+import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
 export default defineConfig({
-    site: 'https://code2prompt.dev',
-    integrations: [starlight({
-        title: 'Code2prompt',
-        logo: {
-            light:'./src/assets/logo_dark_v0.0.1.svg',
-            dark:'./src/assets/logo_light_v0.0.1.svg',
+  site: "https://code2prompt.dev",
+  integrations: [
+    starlight({
+      title: "Code2prompt",
+      logo: {
+        light: "./src/assets/logo_dark_v0.0.1.svg",
+        dark: "./src/assets/logo_light_v0.0.1.svg",
+      },
+      defaultLocale: "root",
+      locales: {
+        // English docs in `src/content/en/`
+        root: {
+          label: "English",
+          lang: "en",
         },
-        defaultLocale: 'root',
-        locales: {
-            // English docs in `src/content/en/`
-            root: {
-              label: 'English',
-              lang: 'en',
-            },
-        },
-        social: {
-            github: 'https://github.com/mufeedvh/code2prompt',
-            discord: 'https://discord.gg/ZZyBbsHTwH',
-        },
-        sidebar: [
+      },
+      social: {
+        github: "https://github.com/mufeedvh/code2prompt",
+        discord: "https://discord.gg/ZZyBbsHTwH",
+      },
+      sidebar: [
+        {
+          label: "Documentation 🚀 ",
+          items: [
             {
-              label: "Documentation 🚀 ",
+              label: "Tutorials",
               items: [
                 {
-                  label: "Tutorials",
-                  items: [
-                    { label: "Getting Started", link: "docs/tutorials/getting_started" },
-                    { label: "Handlebars Templates", link: "docs/tutorials/using_templates" },
-                    { label: "Use Filter", link: "docs/tutorials/use_filter" },
-                  ],
+                  label: "Getting Started",
+                  link: "docs/tutorials/getting_started",
                 },
                 {
-                  label: "Explanations",
-                  items: [
-                    { label: "What are Glob Patterns?", link: "docs/explanations/glob_patterns" },
-                    { label: "How the Glob Pattern Filter Works", link: "docs/explanations/glob_pattern_filter" },
-                    { label: "Understanding Tokenizers", link: "docs/explanations/tokenizers" },
-                  ],
+                  label: "Handlebars Templates",
+                  link: "docs/tutorials/using_templates",
+                },
+                { label: "Use Filter", link: "docs/tutorials/use_filter" },
+              ],
+            },
+            {
+              label: "Explanations",
+              items: [
+                {
+                  label: "What are Glob Patterns?",
+                  link: "docs/explanations/glob_patterns",
                 },
                 {
-                  label: "How-To Guides",
-                  items: [
-                    { label: "Install Code2Prompt", link: "docs/how_to/install" },
-                    { label: "Filter Files", link: "docs/how_to/filter_files" },
-                  ],
+                  label: "How the Glob Pattern Filter Works",
+                  link: "docs/explanations/glob_pattern_filter",
+                },
+                {
+                  label: "Understanding Tokenizers",
+                  link: "docs/explanations/tokenizers",
                 },
               ],
             },
-            { label: "Welcome 👋", link: "docs/welcome" },
+            {
+              label: "How-To Guides",
+              items: [
+                { label: "Install Code2Prompt", link: "docs/how_to/install" },
+                { label: "Filter Files", link: "docs/how_to/filter_files" },
+              ],
+            },
+          ],
+        },
+        { label: "Welcome 👋", link: "docs/welcome" },
+        {
+          label: "Vision 🔮",
+          link: "docs/vision",
+        },
+      ],
+    }),
+    react(),
+    mdx(),
+    sitemap(),
+  ],
 
-          ]			  
-        }), react(), mdx()],
-		markdown: {
-			remarkPlugins: [remarkMath],
-			rehypePlugins: [rehypeMathjax],
-		  },
+  markdown: {
+    remarkPlugins: [remarkMath],
+    rehypePlugins: [rehypeMathjax],
+  },
+
+  vite: {
+    plugins: [tailwindcss()],
+  },
 });
