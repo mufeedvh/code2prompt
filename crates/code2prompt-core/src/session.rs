@@ -52,15 +52,35 @@ impl Code2PromptSession {
     }
 
     #[allow(clippy::unused_self)]
-    /// Allows adding a file to the included set manually.
-    pub fn select_file(&mut self, file_path: PathBuf) {
-        self.selected_files.push(file_path);
+    // Add specific file to include patterns
+    pub fn include_file(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
+        let pattern = relative_path.to_string_lossy().to_string();
+        self.config.include_patterns.push(pattern);
+        self
     }
 
     #[allow(clippy::unused_self)]
-    /// Allows removing a file from the included set manually.
-    pub fn deselect_file(&mut self, file_path: &PathBuf) {
-        self.selected_files.retain(|f| f != file_path);
+    // Add specific file to exclude patterns
+    pub fn exclude_file(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
+        let pattern = relative_path.to_string_lossy().to_string();
+        self.config.exclude_patterns.push(pattern);
+        self
+    }
+
+    #[allow(clippy::unused_self)]
+    // Toggle inclusion of a specific file
+    pub fn toggle_file(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
+        let pattern = relative_path.to_string_lossy().to_string();
+
+        if self.config.include_patterns.contains(&pattern) {
+            self.config.include_patterns.retain(|p| p != &pattern);
+        } else {
+            self.config.include_patterns.push(pattern);
+        }
+        self
     }
 
     /// Loads the codebase data (source tree and file list) into the session.
