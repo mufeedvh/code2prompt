@@ -61,6 +61,7 @@ fn read_output_file(file_path: &Path) -> String {
 
 mod template_tests {
     use super::*;
+    use predicates::str::{ends_with, starts_with};
     use tempfile::TempDir;
 
     struct TestEnv {
@@ -174,22 +175,22 @@ mod template_tests {
     //         assert!(contains("Hello, world!").eval(&output));
     //     }
 
-    //     #[test]
-    //     fn test_json_output_format() {
-    //         let env = TestEnv::new();
-    //         let mut cmd = env.command();
-    //         cmd.arg("--output-format=json").assert().success();
+    #[test]
+    fn test_json_output_format() {
+        let env = TestEnv::new();
+        let mut cmd = env.command();
+        cmd.arg("--output-format=json").assert().success();
 
-    //         let output = env.read_output();
-    //         debug!("JSON output format:\n{}", output);
+        let output = env.read_output();
+        debug!("JSON output format:\n{}", output);
 
-    //         // Even though JSON is an output format flag, the content is still markdown
-    //         // But the content should be structured to be machine-parseable
-    //         assert!(contains("# Code Analysis").eval(&output));
-    //         assert!(contains("## File Tree").eval(&output));
-    //         assert!(contains("```rust").eval(&output));
-    //         assert!(contains("fn main()").eval(&output));
-    //     }
+        // Even though JSON is an output format flag, the content is still markdown
+        // But the content should be structured to be machine-parseable
+        assert!(starts_with("{").eval(&output));
+        assert!(contains("\"directory_name\":").eval(&output));
+        assert!(contains("\"prompt\": \"<directory>").eval(&output));
+        assert!(ends_with("}").eval(&output));
+    }
 
     //     #[test]
     //     fn test_template_with_empty_variables() {

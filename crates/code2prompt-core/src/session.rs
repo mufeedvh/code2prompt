@@ -131,24 +131,24 @@ impl Code2PromptSession {
         let mut template_name = self.config.template_name.clone();
         if self.config.template_str.is_empty() {
             template_str = match self.config.output_format {
-                OutputFormat::Markdown | OutputFormat::Json => {
-                    include_str!("./default_template_md.hbs").to_string()
+                OutputFormat::Markdown => include_str!("./default_template_md.hbs").to_string(),
+                OutputFormat::Xml | OutputFormat::Json => {
+                    include_str!("./default_template_xml.hbs").to_string()
                 }
-                OutputFormat::Xml => include_str!("./default_template_xml.hbs").to_string(),
             };
             template_name = match self.config.output_format {
-                OutputFormat::Markdown | OutputFormat::Json => "markdown".to_string(),
-                OutputFormat::Xml => "xml".to_string(),
+                OutputFormat::Markdown => "markdown".to_string(),
+                OutputFormat::Xml | OutputFormat::Json => "xml".to_string(),
             };
         }
 
         // ~~~ Rendering ~~~
         let handlebars = handlebars_setup(&template_str, &template_name)?;
-        let rendered_prompt = render_template(&handlebars, &template_name, template_data)?;
+        let template_content = render_template(&handlebars, &template_name, template_data)?;
 
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
-        let token_count = count_tokens(&rendered_prompt, &tokenizer_type);
+        let token_count = count_tokens(&template_content, &tokenizer_type);
         let model_info = tokenizer_type.description();
         let directory_name = label(&self.config.path);
         let files: Vec<String> = self
@@ -168,8 +168,23 @@ impl Code2PromptSession {
             })
             .unwrap_or_default();
 
+        // ~~~ Final output format ~~~
+        let final_output = match self.config.output_format {
+            OutputFormat::Json => {
+                let json_data = serde_json::json!({
+                    "prompt": template_content,
+                    "directory_name": directory_name.clone(),
+                    "token_count": token_count,
+                    "model_info": model_info,
+                    "files": files.clone(),
+                });
+                serde_json::to_string_pretty(&json_data)?
+            }
+            _ => template_content,
+        };
+
         Ok(RenderedPrompt {
-            prompt: rendered_prompt,
+            prompt: final_output,
             directory_name: directory_name,
             token_count,
             model_info,

@@ -19,7 +19,6 @@ use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Text;
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
-// use serde_json::json;
 use std::{path::PathBuf, str::FromStr};
 
 fn main() -> Result<()> {
@@ -185,18 +184,6 @@ fn main() -> Result<()> {
         formatted_token_count,
         model_info
     );
-
-    // if args.output_format == OutputFormat::Json {
-    //     let json_output = json!({
-    //         "prompt": rendered,
-    //         "directory_name": &label(&args.path),
-    //         "token_count": token_count,
-    //         "model_info": model_info,
-    //         "files": &paths,
-    //     });
-    //     println!("{}", serde_json::to_string_pretty(&json_output).unwrap());
-    //     return Ok(());
-    // }
 
     // ~~~ Copy to Clipboard ~~~
     if !args.no_clipboard {
