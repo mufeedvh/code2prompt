@@ -4,7 +4,7 @@
 mod args;
 mod clipboard;
 
-use anyhow::{Context, Ok, Result};
+use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
 use code2prompt_core::{
