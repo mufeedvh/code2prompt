@@ -18,7 +18,8 @@ log = { workspace = true }
 num-format = { workspace = true }
 serde_json = { workspace = true }
 inquire = { workspace = true }
-
+[target.'cfg(windows)'.dependencies]
+winapi = { workspace = true }
 
 [[bin]]
 name = "code2prompt"
