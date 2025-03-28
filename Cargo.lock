@@ -331,6 +331,7 @@ dependencies = [
  "predicates 2.1.5",
  "serde_json",
  "tempfile",
+ "winapi",
 ]
 
 [[package]]
