@@ -80,7 +80,7 @@ Stop manually copying files and formatting code for LLMs. Code2Prompt handles th
 
 ## Alternative Installation
 
-Refer to the [documentation](https://code2prompt.dev/docs/welcome/) for detailed installation instructions.
+Refer to the [documentation](https://code2prompt.dev/docs/how_to/install/) for detailed installation instructions.
 
 ### Binary releases
 
