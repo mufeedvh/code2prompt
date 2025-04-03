@@ -26,6 +26,7 @@ name = "code2prompt"
 path = "src/main.rs"
 
 [dev-dependencies]
+git2 = { workspace = true }
 tempfile = "3.3"
 assert_cmd = "2.0"
 predicates = "2.0"
