@@ -105,6 +105,13 @@ fn main() -> Result<()> {
         .log_branches(log_branches)
         .no_ignore(args.no_ignore);
 
+    // Boolean arguments
+    configuration
+        .no_ignore(args.no_ignore)
+        .hidden(args.hidden)
+        .no_codeblock(args.no_codeblock)
+        .follow_symlinks(args.follow_symlinks);
+
     // ~~~ Code2Prompt ~~~
     let mut session = Code2PromptSession::new(configuration.build()?);
     let spinner = setup_spinner("Traversing directory and building tree...");
