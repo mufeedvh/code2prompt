@@ -102,8 +102,7 @@ fn main() -> Result<()> {
     configuration
         .diff_enabled(args.diff)
         .diff_branches(diff_branches)
-        .log_branches(log_branches)
-        .no_ignore(args.no_ignore);
+        .log_branches(log_branches);
 
     // Boolean arguments
     configuration
