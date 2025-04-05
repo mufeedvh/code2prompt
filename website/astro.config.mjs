@@ -8,6 +8,8 @@ import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import sitemap from "@astrojs/sitemap";
 
+import { passthroughImageService } from "astro/config";
+
 // https://astro.build/config
 export default defineConfig({
   site: "https://code2prompt.dev",
@@ -96,5 +98,8 @@ export default defineConfig({
 
   vite: {
     plugins: [tailwindcss()],
+  },
+  image: {
+    service: passthroughImageService(),
   },
 });
