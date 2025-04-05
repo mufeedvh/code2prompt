@@ -2,10 +2,14 @@
 title: Code2Prompt's Vision
 description: Discover the vision behind Code2Prompt and how it enhances LLM interactions with code.
 ---
-import { Card } from '@astrojs/starlight/components';
-import { Aside } from '@astrojs/starlight/components';
 
-<Card title="Purpose 🎯">`code2prompt` was created to help developers and AI agents interact with codebases more effectively.</Card>
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+<Card title="Purpose 🎯">
+  `code2prompt` was created to help developers and AI agents interact with
+  codebases more effectively.
+</Card>
 
 ## The Problem 🚩
 
@@ -24,7 +28,7 @@ We believe that planning and reasoning can be achieved by human or AI agents wit
 The thumb rule would be:
 
 <Aside type="tip">
-> provide as little context as possible, but as much as necessary
+  > provide as little context as possible, but as much as necessary
 </Aside>
 
 This is practically difficult to achieve, especially for large codebases. However, `code2prompt` is a simple tool that can help developers and AI agents ingest codebase more effectively.
@@ -35,7 +39,11 @@ You can understand how `code2prompt` is designed to tackles these challenges in 
 
 ## Architecture ⛩️
 
-<img src="/src/assets/architecture.svg" alt="Architecture of code2prompt" style="width: 75%;" />
+<img
+  src="/assets/images/architecture.svg"
+  alt="Architecture of code2prompt"
+  style="width: 75%;"
+/>
 
 `code2prompt` is designed in a modular way, allowing for easy integration into various workflows. It can be used as a core library, a command line interface (CLI), a software development kit (SDK), or even as a Model Context Protocol (MCP) server.
 

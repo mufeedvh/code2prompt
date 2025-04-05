@@ -1,115 +1,100 @@
 ---
 title: Getting Started with Code2Prompt
-description: A step-by-step guide to installing and running Code2Prompt for the first time
+description: A comprehensive tutorial introducing Code2Prompt's core functionality and its use across CLI, SDK, and MCP integrations.
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { Card, CardGrid } from "@astrojs/starlight/components";
 
-Welcome to Code2Prompt! This guide will help you get started with installing and running Code2Prompt for the first time.
+<Card title="Tutorial Overview">
+  Welcome to Code2Prompt! This tutorial provides a comprehensive introduction to
+  using Code2Prompt to generate AI-ready prompts from your codebases. We'll
+  explore its core functionality and demonstrate its usage across different
+  integration methods: Command Line Interface (CLI), Software Development Kit
+  (SDK), and Model Context Protocol (MCP).
+</Card>
 
-## Installation
+## What is Code2Prompt?
 
-Check out the [installation instructions](/docs/how_to/install)
+Code2Prompt is a versatile tool designed to bridge the gap between your codebase and Large Language Models (LLMs). It intelligently extracts relevant code snippets, applies powerful filtering, and formats the information into structured prompts optimized for LLM consumption. This simplifies tasks like code documentation, bug detection, refactoring, and more.
 
-## Using Code2Prompt
+Code2Prompt offers different integration points:
 
-Generate a prompt from a codebase directory:
+<Tabs>
+  <TabItem label="Core" icon="seti:rust">
+    A core rust library that provides the foundation for code ingestion and
+    prompt
+  </TabItem>
+  <TabItem label="CLI" icon="seti:powershell">
+    A user-friendly command-line interface for quick prompt generation. Ideal
+    for interactive use and one-off tasks.
+  </TabItem>
+  <TabItem label="SDK" icon="seti:python">
+    A powerful Software Development Kit (SDK) for seamless integration into your
+    Python projects. Perfect for automating prompt generation within larger
+    workflows.
+  </TabItem>
+  <TabItem label="MCP" icon="seti:db">
+    A Model Context Protocol (MCP) server for advanced integration with LLM
+    agents. Enables sophisticated, real-time interactions with your codebase.
+  </TabItem>
+</Tabs>
 
-```sh
-code2prompt path/to/codebase
+## 📥 Installation
+
+For detailed installation instructions for all methods (CLI, SDK, MCP), please refer to the comprehensive [Installation Guide](/docs/how_to/install).
+
+## 🏁 Generating Prompts: A CLI Example
+
+Let's start with a simple example using the CLI. Create a sample project:
+
+```bash
+mkdir -p my_project/{src,tests}
+touch my_project/src/main.rs my_project/tests/test_1.rs
+echo 'fn main() { println!("Hello, world!"); }' > my_project/src/main.rs
 ```
 
-Use a custom Handlebars template file:
+Now, generate a prompt:
 
-```sh
-code2prompt path/to/codebase --template path/to/template.hbs
+```bash
+code2prompt my_project
 ```
 
-Filter files using glob patterns:
+This copies a prompt to your clipboard. You can customize this:
 
-```sh
-code2prompt path/to/codebase --include="*.rs,*.toml"
-```
+- **Filtering:** `code2prompt my_project --include="*.rs" --exclude="tests/*"` (includes only `.rs` files, excludes `tests` directory)
+- **Output File:** `code2prompt my_project --output-file=my_prompt.txt`
+- **JSON Output:** `code2prompt my_project -O json` (structured JSON output)
+- **Custom Templates:** `code2prompt my_project -t my_template.hbs` (requires creating `my_template.hbs`)
 
-Exclude files using glob patterns:
+See the [Learn Context Filtering](/docs/tutorials/learn_filters) and [Learn Handlebar Templates](/docs/tutorials/learn_templates) tutorials to learn more advanced usages.
 
-```sh
-code2prompt path/to/codebase --exclude="*.txt,*.md"
-```
+## 🐍 SDK Integration (Python)
 
-Display the token count of the generated prompt:
+For programmatic control, use the Python SDK:
 
-```sh
-code2prompt path/to/codebase --tokens
-```
+```python
+from code2prompt_rs import Code2Prompt
 
-Specify a tokenizer for token count:
-
-```sh
-code2prompt path/to/codebase --tokens --encoding=p50k
-```
-
-Supported tokenizers: `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
-
-<Aside>See [Tokenizers](../explanations/tokenizers) for more details</Aside>
-
-Save the generated prompt to an output file:
-
-```sh
-code2prompt path/to/codebase --output-file=output.txt
-```
-
-Print output as JSON:
-
-```sh
-code2prompt path/to/codebase -O json
-```
-
-The JSON output will have the following structure:
-
-```json
-{
-  "prompt": "<Generated Prompt>",
-  "directory_name": "codebase",
-  "token_count": 1234,
-  "model_info": "ChatGPT models, text-embedding-ada-002",
-  "files": []
+config = {
+    "path": "my_project",
+    "include_patterns": ["*.rs"],
+    "exclude_patterns": ["tests/*"],
 }
+
+c2p = Code2Prompt(**config)
+prompt = c2p.generate_prompt()
+print(prompt)
 ```
 
-Generate a Git commit message (for staged files):
+This requires installing the SDK (`pip install code2prompt_rs`). Refer to the SDK documentation for more details.
 
-```sh
-code2prompt path/to/codebase --diff --template templates/write-git-commit.hbs
-```
+## 🤖 MCP Server Integration (Advanced)
 
-Generate a Pull Request with branch comparing (for staged files):
+For advanced integration with LLM agents, run the `code2prompt` MCP server (see the installation guide for details). This allows agents to request code context dynamically. This is an advanced feature, and further documentation is available on the project's website.
 
-```sh
-code2prompt path/to/codebase --git-diff-branch 'main, development' --git-log-branch 'main, development' --template templates/write-github-pull-request.hbs
-```
-
-Add line numbers to source code blocks:
-
-```sh
-code2prompt path/to/codebase --line-number
-```
-
-Disable wrapping code inside markdown code blocks:
-
-```sh
-code2prompt path/to/codebase --no-codeblock
-```
-
-Include hidden files and directories:
-
-```sh
-code2prompt path/to/codebase --hidden
-```
-
-Skip .gitignore rules:
-
-```sh
-code2prompt path/to/codebase --no-ignore
-```
+<Card title="Next Steps">
+  Explore the advanced tutorials and documentation to master Code2Prompt's
+  capabilities and integrate it into your workflows.
+</Card>
