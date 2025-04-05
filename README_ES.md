@@ -268,6 +268,12 @@ Formas de contribuir:
 - Ayudarme a documentar el código
 - Difundir la palabra
 
+## Herramientas de la Comunidad
+
+Aquí hay algunas herramientas creadas por la comunidad para mejorar la experiencia de code2prompt:
+
+- [**code2prompt-manager**](https://github.com/elvismdev/code2prompt-manager): Una herramienta CLI que ayuda a gestionar los límites de tamaño de archivos al usar code2prompt. Proporciona una interfaz interactiva para seleccionar qué archivos incluir/excluir de tu código base, maneja automáticamente archivos grandes y asegura que tu output se mantenga por debajo de los límites de tokens para LLMs.
+
 ## Licencia
 
 Licenciado bajo la Licencia MIT, ver <a href="https://github.com/mufeedvh/code2prompt/blob/master/LICENSE">LICENSE</a> para más información.

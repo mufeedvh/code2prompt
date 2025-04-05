@@ -119,3 +119,9 @@ Ways to contribute:
 - Fix something and open a pull request
 - Help me document the code
 - Spread the word
+
+## Community Tools
+
+Here are some tools created by the community to enhance the code2prompt experience:
+
+- [**code2prompt-manager**](https://github.com/elvismdev/code2prompt-manager): A CLI tool that helps manage file size limits when using code2prompt. It provides an interactive interface to select which files to include/exclude from your codebase, automatically handles large files, and ensures your output stays under token limits for LLMs.
