@@ -9,60 +9,112 @@ import { Steps } from "@astrojs/starlight/components";
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 <Card title="Guide Overview">
-  Welcome to the `Code2Prompt` installation guide! This document provides
+  Welcome to the `Code2Prompt` installation guide. This document provides
   step-by-step instructions for installing it on various platforms, including
   Windows, macOS, and Linux.
 </Card>
 
-## Command Line Interface (CLI) 👨‍💻
-
-### Binary releases
-
-Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases).
-
-### Source build
-
-<Steps>
-
-1.  Install Prerequisites :
-
-    - [Rust](https://www.rust-lang.org/tools/install) and Cargo
-    - [Git](https://git-scm.com/downloads)
-
-2.  Clone the repository :
-
-    ```sh
-    git clone https://github.com/mufeedvh/code2prompt.git
-    cd code2prompt/ cargo build --release
-    ```
-
-    The binary will be available in the `target/release` directory.
-
-3.  Install the binary :
-
-    You can install it to globally in your computer using:
-
-    ```sh
-    cargo install --path crates/code2prompt
-    ```
-
-</Steps>
-
-### Cargo
-
-Installs from the [`crates.io`](https://crates.io) registry.
+**TL;DR**
 
 ```sh
 cargo install code2prompt
 ```
 
-For unpublished builds:
+## Prerequisite
+
+Make sure [Rust](https://www.rust-lang.org/tools/install) and cargo are installed on your system.
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+This is the official way to install the latest stable version of Rust and Cargo.
+Make sure to refresh your `PATH` variable after installing Rust. Restart your terminal or run the instructions proposed by the installer.
+
+```sh
+source $HOME/.cargo/env
+```
+
+You can check that everything is installed correctly by running:
+
+```sh
+cargo --version
+git --version
+```
+
+## Command Line Interface (CLI) 👨‍💻
+
+### Cargo
+
+#### 📦 Install from crates.io (Stable release)
+
+This is the easiest and recommended way for most users:
+
+```sh
+cargo install code2prompt
+```
+
+#### 🧪 Install the latest (unpublished) version from GitHub
+
+If you want the latest features or fixes before they're released on crates.io:
 
 ```sh
 cargo install --git https://github.com/mufeedvh/code2prompt
 ```
 
+### Source build
+
+Ideal for developers that want to build from source or contribute to the project.
+
+<Steps>
+
+1.  🛠️ Install Prerequisites :
+
+    - [Rust](https://www.rust-lang.org/tools/install) and Cargo
+    - [Git](https://git-scm.com/downloads)
+
+2.  📥 Clone the repository :
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt
+    ```
+
+3.  📦 Install the binary :
+
+    To build and install from source:
+
+    ```sh
+    cargo install --path crates/code2prompt
+    ```
+
+    To build the binary without installing it:
+
+    ```sh
+    cargo build --release
+    ```
+
+    The binary will be available in the `target/release` directory.
+
+4.  🚀 Run it :
+
+    ```sh
+    code2prompt --help
+    ```
+
+</Steps>
+
+### Binary releases
+
+Best for users that want to use the latest version without building from source.
+
+Download the latest binary for your OS from [Releases](https://github.com/mufeedvh/code2prompt/releases).
+
+⚠️ Binary releases may lag behind the latest GitHub version. For cutting-edge features, consider building from source.
+
 ### AUR
+
+Specifically for Arch Linux users, `code2prompt` is available in the AUR.
 
 `code2prompt` is available in the [`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt). Install it via any AUR helpers.
 
@@ -72,7 +124,7 @@ paru/yay -S code2prompt
 
 ### Nix
 
-If you are on nix, You can use `nix-env` or `profile` to install.
+If you're using Nix, you can install it using either nix-env or nix profile.
 
 ```sh
 # without flakes:
@@ -95,20 +147,20 @@ pip install code2prompt_rs
 
 <Steps>
 
-1.  Install Prerequisites :
+1.  🛠️ Install Prerequisites :
 
     - [Rust](https://www.rust-lang.org/tools/install) and Cargo
     - [Git](https://git-scm.com/downloads)
     - [Rye](https://rye.astral.sh/)
 
-2.  Clone the repository :
+2.  📥 Clone the repository :
 
     ```sh
     git clone https://github.com/mufeedvh/code2prompt.git
     cd code2prompt/crates/code2prompt-python
     ```
 
-3.  Install the dependencies :
+3.  📦 Install the dependencies :
 
     The `rye` command will create a virtual environment and install all the dependencies.
 
@@ -116,7 +168,7 @@ pip install code2prompt_rs
     rye sync
     ```
 
-4.  Build the package :
+4.  ⚙️ Build the package :
 
     You will develop the package in the virtual environment located in `.venv` folder at the root of the project.
 
@@ -134,25 +186,25 @@ The `code2prompt` MCP server will soon be available in MCP registries.
 
 ### Manual installation
 
-The `code2prompt` MCP server is still a prototype yet and will be integrated to the main repository soon.
+The `code2prompt` MCP server is still a prototype and will be integrated to the main repository soon.
 
 To run the MCP server, locally to use it with `Cline`, `Goose` or `Aider`:
 
 <Steps>
 
-1.  Install Prerequisites :
+1.  🛠️ Install Prerequisites :
 
     - [Git](https://git-scm.com/downloads)
     - [Rye](https://rye.astral.sh/)
 
-2.  Clone the repository :
+2.  📥 Clone the repository :
 
     ```sh
     git clone https://github.com/odancona/code2prompt-mcp.git
     cd code2prompt-mcp
     ```
 
-3.  Install the dependencies :
+3.  📦 Install the dependencies :
 
     The `rye` command will create a virtual environment and install all the dependencies in the `.venv` folder.
 
@@ -160,7 +212,7 @@ To run the MCP server, locally to use it with `Cline`, `Goose` or `Aider`:
     rye sync
     ```
 
-4.  Run it :
+4.  🚀 Run the server :
 
     The MCP server is now installed. You can run it using:
 
@@ -169,7 +221,7 @@ To run the MCP server, locally to use it with `Cline`, `Goose` or `Aider`:
     python -m src/code2prompt_mcp/main.py
     ```
 
-5.  Integrate it :
+5.  🔌 Integrate with Agents :
 
             For instance, you can integrate it with `Cline`, using a similar configuration:
 
