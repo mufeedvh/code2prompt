@@ -47,7 +47,7 @@ function parsePromptMd(promptPath: string) {
 const categoryMap = {
   "node_app": "Codebase 👨‍💻",
   "history_notes": "Personal Notes 📖",
-  "recipe_list": "Recipe Database 🧑‍🍳"
+  "my_recipes": "Recipes Database 🧑‍🍳"
 };
 
 // Load data for all examples and categorize them
@@ -71,7 +71,7 @@ const examples = exampleDirs
   .filter(Boolean);
 
 // Default to first example
-const { defaultTab = 1 } = Astro.props;
+const { defaultTab = 2 } = Astro.props;
 ---
 
 <script>

@@ -42,10 +42,13 @@ export default defineConfig({
                   link: "docs/tutorials/getting_started",
                 },
                 {
-                  label: "Handlebars Templates",
-                  link: "docs/tutorials/using_templates",
+                  label: "Learn Templating",
+                  link: "docs/tutorials/learn_templates",
                 },
-                { label: "Use Filter", link: "docs/tutorials/use_filter" },
+                {
+                  label: "Learn Filtering",
+                  link: "docs/tutorials/learn_filters",
+                },
               ],
             },
             {
