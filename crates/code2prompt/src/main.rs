@@ -26,6 +26,13 @@ fn main() -> Result<()> {
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
     let args = Cli::parse();
 
+    // ~~~ Arguments Validation ~~~
+    // if no_clipboard is true, output_file must be specified.
+    if args.no_clipboard && args.output_file.is_none() {
+        eprintln!("Error: --output-file is required when --no-clipboard is used.");
+        std::process::exit(1);
+    }
+
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
     {
