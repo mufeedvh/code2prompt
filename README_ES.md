@@ -56,10 +56,12 @@ cargo build --release
 
 ## cargo
 
-Instala desde el registro [`crates.io`](https://crates.io).
+```bash
+# Cargo
+$ cargo install code2prompt
 
-```sh
-cargo install code2prompt
+# Homebrew
+$ brew install code2prompt
 ```
 
 Para versiones no publicadas:
