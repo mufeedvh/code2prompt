@@ -10,12 +10,12 @@
 #   universal: false
 
 -e file:.
-iniconfig==2.0.0
+iniconfig==2.1.0
     # via pytest
-maturin==1.8.2
+maturin==1.8.3
 packaging==24.2
     # via pytest
-patchelf==0.17.2.1
+patchelf==0.17.2.2
     # via code2prompt-rs
 pip==25.0.1
     # via code2prompt-rs
