@@ -31,10 +31,12 @@
 
 ## Quick Install ⚡
 
-CLI with cargo 🦀
-
 ```bash
-cargo install code2prompt
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
 ```
 
 SDK with pip 🐍
