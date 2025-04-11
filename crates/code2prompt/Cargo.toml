@@ -29,5 +29,5 @@ path = "src/main.rs"
 git2 = { workspace = true }
 tempfile = "3.3"
 assert_cmd = "2.0"
-predicates = "2.0"
+predicates = "3.1"
 env_logger = "0.11.3"
