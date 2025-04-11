@@ -17,12 +17,12 @@
 [![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/user/repo/pulls)
 [![Lines of Code](https://tokei.rs/b1/github/mufeedvh/code2prompt)](https://github.com/mufeedvh/code2prompt)
-[![Discord](https://img.shields.io/discord/1342336677905039451?logo=discord)](https://discord.com/invite/zxVMKtsFbK)
+[![Discord](https://img.shields.io/discord/1342336677905039451?logo=discord)](https://discord.com/invite/ZZyBbsHTwH)
 
 <hr />
 
 <p align="center">
-  Want to engage with us ? Join our <a href="https://discord.com/invite/zxVMKtsFbK">Discord</a> channel!<br>
+  Want to engage with us ? Join our <a href="https://discord.com/invite/ZZyBbsHTwH">Discord</a> channel!<br>
   <i>Stay updated on new features</i> 📢<br>
   <i>Give your insight and suggestion</i> 💬<br>
   <i>Get help with configuration and usage</i> 🛠️<br>
@@ -117,7 +117,7 @@ If you liked the project and found it useful, please give it a :star: !
 Ways to contribute:
 
 - Suggest a feature
-- Report a bug  
+- Report a bug
 - Fix something and open a pull request
 - Help me document the code
 - Spread the word
