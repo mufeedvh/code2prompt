@@ -1,0 +1,45 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import BlogPost from "../components/BlogPost.astro";
+
+// Get all blog posts
+const posts = await Astro.glob("./blog/*.md");
+const sortedPosts = posts.sort(
+  (a, b) =>
+    new Date(b.frontmatter.date).valueOf() -
+    new Date(a.frontmatter.date).valueOf()
+);
+
+const pageTitle = "Code2Prompt Blog";
+---
+
+<BaseLayout>
+  <section class="py-16 bg-gray-50 dark:bg-gray-900">
+    <div class="container mx-auto px-4">
+      <div class="max-w-4xl mx-auto">
+        <h1
+          class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-8 text-center"
+        >
+          {pageTitle}
+        </h1>
+
+        <p class="text-xl text-gray-600 dark:text-gray-300 mb-12 text-center">
+          Latest news, tutorials, and updates from the Code2Prompt team
+        </p>
+
+        <div class="grid gap-8">
+          {
+            sortedPosts.map((post) => (
+              <BlogPost
+                url={post.url}
+                title={post.frontmatter.title}
+                date={post.frontmatter.date}
+                description={post.frontmatter.description}
+              />
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

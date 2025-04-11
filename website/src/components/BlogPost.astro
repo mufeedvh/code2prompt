@@ -1,0 +1,36 @@
+---
+const { title, url, date, description } = Astro.props;
+---
+
+<div
+  class="blog-post-card bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700"
+>
+  <a href={url}>
+    <div class="p-6">
+      <h3
+        class="text-xl font-bold mb-2 text-gray-800 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+      >
+        {title}
+      </h3>
+      {
+        date && (
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            {new Date(date).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        )
+      }
+      {
+        description && (
+          <p class="text-gray-600 dark:text-gray-300">{description}</p>
+        )
+      }
+      <div class="mt-4 text-blue-600 dark:text-blue-400 font-medium">
+        Read more →
+      </div>
+    </div>
+  </a>
+</div>

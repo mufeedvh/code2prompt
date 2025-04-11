@@ -1,0 +1,54 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+const { frontmatter } = Astro.props;
+---
+
+<BaseLayout>
+  <div class="py-12 max-w-4xl mx-auto px-4">
+    <div class="mb-8">
+      <a
+        href="/blog"
+        class="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block"
+      >
+        ← Back to all posts
+      </a>
+      <h1
+        class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mt-4 mb-2"
+      >
+        {frontmatter.title}
+      </h1>
+
+      {
+        frontmatter.date && (
+          <p class="text-gray-500 dark:text-gray-400 mb-4">
+            {new Date(frontmatter.date).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        )
+      }
+
+      {
+        frontmatter.author && (
+          <p class="text-gray-600 dark:text-gray-300 mb-4">
+            By {frontmatter.author}
+          </p>
+        )
+      }
+
+      {
+        frontmatter.description && (
+          <p class="text-xl text-gray-600 dark:text-gray-300 mb-6 font-medium">
+            {frontmatter.description}
+          </p>
+        )
+      }
+    </div>
+
+    <div class="prose prose-lg max-w-none dark:prose-invert">
+      <slot />
+    </div>
+  </div>
+</BaseLayout>

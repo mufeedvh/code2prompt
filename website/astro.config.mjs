@@ -7,6 +7,7 @@ import rehypeMathjax from "rehype-mathjax";
 import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
 import sitemap from "@astrojs/sitemap";
+import starlightBlog from "starlight-blog";
 
 import { passthroughImageService } from "astro/config";
 
@@ -28,10 +29,18 @@ export default defineConfig({
           lang: "en",
         },
       },
-      social: {
-        github: "https://github.com/mufeedvh/code2prompt",
-        discord: "https://discord.gg/ZZyBbsHTwH",
-      },
+      social: [
+        {
+          icon: "discord",
+          label: "Discord",
+          href: "https://discord.gg/ZZyBbsHTwH",
+        },
+        {
+          icon: "github",
+          label: "GitHub",
+          href: "https://github.com/mufeedvh/code2prompt",
+        },
+      ],
       sidebar: [
         {
           label: "Documentation 🚀 ",
@@ -85,6 +94,7 @@ export default defineConfig({
           link: "docs/vision",
         },
       ],
+      plugins: [starlightBlog()],
     }),
     react(),
     mdx(),
