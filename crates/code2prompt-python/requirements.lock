@@ -10,7 +10,7 @@
 #   universal: false
 
 -e file:.
-patchelf==0.17.2.1
+patchelf==0.17.2.2
     # via code2prompt-rs
 pip==25.0.1
     # via code2prompt-rs
