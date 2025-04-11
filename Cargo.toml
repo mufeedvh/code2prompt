@@ -17,7 +17,7 @@ num-format = { version = "0.4.4", features = ["with-system-locale"] }
 serde_json = "1.0.114"
 handlebars = "4.3"
 jwalk = "0.8"
-termtree = "0.4"
+termtree = "0.5"
 tiktoken-rs = "0.6.0"
 ignore = "0.4.22"
 inquire = "0.7.1"
