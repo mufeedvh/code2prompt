@@ -94,7 +94,18 @@ export default defineConfig({
           link: "docs/vision",
         },
       ],
-      plugins: [starlightBlog()],
+      plugins: [
+        starlightBlog({
+          authors: {
+            ODAncona: {
+              name: "Olivier D'Ancona",
+              title: "Data Scientist",
+              picture: "assets/images/odancona.png",
+              url: "https://www.linkedin.com/in/odancona/",
+            },
+          },
+        }),
+      ],
     }),
     react(),
     mdx(),
