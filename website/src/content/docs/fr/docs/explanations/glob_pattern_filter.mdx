@@ -16,19 +16,22 @@ Lorsque vous spécifiez une liste `--exclude` et/ou une liste `--include`, la lo
 ### Cas et logique
 
 1. **Pas de liste d'inclusion, pas de liste d'exclusion**  
-   Inclure tout :  
+   Inclure tout :
+
    $$
    \neg A \cap \neg B \implies \Omega
    $$
 
 2. **Pas de liste d'inclusion, avec liste d'exclusion**  
-   Inclure tout sauf ce qui correspond à la liste d'exclusion :  
+   Inclure tout sauf ce qui correspond à la liste d'exclusion :
+
    $$
    \neg A \cap B \implies \Omega \setminus B
    $$
 
 3. **Avec liste d'inclusion, pas de liste d'exclusion**  
-   Inclure uniquement ce qui correspond à la liste d'inclusion :  
+   Inclure uniquement ce qui correspond à la liste d'inclusion :
+
    $$
    A \cap \neg B \implies A
    $$
@@ -36,12 +39,13 @@ Lorsque vous spécifiez une liste `--exclude` et/ou une liste `--include`, la lo
 4. **Avec liste d'inclusion et liste d'exclusion**  
    Inclure ce qui correspond à la liste d'inclusion et exclure ce qui correspond à la liste d'exclusion. Gérez l'intersection en fonction du paramètre `include_priority` :
 
-   - **Priorité d'inclusion == true** :  
+   - **Priorité d'inclusion == true** :
+
      $$
      A \setminus (A \cap B)
      $$
 
-   - **Priorité d'inclusion != true** :  
+   - **Priorité d'inclusion != true** :
      $$
      B \setminus (A \cap B)
      $$
@@ -50,6 +54,6 @@ Lorsque vous spécifiez une liste `--exclude` et/ou une liste `--include`, la lo
 
 Soit (A) et (B) se chevauchent. En fonction de la priorité, l'intersection $$( A \cap B )$$ est incluse ou exclue en fonction du paramètre `include_priority`.
 
-![Représentation visuelle du cas 4](../../../assets/filter.png)
+![Représentation visuelle du cas 4](../../../../../assets/filter.png)
 
 Notez que j'ai ajusté le chemin relatif de l'image en ajoutant un niveau "../" pour tenir compte de la nouvelle profondeur de répertoire.
