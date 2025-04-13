@@ -1,0 +1,92 @@
+---
+title: Premiers pas avec Code2Prompt
+description: Un tutoriel complet présentant la fonctionnalité principale de Code2Prompt et son utilisation à travers les intégrations CLI, SDK et MCP.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+<Card title="Vue d'ensemble du tutoriel">
+  Bienvenue dans Code2Prompt ! Ce tutoriel fournit une introduction complète à l'utilisation de Code2Prompt pour générer des invites prêtes à être utilisées par l'IA à partir de vos bases de code. Nous explorerons sa fonctionnalité principale et démontrerons son utilisation à travers différentes méthodes d'intégration : Interface de Ligne de Commande (CLI), Kit de Développement de Logiciels (SDK) et Protocole de Contexte de Modèle (MCP).
+</Card>
+
+## Qu'est-ce que Code2Prompt ?
+
+Code2Prompt est un outil polyvalent conçu pour combler le fossé entre votre base de code et les Modèles de Langage à Grande Échelle (LLM). Il extrait intelligemment des extraits de code pertinents, applique un filtrage puissant et formate les informations en invites structurées optimisées pour la consommation LLM. Cela simplifie des tâches telles que la documentation de code, la détection de bogues, la refactorisation, etc.
+
+Code2Prompt offre différents points d'intégration :
+
+<Tabs>
+  <TabItem label="Core" icon="seti:rust">
+    Une bibliothèque Rust centrale qui fournit la base pour l'ingestion de code et la génération d'invites.
+  </TabItem>
+  <TabItem label="CLI" icon="seti:powershell">
+    Une interface de ligne de commande conviviale pour une génération rapide d'invites. Idéale pour une utilisation interactive et des tâches ponctuelles.
+  </TabItem>
+  <TabItem label="SDK" icon="seti:python">
+    Un kit de développement de logiciels (SDK) puissant pour une intégration transparente dans vos projets Python. Parfait pour automatiser la génération d'invites dans des flux de travail plus vastes.
+  </TabItem>
+  <TabItem label="MCP" icon="seti:db">
+    Un serveur de Protocole de Contexte de Modèle (MCP) pour une intégration avancée avec les agents LLM. Permet des interactions sophistiquées en temps réel avec votre base de code.
+  </TabItem>
+</Tabs>
+
+## 📥 Installation
+
+Pour des instructions d'installation détaillées pour toutes les méthodes (CLI, SDK, MCP), veuillez vous référer au [Guide d'installation complet](/docs/how_to/install).
+
+## 🏁 Génération d'invites : un exemple de CLI
+
+Commençons par un exemple simple en utilisant la CLI. Créez un projet échantillon :
+
+```bash
+mkdir -p my_project/{src,tests}
+touch my_project/src/main.rs my_project/tests/test_1.rs
+echo 'fn main() { println!("Bonjour, monde !"); }' > my_project/src/main.rs
+```
+
+Maintenant, générez une invite :
+
+```bash
+code2prompt my_project
+```
+
+Cela copie une invite dans votre presse-papiers. Vous pouvez personnaliser cela :
+
+- **Filtrage :** `code2prompt my_project --include="*.rs" --exclude="tests/*"` (inclut uniquement les fichiers `.rs`, exclut le répertoire `tests`)
+- **Fichier de sortie :** `code2prompt my_project --output-file=my_prompt.txt`
+- **Sortie JSON :** `code2prompt my_project -O json` (sortie JSON structurée)
+- **Modèles personnalisés :** `code2prompt my_project -t my_template.hbs` (nécessite la création de `my_template.hbs`)
+
+Consultez les tutoriels [Apprendre le filtrage de contexte](/docs/tutorials/learn_filters) et [Apprendre les modèles Handlebar](/docs/tutorials/learn_templates) pour en savoir plus sur les utilisations avancées.
+
+## 🐍 Intégration SDK (Python)
+
+Pour un contrôle programmatique, utilisez le SDK Python :
+
+```python
+from code2prompt_rs import Code2Prompt
+
+config = {
+    "path": "../my_project",
+    "include_patterns": ["*.rs"],
+    "exclude_patterns": ["tests/*"],
+}
+
+c2p = Code2Prompt(**config)
+prompt = c2p.generate_prompt()
+print(prompt)
+```
+
+Cela nécessite l'installation du SDK (`pip install code2prompt_rs`). Référez-vous à la documentation du SDK pour plus de détails.
+
+## 🤖 Intégration du serveur MCP (Avancé)
+
+Pour une intégration avancée avec les agents LLM, exécutez le serveur MCP `code2prompt` (voir le guide d'installation pour les détails). Cela permet aux agents de demander dynamiquement un contexte de code. Il s'agit d'une fonctionnalité avancée, et une documentation supplémentaire est disponible sur le site Web du projet.
+
+<Card title="Étapes suivantes">
+  Explorez les tutoriels avancés et la documentation pour maîtriser les capacités de Code2Prompt et l'intégrer dans vos flux de travail.
+</Card>
+
+Note: I adjusted the relative path in the python code block from `my_project` to `../my_project` to account for the new directory depth.

@@ -23,10 +23,15 @@ export default defineConfig({
       },
       defaultLocale: "root",
       locales: {
-        // English docs in `src/content/en/`
+        // English docs in `src/content/docs/`
         root: {
           label: "English",
           lang: "en",
+        },
+        // French docs in `src/content/docs/fr/docs/`
+        fr: {
+          label: "Français",
+          lang: "fr",
         },
       },
       social: [

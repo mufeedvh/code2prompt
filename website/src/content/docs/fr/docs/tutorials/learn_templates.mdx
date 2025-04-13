@@ -1,0 +1,107 @@
+---
+title: Apprendre les modèles Handlebars avec Code2Prompt
+description: Comprendre comment utiliser et créer des modèles Handlebars personnalisés pour la génération de invites.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Vue d'ensemble du tutoriel">
+  Ce tutoriel démontre comment utiliser et créer des modèles Handlebars personnalisés
+  pour la génération d'invites dans l'outil de ligne de commande `code2prompt`.
+</Card>
+
+---
+
+## Prérequis
+
+Assurez-vous d'avoir `code2prompt` installé. Si vous ne l'avez pas encore installé, reportez-vous au [Guide d'installation](/docs/how_to/install).
+
+---
+
+## Qu'est-ce qu'un modèle Handlebars ?
+
+[Handlebars](https://handlebarsjs.com/) est un moteur de templating populaire qui permet de créer des modèles dynamiques à l'aide de placeurs.
+Dans `code2prompt`, les modèles Handlebars sont utilisés pour formater les invites générées en fonction de la structure du codebase et des variables définies par l'utilisateur.
+
+## Comment utiliser les modèles Handlebars ?
+
+Vous pouvez utiliser ces modèles en passant le drapeau `-t` ou `--template` suivi du chemin vers le fichier de modèle. Par exemple :
+
+```sh
+code2prompt path/to/codebase -t templates/document-the-code.hbs
+```
+
+## Syntaxe des modèles
+
+Les modèles Handlebars utilisent une syntaxe simple pour les placeurs et les expressions. Vous placerez les variables entre des doubles accolades `{{variable_name}}` pour les inclure dans l'invite générée.
+`code2prompt` fournit un ensemble de variables par défaut que vous pouvez utiliser dans vos modèles :
+
+- `absolute_code_path` : Le chemin absolu vers le codebase.
+- `source_tree` : L'arbre de sources du codebase, qui comprend tous les fichiers et répertoires.
+- `files` : Une liste de fichiers dans le codebase, y compris leurs chemins et contenus.
+- `git_diff` : Le diff Git du codebase, si applicable.
+- `code` : Le contenu du code du fichier en cours de traitement.
+- `path` : Le chemin du fichier en cours de traitement.
+
+Vous pouvez également utiliser des aides Handlebars pour effectuer des logiques conditionnelles, des boucles et d'autres opérations dans vos modèles. Par exemple :
+
+```handlebars
+{{#if files}}
+  {{#each files}}
+    Fichier :
+    {{this.path}}
+    Contenu :
+    {{this.content}}
+  {{/each}}
+{{else}}
+  Aucun fichier trouvé.
+{{/if}}
+```
+
+---
+
+## Modèles existants
+
+`code2prompt` est livré avec un ensemble de modèles intégrés pour les cas d'utilisation courants. Vous pouvez les trouver dans le répertoire [`templates`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates).
+
+### [`document-the-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/document-the-code.hbs)
+
+Utilisez ce modèle pour générer des invites pour documenter le code. Il ajoutera des commentaires de documentation à toutes les fonctions publiques, méthodes, classes et modules du codebase.
+
+### [`find-security-vulnerabilities.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/find-security-vulnerabilities.hbs)
+
+Utilisez ce modèle pour générer des invites pour trouver des vulnérabilités de sécurité potentielles dans le codebase. Il recherchera des problèmes de sécurité courants et fournira des recommandations sur la façon de les corriger ou de les atténuer.
+
+### [`clean-up-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/clean-up-code.hbs)
+
+Utilisez ce modèle pour générer des invites pour nettoyer et améliorer la qualité du code. Il recherchera des opportunités pour améliorer la lisibilité, l'adhérence aux bonnes pratiques, l'efficacité, la gestion des erreurs, etc.
+
+### [`fix-bugs.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/fix-bugs.hbs)
+
+Utilisez ce modèle pour générer des invites pour corriger les bogues dans le codebase. Il aidera à diagnostiquer les problèmes, à fournir des suggestions de correction et à mettre à jour le code avec les corrections proposées.
+
+### [`write-github-pull-request.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-pull-request.hbs)
+
+Utilisez ce modèle pour créer une description de demande de tirage GitHub en Markdown en comparant le diff Git et le journal Git de deux branches.
+
+### [`write-github-readme.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-readme.hbs)
+
+Utilisez ce modèle pour générer un fichier README de haute qualité pour le projet, adapté à l'hébergement sur GitHub. Il analysera le codebase pour comprendre son objectif et sa fonctionnalité, et générera le contenu du README en format Markdown.
+
+### [`write-git-commit.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-git-commit.hbs)
+
+Utilisez ce modèle pour générer des commits Git à partir des fichiers en scène dans votre répertoire Git. Il analysera le codebase pour comprendre son objectif et sa fonctionnalité, et générera le contenu du message de commit en format Markdown.
+
+### [`improve-performance.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/improve-performance.hbs)
+
+Utilisez ce modèle pour générer des invites pour améliorer les performances du codebase. Il recherchera des opportunités d'optimisation, fournira des suggestions spécifiques et mettra à jour le code avec les modifications.
+
+## Variables définies par l'utilisateur
+
+`code2prompt` prend en charge l'utilisation de variables définies par l'utilisateur dans les modèles Handlebars. Toutes les variables du modèle qui ne font pas partie du contexte par défaut (`absolute_code_path`, `source_tree`, `files`) seront traitées comme des variables définies par l'utilisateur.
+
+Lors de la génération d'invites, `code2prompt` demandera à l'utilisateur de saisir des valeurs pour ces variables définies par l'utilisateur. Cela permet une personnalisation supplémentaire des invites générées en fonction des entrées de l'utilisateur.
+
+Par exemple, si votre modèle inclut `{{challenge_name}}` et `{{challenge_description}}`, vous serez invité à saisir des valeurs pour ces variables lors de l'exécution de `code2prompt`.
+
+Cette fonctionnalité permet de créer des modèles réutilisables qui peuvent être adaptés à différents scénarios en fonction des informations fournies par l'utilisateur.

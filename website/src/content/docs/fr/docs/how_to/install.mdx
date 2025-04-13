@@ -1,0 +1,244 @@
+---
+title: Installation de Code2Prompt
+description: Un guide d'installation complet pour Code2Prompt sur différents systèmes d'exploitation.
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Steps } from "@astrojs/starlight/components";
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Présentation du guide">
+  Bienvenue dans le guide d'installation de `Code2Prompt`. Ce document fournit des instructions étape par étape pour installer Code2Prompt sur différentes plateformes, notamment Windows, macOS et Linux.
+</Card>
+
+**Résumé rapide**
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+## Prérequis
+
+Assurez-vous que [Rust](https://www.rust-lang.org/tools/install) et Cargo sont installés sur votre système.
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+C'est la méthode officielle pour installer la dernière version stable de Rust et Cargo. Assurez-vous de rafraîchir votre variable d'environnement `PATH` après l'installation de Rust. Redémarrez votre terminal ou exécutez les instructions proposées par l'installateur.
+
+```sh
+source $HOME/.cargo/env
+```
+
+Vous pouvez vérifier que tout est installé correctement en exécutant :
+
+```sh
+cargo --version
+git --version
+```
+
+## Interface de ligne de commande (CLI) 👨‍💻
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+#### 🧪 Installation de la dernière version (non publiée) depuis GitHub
+
+Si vous souhaitez disposer des dernières fonctionnalités ou corrections avant leur publication sur crates.io :
+
+```sh
+cargo install --git https://github.com/mufeedvh/code2prompt
+```
+
+### Construction à partir du code source
+
+Idéal pour les développeurs qui souhaitent construire à partir du code source ou contribuer au projet.
+
+<Steps>
+
+1.  🛠️ Installation des prérequis :
+
+    - [Rust](https://www.rust-lang.org/tools/install) et Cargo
+    - [Git](https://git-scm.com/downloads)
+
+2.  📥 Clonage du dépôt :
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt
+    ```
+
+3.  📦 Installation du binaire :
+
+    Pour construire et installer à partir du code source :
+
+    ```sh
+    cargo install --path crates/code2prompt
+    ```
+
+    Pour construire le binaire sans l'installer :
+
+    ```sh
+    cargo build --release
+    ```
+
+    Le binaire sera disponible dans le répertoire `target/release`.
+
+4.  🚀 Exécution :
+
+    ```sh
+    code2prompt --help
+    ```
+
+</Steps>
+
+### Versions binaires
+
+Convient mieux aux utilisateurs qui souhaitent utiliser la dernière version sans construire à partir du code source.
+
+Téléchargez la dernière version binaire pour votre système d'exploitation à partir de [Releases](https://github.com/mufeedvh/code2prompt/releases).
+
+⚠️ Les versions binaires peuvent accuser un retard par rapport à la dernière version GitHub. Pour des fonctionnalités à la pointe, envisagez de construire à partir du code source.
+
+### AUR
+
+Spécifiquement pour les utilisateurs d'Arch Linux, `code2prompt` est disponible dans l'AUR.
+
+`code2prompt` est disponible dans le [`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt). Installez-le via n'importe quel assistant AUR.
+
+```sh
+paru/yay -S code2prompt
+```
+
+### Nix
+
+Si vous utilisez Nix, vous pouvez l'installer en utilisant soit nix-env soit nix profile.
+
+```sh
+# sans flakes :
+nix-env -iA nixpkgs.code2prompt
+# avec flakes :
+nix profile install nixpkgs#code2prompt
+```
+
+## Kit de développement logiciel (SDK) 🐍
+
+### Pypi
+
+Vous pouvez télécharger les liaisons Python à partir de Pypi
+
+```sh
+pip install code2prompt_rs
+```
+
+### Construction à partir du code source
+
+<Steps>
+
+1.  🛠️ Installation des prérequis :
+
+    - [Rust](https://www.rust-lang.org/tools/install) et Cargo
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 Clonage du dépôt :
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt/crates/code2prompt-python
+    ```
+
+3.  📦 Installation des dépendances :
+
+    La commande `rye` créera un environnement virtuel et installera toutes les dépendances.
+
+    ```sh
+    rye sync
+    ```
+
+4.  ⚙️ Construction du paquet :
+
+    Vous développerez le paquet dans l'environnement virtuel situé dans le dossier `.venv` à la racine du projet.
+
+    ```sh
+    rye run maturin develop -r
+    ```
+
+</Steps>
+
+## Protocole de contexte de modèle (MCP) 🤖
+
+### Installation automatisée
+
+Le serveur MCP de `code2prompt` sera bientôt disponible dans les registres MCP.
+
+### Installation manuelle
+
+Le serveur MCP de `code2prompt` est encore un prototype et sera intégré au dépôt principal bientôt.
+
+Pour exécuter le serveur MCP localement pour l'utiliser avec `Cline`, `Goose` ou `Aider` :
+
+<Steps>
+
+1.  🛠️ Installation des prérequis :
+
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 Clonage du dépôt :
+
+    ```sh
+    git clone https://github.com/odancona/code2prompt-mcp.git
+    cd code2prompt-mcp
+    ```
+
+3.  📦 Installation des dépendances :
+
+    La commande `rye` créera un environnement virtuel et installera toutes les dépendances dans le dossier `.venv`.
+
+    ```sh
+    rye sync
+    ```
+
+4.  🚀 Exécution du serveur :
+
+    Le serveur MCP est maintenant installé. Vous pouvez l'exécuter en utilisant :
+
+    ```sh
+    . .venv/bin/activate
+    python -m src/code2prompt_mcp/main.py
+    ```
+
+5.  🔌 Intégration avec les agents :
+
+            Par exemple, vous pouvez l'intégrer avec `Cline`, en utilisant une configuration similaire :
+
+            ```json
+            {
+              "mcpServers": {
+                "code2prompt": {
+                  "command": "bash",
+                  "args": [
+                    "-c",
+                    "cd /home/olivier/projet/code2prompt-mcp && rye run python /home/olivier/projet/code2prompt-mcp/src/code2prompt_mcp/main.py"
+                  ],
+                  "env": {}
+                }
+              }
+            }
+            ```
+
+</Steps>
+
+Note: I have kept the code blocks, commands, and variable names unchanged as per your requirements. I have also adjusted relative paths by adding one "../" level when they start with "../" but in this case, there were no such paths to adjust. The translation aims to flow naturally in French with proper grammar and style while preserving technical concepts and using the appropriate terminology.

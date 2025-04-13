@@ -41,8 +41,7 @@ The models could produce impressive results but often struggled with larger code
 
 ## My First Projects with LLMs🚀
 
-I started to write a `ROS` pathfinding module for a robotic competition, generate features for a clean architecture `Flutter` cross-platform app, and made a small web app in one evening to keep track of my expenses in `Next.js,` a framework I had never used before, `bboxconverter` a python package to convert bounding boxes. The fact that I built a Next.js app in one evening—a framework I'd never touched before—was a game-changer moment for me; LLMs weren't just tools; they were multipliers.
-I worked on a few projects, and the list goes on. The fantastic thing about LLMs is that they can help you learn new technologies and frameworks quickly.
+I started to write a `ROS` pathfinding module for a robotic competition, generate features for a clean architecture `Flutter` cross-platform app, and made a small web app in one evening to keep track of my expenses in `Next.js,` a framework I had never used before! The fact that I built this small app in one evening, in a framework I'd never touched before, was a game-changer moment for me; LLMs weren't just tools but multipliers. I developed `bboxconverter', a package to convert bounding boxes, and the list goes on. LLMs can help you learn new technologies and frameworks quickly; that's awesome.
 
 ## A New Paradigm: Software 3.0 💡
 
@@ -58,15 +57,15 @@ The same idea propelled the [MCP](https://modelcontextprotocol.io/introduction) 
 
 ### Hallucinations 🌀
 
-During the reproduction of `RESTGPT,` I noticed some serious limitations of LLMs during the reproduction of the famous paper. The paper's authors encountered the same issues I had: LLMs were **hallucinating**. They generate code that is not implemented, inventing arguments and simply following the instructions to the letter without leveraging common sense. E.g., in the original RestGPT codebase, the authors asked in [the caller prompt](https://github.com/Yifan-Song793/RestGPT/blob/main/model/caller.py).
+While reproducing the famous paper `RESTGPT,` I noticed some serious limitations of LLMs. The paper's authors encountered the same issues I had: LLMs were **hallucinating**. They generate code that is not implemented, inventing arguments and simply following the instructions to the letter without leveraging common sense. E.g., in the original RestGPT codebase, the authors asked in [the caller prompt](https://github.com/Yifan-Song793/RestGPT/blob/main/model/caller.py).
 
-> "to not get clever and make up steps that don't exist in the plan"
+> "to not get clever and make up steps that don't exist in the plan."
 
 I found this statement funny and very interesting because it was the first time I encountered someone instructing LLMs not to hallucinate.
 
 ### Limited Context-Size 📏
 
-Another limitation was the context size; LLMs perform well in finding the needle in the haystack but struggle to make sense of it. When you give too much context to the language models, they tend to get lost in the details and lose sight of the big picture, which is annoying and requires constant steering. The way I like to think about it is in a similar way as the [curse of dimensionality](https://towardsdatascience.com/curse-of-dimensionality-a-curse-to-machine-learning-c122ee33bfeb/). Replace the word "dimension" or "feature" by "context" and you get the idea.
+Another limitation was the context size; LLMs perform well in finding the needle in the haystack but struggle to make sense of it. When you give too much context to the language models, they tend to get lost in the details and lose sight of the big picture, which is annoying and requires constant steering. The way I like to think about it is in a similar way as the [curse of dimensionality](https://towardsdatascience.com/curse-of-dimensionality-a-curse-to-machine-learning-c122ee33bfeb/). Replace the word "dimension" or "feature" by "context", and you get the idea.
 
 ![Curse of Dimensionality](/assets/blog/post1/curse_of_dimensionality.png)
 
@@ -88,7 +87,7 @@ Lo and behold, I discovered a **Rust-based project** by [Mufeed](https://www.red
 
 ## Vision & Integrations 🔮
 
-Today, there are several ways to provide context to LLMs. Generating from the larger context, using Retrieval-Augmented Generation (RAG), Compressing the code, or even using a combination of these methods. Context forging is a hot topic that will evolve rapidly in the coming months. However, my approach is **KISS**: Keep It Simple, Stupid. The best way to provide context to LLMs is to use the simplest and most efficient way possible. You forge precisely the context you need; it's deterministic, contrary to RAG.
+Today, there are several ways to provide context to LLMs. Generating from the larger context, using Retrieval-Augmented Generation (RAG), [compressing the code](https://www.all-hands.dev/blog/openhands-context-condensensation-for-more-efficient-ai-agents), or even using a combination of these methods. Context forging is a hot topic that will evolve rapidly in the coming months. However, my approach is **KISS**: Keep It Simple, Stupid. The best way to provide context to LLMs is to use the simplest and most efficient way possible. You forge precisely the context you need; it's deterministic, contrary to RAG.
 
 That's why I decided to push `code2prompt` further as a simple tool that can be used in any workflow. I wanted to make it easy to use, easy to integrate, and easy to extend. That's why I added new ways to interact with the tool.
 

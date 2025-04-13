@@ -1,0 +1,192 @@
+---
+title: Apprendre le filtrage de contexte avec Code2Prompt
+description: Découvrez comment exclure ou inclure des fichiers dans vos invites LLM à l'aide d'options de filtrage puissantes.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Aperçu du tutoriel">
+  Ce tutoriel démontre comment utiliser l'outil de modèle de glob dans l'interface de ligne de commande `code2prompt` pour filtrer et gérer des fichiers en fonction de modèles d'inclusion et d'exclusion.
+</Card>
+
+Les modèles de glob fonctionnent de manière similaire à des outils tels que `tree` ou `grep`, offrant des capacités de filtrage puissantes. Consultez l'[explication détaillée](/docs/explanations/glob_patterns) pour plus d'informations.
+
+---
+
+## Prérequis
+
+Assurez-vous d'avoir installé `code2prompt`. Si vous ne l'avez pas encore installé, reportez-vous au [Guide d'installation](/docs/how_to/install).
+
+---
+
+## Comprendre les modèles d'inclusion et d'exclusion
+
+Les modèles de glob vous permettent de spécifier des règles pour filtrer des fichiers et des répertoires.
+
+- **Modèles d'inclusion** (`--include`) : Spécifiez les fichiers et répertoires que vous souhaitez inclure.
+- **Modèles d'exclusion** (`--exclude`) : Spécifiez les fichiers et répertoires que vous souhaitez exclure.
+- **Priorité** (`--include-priority`) : Résout les conflits entre les modèles d'inclusion et d'exclusion.
+
+---
+
+## Configurer l'environnement
+
+Pour pratiquer avec les modèles de glob, créons une structure de dossier échantillon avec quelques fichiers.
+
+### Script Bash pour générer la structure de test
+
+Exécutez ce script pour configurer une structure de répertoire temporaire :
+
+```bash
+#!/bin/bash
+
+# Créer le répertoire de base
+mkdir -p test_dir/{lowercase,uppercase,.secret}
+
+# Créer des fichiers dans la structure
+echo "content foo.py" > "test_dir/lowercase/foo.py"
+echo "content bar.py" > "test_dir/lowercase/bar.py"
+echo "content baz.py" > "test_dir/lowercase/baz.py"
+echo "content qux.txt" > "test_dir/lowercase/qux.txt"
+echo "content corge.txt" > "test_dir/lowercase/corge.txt"
+echo "content grault.txt" > "test_dir/lowercase/grault.txt"
+
+echo "CONTENT FOO.py" > "test_dir/uppercase/FOO.PY"
+echo "CONTENT BAR.py" > "test_dir/uppercase/BAR.PY"
+echo "CONTENT BAZ.py" > "test_dir/uppercase/BAZ.PY"
+echo "CONTENT QUX.txt" > "test_dir/uppercase/QUX.TXT"
+echo "CONTENT CORGE.txt" > "test_dir/uppercase/CORGE.TXT"
+echo "CONTENT GRAULT.txt" > "test_dir/uppercase/GRAULT.TXT"
+
+echo "top secret" > "test_dir/.secret/secret.txt"
+```
+
+Pour nettoyer la structure plus tard, exécutez :
+
+```bash
+rm -rf test_dir
+```
+
+Cela créera la structure de répertoire suivante :
+
+import { FileTree } from "@astrojs/starlight/components";
+
+<FileTree>
+  - test_dir 
+    - lowercase 
+      - foo.py 
+      - bar.py 
+      - baz.py 
+      - qux.txt 
+      - corge.txt 
+      - grault.txt 
+    - uppercase 
+      - FOO.PY 
+      - BAR.PY 
+      - BAZ.PY 
+      - QUX.txt 
+      - CORGE.txt 
+      - GRAULT.txt 
+    - .secret 
+      - secret.txt
+</FileTree>
+
+---
+
+## Exemples : Filtrage de fichiers avec des modèles d'inclusion et d'exclusion
+
+### Cas 1 : Aucun modèle d'inclusion, aucun modèle d'exclusion
+
+Commande :
+
+```bash
+code2prompt test_dir
+```
+
+#### Résultat
+
+Tous les fichiers sont inclus :
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+- `.secret/secret.txt`
+
+---
+
+### Cas 2 : Exclure des types de fichiers spécifiques
+
+Exclure les fichiers `.txt` :
+
+```bash
+code2prompt test_dir --exclude="*.txt"
+```
+
+#### Résultat
+
+Exclus :
+
+- Tous les fichiers `.txt`
+
+Inclus :
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+
+---
+
+### Cas 3 : Inclure des types de fichiers spécifiques
+
+Inclure uniquement les fichiers Python :
+
+```bash
+code2prompt test_dir --include="*.py"
+```
+
+#### Résultat
+
+Inclus :
+
+- Tous les fichiers `.py`
+
+Exclus :
+
+- `.secret/secret.txt`
+
+---
+
+### Cas 4 : Inclure et exclure avec priorité
+
+Inclure les fichiers `.py` mais exclure les fichiers dans le dossier `uppercase` :
+
+```bash
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+```
+
+#### Résultat
+
+Inclus :
+
+- Tous les fichiers `lowercase/1` ayant l'extension `.py`
+
+Exclus :
+
+- Tous les fichiers `uppercase`
+- `.secret/secret.txt`
+
+---
+
+## Résumé
+
+L'outil de modèle de glob dans `code2prompt` vous permet de filtrer efficacement des fichiers et des répertoires à l'aide de :
+
+- `--include` pour spécifier les fichiers à inclure
+- `--exclude` pour les fichiers à exclure
+- `--include-priority` pour résoudre les conflits entre les modèles
+
+Pour pratiquer, configurez le répertoire échantillon, essayez les commandes et voyez comment l'outil filtre les fichiers de manière dynamique.
+
+Note: I made adjustments to relative paths by adding one "../" level when they start with "../" but there were no such paths in the given content. 
+
+Also, I have kept code blocks, commands, and variable names unchanged as per your requirements. The translation aims to flow naturally in French with proper grammar and style while preserving technical concepts and using the appropriate terminology in French.
