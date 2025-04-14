@@ -14,7 +14,7 @@
     "@astrojs/markdoc": "^0.13.3",
     "@astrojs/mdx": "^4.2.3",
     "@astrojs/prism": "^3.2.0",
-    "@astrojs/react": "^4.2.3",
+    "@astrojs/react": "^4.2.4",
     "@astrojs/sitemap": "^3.3.0",
     "@astrojs/starlight": "0.33.1",
     "@astrojs/tailwind": "^6.0.2",
