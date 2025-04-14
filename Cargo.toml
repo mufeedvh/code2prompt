@@ -9,7 +9,7 @@ panic = 'abort'
 codegen-units = 1
 
 [workspace.dependencies]
-anyhow = "1.0.80"
+anyhow = "1.0.98"
 colored = "2.1.0"
 indicatif = "0.17.8"
 log = "0.4"
