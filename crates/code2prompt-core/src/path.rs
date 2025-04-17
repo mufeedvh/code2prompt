@@ -47,14 +47,15 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
     for entry in walker {
         let path = entry.path();
         if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
+            let file_match = should_include_file(
+                relative_path,
+                &include_globset,
+                &exclude_globset,
+                config.include_priority,
+            );
+
             // ~~~ Directory Tree ~~~
-            let include_in_tree = config.full_directory_tree
-                || should_include_file(
-                    relative_path,
-                    &include_globset,
-                    &exclude_globset,
-                    config.include_priority,
-                );
+            let include_in_tree = config.full_directory_tree || file_match;
 
             if include_in_tree {
                 let mut current_tree = &mut tree;
@@ -75,14 +76,7 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
             }
 
             // ~~~ Processing File ~~~
-            if path.is_file()
-                && should_include_file(
-                    relative_path,
-                    &include_globset,
-                    &exclude_globset,
-                    config.include_priority,
-                )
-            {
+            if path.is_file() && file_match {
                 if let Ok(code_bytes) = fs::read(path) {
                     let clean_bytes = strip_utf8_bom(&code_bytes);
                     let code = String::from_utf8_lossy(&clean_bytes);
