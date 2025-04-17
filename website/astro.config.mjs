@@ -33,6 +33,31 @@ export default defineConfig({
           label: "Français",
           lang: "fr",
         },
+        // German docs in `src/content/docs/de/docs/`
+        de: {
+          label: "Deutsch",
+          lang: "de",
+        },
+        // Spanish docs in `src/content/docs/es/docs/`
+        es: {
+          label: "Español",
+          lang: "es",
+        },
+        // Chinese docs in `src/content/docs/zh/docs/`
+        zh: {
+          label: "中文",
+          lang: "zh",
+        },
+        // Japanese docs in `src/content/docs/ja/docs/`
+        ja: {
+          label: "日本語",
+          lang: "ja",
+        },
+        // Russian docs in `src/content/docs/ru/docs/`
+        ru: {
+          label: "Русский",
+          lang: "ru",
+        },
       },
       social: [
         {
