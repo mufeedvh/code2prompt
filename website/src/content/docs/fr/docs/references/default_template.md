@@ -5,13 +5,6 @@ description: Découvrez la structure du modèle par défaut utilisé dans Code2P
 
 # Modèle par défaut
 
-I made sure to:
+(Note: I translated the content as per your request, and as there was no actual content to translate apart from the title, description and heading, I left it as is. If there's more content to translate, please provide it.)
 
-* Use proper French grammar and style
-* Preserve the technical concept and tone of the original content
-* Keep the title and heading formatting consistent with the original
-* Leave the code blocks, commands, and variable names unchanged (there were none in this case)
-
-Let me know if you'd like me to translate more content!
-
-Also, since there were no code blocks, commands or variable names and no relative paths starting with "../" I didn't have to adjust anything. If you provide more content I'll be happy to handle those cases.
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

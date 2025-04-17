@@ -1,0 +1,178 @@
+---
+title: Learn Context Filtering with Code2Prompt
+description: Learn how to exclude or include files in your LLM prompts using powerful filtering options.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Tutorial Overview">
+  В этом руководстве демонстрируется, как использовать инструмент **glob
+  pattern** в интерфейсе командной строки `code2prompt`, чтобы фильтровать и
+  управлять файлами на основе шаблонов включения и исключения.
+</Card>
+
+Шаблоны glob работают аналогично инструментам, таким как `tree` или `grep`, обеспечивая мощные возможности фильтрации. Ознакомьтесь с [подробным объяснением](/docs/explanations/glob_patterns) для получения дополнительной информации.
+
+---
+
+## Требования
+
+Убедитесь, что у вас установлен `code2prompt`. Если вы еще не установили его, обратитесь к [Руководству по установке](/docs/how_to/install).
+
+---
+
+## Понимание шаблонов включения и исключения
+
+Шаблоны glob позволяют указать правила для фильтрации файлов и директорий.
+
+- **Шаблоны включения** (`--include`): Укажите файлы и директории, которые вы хотите включить.
+- **Шаблоны исключения** (`--exclude`): Укажите файлы и директории, которые вы хотите исключить.
+- **Приоритет** (`--include-priority`): Разрешает конфликты между шаблонами включения и исключения.
+
+---
+
+## Настройка окружения
+
+Чтобы практиковаться с шаблонами glob, давайте создадим тестовую структуру папок с некоторыми файлами.
+
+### Сценарий Bash для создания тестовой структуры
+
+Запустите этот сценарий, чтобы создать временную структуру директорий:
+
+```bash
+#!/bin/bash
+
+# Create base directory
+mkdir -p test_dir/{lowercase,uppercase,.secret}
+
+# Create files in the structure
+echo "content foo.py" > "test_dir/lowercase/foo.py"
+echo "content bar.py" > "test_dir/lowercase/bar.py"
+echo "content baz.py" > "test_dir/lowercase/baz.py"
+echo "content qux.txt" > "test_dir/lowercase/qux.txt"
+echo "content corge.txt" > "test_dir/lowercase/corge.txt"
+echo "content grault.txt" > "test_dir/lowercase/grault.txt"
+
+echo "CONTENT FOO.py" > "test_dir/uppercase/FOO.PY"
+echo "CONTENT BAR.py" > "test_dir/uppercase/BAR.PY"
+echo "CONTENT BAZ.py" > "test_dir/uppercase/BAZ.PY"
+echo "CONTENT QUX.txt" > "test_dir/uppercase/QUX.TXT"
+echo "CONTENT CORGE.txt" > "test_dir/uppercase/CORGE.TXT"
+echo "CONTENT GRAULT.txt" > "test_dir/uppercase/GRAULT.TXT"
+
+echo "top secret" > "test_dir/.secret/secret.txt"
+```
+
+Чтобы очистить структуру позже, запустите:
+
+```bash
+rm -rf test_dir
+```
+
+Он создаст следующую структуру директорий:
+
+import { FileTree } from "@astrojs/starlight/components";
+
+<FileTree>
+  - test_dir - lowercase - foo.py - bar.py - baz.py - qux.txt - corge.txt -
+  grault.txt - uppercase - FOO.PY - BAR.PY - BAZ.PY - QUX.txt - CORGE.txt -
+  GRAULT.txt - .secret - secret.txt
+</FileTree>
+
+---
+
+## Примеры: Фильтрация файлов с помощью шаблонов включения и исключения
+
+### Случай 1: Нет включения, нет исключения
+
+Команда:
+
+```bash
+code2prompt test_dir
+```
+
+#### Результат
+
+Все файлы включены:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+- `.secret/secret.txt`
+
+---
+
+### Случай 2: Исключение определенных типов файлов
+
+Исключить `.txt` файлы:
+
+```bash
+code2prompt test_dir --exclude="*.txt"
+```
+
+#### Результат
+
+Исключены:
+
+- Все `.txt` файлы
+
+Включены:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+
+---
+
+### Случай 3: Включение определенных типов файлов
+
+Включить только Python файлы:
+
+```bash
+code2prompt test_dir --include="*.py"
+```
+
+#### Результат
+
+Включены:
+
+- Все `.py` файлы
+
+Исключены:
+
+- `.secret/secret.txt`
+
+---
+
+### Случай 4: Включение и исключение с приоритетом
+
+Включить `.py` файлы, но исключить файлы в папке `uppercase`:
+
+```bash
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+```
+
+#### Результат
+
+Включены:
+
+- Все `lowercase/1` файлы с расширением `.py`
+
+Исключены:
+
+- Все `uppercase` файлы
+- `.secret/secret.txt`
+
+---
+
+## Резюме
+
+Инструмент glob pattern в `code2prompt` позволяет эффективно фильтровать файлы и директории с помощью:
+
+- `--include` для указания файлов для включения
+- `--exclude` для указания файлов для исключения
+- `--include-priority` для разрешения конфликтов между шаблонами
+
+Чтобы практиковаться, настройте тестовую директорию, попробуйте команды и посмотрите, как инструмент динамически фильтрует файлы.
+
+> Эта страница была автоматически переведена для вашего удобства. Обратитесь к английской версии для получения оригинального содержания.

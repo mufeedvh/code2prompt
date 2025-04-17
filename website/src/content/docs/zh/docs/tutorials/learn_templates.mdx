@@ -1,0 +1,107 @@
+---
+title: 使用 Code2Prompt 学习 Handlebar 模板
+description: 了解如何使用和创建自定义 Handlebars 模板进行提示生成。
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="教程概述">
+  本教程演示如何使用和创建自定义 Handlebars 模板，在 `code2prompt` CLI
+  中进行提示生成。
+</Card>
+
+---
+
+## 先决条件
+
+确保您已安装 `code2prompt`。如果您尚未安装，请参考 [安装指南](/docs/how_to/install)。
+
+---
+
+## 什么是 Handlebars 模板？
+
+[Handlebars](https://handlebarsjs.com/) 是一个流行的模板引擎，允许您使用占位符创建动态模板。在 `code2prompt` 中，Handlebars 模板用于根据代码库结构和用户定义的变量格式化生成的提示。
+
+## 如何使用 Handlebars 模板？
+
+您可以通过传递 `-t` 或 `--template` 标志，后面跟着模板文件的路径来使用这些模板。例如：
+
+```sh
+code2prompt path/to/codebase -t templates/document-the-code.hbs
+```
+
+## 模板语法
+
+Handlebars 模板使用简单的语法表示占位符和表达式。您将变量放在双花括号 `{{variable_name}}` 中，以将其包含在生成的提示中。 `code2prompt` 提供了一些默认变量，您可以在模板中使用：
+
+- `absolute_code_path`：代码库的绝对路径。
+- `source_tree`：代码库的源树，包括所有文件和目录。
+- `files`：代码库中的文件列表，包括其路径和内容。
+- `git_diff`：代码库的 git diff（如果适用）。
+- `code`：正在处理的文件的内容。
+- `path`：正在处理的文件的路径。
+
+您还可以使用 Handlebars 助手在模板中执行条件逻辑、循环和其他操作。例如：
+
+```handlebars
+{{#if files}}
+  {{#each files}}
+    文件：
+    {{this.path}}
+    内容：
+    {{this.content}}
+  {{/each}}
+{{else}}
+  未找到文件。
+{{/if}}
+```
+
+---
+
+## 现有模板
+
+`code2prompt` 带有一些内置模板，用于常见用例。您可以在 [`templates`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates) 目录中找到它们。
+
+### [`document-the-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/document-the-code.hbs)
+
+使用此模板生成文档代码的提示。它将在代码库中的所有公共函数、方法、类和模块中添加文档注释。
+
+### [`find-security-vulnerabilities.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/find-security-vulnerabilities.hbs)
+
+使用此模板生成查找代码库中潜在安全漏洞的提示。它将查找常见的安全问题，并提供有关如何修复或缓解它们的建议。
+
+### [`clean-up-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/clean-up-code.hbs)
+
+使用此模板生成清理和提高代码质量的提示。它将查找改进可读性、遵守最佳实践、效率、错误处理等机会。
+
+### [`fix-bugs.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/fix-bugs.hbs)
+
+使用此模板生成修复代码库中错误的提示。它将帮助诊断问题、提供修复建议，并使用建议的修复更新代码。
+
+### [`write-github-pull-request.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-pull-request.hbs)
+
+使用此模板通过比较两个分支的 git diff 和 git log，创建 GitHub 拉取请求描述，格式为 Markdown。
+
+### [`write-github-readme.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-readme.hbs)
+
+使用此模板为项目生成高质量的 README 文件，适合在 GitHub 上托管。它将分析代码库以了解其目的和功能，并以 Markdown 格式生成 README 内容。
+
+### [`write-git-commit.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-git-commit.hbs)
+
+使用此模板从 git 目录中的暂存文件生成 git 提交。它将分析代码库以了解其目的和功能，并以 Markdown 格式生成 git 提交消息内容。
+
+### [`improve-performance.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/improve-performance.hbs)
+
+使用此模板生成改进代码库性能的提示。它将查找优化机会、提供具体建议，并使用更改更新代码。
+
+## 用户定义变量
+
+`code2prompt` 支持在 Handlebars 模板中使用用户定义的变量。模板中的任何不属于默认上下文（`absolute_code_path`、`source_tree`、`files`）的变量都将被视为用户定义的变量。
+
+在生成提示期间，`code2prompt` 将提示用户输入这些用户定义的变量的值。这允许根据用户输入进一步自定义生成的提示。
+
+例如，如果您的模板包含 `{{challenge_name}}` 和 `{{challenge_description}}`，则在运行 `code2prompt` 时将被提示输入这些变量的值。
+
+此功能使得创建可重用的模板成为可能，这些模板可以根据用户提供的信息适应不同的场景。
+
+> 为了您的方便，本页面已自动翻译。请参考英文版本获取原始内容。

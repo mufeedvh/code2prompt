@@ -1,6 +1,6 @@
 ---
 title: Filtrage de fichiers dans Code2Prompt
-description: Guide étape par étape pour inclure ou exclure des fichiers à l'aide de différentes méthodes de filtrage.
+description: Un guide étape par étape pour inclure ou exclure des fichiers à l'aide de différentes méthodes de filtrage.
 ---
 
 
@@ -30,19 +30,19 @@ Excluez les fichiers à l'aide de modèles glob :
 code2prompt path/to/codebase --exclude="*.txt,*.md"
 ```
 
-Excluez les fichiers/dossiers de l'arbre source en fonction des modèles d'exclusion :
+Excluez les fichiers/dossiers de l'arborescence source en fonction des modèles d'exclusion :
 
 ```sh
 code2prompt path/to/codebase --exclude="*.npy,*.wav" --exclude-from-tree
 ```
 
-Affichez le nombre de tokens de l'invite générée :
+Affichez le nombre de jetons de l'invite générée :
 
 ```sh
 code2prompt path/to/codebase --tokens
 ```
 
-Spécifiez un tokenizeur pour le nombre de tokens :
+Spécifiez un tokenizeur pour le décompte des jetons :
 
 ```sh
 code2prompt path/to/codebase --tokens --encoding=p50k
@@ -94,7 +94,7 @@ Ajoutez des numéros de ligne aux blocs de code source :
 code2prompt path/to/codebase --line-number
 ```
 
-Désactivez l'enveloppement de code à l'intérieur des blocs de code Markdown :
+Désactivez l'emballage de code à l'intérieur des blocs de code markdown :
 
 ```sh
 code2prompt path/to/codebase --no-codeblock
@@ -105,4 +105,6 @@ code2prompt path/to/codebase --no-codeblock
 - Documentez le code.
 - Implémentez de nouvelles fonctionnalités.
 
-> Je l'ai initialement écrit pour une utilisation personnelle afin de profiter de la fenêtre de contexte de 200K de Claude 3.0 et cela s'est avéré assez utile, je l'ai donc décidé de le rendre open-source !
+> J'ai initialement écrit cela pour une utilisation personnelle afin de profiter de la fenêtre de contexte de 200K de Claude 3.0 et cela s'est avéré assez utile, alors j'ai décidé de le rendre open-source !
+
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

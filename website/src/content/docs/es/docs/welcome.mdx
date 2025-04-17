@@ -1,0 +1,96 @@
+---
+title: Documentación de Code2Prompt
+description: Documentación oficial de Code2prompt
+template: splash
+hero:
+  tagline: Transforma tu código en indicaciones optimizadas para IA en segundos
+  image:
+    file: ../../../../assets/logo_dark_v0.0.1.svg
+  actions:
+    - text: Empezar 🚀
+      link: /docs/tutorials/getting_started
+    - text: Instalación 📥
+      link: /docs/how_to/install
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+import { LinkCard } from "@astrojs/starlight/components";
+
+## Inicio rápido
+
+<LinkCard title="Empezar 🚀" href="/docs/tutorials/getting_started" />
+<LinkCard title="Instalación 📥" href="/docs/how_to/install" />
+<LinkCard title="Aprender filtrado 🔍" href="/docs/tutorials/learn_filters" />
+<LinkCard
+  title="Aprender plantillas 📝"
+  href="/docs/tutorials/learn_templates"
+/>
+<LinkCard title="Visión 🔮" href="/docs/vision" />
+
+`code2prompt` es una poderosa herramienta de ingesta de código diseñada para generar indicaciones para análisis de código, generación y otras tareas. Funciona recorriendo directorios, construyendo una estructura de árbol y recopilando información sobre cada archivo.
+
+Simplifica el proceso de combinar y formatear código, lo que facilita el análisis, la documentación o la refactorización de código utilizando LLMs.
+
+Puedes utilizar `code2prompt` de las siguientes maneras:
+
+<CardGrid>
+  <Card title="Núcleo" icon="seti:rust">
+    Biblioteca central extremadamente rápida para ingesta de código
+  </Card>
+  <Card title="CLI" icon="seti:powershell">
+    Interfaz de línea de comandos especialmente diseñada para humanos
+  </Card>
+  <Card title="SDK" icon="seti:python">
+    Kit de desarrollo de software para agentes de IA y scripts de automatización
+  </Card>
+  <Card title="MCP" icon="seti:folder">
+    Servidor de protocolo de contexto de modelo para LLMs mejorados
+  </Card>
+</CardGrid>
+
+## Características clave
+
+- **Generar indicaciones LLM**: Convierte rápidamente bases de código enteras en indicaciones estructuradas para LLM.
+- **Filtrado de patrones Glob**: Incluye o excluye archivos y directorios específicos utilizando patrones Glob.
+- **Plantillas personalizables**: Adapta la generación de indicaciones con plantillas Handlebars.
+- **Conteo de tokens**: Analiza el uso de tokens y optimiza para LLMs con ventanas de contexto variables.
+- **Integración con Git**: Incluye diferencias de Git y mensajes de confirmación en las indicaciones para revisiones de código.
+- **Respeta `.gitignore`**: Ignora automáticamente archivos listados en `.gitignore` para agilizar la generación de indicaciones.
+
+## ¿Por qué `code2prompt`?
+
+1. **Ahorra tiempo**:
+
+   - Automatiza el proceso de recorrer una base de código y formatear archivos para LLMs.
+   - Evita copiar y pegar repetidamente código.
+
+2. **Mejora la productividad**:
+
+   - Proporciona un formato estructurado y consistente para el análisis de código.
+   - Ayuda a identificar errores, refactorizar código y escribir documentación más rápido.
+
+3. **Maneja bases de código grandes**:
+
+   - Diseñado para funcionar sin problemas con bases de código grandes, respetando los límites de contexto de LLMs.
+
+4. **Flujos de trabajo personalizables**:
+   - Opciones flexibles para filtrar archivos, utilizar plantillas y generar indicaciones específicas.
+
+## Casos de uso ejemplo
+
+- **Documentación de código**:
+  Genera automáticamente documentación para funciones públicas, métodos y clases.
+
+- **Detección de errores**:
+  Encuentra posibles errores y vulnerabilidades analizando tu base de código con LLMs.
+
+- **Refactorización**:
+  Simplifica y optimiza código generando indicaciones para mejoras en la calidad del código.
+
+- **Aprendizaje y exploración**:
+  Entiende nuevas bases de código generando resúmenes y descomposiciones detalladas.
+
+- **Descripciones de confirmaciones de Git y PR**:
+  Genera mensajes de confirmación significativos y descripciones de solicitudes de extracción a partir de diferencias de Git.
+
+> Esta página ha sido traducida automáticamente para su conveniencia. Consulte la versión en inglés para ver el contenido original.

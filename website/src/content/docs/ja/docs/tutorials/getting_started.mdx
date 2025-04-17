@@ -1,0 +1,93 @@
+---
+title: Code2Prompt の使い方を始める
+description: Code2Prompt のコア機能と、CLI、SDK、MCP 統合におけるその使用法を紹介する総合的なチュートリアル。
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+<Card title="チュートリアル概要">
+  Code2Promptへようこそ！
+  このチュートリアルでは、Code2Promptを使用してコードベースからAI対応のプロンプトを生成する方法を総合的に紹介します。コア機能を探求し、コマンドラインインターフェイス（CLI）、ソフトウェア開発キット（SDK）、モデルコンテキストプロトコル（MCP）などの異なる統合方法での使用法を示します。
+</Card>
+
+## Code2Promptとは？
+
+Code2Promptは、コードベースと大規模言語モデル（LLM）間のギャップを埋めるように設計された汎用ツールです。関連するコードスニペットをインテリジェントに抽出し、強力なフィルタリングを適用し、LLM消費用に最適化された構造化されたプロンプトにフォーマットします。これにより、コードドキュメント、バグ検出、リファクタリングなどのタスクが簡素化されます。
+
+Code2Promptは異なる統合ポイントを提供します:
+
+<Tabs>
+  <TabItem label="コア" icon="seti:rust">
+    コード摂取とプロンプトの基礎を提供するコアRustライブラリです。
+  </TabItem>
+  <TabItem label="CLI" icon="seti:powershell">
+    クイックプロンプト生成のためのユーザーフレンドリーなコマンドラインインターフェイス。インタラクティブな使用とワンオフタスクに最適です。
+  </TabItem>
+  <TabItem label="SDK" icon="seti:python">
+    Pythonプロジェクトへのシームレスな統合のための強力なソフトウェア開発キット（SDK）。より大きなワークフロー内でのプロンプト生成の自動化に最適です。
+  </TabItem>
+  <TabItem label="MCP" icon="seti:db">
+    LLMエージェントとの高度な統合のためのモデルコンテキストプロトコル（MCP）サーバー。コードベースとの高度なリアルタイムインタラクションを可能にします。
+  </TabItem>
+</Tabs>
+
+## 📥 インストール
+
+すべての方法（CLI、SDK、MCP）の詳細なインストール手順については、総合的な[インストールガイド](/docs/how_to/install)を参照してください。
+
+## 🏁 プロンプトの生成：CLIの例
+
+CLIを使用した簡単な例から始めましょう。サンプルプロジェクトを作成します。
+
+```bash
+mkdir -p my_project/{src,tests}
+touch my_project/src/main.rs my_project/tests/test_1.rs
+echo 'fn main() { println!("Hello, world!"); }' > my_project/src/main.rs
+```
+
+ここで、プロンプトを生成します。
+
+```bash
+code2prompt my_project
+```
+
+これにより、プロンプトがクリップボードにコピーされます。これをカスタマイズできます。
+
+- **フィルタリング:** `code2prompt my_project --include="*.rs" --exclude="tests/*"`（.rsファイルのみを含め、testsディレクトリを除外）
+- **出力ファイル:** `code2prompt my_project --output-file=my_prompt.txt`
+- **JSON出力:** `code2prompt my_project -O json`（構造化されたJSON出力）
+- **カスタムテンプレート:** `code2prompt my_project -t my_template.hbs`（my_template.hbsを作成する必要があります）
+
+詳細な使用法については、[コンテキストフィルタリングの学習](/docs/tutorials/learn_filters)と[ハンドルバーテンプレートの学習](/docs/tutorials/learn_templates)のチュートリアルを参照してください。
+
+## 🐍 SDK統合（Python）
+
+プログラム制御を使用するには、Python SDKを使用します。
+
+```python
+from code2prompt_rs import Code2Prompt
+
+config = {
+    "path": "my_project",
+    "include_patterns": ["*.rs"],
+    "exclude_patterns": ["tests/*"],
+}
+
+c2p = Code2Prompt(**config)
+prompt = c2p.generate_prompt()
+print(prompt)
+```
+
+これには、SDK（`pip install code2prompt_rs`）のインストールが必要です。詳細については、SDKのドキュメントを参照してください。
+
+## 🤖 MCPサーバー統合（高度な）
+
+LLMエージェントとの高度な統合については、`code2prompt` MCPサーバーを実行します（詳細はインストールガイドを参照）。これにより、エージェントがコードコンテキストを動的に要求できます。これは高度な機能であり、プロジェクトのWebサイトでさらにドキュメントが提供されています。
+
+<Card title="次のステップ">
+  Code2Promptの機能をマスターし、ワークフローに統合するには、高度なチュートリアルとドキュメントを参照してください。
+</Card>
+
+> このページは便宜上、自動的に翻訳されています。元のコンテンツについては英語版を参照してください。

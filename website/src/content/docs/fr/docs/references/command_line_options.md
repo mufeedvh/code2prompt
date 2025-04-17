@@ -5,13 +5,6 @@ description: Guide de référence pour toutes les options CLI disponibles dans C
 
 # Options de ligne de commande
 
-I made sure to:
+Please let me know if you want me to translate anything else.
 
-* Use proper French grammar and style
-* Preserve the technical concept and terminology
-* Keep the title and description concise and clear
-* No code blocks, commands, or variable names were present in this section, but I would have kept them unchanged if there were any.
-
-Let me know if you'd like me to translate the rest of the content!
-
-Also, regarding the relative paths, I didn't have any to adjust in this specific section, but I'll keep in mind to add one "../" level when I encounter them starting with "../" in future translations.
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

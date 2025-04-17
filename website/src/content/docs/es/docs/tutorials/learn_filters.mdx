@@ -1,0 +1,179 @@
+---
+title: Aprender filtrado de contexto con Code2Prompt
+description: Aprende a excluir o incluir archivos en tus indicaciones LLM utilizando opciones de filtrado potentes.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Resumen del tutorial">
+  Este tutorial demuestra cómo utilizar la herramienta de patrones glob en
+  `code2prompt` CLI para filtrar y gestionar archivos según patrones de
+  inclusión y exclusión.
+</Card>
+
+Los patrones glob funcionan de manera similar a herramientas como `tree` o `grep`,
+proporcionando capacidades de filtrado potentes. Consulta la [explicación detallada](/docs/explanations/glob_patterns) para obtener más información.
+
+---
+
+## Requisitos previos
+
+Asegúrate de tener `code2prompt` instalado. Si aún no lo has instalado, consulta la [Guía de instalación](/docs/how_to/install).
+
+---
+
+## Entendiendo patrones de inclusión y exclusión
+
+Los patrones glob te permiten especificar reglas para filtrar archivos y directorios.
+
+- **Patrones de inclusión** (`--include`): Especifica los archivos y directorios que deseas incluir.
+- **Patrones de exclusión** (`--exclude`): Especifica los archivos y directorios que deseas excluir.
+- **Prioridad** (`--include-priority`): Resuelve conflictos entre patrones de inclusión y exclusión.
+
+---
+
+## Configuración del entorno
+
+Para practicar con patrones glob, creemos una estructura de carpetas de muestra con algunos archivos.
+
+### Script Bash para generar la estructura de prueba
+
+Ejecuta este script para configurar una estructura de directorio temporal:
+
+```bash
+#!/bin/bash
+
+# Crea el directorio base
+mkdir -p test_dir/{lowercase,uppercase,.secret}
+
+# Crea archivos en la estructura
+echo "content foo.py" > "test_dir/lowercase/foo.py"
+echo "content bar.py" > "test_dir/lowercase/bar.py"
+echo "content baz.py" > "test_dir/lowercase/baz.py"
+echo "content qux.txt" > "test_dir/lowercase/qux.txt"
+echo "content corge.txt" > "test_dir/lowercase/corge.txt"
+echo "content grault.txt" > "test_dir/lowercase/grault.txt"
+
+echo "CONTENT FOO.py" > "test_dir/uppercase/FOO.PY"
+echo "CONTENT BAR.py" > "test_dir/uppercase/BAR.PY"
+echo "CONTENT BAZ.py" > "test_dir/uppercase/BAZ.PY"
+echo "CONTENT QUX.txt" > "test_dir/uppercase/QUX.TXT"
+echo "CONTENT CORGE.txt" > "test_dir/uppercase/CORGE.TXT"
+echo "CONTENT GRAULT.txt" > "test_dir/uppercase/GRAULT.TXT"
+
+echo "top secret" > "test_dir/.secret/secret.txt"
+```
+
+Para limpiar la estructura más tarde, ejecuta:
+
+```bash
+rm -rf test_dir
+```
+
+Creará la siguiente estructura de directorio:
+
+import { FileTree } from "@astrojs/starlight/components";
+
+<FileTree>
+  - test_dir - lowercase - foo.py - bar.py - baz.py - qux.txt - corge.txt -
+  grault.txt - uppercase - FOO.PY - BAR.PY - BAZ.PY - QUX.txt - CORGE.txt -
+  GRAULT.txt - .secret - secret.txt
+</FileTree>
+
+---
+
+## Ejemplos: filtrar archivos con patrones de inclusión y exclusión
+
+### Caso 1: Sin inclusión, sin exclusión
+
+Comando:
+
+```bash
+code2prompt test_dir
+```
+
+#### Resultado
+
+Se incluyen todos los archivos:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+- `.secret/secret.txt`
+
+---
+
+### Caso 2: Excluir tipos de archivo específicos
+
+Excluir archivos `.txt`:
+
+```bash
+code2prompt test_dir --exclude="*.txt"
+```
+
+#### Resultado
+
+Excluidos:
+
+- Todos los archivos `.txt`
+
+Incluidos:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+
+---
+
+### Caso 3: Incluir tipos de archivo específicos
+
+Incluir solo archivos Python:
+
+```bash
+code2prompt test_dir --include="*.py"
+```
+
+#### Resultado
+
+Incluidos:
+
+- Todos los archivos `.py`
+
+Excluidos:
+
+- `.secret/secret.txt`
+
+---
+
+### Caso 4: Incluir y excluir con prioridad
+
+Incluir archivos `.py` pero excluir archivos en la carpeta `uppercase`:
+
+```bash
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+```
+
+#### Resultado
+
+Incluidos:
+
+- Todos los archivos `lowercase/1` con extensión `.py`
+
+Excluidos:
+
+- Todos los archivos `uppercase`
+- `.secret/secret.txt`
+
+---
+
+## Resumen
+
+La herramienta de patrones glob en `code2prompt` te permite filtrar archivos y directorios de manera efectiva utilizando:
+
+- `--include` para especificar archivos a incluir
+- `--exclude` para archivos a excluir
+- `--include-priority` para resolver conflictos entre patrones
+
+Para practicar, configura el directorio de muestra, prueba los comandos y observa cómo la herramienta filtra archivos dinámicamente.
+
+> Esta página ha sido traducida automáticamente para su conveniencia. Consulte la versión en inglés para ver el contenido original.

@@ -1,0 +1,177 @@
+---
+title: 使用 Code2Prompt 学习上下文过滤
+description: 学习如何使用强大的过滤选项在 LLM 提示中排除或包含文件。
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="教程概述">
+  本教程演示如何使用 `code2prompt` CLI 中的 **glob
+  模式工具**，根据包含和排除模式过滤和管理文件。
+</Card>
+
+Glob 模式的工作方式类似于 `tree` 或 `grep` 等工具，提供强大的过滤功能。有关更多信息，请查看[详细说明](/docs/explanations/glob_patterns)。
+
+---
+
+## 前提条件
+
+确保您已安装 `code2prompt`。如果尚未安装，请参考[安装指南](/docs/how_to/install)。
+
+---
+
+## 了解包含和排除模式
+
+Glob 模式允许您指定过滤文件和目录的规则。
+
+- **包含模式** (`--include`)：指定要包含的文件和目录。
+- **排除模式** (`--exclude`)：指定要排除的文件和目录。
+- **优先级** (`--include-priority`)：解决包含和排除模式之间的冲突。
+
+---
+
+## 设置环境
+
+为了使用 glob 模式进行实践，我们来创建一个包含一些文件的示例文件夹结构。
+
+### 生成测试结构的 Bash 脚本
+
+运行此脚本以设置临时目录结构：
+
+```bash
+#!/bin/bash
+
+# 创建基础目录
+mkdir -p test_dir/{lowercase,uppercase,.secret}
+
+# 在结构中创建文件
+echo "content foo.py" > "test_dir/lowercase/foo.py"
+echo "content bar.py" > "test_dir/lowercase/bar.py"
+echo "content baz.py" > "test_dir/lowercase/baz.py"
+echo "content qux.txt" > "test_dir/lowercase/qux.txt"
+echo "content corge.txt" > "test_dir/lowercase/corge.txt"
+echo "content grault.txt" > "test_dir/lowercase/grault.txt"
+
+echo "CONTENT FOO.py" > "test_dir/uppercase/FOO.PY"
+echo "CONTENT BAR.py" > "test_dir/uppercase/BAR.PY"
+echo "CONTENT BAZ.py" > "test_dir/uppercase/BAZ.PY"
+echo "CONTENT QUX.txt" > "test_dir/uppercase/QUX.TXT"
+echo "CONTENT CORGE.txt" > "test_dir/uppercase/CORGE.TXT"
+echo "CONTENT GRAULT.txt" > "test_dir/uppercase/GRAULT.TXT"
+
+echo "top secret" > "test_dir/.secret/secret.txt"
+```
+
+要清理结构，请运行：
+
+```bash
+rm -rf test_dir
+```
+
+它将创建以下目录结构：
+
+import { FileTree } from "@astrojs/starlight/components";
+
+<FileTree>
+  - test_dir - lowercase - foo.py - bar.py - baz.py - qux.txt - corge.txt -
+  grault.txt - uppercase - FOO.PY - BAR.PY - BAZ.PY - QUX.txt - CORGE.txt -
+  GRAULT.txt - .secret - secret.txt
+</FileTree>
+
+---
+
+## 示例：使用包含和排除模式过滤文件
+
+### 案例 1：无包含，无排除
+
+命令：
+
+```bash
+code2prompt test_dir
+```
+
+#### 结果
+
+所有文件都被包含：
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+- `.secret/secret.txt`
+
+---
+
+### 案例 2：排除特定文件类型
+
+排除 `.txt` 文件：
+
+```bash
+code2prompt test_dir --exclude="*.txt"
+```
+
+#### 结果
+
+已排除：
+
+- 所有 `.txt` 文件
+
+已包含：
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+
+---
+
+### 案例 3：包含特定文件类型
+
+仅包含 Python 文件：
+
+```bash
+code2prompt test_dir --include="*.py"
+```
+
+#### 结果
+
+已包含：
+
+- 所有 `.py` 文件
+
+已排除：
+
+- `.secret/secret.txt`
+
+---
+
+### 案例 4：包含和排除具有优先级
+
+包含 `.py` 文件，但排除 `uppercase` 文件夹中的文件：
+
+```bash
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+```
+
+#### 结果
+
+已包含：
+
+- 所有 `lowercase/1` 文件，具有 `.py` 扩展名
+
+已排除：
+
+- 所有 `uppercase` 文件
+- `.secret/secret.txt`
+
+---
+
+## 总结
+
+`code2prompt` 中的 glob 模式工具允许您使用以下方法有效地过滤文件和目录：
+
+- `--include` 指定要包含的文件
+- `--exclude` 指定要排除的文件
+- `--include-priority` 解决模式之间的冲突
+
+要练习，请设置示例目录，尝试运行命令，并查看工具如何动态过滤文件。
+
+> 为了您的方便，本页面已自动翻译。请参考英文版本获取原始内容。

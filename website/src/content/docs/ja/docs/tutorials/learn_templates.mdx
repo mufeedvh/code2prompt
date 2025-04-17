@@ -1,0 +1,109 @@
+---
+title: Code2PromptでHandlebarテンプレートを学ぶ
+description: Code2PromptのためのカスタムHandlebarsテンプレートの作成と使用方法を理解する。
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="チュートリアルの概要">
+  このチュートリアルでは、Code2Prompt
+  CLIのためのカスタムHandlebarsテンプレートの作成と使用方法を説明します。
+</Card>
+
+---
+
+## 前提条件
+
+`code2prompt`がインストールされていることを確認してください。まだインストールしていない場合は、[インストールガイド](/docs/how_to/install)を参照してください。
+
+---
+
+## Handlebarsテンプレートとは
+
+[Handlebars](https://handlebarsjs.com/)は、プレースホルダを使用した動的テンプレートを作成できる人気のテンプレートエンジンです。
+`code2prompt`では、Handlebarsテンプレートは、コードベースの構造とユーザー定義の変数に基づいて生成されたプロンプトをフォーマットするために使用されます。
+
+## Handlebarsテンプレートの使用方法
+
+テンプレートファイルへのパスを`-t`または`--template`フラグで指定することで、これらのテンプレートを使用できます。例：
+
+```sh
+code2prompt path/to/codebase -t templates/document-the-code.hbs
+```
+
+## テンプレート構文
+
+Handlebarsテンプレートは、プレースホルダと式のためのシンプルな構文を使用します。変数は、生成されたプロンプトに含めるために、`{{variable_name}}`の二重中括弧内に配置します。
+`code2prompt`は、テンプレートで使用できるデフォルトの変数のセットを提供します。
+
+- `absolute_code_path`: コードベースへの絶対パス。
+- `source_tree`: コードベースのソースツリーで、すべてのファイルとディレクトリが含まれます。
+- `files`: コードベース内のファイルのリストで、パスと内容が含まれます。
+- `git_diff`: コードベースのgit diff。適用可能な場合。
+- `code`: 処理中のファイルのコード内容。
+- `path`: 処理中のファイルのパス。
+
+Handlebarsヘルパーを使用して、テンプレート内で条件付きロジック、ループ、その他の操作を実行することもできます。例：
+
+```handlebars
+{{#if files}}
+  {{#each files}}
+    ファイル:
+    {{this.path}}
+    内容:
+    {{this.content}}
+  {{/each}}
+{{else}}
+  ファイルが見つかりません。
+{{/if}}
+```
+
+---
+
+## 既存のテンプレート
+
+`code2prompt`には、一般的なユースケースのための組み込みテンプレートのセットが付属しています。これらは[`templates`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates)ディレクトリで見つけることができます。
+
+### [`document-the-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/document-the-code.hbs)
+
+このテンプレートを使用して、コードのドキュメント化のためのプロンプトを生成します。コードベース内のすべてのパブリック関数、メソッド、クラス、およびモジュールにドキュメントコメントを追加します。
+
+### [`find-security-vulnerabilities.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/find-security-vulnerabilities.hbs)
+
+このテンプレートを使用して、コードベース内の潜在的なセキュリティ脆弱性を見つけるためのプロンプトを生成します。一般的なセキュリティ問題を探し、それらを修正または軽減する方法に関する推奨事項を提供します。
+
+### [`clean-up-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/clean-up-code.hbs)
+
+このテンプレートを使用して、コードの品質を向上および改善するためのプロンプトを生成します。読みやすさ、ベストプラクティスの遵守、効率性、エラー処理などの改善機会を探します。
+
+### [`fix-bugs.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/fix-bugs.hbs)
+
+このテンプレートを使用して、コードベース内のバグを修正するためのプロンプトを生成します。問題の診断、修正の提案、およびコードの更新を行います。
+
+### [`write-github-pull-request.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-pull-request.hbs)
+
+このテンプレートを使用して、2つのブランチのgit diffとgitログを比較して、GitHubプルリクエストの説明をマークダウンで作成します。
+
+### [`write-github-readme.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-readme.hbs)
+
+このテンプレートを使用して、プロジェクト用の高品質のREADMEファイルを生成します。コードベースを分析してその目的と機能を理解し、マークダウン形式でREADMEコンテンツを生成します。
+
+### [`write-git-commit.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-git-commit.hbs)
+
+このテンプレートを使用して、gitディレクトリ内のステージングされたファイルからgitコミットを生成します。コードベースを分析してその目的と機能を理解し、マークダウン形式でgitコミットメッセージコンテンツを生成します。
+
+### [`improve-performance.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/improve-performance.hbs)
+
+このテンプレートを使用して、コードベースのパフォーマンスを向上させるためのプロンプトを生成します。最適化の機会を探し、特定の提案を提供し、コードを更新します。
+
+## ユーザー定義変数
+
+`code2prompt`は、Handlebarsテンプレートでのユーザー定義変数の使用をサポートしています。テンプレート内のデフォルトコンテキスト（`absolute_code_path`、`source_tree`、`files`）に含まれない変数は、ユーザー定義変数として扱われます。
+
+プロンプト生成中、`code2prompt`はユーザー定義変数の値を入力するようユーザーに求めます。これにより、ユーザーの入力に基づいて生成されたプロンプトをさらにカスタマイズできます。
+
+たとえば、テンプレートに`{{challenge_name}}`と`{{challenge_description}}`が含まれている場合、`code2prompt`を実行すると、これらの変数の値を入力するよう求められます。
+
+この機能により、ユーザーが提供した情報に基づいてさまざまなシナリオに適応できる、再利用可能なテンプレートを作成できます。
+
+> このページは便宜上、自動的に翻訳されています。元のコンテンツについては英語版を参照してください。

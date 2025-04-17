@@ -3,7 +3,7 @@ title: Comment fonctionne le filtre de modèle Glob
 description: Un examen approfondi de la façon dont Code2Prompt traite les modèles d'inclusion et d'exclusion.
 ---
 
-L'outil utilise des modèles glob pour inclure ou exclure des fichiers et des répertoires, fonctionnant de manière similaire à des outils tels que `tree` ou `grep`. Voici une explication détaillée :
+L'outil utilise des modèles glob pour inclure ou exclure des fichiers et des répertoires, fonctionnant de manière similaire à des outils comme `tree` ou `grep`. Voici une explication détaillée :
 
 ## Concepts clés
 
@@ -45,7 +45,7 @@ Lorsque vous spécifiez une liste `--exclude` et/ou une liste `--include`, la lo
      A \setminus (A \cap B)
      $$
 
-   - **Priorité d'inclusion != true** :
+   - **Priorité d'inclusion != true\*** :
      $$
      B \setminus (A \cap B)
      $$
@@ -56,4 +56,4 @@ Soit (A) et (B) se chevauchent. En fonction de la priorité, l'intersection $$( 
 
 ![Représentation visuelle du cas 4](../../../../../assets/filter.png)
 
-Notez que j'ai ajusté le chemin relatif de l'image en ajoutant un niveau "../" pour tenir compte de la nouvelle profondeur de répertoire.
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

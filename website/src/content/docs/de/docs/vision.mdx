@@ -1,0 +1,66 @@
+---
+title: Die Vision von Code2Prompt
+description: Entdecken Sie die Vision hinter Code2Prompt und wie es die Interaktion von LLM mit Code verbessert.
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+<Card title="Zweck 🎯">
+  `code2prompt` wurde entwickelt, um Entwicklern und KI-Agenten eine effektivere
+  Interaktion mit Codebasen zu ermöglichen.
+</Card>
+
+## Das Problem 🚩
+
+Große Sprachmodelle (LLMs) haben die Art und Weise, wie wir mit Code interagieren, revolutioniert. Sie stehen jedoch immer noch vor erheblichen Herausforderungen bei der Codegenerierung:
+
+- **Planung und Argumentation**: LLMs fehlt die Fähigkeit, zu planen und zu argumentieren, was für Aufgaben wie Codegenerierung, Refaktorisierung und Debugging entscheidend ist. Sie haben oft Schwierigkeiten, das große Ganze zu überblicken und sind kurzsichtig.
+- **Kontextgröße**: LLMs haben ein begrenztes Kontextfenster, das ihre Fähigkeit, große Codebasen zu analysieren und zu verstehen, einschränkt.
+- **Halluzination**: LLMs können Code generieren, der korrekt erscheint, aber tatsächlich falsch oder unsinnig ist. Dieses Phänomen, bekannt als Halluzination, tritt auf, wenn das Modell nicht genügend Kontext oder Verständnis der Codebasis hat.
+
+Hier kommt `code2prompt` ins Spiel.
+
+## Die Lösung ✅
+
+Wir glauben, dass Planung und Argumentation durch menschliche oder KI-Agenten mit Gerüsttechniken erreicht werden können. Diese Agenten müssen einen **hochwertigen Kontext** der Codebasis sammeln, der für die jeweilige Aufgabe gefiltert, strukturiert und formatiert ist.
+
+Die Faustregel lautet:
+
+<Aside type="tip">
+  > So wenig Kontext wie möglich, aber so viel wie nötig bereitstellen
+</Aside>
+
+Dies ist praktisch schwierig zu erreichen, insbesondere bei großen Codebasen. `code2prompt` ist jedoch ein einfaches Tool, das Entwicklern und KI-Agenten hilft, Codebasen effektiver zu verdauen.
+
+Es automatisiert den Prozess des Durchquerens einer Codebasis, Filterns von Dateien und Formatierens in strukturierte Prompts, die LLMs verstehen können. Dadurch hilft es, die Herausforderungen der Planung, Argumentation und Halluzination zu mildern.
+
+Sie können verstehen, wie `code2prompt` diese Herausforderungen in folgendem Abschnitt angeht.
+
+## Architektur ⛩️
+
+<img
+  src="../assets/images/architecture.svg"
+  alt="Architektur von code2prompt"
+  style="width: 75%;"
+/>
+
+`code2prompt` ist modular konzipiert, um eine einfache Integration in verschiedene Workflows zu ermöglichen. Es kann als Core-Bibliothek, Kommandozeilen-Interface (CLI), Software-Entwicklungskit (SDK) oder sogar als Model Context Protocol (MCP)-Server verwendet werden.
+
+### Core
+
+`code2prompt` ist ein Code-Ingestion-Tool, das den Prozess der Erstellung von LLM-Prompts für Codeanalyse, -generierung und andere Aufgaben optimiert. Es funktioniert, indem es Verzeichnisse durchquert, eine Baumstruktur aufbaut und Informationen über jede Datei sammelt. Die Core-Bibliothek kann leicht in andere Anwendungen integriert werden.
+
+### CLI
+
+Das Kommandozeilen-Interface (CLI) von `code2prompt` wurde für Menschen entwickelt, um Prompts direkt aus Ihrer Codebasis zu generieren. Der generierte Prompt wird automatisch in die Zwischenablage kopiert und kann auch in eine Ausgabedatei gespeichert werden. Darüber hinaus können Sie die Prompt-Generierung mithilfe von Handlebars-Vorlagen anpassen. Schauen Sie sich die bereitgestellten Prompts in der Dokumentation an!
+
+### SDK
+
+Das Software-Entwicklungskit (SDK) von `code2prompt` bietet eine Python-Bindung für die Core-Bibliothek. Dies ist perfekt für KI-Agenten oder Automatisierungsskripte, die nahtlos mit Codebasen interagieren möchten. Das SDK ist auf Pypi gehostet und kann über pip installiert werden.
+
+### MCP
+
+`code2prompt` ist auch als Model Context Protocol (MCP)-Server verfügbar, der es ermöglicht, ihn als lokalen Dienst auszuführen. Dies ermöglicht LLMs auf Steroiden, indem es ihnen ein Tool bereitstellt, um automatisch einen gut strukturierten Kontext Ihrer Codebasis zu sammeln.
+
+> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.

@@ -1,0 +1,67 @@
+---
+title: La visión de Code2Prompt
+description: Descubre la visión detrás de Code2Prompt y cómo mejora las interacciones de LLM con el código.
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+<Card title="Propósito 🎯">
+  `code2prompt` fue creado para ayudar a los desarrolladores y agentes de
+  inteligencia artificial a interactuar con bases de código de manera más
+  efectiva.
+</Card>
+
+## El problema 🚩
+
+Los modelos de lenguaje grandes (LLM) han revolucionado la forma en que interactuamos con el código. Sin embargo, todavía enfrentan desafíos significativos con la generación de código:
+
+- **Planificación y razonamiento**: Los LLM carecen de la capacidad de planificar y razonar, lo cual es crucial para tareas como la generación de código, la refactorización y la depuración. A menudo luchan por obtener una visión general y son cortoplacistas.
+- **Tamaño del contexto**: Los LLM tienen una ventana de contexto limitada, lo que restringe su capacidad para analizar y comprender bases de código grandes.
+- **Alucinación**: Los LLM pueden generar código que parece correcto pero que en realidad es incorrecto o absurdo. Este fenómeno, conocido como alucinación, ocurre cuando el modelo carece de contexto suficiente o comprensión de la base de código.
+
+Aquí es donde entra en juego `code2prompt`.
+
+## La solución ✅
+
+Creemos que la planificación y el razonamiento pueden lograrse mediante técnicas de andamiaje con agentes humanos o de inteligencia artificial. Estos agentes necesitan recopilar un **contexto de alta calidad** de la base de código que esté filtrado, estructurado y formateado para la tarea en cuestión.
+
+La regla general sería:
+
+<Aside type="tip">
+  > proporcionar la menor cantidad de contexto posible, pero la necesaria
+</Aside>
+
+Esto es prácticamente difícil de lograr, especialmente para bases de código grandes. Sin embargo, `code2prompt` es una herramienta simple que puede ayudar a los desarrolladores y agentes de inteligencia artificial a ingerir la base de código de manera más efectiva.
+
+Automatiza el proceso de recorrer una base de código, filtrar archivos y formatearlos en indicaciones estructuradas que los LLM pueden comprender. Al hacerlo, ayuda a mitigar los desafíos de planificación, razonamiento y alucinación.
+
+Puede entender cómo `code2prompt` está diseñado para abordar estos desafíos en la siguiente sección.
+
+## Arquitectura ⛩️
+
+<img
+  src="../../assets/images/architecture.svg"
+  alt="Arquitectura de code2prompt"
+  style="width: 75%;"
+/>
+
+`code2prompt` está diseñado de manera modular, lo que permite una fácil integración en varios flujos de trabajo. Puede utilizarse como una biblioteca central, una interfaz de línea de comandos (CLI), un kit de desarrollo de software (SDK) o incluso como un servidor de protocolo de contexto de modelo (MCP).
+
+### Central
+
+`code2prompt` es una herramienta de ingesta de código que agiliza el proceso de crear indicaciones de LLM para análisis de código, generación y otras tareas. Funciona recorriendo directorios, construyendo una estructura de árbol y recopilando información sobre cada archivo. La biblioteca central se puede integrar fácilmente en otras aplicaciones.
+
+### CLI
+
+La interfaz de línea de comandos (CLI) de `code2prompt` fue diseñada para que los humanos generen indicaciones directamente desde su base de código. La indicación generada se copia automáticamente al portapapeles y también se puede guardar en un archivo de salida. Además, puede personalizar la generación de indicaciones utilizando plantillas de Handlebars. ¡Eche un vistazo a las indicaciones proporcionadas en la documentación!
+
+### SDK
+
+El kit de desarrollo de software (SDK) de `code2prompt` ofrece una vinculación de Python a la biblioteca central. Esto es perfecto para agentes de inteligencia artificial o scripts de automatización que desean interactuar con la base de código sin problemas. El SDK se hospeda en Pypi y se puede instalar mediante pip.
+
+### MCP
+
+`code2prompt` también está disponible como un servidor de protocolo de contexto de modelo (MCP), lo que permite ejecutarlo como un servicio local. Esto permite a los LLM en esteroides proporcionarles una herramienta para recopilar automáticamente un contexto bien estructurado de su base de código.
+
+> Esta página ha sido traducida automáticamente para su conveniencia. Consulte la versión en inglés para ver el contenido original.

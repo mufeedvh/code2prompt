@@ -1,0 +1,132 @@
+---
+title: "Warum ich Code2Prompt entwickelt habe"
+date: 2025-04-11
+lastUpdated: 2025-04-11
+tags:
+  - open-source
+  - code2prompt
+  - KI
+  - Agent
+excerpt: "Die Geschichte hinter code2prompt: meine Open-Source-Suche nach Lösungen für Kontext-Herausforderungen in LLM-Workflows"
+authors:
+  - ODAncona
+cover:
+  alt: "Eine Illustration von code2prompt, das den Code-Kontext für KI-Agenten optimiert."
+  image: "/src/assets/logo_dark_v0.0.2.svg"
+featured: false
+draft: false
+---
+
+## Einführung
+
+Ich bin seit jeher fasziniert davon, wie große Sprachmodelle (LLMs) die Codierungs-Workflows verändern - sei es durch die Generierung von Tests, Docstrings oder sogar ganzen Features in Minuten. Aber als ich diese Modelle weiterentwickelte, traten einige kritische Schmerzpunkte auf:
+
+| Planungsprobleme | Hohe Token-Kosten | Halluzinationen |
+| ---------------- | ----------------- | --------------- |
+| 🧠 ➡️ 🤯         | 🔥 ➡️ 💸          | 💬 ➡️ 🌀        |
+
+Deshalb begann ich, mich mit `code2prompt` zu beschäftigen, einem Rust-basierten Tool, das dabei hilft, den richtigen Kontext für LLMs bereitzustellen.
+
+In diesem Beitrag teile ich meine Reise und erkläre, warum ich davon überzeugt bin, dass `code2prompt` heute relevant ist und sich so gut integrieren lässt, und warum es zu meiner bevorzugten Lösung für bessere, schnellere KI-Codierungs-Workflows geworden ist.
+
+## Meine ersten Schritte mit LLMs 👣
+
+Ich begann im November 2023 mit Experimenten mit LLMs auf `OpenAI Playground` mit `text-davinci-003`. Die Sprachmodelle ermöglichten eine neue Revolution. Es fühlte sich an, als hätte ich einen brillanten neuen Assistenten, der auf Kommando Unit-Tests und Docstrings erstellen konnte. Ich genoss es, die Modelle an ihre Grenzen zu bringen - von Small Talk und ethischen Dilemmata bis hin zu Jailbreaks und komplexen Codierungsaufgaben. Als ich jedoch an umfangreicheren Projekten arbeitete, erkannte ich schnell, dass die Modelle offensichtliche Einschränkungen aufwiesen. Zunächst konnte ich nur wenige hundert Zeilen Code in das Kontextfenster einfügen, und selbst dann hatten die Modelle oft Schwierigkeiten, den Zweck oder die Struktur des Codes zu verstehen. Deshalb erkannte ich schnell, dass der Kontext von größter Bedeutung war. Je präziser meine Anweisungen waren und je besser der Kontext, desto besser die Ergebnisse.
+
+![OpenAI Playground](/assets/../blog/post1/playground.png)
+
+## Modell-Evolution 🏗️
+
+Die Modelle konnten beeindruckende Ergebnisse liefern, aber oft hatten sie Schwierigkeiten mit größeren Codebasen oder komplexen Aufgaben. Ich fand mich immer wieder dabei, mehr Zeit für die Erstellung von Prompts aufzuwenden als tatsächlich zu codieren. Gleichzeitig verbesserten sich die Modelle mit der Veröffentlichung neuer Versionen. Sie erhöhten ihre Denkfähigkeiten und Kontextgröße, boten neue Perspektiven und Möglichkeiten. Ich konnte fast zweitausend Zeilen Code in das Kontextfenster einfügen, und die Ergebnisse verbesserten sich. Ich konnte ganze Features in wenigen Iterationen schreiben, und ich war beeindruckt davon, wie schnell ich Ergebnisse erzielen konnte. Ich war überzeugt, dass LLMs die Zukunft des Codierens waren, und ich wollte Teil dieser Revolution sein. Ich bin fest davon überzeugt, dass KI uns nicht ersetzen wird, sondern uns als Assistenten unterstützen wird, während Menschen immer noch die Experten sind.
+
+## Meine ersten Projekte mit LLMs 🚀
+
+Ich begann, ein `ROS`-Pathfinding-Modul für einen Roboter-Wettbewerb zu schreiben, generierte Features für eine saubere Architektur-`Flutter`-Cross-Plattform-App und entwickelte eine kleine Web-App, um meine Ausgaben in `Next.js` zu verfolgen. Die Tatsache, dass ich diese kleine App an einem Abend in einem Framework, das ich noch nie zuvor verwendet hatte, erstellte, war ein gamechanger für mich; LLMs waren nicht nur Werkzeuge, sondern Multiplikatoren. Ich entwickelte `bboxconverter`, ein Paket zum Konvertieren von Bounding-Boxes, und vieles mehr. LLMs können Ihnen helfen, neue Technologien und Frameworks schnell zu erlernen; das ist großartig.
+
+## Ein neues Paradigma: Software 3.0 💡
+
+Ich tauchte tiefer in LLMs ein und begann, Agenten und Scaffoldings darum herum zu bauen. Ich reproduzierte das berühmte Paper [RestGPT](https://restgpt.github.io/). Die Idee ist großartig: Geben Sie LLMs die Möglichkeit, einige REST-APIs mit einer OpenAPI-Spezifikation aufzurufen, wie z.B. `Spotify` oder `TMDB`. Diese Fähigkeiten führen ein neues Software-Programmierparadigma ein, das ich **Software 3.0** nenne.
+
+| Software 1.0 | Software 2.0   | Software 3.0 |
+| ------------ | -------------- | ------------ |
+| Regelbasiert | Datengesteuert | Agentisch    |
+
+Die gleiche Idee trieb das [MCP](https://modelcontextprotocol.io/introduction)-Protokoll voran, das es LLMs ermöglicht, Tools und Ressourcen direkt auf eine nahtlose Weise aufzurufen, da das Tool per Design eine Beschreibung benötigt, um vom LLM aufgerufen zu werden, im Gegensatz zu REST-APIs, die nicht unbedingt eine OpenAPI-Spezifikation erfordern.
+
+## Die Einschränkungen von LLMs 🧩
+
+### Halluzinationen 🌀
+
+Während ich das berühmte Paper `RESTGPT` reproduzierte, bemerkte ich einige schwerwiegende Einschränkungen von LLMs. Die Autoren des Papiers begegneten den gleichen Problemen wie ich: LLMs **halluzinierten**. Sie generierten Code, der nicht implementiert war, erfanden Argumente und folgten einfach den Anweisungen buchstäblich, ohne gesunden Menschenverstand zu verwenden. Zum Beispiel fragten die Autoren in [dem Caller-Prompt](https://github.com/Yifan-Song793/RestGPT/blob/main/model/caller.py).
+
+> "Nicht clever werden und Schritte erfinden, die nicht im Plan existieren."
+
+Ich fand diese Aussage lustig und sehr interessant, weil es das erste Mal war, dass ich jemanden sah, der LLMs anwies, nicht zu halluzinieren.
+
+### Begrenzte Kontextgröße 📏
+
+Eine weitere Einschränkung war die Kontextgröße; LLMs funktionieren gut beim Finden der Nadel im Heuhaufen, aber haben Schwierigkeiten, einen Sinn daraus zu machen. Wenn Sie den Sprachmodellen zu viel Kontext geben, tendieren sie dazu, sich in den Details zu verlieren und die Übersicht zu verlieren, was ärgerlich ist und ständige Steuerung erfordert. Die Art und Weise, wie ich darüber nachdenke, ist ähnlich wie bei [dem Fluch der Dimensionalität](https://towardsdatascience.com/curse-of-dimensionality-a-curse-to-machine-learning-c122ee33bfeb/). Ersetzen Sie das Wort "Dimension" oder "Feature" durch "Kontext", und Sie erhalten die Idee.
+
+![Fluch der Dimensionalität](/assets/blog/post1/curse_of_dimensionality.png)
+
+Je mehr Kontext Sie dem LLM geben, desto schwieriger ist es, die richtige Antwort zu finden. Ich kam auf einen schönen Satz, um diese Idee zusammenzufassen:
+
+> Stellen Sie so wenig Kontext wie möglich, aber so viel wie nötig bereit.
+
+Dies ist stark inspiriert von dem berühmten [Zitat von Alain Berset](https://www.lematin.ch/story/alain-berset-la-formule-qui-defie-le-temps-166189802108), einem Schweizer Politiker 🇨🇭, der während des COVID-19-Lockdowns sagte:
+
+> "Wir möchten so schnell wie möglich handeln, aber auch so langsam wie nötig."
+
+Dies repräsentiert die Idee des Kompromisses und gilt für die Kontextgröße von LLMs!
+
+## Die Suche nach einem besseren Weg: code2prompt 🔨
+
+Deshalb benötigte ich eine Möglichkeit, meinen Code-Kontext schnell zu laden, zu filtern und zu organisieren, indem ich die kleinstmögliche Menge an Kontext mit der besten Qualität bereitstellte. Ich versuchte, Dateien oder Code-Snippets manuell in Prompts zu kopieren, aber das wurde unhandlich und fehleranfällig. Ich wusste, dass die Automatisierung des mühsamen Prozesses der Kontextgestaltung, um bessere Prompts zu stellen, hilfreich sein würde. Dann gab ich eines Tages "code2prompt" in Google ein, in der Hoffnung, ein Tool zu finden, das meinen Code direkt in Prompts einspeist.
+
+Und tatsächlich entdeckte ich ein **Rust-basiertes Projekt** von [Mufeed](https://www.reddit.com/r/rust/comments/1bghroh/i_made_code2prompt_a_cli_tool_to_convert_your/) namens _code2prompt_, das etwa 200 Sterne auf GitHub hatte. Es war damals noch einfach: ein einfaches CLI-Tool mit grundlegender Filterkapazität und Vorlagen. Ich sah enormes Potenzial und sprang direkt ein, um beizutragen, implementierte unter anderem die glob-Musterübereinstimmung und wurde bald zum Hauptmitarbeiter.
+
+## Vision & Integrationen 🔮
+
+Heute gibt es mehrere Möglichkeiten, Kontext für LLMs bereitzustellen. Generierung aus dem größeren Kontext, Verwendung von Retrieval-Augmented Generation (RAG), [Komprimierung des Codes](https://www.all-hands.dev/blog/openhands-context-condensensation-for-more-efficient-ai-agents) oder sogar Verwendung einer Kombination dieser Methoden. Kontextgestaltung ist ein heißes Thema, das sich in den kommenden Monaten schnell entwickeln wird. Mein Ansatz ist jedoch **KISS**: Keep It Simple, Stupid. Die beste Möglichkeit, Kontext für LLMs bereitzustellen, besteht darin, die einfachste und effizienteste Methode zu verwenden. Sie gestalten genau den Kontext, den Sie benötigen; es ist deterministisch, im Gegensatz zu RAG.
+
+Deshalb beschloss ich, `code2prompt` weiterzuentwickeln, als ein einfaches Tool, das in jedem Workflow verwendet werden kann. Ich wollte es einfach zu bedienen, einfach zu integrieren und einfach zu erweitern machen. Deshalb fügte ich neue Möglichkeiten hinzu, mit dem Tool zu interagieren.
+
+- **Core**: Der Core von `code2prompt` ist eine Rust-Bibliothek, die die grundlegende Funktionalität bietet, um Kontext aus Ihrem Code-Bestand zu gestalten. Sie enthält eine einfache API, um Ihren Code-Kontext zu laden, zu filtern und zu organisieren.
+- **CLI:** Die Kommandozeilen-Schnittstelle ist die einfachste Möglichkeit, `code2prompt` zu verwenden. Sie können Kontext aus Ihrem Code-Bestand gestalten und direkt in Ihre Prompts einspeisen.
+- **Python-API:** Die Python-API ist eine einfache Wrapper-Funktion um die CLI, die es Ihnen ermöglicht, `code2prompt` in Ihren Python-Skripten und Agenten zu verwenden. Sie können Kontext aus Ihrem Code-Bestand gestalten und direkt in Ihre Prompts einspeisen.
+- **MCP**: Der `code2prompt`-MCP-Server ermöglicht es LLMs, `code2prompt` als Tool zu verwenden, und macht sie dadurch in der Lage, Kontext zu gestalten.
+
+Die Vision wird auf der [Vision-Seite](/docs/../vision) im Detail beschrieben.
+
+## Integration mit Agenten 👤
+
+Ich bin davon überzeugt, dass zukünftige Agenten eine Möglichkeit benötigen, Kontext zu verdauen, und `code2prompt` ist die einfache und effiziente Möglichkeit, dies für Text-Repositorys wie Code-Bestand, Dokumentation oder Notizen zu tun. Ein typischer Ort, an dem `code2prompt` verwendet werden kann, ist in einem Code-Bestand mit sinnvollen Benennungskonventionen. Zum Beispiel gibt es in einer sauberen Architektur eine klare Trennung von Belangen und Schichten. Der relevante Kontext befindet sich normalerweise in verschiedenen Dateien und Ordnern, teilt aber denselben Namen. Dies ist ein perfektes Anwendungsbeispiel für `code2prompt`, bei dem Sie die glob-Musterübereinstimmung verwenden können, um die relevanten Dateien zu erfassen.
+
+**Glob-Muster zuerst:** Wählen Sie Dateien präzise aus oder schließen Sie sie aus mit minimalem Aufwand.
+
+Darüber hinaus ist die Core-Bibliothek als zustandsbehafteter Kontext-Manager konzipiert, der es Ihnen ermöglicht, Dateien hinzuzufügen oder zu entfernen, während Ihre Unterhaltung mit dem LLM fortschreitet. Dies ist besonders nützlich, wenn Sie Kontext für eine bestimmte Aufgabe oder ein bestimmtes Ziel bereitstellen. Sie können Dateien leicht hinzufügen oder entfernen, ohne den Prozess neu zu starten.
+
+**Zustandsbehafteter Kontext:** Fügen Sie Dateien hinzu oder entfernen Sie sie, während Ihre Unterhaltung mit dem LLM fortschreitet.
+
+Diese Fähigkeiten machen `code2prompt` zu einem perfekten Fit für agentenbasierte Workflows. Der MCP-Server ermöglicht eine nahtlose Integration mit beliebten KI-Agenten-Frameworks wie [Aider](https://github.com/paul-gauthier/aider), [Goose](https://block.github.io/goose/) oder [Cline](https://github.com/jhillyerd/cline). Lassen Sie sie komplexe Ziele bearbeiten, während `code2prompt` den perfekten Code-Kontext liefert.
+
+## Warum Code2prompt wichtig ist ✊
+
+Wenn LLMs sich weiterentwickeln und Kontextfenster expandieren, könnte es scheinen, als ob das bloße Brute-Forcen ganzer Repositorys in Prompts ausreicht. Allerdings bleiben **Token-Kosten** und **Prompt-Kohärenz** erhebliche Hindernisse für kleine Unternehmen und Entwickler. Indem Sie sich auf den relevanten Code konzentrieren, hält `code2prompt` Ihre LLM-Nutzung effizient, kosteneffektiv und weniger anfällig für Halluzinationen.
+
+**In Kürze:**
+
+- **Reduzieren Sie Halluzinationen**, indem Sie den richtigen Kontext bereitstellen
+- **Reduzieren Sie Token-Verbrauchs**-Kosten, indem Sie den richtigen Kontext manuell kuratieren
+- **Verbessern Sie die LLM-Leistung**, indem Sie den richtigen Kontext bereitstellen
+- Integriert die agentische Stack als Kontext-Feeder für Text-Repositorys
+
+## Sie können sich anschließen! 🌐
+
+Jeder neue Mitwirkende ist willkommen! Kommen Sie an Bord, wenn Sie an Rust, der Gestaltung innovativer KI-Tools oder einfach nur an einem besseren Workflow für Ihre Code-basierten Prompts interessiert sind.
+
+Vielen Dank für das Lesen, und ich hoffe, meine Geschichte hat Sie inspiriert, code2prompt zu überprüfen. Es war eine unglaubliche Reise, und sie fängt gerade erst an!
+
+**Olivier D'Ancona**
+
+> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.

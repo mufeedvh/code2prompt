@@ -1,0 +1,247 @@
+---
+title: Installation von Code2Prompt
+description: Eine umfassende Installationsanleitung für Code2Prompt auf verschiedenen Betriebssystemen.
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Steps } from "@astrojs/starlight/components";
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Übersicht über die Anleitung">
+  Willkommen bei der Installationsanleitung für `Code2Prompt`. Dieses Dokument
+  bietet Schritt-für-Schritt-Anleitungen für die Installation auf verschiedenen
+  Plattformen, einschließlich Windows, macOS und Linux.
+</Card>
+
+**TL;DR**
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+## Voraussetzung
+
+Stellen Sie sicher, dass [Rust](https://www.rust-lang.org/tools/install) und Cargo auf Ihrem System installiert sind.
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Dies ist die offizielle Methode, um die neueste stabile Version von Rust und Cargo zu installieren.
+Stellen Sie sicher, dass Sie Ihre `PATH`-Variable nach der Installation von Rust aktualisieren. Starten Sie Ihr Terminal neu oder führen Sie die vom Installer vorgeschlagenen Anweisungen aus.
+
+```sh
+source $HOME/.cargo/env
+```
+
+Sie können überprüfen, ob alles korrekt installiert ist, indem Sie Folgendes ausführen:
+
+```sh
+cargo --version
+git --version
+```
+
+## Command Line Interface (CLI) 👨‍💻
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+#### 🧪 Installieren Sie die neueste (unveröffentlichte) Version von GitHub
+
+Wenn Sie die neuesten Funktionen oder Fixes vor ihrer Veröffentlichung auf crates.io möchten:
+
+```sh
+cargo install --git https://github.com/mufeedvh/code2prompt
+```
+
+### Quellcode-Build
+
+Ideal für Entwickler, die aus dem Quellcode bauen oder zum Projekt beitragen möchten.
+
+<Steps>
+
+1.  🛠️ Voraussetzungen installieren :
+
+    - [Rust](https://www.rust-lang.org/tools/install) und Cargo
+    - [Git](https://git-scm.com/downloads)
+
+2.  📥 Repository klonen :
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt
+    ```
+
+3.  📦 Binary installieren :
+
+    Um aus dem Quellcode zu bauen und zu installieren:
+
+    ```sh
+    cargo install --path crates/code2prompt
+    ```
+
+    Um die Binary ohne Installation zu bauen:
+
+    ```sh
+    cargo build --release
+    ```
+
+    Die Binary ist im `target/release`-Verzeichnis verfügbar.
+
+4.  🚀 Ausführen :
+
+    ```sh
+    code2prompt --help
+    ```
+
+</Steps>
+
+### Binary-Releases
+
+Am besten für Benutzer, die die neueste Version ohne Quellcode-Build verwenden möchten.
+
+Laden Sie die neueste Binary für Ihr Betriebssystem von [Releases](https://github.com/mufeedvh/code2prompt/releases) herunter.
+
+⚠️ Binary-Releases können hinter der neuesten GitHub-Version zurückliegen. Für die neuesten Funktionen sollten Sie den Quellcode-Build in Betracht ziehen.
+
+### AUR
+
+Speziell für Arch Linux-Benutzer ist `code2prompt` im AUR verfügbar.
+
+`code2prompt` ist im [`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt) verfügbar. Installieren Sie es mit einem AUR-Helfer.
+
+```sh
+paru/yay -S code2prompt
+```
+
+### Nix
+
+Wenn Sie Nix verwenden, können Sie es mit nix-env oder nix profile installieren.
+
+```sh
+# ohne Flakes:
+nix-env -iA nixpkgs.code2prompt
+# mit Flakes:
+nix profile install nixpkgs#code2prompt
+```
+
+## Software Development Kit (SDK) 🐍
+
+### Pypi
+
+Sie können die Python-Bindings von Pypi herunterladen
+
+```sh
+pip install code2prompt_rs
+```
+
+### Quellcode-Build
+
+<Steps>
+
+1.  🛠️ Voraussetzungen installieren :
+
+    - [Rust](https://www.rust-lang.org/tools/install) und Cargo
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 Repository klonen :
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt/crates/code2prompt-python
+    ```
+
+3.  📦 Abhängigkeiten installieren :
+
+    Der `rye`-Befehl erstellt eine virtuelle Umgebung und installiert alle Abhängigkeiten.
+
+    ```sh
+    rye sync
+    ```
+
+4.  ⚙️ Paket bauen :
+
+    Sie werden das Paket in der virtuellen Umgebung im `.venv`-Verzeichnis entwickeln.
+
+    ```sh
+    rye run maturin develop -r
+    ```
+
+</Steps>
+
+## Model Context Protocol (MCP) 🤖
+
+### Automatische Installation
+
+Der `code2prompt`-MCP-Server wird bald in MCP-Registries verfügbar sein.
+
+### Manuelle Installation
+
+Der `code2prompt`-MCP-Server ist noch ein Prototyp und wird bald in das Haupt-Repository integriert.
+
+Um den MCP-Server lokal auszuführen und mit `Cline`, `Goose` oder `Aider` zu verwenden:
+
+<Steps>
+
+1.  🛠️ Voraussetzungen installieren :
+
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 Repository klonen :
+
+    ```sh
+    git clone https://github.com/odancona/code2prompt-mcp.git
+    cd code2prompt-mcp
+    ```
+
+3.  📦 Abhängigkeiten installieren :
+
+    Der `rye`-Befehl erstellt eine virtuelle Umgebung und installiert alle Abhängigkeiten im `.venv`-Verzeichnis.
+
+    ```sh
+    rye sync
+    ```
+
+4.  🚀 Server ausführen :
+
+    Der MCP-Server ist jetzt installiert. Sie können ihn mit:
+
+    ```sh
+    . .venv/bin/activate
+    python -m src/code2prompt_mcp/main.py
+    ```
+
+5.  🔌 Mit Agenten integrieren :
+
+            Zum Beispiel können Sie ihn mit `Cline` mit einer ähnlichen Konfiguration integrieren:
+
+            ```json
+            {
+              "mcpServers": {
+                "code2prompt": {
+                  "command": "bash",
+                  "args": [
+                    "-c",
+                    "cd /home/olivier/projet/code2prompt-mcp && rye run python /home/olivier/projet/code2prompt-mcp/src/code2prompt_mcp/main.py"
+                  ],
+                  "env": {}
+                }
+              }
+            }
+            ```
+
+</Steps>
+
+> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.

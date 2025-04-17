@@ -1,0 +1,59 @@
+---
+title: Wie der Glob-Musterfilter funktioniert
+description: Ein detaillierter Blick darauf, wie Code2Prompt Include- und Exclude-Muster verarbeitet.
+---
+
+Das Tool verwendet Glob-Muster, um Dateien und Verzeichnisse einzuschließen oder auszuschließen, ähnlich wie bei Tools wie `tree` oder `grep`. Hier ist eine detaillierte Erklärung:
+
+## Schlüsselkonzepte
+
+- **Einschlussliste (A)**: Eine Menge, die die Glob-Muster für Dateien und Verzeichnisse enthält, die Sie einschließen möchten.
+- **Ausschlussliste (B)**: Eine Menge, die die Glob-Muster für Dateien und Verzeichnisse enthält, die Sie ausschließen möchten.
+- **Universum (Ω)**: Die Menge aller Dateien und Verzeichnisse.
+
+Wenn Sie eine `--exclude`-Liste und/oder eine `--include`-Liste angeben, gilt die folgende Logik:
+
+### Fälle und Logik
+
+1. **Keine Einschlussliste, keine Ausschlussliste**  
+   Alles einschließen:
+
+   $$
+   \neg A \cap \neg B \implies \Omega
+   $$
+
+2. **Keine Einschlussliste, mit Ausschlussliste**  
+   Alles einschließen, außer was der Ausschlussliste entspricht:
+
+   $$
+   \neg A \cap B \implies \Omega \setminus B
+   $$
+
+3. **Mit Einschlussliste, keine Ausschlussliste**  
+   Nur was der Einschlussliste entspricht, einschließen:
+
+   $$
+   A \cap \neg B \implies A
+   $$
+
+4. **Mit Einschlussliste und Ausschlussliste**  
+   Was der Einschlussliste entspricht, einschließen und was der Ausschlussliste entspricht, ausschließen. Die Schnittmenge basierend auf dem `include_priority`-Parameter behandeln:
+
+   - **Einschluss-Priorität == true**:
+
+     $$
+     A \setminus (A \cap B)
+     $$
+
+   - **Einschluss-Priorität != true\***:
+     $$
+     B \setminus (A \cap B)
+     $$
+
+### Visuelle Darstellung von Fall 4
+
+Lassen Sie (A) und (B) überlappen. Abhängig von der Priorität wird die Schnittmenge $$( A \cap B )$$ entweder einbezogen oder ausgeschlossen, basierend auf dem `include_priority`-Parameter.
+
+![Visuelle Darstellung von Fall 4](../../../../../assets/filter.png)
+
+> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.

@@ -1,0 +1,109 @@
+---
+title: Aprenda plantillas de Handlebar con Code2Prompt
+description: Entienda cómo usar y crear plantillas personalizadas de Handlebars para la generación de prompts.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Descripción general del tutorial">
+  Este tutorial demuestra cómo usar y crear plantillas personalizadas de
+  Handlebars para la generación de prompts en el CLI de `code2prompt`.
+</Card>
+
+---
+
+## Requisitos previos
+
+Asegúrese de tener instalado `code2prompt`. Si aún no lo ha instalado, consulte la [Guía de instalación](/docs/how_to/install).
+
+---
+
+## ¿Qué son las plantillas de Handlebars?
+
+[Handlebars](https://handlebarsjs.com/) es un motor de plantillas popular que le permite crear plantillas dinámicas utilizando marcadores de posición.
+En `code2prompt`, las plantillas de Handlebars se utilizan para dar formato a los prompts generados según la estructura del código base y las variables definidas por el usuario.
+
+## Cómo usar plantillas de Handlebars
+
+Puede utilizar estas plantillas pasando la bandera `-t` o `--template` seguida de la ruta al archivo de plantilla. Por ejemplo:
+
+```sh
+code2prompt path/to/codebase -t templates/document-the-code.hbs
+```
+
+## Sintaxis de plantilla
+
+Las plantillas de Handlebars utilizan una sintaxis simple para marcadores de posición y expresiones. Colocará variables entre llaves dobles `{{nombre_de_variable}}` para incluirlas en el prompt generado.
+`Code2prompt` proporciona un conjunto de variables predeterminadas que puede utilizar en sus plantillas:
+
+- `absolute_code_path`: La ruta absoluta al código base.
+- `source_tree`: El árbol de origen del código base, que incluye todos los archivos y directorios.
+- `files`: Una lista de archivos en el código base, incluidas sus rutas y contenidos.
+- `git_diff`: El diff de git del código base, si corresponde.
+- `code`: El contenido del código del archivo que se está procesando.
+- `path`: La ruta del archivo que se está procesando.
+
+También puede utilizar ayudantes de Handlebars para realizar lógica condicional, bucles y otras operaciones dentro de sus plantillas. Por ejemplo:
+
+```handlebars
+{{#if files}}
+  {{#each files}}
+    Archivo:
+    {{this.path}}
+    Contenido:
+    {{this.content}}
+  {{/each}}
+{{else}}
+  No se encontraron archivos.
+{{/if}}
+```
+
+---
+
+## Plantillas existentes
+
+`code2prompt` viene con un conjunto de plantillas integradas para casos de uso comunes. Puede encontrarlas en el directorio [`templates`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates).
+
+### [`document-the-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/document-the-code.hbs)
+
+Utilice esta plantilla para generar prompts para documentar el código. Agregará comentarios de documentación a todas las funciones públicas, métodos, clases y módulos en el código base.
+
+### [`find-security-vulnerabilities.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/find-security-vulnerabilities.hbs)
+
+Utilice esta plantilla para generar prompts para encontrar vulnerabilidades de seguridad potenciales en el código base. Buscará problemas de seguridad comunes y proporcionará recomendaciones sobre cómo solucionarlos o mitigarlos.
+
+### [`clean-up-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/clean-up-code.hbs)
+
+Utilice esta plantilla para generar prompts para limpiar y mejorar la calidad del código. Buscará oportunidades para mejorar la legibilidad, la adherencia a las mejores prácticas, la eficiencia, el manejo de errores y más.
+
+### [`fix-bugs.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/fix-bugs.hbs)
+
+Utilice esta plantilla para generar prompts para solucionar errores en el código base. Ayudará a diagnosticar problemas, proporcionará sugerencias de solución y actualizará el código con las correcciones propuestas.
+
+### [`write-github-pull-request.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-pull-request.hbs)
+
+Utilice esta plantilla para crear una descripción de solicitud de extracción de GitHub en markdown comparando el diff de git y el registro de git de dos ramas.
+
+### [`write-github-readme.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-readme.hbs)
+
+Utilice esta plantilla para generar un archivo README de alta calidad para el proyecto, adecuado para alojar en GitHub. Analizará el código base para comprender su propósito y funcionalidad, y generará el contenido del README en formato Markdown.
+
+### [`write-git-commit.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-git-commit.hbs)
+
+Utilice esta plantilla para generar confirmaciones de git a partir de los archivos preparados en su directorio de git. Analizará el código base para comprender su propósito y funcionalidad, y generará el contenido del mensaje de confirmación de git en formato Markdown.
+
+### [`improve-performance.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/improve-performance.hbs)
+
+Utilice esta plantilla para generar prompts para mejorar el rendimiento del código base. Buscará oportunidades de optimización, proporcionará sugerencias específicas y actualizará el código con los cambios.
+
+## Variables definidas por el usuario
+
+`code2prompt` admite el uso de variables definidas por el usuario en las plantillas de Handlebars. Cualquier variable en la plantilla que no sea parte del contexto predeterminado (`absolute_code_path`, `source_tree`, `files`) se tratará como una variable definida por el usuario.
+
+Durante la generación de prompts, `code2prompt` solicitará al usuario que ingrese valores para estas variables definidas por el usuario. Esto permite una mayor personalización de los prompts generados según la entrada del usuario.
+
+Por ejemplo, si su plantilla incluye `{{challenge_name}}` y `{{challenge_description}}`, se le pedirá que ingrese valores para estas variables al ejecutar `code2prompt`.
+
+Esta función permite crear plantillas reutilizables que se pueden adaptar a diferentes escenarios según la información proporcionada por el usuario.
+
+> Esta página ha sido traducida automáticamente para su conveniencia. Consulte la versión en inglés para ver el contenido original.

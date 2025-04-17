@@ -1,6 +1,6 @@
 ---
 title: Installation de Code2Prompt
-description: Un guide d'installation complet pour Code2Prompt sur différents systèmes d'exploitation.
+description: Guide d'installation complet pour Code2Prompt sur différents systèmes d'exploitation.
 ---
 
 import { Card } from "@astrojs/starlight/components";
@@ -9,10 +9,12 @@ import { Steps } from "@astrojs/starlight/components";
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 <Card title="Présentation du guide">
-  Bienvenue dans le guide d'installation de `Code2Prompt`. Ce document fournit des instructions étape par étape pour installer Code2Prompt sur différentes plateformes, notamment Windows, macOS et Linux.
+  Bienvenue dans le guide d'installation de `Code2Prompt`. Ce document fournit
+  des instructions étape par étape pour l'installer sur différentes plateformes,
+  notamment Windows, macOS et Linux.
 </Card>
 
-**Résumé rapide**
+**TL;DR**
 
 ```bash
 # Cargo
@@ -24,13 +26,13 @@ $ brew install code2prompt
 
 ## Prérequis
 
-Assurez-vous que [Rust](https://www.rust-lang.org/tools/install) et Cargo sont installés sur votre système.
+Assurez-vous que [Rust](https://www.rust-lang.org/tools/install) et cargo sont installés sur votre système.
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-C'est la méthode officielle pour installer la dernière version stable de Rust et Cargo. Assurez-vous de rafraîchir votre variable d'environnement `PATH` après l'installation de Rust. Redémarrez votre terminal ou exécutez les instructions proposées par l'installateur.
+C'est la façon officielle d'installer la dernière version stable de Rust et Cargo. Assurez-vous de rafraîchir votre variable `PATH` après avoir installé Rust. Redémarrez votre terminal ou exécutez les instructions proposées par l'installateur.
 
 ```sh
 source $HOME/.cargo/env
@@ -53,9 +55,9 @@ $ cargo install code2prompt
 $ brew install code2prompt
 ```
 
-#### 🧪 Installation de la dernière version (non publiée) depuis GitHub
+#### 🧪 Installer la dernière version (non publiée) depuis GitHub
 
-Si vous souhaitez disposer des dernières fonctionnalités ou corrections avant leur publication sur crates.io :
+Si vous voulez les dernières fonctionnalités ou corrections avant leur publication sur crates.io :
 
 ```sh
 cargo install --git https://github.com/mufeedvh/code2prompt
@@ -63,23 +65,23 @@ cargo install --git https://github.com/mufeedvh/code2prompt
 
 ### Construction à partir du code source
 
-Idéal pour les développeurs qui souhaitent construire à partir du code source ou contribuer au projet.
+Idéal pour les développeurs qui veulent construire à partir du code source ou contribuer au projet.
 
 <Steps>
 
-1.  🛠️ Installation des prérequis :
+1.  🛠️ Installer les prérequis :
 
     - [Rust](https://www.rust-lang.org/tools/install) et Cargo
     - [Git](https://git-scm.com/downloads)
 
-2.  📥 Clonage du dépôt :
+2.  📥 Cloner le référentiel :
 
     ```sh
     git clone https://github.com/mufeedvh/code2prompt.git
     cd code2prompt
     ```
 
-3.  📦 Installation du binaire :
+3.  📦 Installer l'exécutable :
 
     Pour construire et installer à partir du code source :
 
@@ -87,15 +89,15 @@ Idéal pour les développeurs qui souhaitent construire à partir du code source
     cargo install --path crates/code2prompt
     ```
 
-    Pour construire le binaire sans l'installer :
+    Pour construire l'exécutable sans l'installer :
 
     ```sh
     cargo build --release
     ```
 
-    Le binaire sera disponible dans le répertoire `target/release`.
+    L'exécutable sera disponible dans le répertoire `target/release`.
 
-4.  🚀 Exécution :
+4.  🚀 L'exécuter :
 
     ```sh
     code2prompt --help
@@ -103,19 +105,19 @@ Idéal pour les développeurs qui souhaitent construire à partir du code source
 
 </Steps>
 
-### Versions binaires
+### Publications binaires
 
-Convient mieux aux utilisateurs qui souhaitent utiliser la dernière version sans construire à partir du code source.
+Le meilleur choix pour les utilisateurs qui veulent utiliser la dernière version sans construire à partir du code source.
 
 Téléchargez la dernière version binaire pour votre système d'exploitation à partir de [Releases](https://github.com/mufeedvh/code2prompt/releases).
 
-⚠️ Les versions binaires peuvent accuser un retard par rapport à la dernière version GitHub. Pour des fonctionnalités à la pointe, envisagez de construire à partir du code source.
+⚠️ Les publications binaires peuvent être à la traîne par rapport à la dernière version GitHub. Pour des fonctionnalités de pointe, envisagez de construire à partir du code source.
 
 ### AUR
 
 Spécifiquement pour les utilisateurs d'Arch Linux, `code2prompt` est disponible dans l'AUR.
 
-`code2prompt` est disponible dans le [`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt). Installez-le via n'importe quel assistant AUR.
+`code2prompt` est disponible dans l'[AUR](https://aur.archlinux.org/packages?O=0&K=code2prompt). Installez-le via n'importe quel assistant AUR.
 
 ```sh
 paru/yay -S code2prompt
@@ -123,7 +125,7 @@ paru/yay -S code2prompt
 
 ### Nix
 
-Si vous utilisez Nix, vous pouvez l'installer en utilisant soit nix-env soit nix profile.
+Si vous utilisez Nix, vous pouvez l'installer en utilisant soit nix-env, soit nix profile.
 
 ```sh
 # sans flakes :
@@ -146,20 +148,20 @@ pip install code2prompt_rs
 
 <Steps>
 
-1.  🛠️ Installation des prérequis :
+1.  🛠️ Installer les prérequis :
 
     - [Rust](https://www.rust-lang.org/tools/install) et Cargo
     - [Git](https://git-scm.com/downloads)
     - [Rye](https://rye.astral.sh/)
 
-2.  📥 Clonage du dépôt :
+2.  📥 Cloner le référentiel :
 
     ```sh
     git clone https://github.com/mufeedvh/code2prompt.git
     cd code2prompt/crates/code2prompt-python
     ```
 
-3.  📦 Installation des dépendances :
+3.  📦 Installer les dépendances :
 
     La commande `rye` créera un environnement virtuel et installera toutes les dépendances.
 
@@ -167,7 +169,7 @@ pip install code2prompt_rs
     rye sync
     ```
 
-4.  ⚙️ Construction du paquet :
+4.  ⚙️ Construire le paquet :
 
     Vous développerez le paquet dans l'environnement virtuel situé dans le dossier `.venv` à la racine du projet.
 
@@ -181,29 +183,29 @@ pip install code2prompt_rs
 
 ### Installation automatisée
 
-Le serveur MCP de `code2prompt` sera bientôt disponible dans les registres MCP.
+Le serveur MCP `code2prompt` sera bientôt disponible dans les registres MCP.
 
 ### Installation manuelle
 
-Le serveur MCP de `code2prompt` est encore un prototype et sera intégré au dépôt principal bientôt.
+Le serveur MCP `code2prompt` est encore un prototype et sera intégré au référentiel principal bientôt.
 
-Pour exécuter le serveur MCP localement pour l'utiliser avec `Cline`, `Goose` ou `Aider` :
+Pour exécuter le serveur MCP, localement pour l'utiliser avec `Cline`, `Goose` ou `Aider` :
 
 <Steps>
 
-1.  🛠️ Installation des prérequis :
+1.  🛠️ Installer les prérequis :
 
     - [Git](https://git-scm.com/downloads)
     - [Rye](https://rye.astral.sh/)
 
-2.  📥 Clonage du dépôt :
+2.  📥 Cloner le référentiel :
 
     ```sh
     git clone https://github.com/odancona/code2prompt-mcp.git
     cd code2prompt-mcp
     ```
 
-3.  📦 Installation des dépendances :
+3.  📦 Installer les dépendances :
 
     La commande `rye` créera un environnement virtuel et installera toutes les dépendances dans le dossier `.venv`.
 
@@ -211,7 +213,7 @@ Pour exécuter le serveur MCP localement pour l'utiliser avec `Cline`, `Goose` o
     rye sync
     ```
 
-4.  🚀 Exécution du serveur :
+4.  🚀 Exécuter le serveur :
 
     Le serveur MCP est maintenant installé. Vous pouvez l'exécuter en utilisant :
 
@@ -220,7 +222,7 @@ Pour exécuter le serveur MCP localement pour l'utiliser avec `Cline`, `Goose` o
     python -m src/code2prompt_mcp/main.py
     ```
 
-5.  🔌 Intégration avec les agents :
+5.  🔌 Intégrer avec les agents :
 
             Par exemple, vous pouvez l'intégrer avec `Cline`, en utilisant une configuration similaire :
 
@@ -241,4 +243,4 @@ Pour exécuter le serveur MCP localement pour l'utiliser avec `Cline`, `Goose` o
 
 </Steps>
 
-Note: I have kept the code blocks, commands, and variable names unchanged as per your requirements. I have also adjusted relative paths by adding one "../" level when they start with "../" but in this case, there were no such paths to adjust. The translation aims to flow naturally in French with proper grammar and style while preserving technical concepts and using the appropriate terminology.
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

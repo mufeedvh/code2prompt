@@ -1,0 +1,177 @@
+---
+title: Learn Context Filtering with Code2Prompt
+description: Learn how to exclude or include files in your LLM prompts using powerful filtering options.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="チュートリアルの概要">
+  このチュートリアルでは、`code2prompt` CLIの**globパターン
+  ツール**を使用して、ファイルやディレクトリをフィルタリングし、管理する方法を説明します。
+</Card>
+
+Globパターンは、`tree`や`grep`などのツールと同様に、強力なフィルタリング機能を提供します。詳細な説明は、[こちら](/docs/explanations/glob_patterns)をご覧ください。
+
+---
+
+## 前提条件
+
+`code2prompt`がインストールされていることを確認してください。まだインストールしていない場合は、[インストールガイド](/docs/how_to/install)を参照してください。
+
+---
+
+## インクルードおよびエクスクルードパターンの理解
+
+Globパターンは、ファイルやディレクトリのフィルタリングルールを指定できます。
+
+- **インクルードパターン** (`--include`): 含めたいファイルやディレクトリを指定します。
+- **エクスクルードパターン** (`--exclude`): 除外したいファイルやディレクトリを指定します。
+- **優先度** (`--include-priority`): インクルードパターンとエクスクルードパターンの競合を解決します。
+
+---
+
+## 環境の設定
+
+Globパターンを使って練習するために、サンプルフォルダー構造とファイルを作成しましょう。
+
+### テスト構造を生成するBashスクリプト
+
+以下のスクリプトを実行して、一時的なディレクトリ構造を設定します。
+
+```bash
+#!/bin/bash
+
+# ベースディレクトリを作成
+mkdir -p test_dir/{lowercase,uppercase,.secret}
+
+# 構造内のファイルを作成
+echo "content foo.py" > "test_dir/lowercase/foo.py"
+echo "content bar.py" > "test_dir/lowercase/bar.py"
+echo "content baz.py" > "test_dir/lowercase/baz.py"
+echo "content qux.txt" > "test_dir/lowercase/qux.txt"
+echo "content corge.txt" > "test_dir/lowercase/corge.txt"
+echo "content grault.txt" > "test_dir/lowercase/grault.txt"
+
+echo "CONTENT FOO.py" > "test_dir/uppercase/FOO.PY"
+echo "CONTENT BAR.py" > "test_dir/uppercase/BAR.PY"
+echo "CONTENT BAZ.py" > "test_dir/uppercase/BAZ.PY"
+echo "CONTENT QUX.txt" > "test_dir/uppercase/QUX.TXT"
+echo "CONTENT CORGE.txt" > "test_dir/uppercase/CORGE.TXT"
+echo "CONTENT GRAULT.txt" > "test_dir/uppercase/GRAULT.TXT"
+
+echo "top secret" > "test_dir/.secret/secret.txt"
+```
+
+後で構造をクリーンアップするには、次のコマンドを実行します。
+
+```bash
+rm -rf test_dir
+```
+
+以下のディレクトリ構造が作成されます。
+
+import { FileTree } from "@astrojs/starlight/components";
+
+<FileTree>
+  - test_dir - lowercase - foo.py - bar.py - baz.py - qux.txt - corge.txt -
+  grault.txt - uppercase - FOO.PY - BAR.PY - BAZ.PY - QUX.txt - CORGE.txt -
+  GRAULT.txt - .secret - secret.txt
+</FileTree>
+
+---
+
+## 例: インクルードおよびエクスクルードパターンを使用したファイルのフィルタリング
+
+### ケース1: インクルードなし、エクスクルードなし
+
+コマンド:
+
+```bash
+code2prompt test_dir
+```
+
+#### 結果
+
+すべてのファイルが含まれます:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+- `.secret/secret.txt`
+
+---
+
+### ケース2: 特定のファイルタイプをエクスクルードする
+
+`.txt`ファイルをエクスクルードします:
+
+```bash
+code2prompt test_dir --exclude="*.txt"
+```
+
+#### 結果
+
+エクスクルード:
+
+- すべての`.txt`ファイル
+
+インクルード:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+
+---
+
+### ケース3: 特定のファイルタイプをインクルードする
+
+Pythonファイルのみを含めます:
+
+```bash
+code2prompt test_dir --include="*.py"
+```
+
+#### 結果
+
+インクルード:
+
+- すべての`.py`ファイル
+
+エクスクルード:
+
+- `.secret/secret.txt`
+
+---
+
+### ケース4: インクルードとエクスクルードを優先度で制御する
+
+`.py`ファイルを含めますが、`uppercase`フォルダ内のファイルをエクスクルードします:
+
+```bash
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+```
+
+#### 結果
+
+インクルード:
+
+- `lowercase`内のすべての`.py`拡張子のファイル
+
+エクスクルード:
+
+- すべての`uppercase`ファイル
+- `.secret/secret.txt`
+
+---
+
+## まとめ
+
+`code2prompt`のglobパターン ツールを使用すると、以下のようにファイルやディレクトリを効果的にフィルタリングできます。
+
+- `--include`でインクルードするファイルを指定
+- `--exclude`でエクスクルードするファイルを指定
+- `--include-priority`でパターン間の競合を解決
+
+練習として、サンプルディレクトリを設定し、コマンドを実行して、ツールがファイルを動的にフィルタリングする様子を確認してください。
+
+> このページは便宜上、自動的に翻訳されています。元のコンテンツについては英語版を参照してください。

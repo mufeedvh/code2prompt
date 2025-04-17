@@ -1,0 +1,245 @@
+---
+title: Code2Prompt のインストール
+description: Code2Prompt をさまざまなオペレーティングシステムにインストールするための完全なガイドです。
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Steps } from "@astrojs/starlight/components";
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="ガイドの概要">
+  Code2Prompt
+  のインストールガイドへようこそ。このドキュメントでは、Windows、macOS、Linuxを含む様々なプラットフォームへのCode2Promptのインストール手順をステップごとに説明します。
+</Card>
+
+**TL;DR**
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+## 前提条件
+
+システムに[Rust](https://www.rust-lang.org/tools/install)とcargoがインストールされていることを確認してください。
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+これは、RustとCargoの最新安定版をインストールする公式の方法です。Rustをインストールした後、`PATH`変数を更新してください。ターミナルを再起動するか、インストーラーが提案するコマンドを実行します。
+
+```sh
+source $HOME/.cargo/env
+```
+
+すべてが正しくインストールされていることを確認するには、次のコマンドを実行します。
+
+```sh
+cargo --version
+git --version
+```
+
+## コマンドラインインターフェイス（CLI）👨‍💻
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+#### 🧪 GitHubから最新の（未公開の）バージョンをインストールする
+
+crates.ioで公開される前に最新の機能や修正を使用したい場合:
+
+```sh
+cargo install --git https://github.com/mufeedvh/code2prompt
+```
+
+### ソースビルド
+
+開発者がソースからビルドしたり、プロジェクトに貢献したい場合に最適です。
+
+<Steps>
+
+1.  🛠️ 前提条件をインストールする :
+
+    - [Rust](https://www.rust-lang.org/tools/install)とCargo
+    - [Git](https://git-scm.com/downloads)
+
+2.  📥 リポジトリをクローンする :
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt
+    ```
+
+3.  📦 バイナリをインストールする :
+
+    ソースからビルドしてインストールするには:
+
+    ```sh
+    cargo install --path crates/code2prompt
+    ```
+
+    バイナリをインストールせずにビルドするには:
+
+    ```sh
+    cargo build --release
+    ```
+
+    バイナリは`target/release`ディレクトリで利用できます。
+
+4.  🚀 実行する :
+
+    ```sh
+    code2prompt --help
+    ```
+
+</Steps>
+
+### バイナリリリース
+
+ソースからビルドせずに最新バージョンを使用したいユーザーに最適です。
+
+[リリース](https://github.com/mufeedvh/code2prompt/releases)からお使いのOSの最新バイナリをダウンロードしてください。
+
+⚠️ バイナリリリースは、最新のGitHubバージョンよりも遅れる場合があります。最先端の機能を使用するには、ソースからビルドすることを検討してください。
+
+### AUR
+
+特にArch Linuxユーザー向けに、`code2prompt`はAURで利用可能です。
+
+`code2prompt`は[`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt)で利用できます。AURヘルパーを使用してインストールしてください。
+
+```sh
+paru/yay -S code2prompt
+```
+
+### Nix
+
+Nixを使用している場合、nix-envまたはnixプロファイルのいずれかを使用してインストールできます。
+
+```sh
+# without flakes:
+nix-env -iA nixpkgs.code2prompt
+# with flakes:
+nix profile install nixpkgs#code2prompt
+```
+
+## ソフトウェア開発キット（SDK）🐍
+
+### Pypi
+
+PypiからPythonバインディングをダウンロードできます
+
+```sh
+pip install code2prompt_rs
+```
+
+### ソースビルド
+
+<Steps>
+
+1.  🛠️ 前提条件をインストールする :
+
+    - [Rust](https://www.rust-lang.org/tools/install)とCargo
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 リポジトリをクローンする :
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt/crates/code2prompt-python
+    ```
+
+3.  📦 依存関係をインストールする :
+
+    `rye`コマンドは、仮想環境を作成し、すべての依存関係をインストールします。
+
+    ```sh
+    rye sync
+    ```
+
+4.  ⚙️ パッケージをビルドする :
+
+    プロジェクトのルートにある`.venv`フォルダ内の仮想環境でパッケージを開発します。
+
+    ```sh
+    rye run maturin develop -r
+    ```
+
+</Steps>
+
+## Model Context Protocol（MCP）🤖
+
+### 自動インストール
+
+`code2prompt`MCPサーバーは、近日中にMCPレジストリで利用できるようになります。
+
+### 手動インストール
+
+`code2prompt`MCPサーバーはまだプロトタイプであり、近日中にメインのリポジトリに統合されます。
+
+`Cline`,`Goose`または`Aider`で使用するために、ローカルでMCPサーバーを実行するには:
+
+<Steps>
+
+1.  🛠️ 前提条件をインストールする :
+
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 リポジトリをクローンする :
+
+    ```sh
+    git clone https://github.com/odancona/code2prompt-mcp.git
+    cd code2prompt-mcp
+    ```
+
+3.  📦 依存関係をインストールする :
+
+    `rye`コマンドは、仮想環境を作成し、`.venv`フォルダ内のすべての依存関係をインストールします。
+
+    ```sh
+    rye sync
+    ```
+
+4.  🚀 サーバーを実行する :
+
+    MCPサーバーはインストールされました。次のコマンドを使用して実行できます:
+
+    ```sh
+    . .venv/bin/activate
+    python -m src/code2prompt_mcp/main.py
+    ```
+
+5.  🔌 エージェントとの統合 :
+
+            例えば、次のような構成を使用して、`Cline`と統合できます:
+
+            ```json
+            {
+              "mcpServers": {
+                "code2prompt": {
+                  "command": "bash",
+                  "args": [
+                    "-c",
+                    "cd /home/olivier/projet/code2prompt-mcp && rye run python /home/olivier/projet/code2prompt-mcp/src/code2prompt_mcp/main.py"
+                  ],
+                  "env": {}
+                }
+              }
+            }
+            ```
+
+</Steps>
+
+> このページは便宜上、自動的に翻訳されています。元のコンテンツについては英語版を参照してください。

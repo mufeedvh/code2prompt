@@ -1,0 +1,99 @@
+---
+title: Code2Prompt 文件
+description: Code2prompt 官方文档
+template: splash
+hero:
+  tagline: 几秒钟内将代码转化为人工智能优化的提示信息
+  image:
+    file: ../../../../assets/logo_dark_v0.0.1.svg
+  actions:
+    - text: 开始 🚀
+      link: /zh/docs/tutorials/getting_started
+    - text: 安装 📥
+      link: /zh/docs/how_to/install
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+import { LinkCard } from "@astrojs/starlight/components";
+
+## Quick Start
+
+<LinkCard
+  title="Getting Started 🚀"
+  href="/zh/docs/tutorials/getting_started"
+/>
+<LinkCard title="Installation 📥" href="/zh/docs/how_to/install" />
+<LinkCard title="Learn Filtering 🔍" href="/zh/docs/tutorials/learn_filters" />
+<LinkCard
+  title="Learn Templating 📝"
+  href="/zh/docs/tutorials/learn_templates"
+/>
+<LinkCard title="Vision 🔮" href="/zh/docs/vision" />
+
+`code2prompt` 是一款强大的代码摄入工具，旨在为代码分析、生成和其他任务生成提示。它通过遍历目录、构建树结构并收集每个文件的信息来工作。
+
+它简化了组合和格式化代码的过程，使得使用大型语言模型（LLM）轻松分析和文档代码或重构代码变得容易。
+
+您可以使用 `code2prompt` 以下列方式：
+
+<CardGrid>
+  <Card title="Core" icon="seti:rust">
+    核心库，极速代码摄入
+  </Card>
+  <Card title="CLI" icon="seti:powershell">
+    专门为人类设计的命令行界面
+  </Card>
+  <Card title="SDK" icon="seti:python">
+    面向 AI 代理和自动化脚本的软件开发工具包
+  </Card>
+  <Card title="MCP" icon="seti:folder">
+    面向强化 LLM 的模型上下文协议服务器
+  </Card>
+</CardGrid>
+
+##
+
+- **生成 LLM 提示**: 快速将整个代码库转换为结构化的 LLM 提示。
+- **Glob 模式过滤**: 使用 glob 模式包含或排除特定文件和目录。
+- **可定制的模板**: 使用 Handlebars 模板定制提示生成。
+- **Token 计数**: 分析 token 使用情况，并针对不同上下文窗口的 LLM 进行优化。
+- **Git 集成**: 在提示中包含 Git diff 和提交消息，以进行代码审查。
+- **尊重 `.gitignore`**: 自动忽略 `.gitignore` 中列出的文件，以简化提示生成。
+
+## 为什么选择 `code2prompt`？
+
+1. **节省时间**:
+
+   - 自动遍历代码库并为 LLM 格式化文件。
+   - 避免重复复制粘贴代码。
+
+2. **提高生产力**:
+
+   - 为代码分析提供结构化和一致的格式。
+   - 帮助更快地识别错误、重构代码和编写文档。
+
+3. **处理大型代码库**:
+
+   - 设计用于与大型代码库无缝协作，尊重 LLM 的上下文限制。
+
+4. **可定制的流程**:
+   - 灵活的选项用于过滤文件、使用模板和生成有针对性的提示。
+
+## 示例用例
+
+- **代码文档**:
+  自动为公共函数、方法和类生成文档。
+
+- **错误检测**:
+  通过使用 LLM 分析代码库来查找潜在的错误和漏洞。
+
+- **重构**:
+  通过生成代码质量改进提示来简化和优化代码。
+
+- **学习和探索**:
+  通过生成摘要和详细分析来理解新的代码库。
+
+- **Git 提交和 PR 描述**:
+  从 Git diff 中生成有意义的提交消息和拉取请求描述。
+
+> 为了您的方便，本页面已自动翻译。请参考英文版本获取原始内容。

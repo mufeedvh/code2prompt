@@ -1,28 +1,29 @@
 ---
 title: La vision de Code2Prompt
-description: Découvrez la vision derrière Code2Prompt et comment il améliore les interactions entre les LLM et le code.
+description: Découvrez la vision derrière Code2Prompt et comment il améliore les interactions LLM avec le code.
 ---
 
 import { Card } from "@astrojs/starlight/components";
 import { Aside } from "@astrojs/starlight/components";
 
 <Card title="Objectif 🎯">
-  `code2prompt` a été créé pour aider les développeurs et les agents d'intelligence artificielle (IA) à interagir avec les bases de code de manière plus efficace.
+  `code2prompt` a été créé pour aider les développeurs et les agents IA à
+  interagir avec les bases de code de manière plus efficace.
 </Card>
 
 ## Le problème 🚩
 
-Les modèles de langage à grande échelle (LLM) ont révolutionné la façon dont nous interagissons avec le code. Cependant, ils sont encore confrontés à des défis importants en matière de génération de code :
+Les modèles de langage à grande échelle (LLM) ont révolutionné la façon dont nous interagissons avec le code. Cependant, ils font encore face à des défis importants en matière de génération de code :
 
-- **Planification et raisonnement** : Les LLM manquent de capacité de planification et de raisonnement, ce qui est crucial pour des tâches telles que la génération de code, la refactorisation et le débogage. Ils ont souvent du mal à avoir une vision d'ensemble et sont trop focalisés sur les détails.
+- **Planification et raisonnement** : Les LLM manquent de capacité de planification et de raisonnement, qui est cruciale pour des tâches telles que la génération de code, la refactorisation et le débogage. Ils ont souvent du mal à avoir une vue d'ensemble et sont shortsightés.
 - **Taille du contexte** : Les LLM ont une fenêtre de contexte limitée, ce qui restreint leur capacité à analyser et à comprendre de grandes bases de code.
-- **Hallucination** : Les LLM peuvent générer du code qui semble correct mais est en réalité incorrect ou dépourvu de sens. Ce phénomène, connu sous le nom d'hallucination, se produit lorsque le modèle manque de contexte suffisant ou de compréhension de la base de code.
+- **Hallucination** : Les LLM peuvent générer du code qui semble correct mais est en réalité incorrect ou absurde. Ce phénomène, appelé hallucination, se produit lorsque le modèle manque de contexte suffisant ou de compréhension de la base de code.
 
 C'est là que `code2prompt` intervient.
 
 ## La solution ✅
 
-Nous croyons que la planification et le raisonnement peuvent être atteints par des humains ou des agents d'IA à l'aide de techniques de scaffolding. Ces agents ont besoin de rassembler un **contexte de haute qualité** de la base de code, filtré, structuré et formaté pour la tâche à accomplir.
+Nous pensons que la planification et le raisonnement peuvent être atteints par des humains ou des agents IA avec des techniques de scaffolding. Ces agents doivent collecter un **contexte de haute qualité** de la base de code qui est filtré, structuré et formaté pour la tâche à accomplir.
 
 La règle générale serait :
 
@@ -30,7 +31,7 @@ La règle générale serait :
   > fournir le moins de contexte possible, mais autant que nécessaire
 </Aside>
 
-Ceci est pratiquement difficile à atteindre, surtout pour les grandes bases de code. Cependant, `code2prompt` est un outil simple qui peut aider les développeurs et les agents d'IA à ingérer la base de code de manière plus efficace.
+Ceci est pratiquement difficile à atteindre, surtout pour de grandes bases de code. Cependant, `code2prompt` est un outil simple qui peut aider les développeurs et les agents IA à ingérer la base de code de manière plus efficace.
 
 Il automatise le processus de parcours d'une base de code, de filtrage de fichiers et de formatage en invites structurées que les LLM peuvent comprendre. Ce faisant, il aide à atténuer les défis de planification, de raisonnement et d'hallucination.
 
@@ -39,25 +40,27 @@ Vous pouvez comprendre comment `code2prompt` est conçu pour relever ces défis 
 ## Architecture ⛩️
 
 <img
-  src="../assets/images/architecture.svg"
+  src="/assets/images/architecture.svg"
   alt="Architecture de code2prompt"
   style="width: 75%;"
 />
 
-`code2prompt` est conçu de manière modulaire, permettant une intégration facile dans divers workflows. Il peut être utilisé comme une bibliothèque principale, une interface de ligne de commande (CLI), un kit de développement logiciel (SDK) ou même comme un serveur de protocole de contexte de modèle (MCP).
+`code2prompt` est conçu de manière modulaire, permettant une intégration facile dans divers flux de travail. Il peut être utilisé comme une bibliothèque principale, une interface de ligne de commande (CLI), un kit de développement logiciel (SDK) ou même comme un serveur de protocole de contexte de modèle (MCP).
 
-### Coeur
+### Principal
 
-`code2prompt` est un outil d'ingestion de code qui simplifie le processus de création d'invites LLM pour l'analyse de code, la génération et d'autres tâches. Il fonctionne en parcourant les répertoires, en construisant une structure d'arbre et en collectant des informations sur chaque fichier. La bibliothèque principale peut être facilement intégrée dans d'autres applications.
+`code2prompt` est un outil d'ingestion de code qui simplifie le processus de création d'invites LLM pour l'analyse de code, la génération et d'autres tâches. Il fonctionne en parcourant les répertoires, en construisant une structure arborescente et en collectant des informations sur chaque fichier. La bibliothèque principale peut être facilement intégrée dans d'autres applications.
 
 ### CLI
 
-L'interface de ligne de commande (CLI) de `code2prompt` a été conçue pour que les humains puissent générer des invites directement à partir de votre base de code. L'invite générée est automatiquement copiée dans le presse-papiers et peut également être enregistrée dans un fichier de sortie. De plus, vous pouvez personnaliser la génération d'invites à l'aide de modèles Handlebars. Consultez les invites fournies dans la documentation !
+L'interface de ligne de commande (CLI) de `code2prompt` a été conçue pour que les humains génèrent des invites directement à partir de votre base de code. L'invite générée est automatiquement copiée dans votre presse-papiers et peut également être enregistrée dans un fichier de sortie. De plus, vous pouvez personnaliser la génération d'invites à l'aide de modèles Handlebars. Consultez les invites fournies dans la documentation !
 
 ### SDK
 
-Le kit de développement logiciel (SDK) de `code2prompt` offre une liaison Python à la bibliothèque principale. Ceci est parfait pour les agents d'IA ou les scripts d'automatisation qui souhaitent interagir avec la base de code de manière transparente. Le SDK est hébergé sur Pypi et peut être installé via pip.
+Le kit de développement logiciel (SDK) de `code2prompt` offre une liaison Python à la bibliothèque principale. Ceci est parfait pour les agents IA ou les scripts d'automatisation qui souhaitent interagir avec la base de code de manière transparente. Le SDK est hébergé sur Pypi et peut être installé via pip.
 
 ### MCP
 
-`code2prompt` est également disponible en tant que serveur de protocole de contexte de modèle (MCP), ce qui vous permet de l'exécuter en tant que service local. Cela permet aux LLM de fournir un outil pour rassembler automatiquement un contexte bien structuré de votre base de code.
+`code2prompt` est également disponible en tant que serveur de protocole de contexte de modèle (MCP), ce qui vous permet de l'exécuter en tant que service local. Cela permet aux LLM de fournir un outil pour collecter automatiquement un contexte bien structuré de votre base de code.
+
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

@@ -1,0 +1,92 @@
+---
+title: Code2Prompt入门指南
+description: 本教程全面介绍了Code2Prompt的核心功能及其在CLI、SDK和MCP集成中的应用。
+---
+
+import { Aside } from "@astrojs/starlight/components";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+<Card title="教程概述">
+  欢迎使用Code2Prompt！本教程将为您全面介绍如何使用Code2Prompt从代码库中生成适用于AI的提示。我们将探索其核心功能，并演示其在不同集成方式下的使用：命令行界面（CLI）、软件开发工具包（SDK）和模型上下文协议（MCP）。
+</Card>
+
+## 什么是Code2Prompt？
+
+Code2Prompt是一款多功能工具，旨在弥合代码库与大型语言模型（LLM）之间的差距。它智能地提取相关代码片段，应用强大的过滤功能，并将信息格式化为适用于LLM的 structured 提示。这简化了代码文档、错误检测、重构等任务。
+
+Code2Prompt提供不同的集成点：
+
+<Tabs>
+  <TabItem label="核心" icon="seti:rust">
+    一个核心的Rust库，为代码读取和提示生成提供基础。
+  </TabItem>
+  <TabItem label="CLI" icon="seti:powershell">
+    一个用户友好的命令行界面，用于快速生成提示。适用于交互式使用和一次性任务。
+  </TabItem>
+  <TabItem label="SDK" icon="seti:python">
+    一个功能强大的软件开发工具包（SDK），可与Python项目无缝集成。适用于在更大的工作流中自动生成提示。
+  </TabItem>
+  <TabItem label="MCP" icon="seti:db">
+    一个模型上下文协议（MCP）服务器，用于与LLM代理进行高级集成。使代码库能够进行复杂、实时的交互。
+  </TabItem>
+</Tabs>
+
+## 📥 安装
+
+有关所有方法（CLI、SDK、MCP）的详细安装说明，请参阅综合[安装指南](/docs/how_to/install)。
+
+## 🏁 生成提示：CLI示例
+
+让我们从使用CLI的一个简单示例开始。创建一个示例项目：
+
+```bash
+mkdir -p my_project/{src,tests}
+touch my_project/src/main.rs my_project/tests/test_1.rs
+echo 'fn main() { println!("Hello, world!"); }' > my_project/src/main.rs
+```
+
+现在，生成一个提示：
+
+```bash
+code2prompt my_project
+```
+
+这会将提示复制到您的剪贴板。您可以自定义此操作：
+
+- **过滤：** `code2prompt my_project --include="*.rs" --exclude="tests/*"`（仅包含 `.rs` 文件，排除 `tests` 目录）
+- **输出文件：** `code2prompt my_project --output-file=my_prompt.txt`
+- **JSON输出：** `code2prompt my_project -O json`（结构化JSON输出）
+- **自定义模板：** `code2prompt my_project -t my_template.hbs`（需要创建 `my_template.hbs`）
+
+请参阅[了解上下文过滤](/docs/tutorials/learn_filters)和[了解Handlebar模板](/docs/tutorials/learn_templates)教程，以了解更多高级用法。
+
+## 🐍 SDK集成（Python）
+
+对于程序化控制，请使用Python SDK：
+
+```python
+from code2prompt_rs import Code2Prompt
+
+config = {
+    "path": "my_project",
+    "include_patterns": ["*.rs"],
+    "exclude_patterns": ["tests/*"],
+}
+
+c2p = Code2Prompt(**config)
+prompt = c2p.generate_prompt()
+print(prompt)
+```
+
+这需要安装SDK（`pip install code2prompt_rs`）。有关更多详细信息，请参阅SDK文档。
+
+## 🤖 MCP服务器集成（高级）
+
+对于与LLM代理的高级集成，请运行`code2prompt`MCP服务器（有关详细信息，请参阅安装指南）。这允许代理动态请求代码上下文。这是一个高级功能，项目的网站上有进一步的文档。
+
+<Card title="下一步">
+  探索高级教程和文档，以掌握Code2Prompt的功能，并将其集成到您的工作流中。
+</Card>
+
+> 为了您的方便，本页面已自动翻译。请参考英文版本获取原始内容。

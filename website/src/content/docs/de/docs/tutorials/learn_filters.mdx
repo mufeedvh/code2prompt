@@ -1,0 +1,178 @@
+---
+title: Lernen Sie Kontextfilterung mit Code2Prompt
+description: Lernen Sie, wie Sie Dateien in Ihren LLM-Eingaben mit leistungsstarken Filteroptionen ausschließen oder einschließen können.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Tutorial-Überblick">
+  Dieses Tutorial zeigt, wie Sie das **Glob-Muster-Tool** in der
+  `code2prompt`-CLI verwenden, um Dateien basierend auf Einschluss- und
+  Ausschlussmustern zu filtern und zu verwalten.
+</Card>
+
+Glob-Muster funktionieren ähnlich wie Tools wie `tree` oder `grep` und bieten leistungsstarke Filterfunktionen. Weitere Informationen finden Sie in der [detaillierten Erklärung](/docs/explanations/glob_patterns).
+
+---
+
+## Voraussetzungen
+
+Stellen Sie sicher, dass Sie `code2prompt` installiert haben. Wenn Sie es noch nicht installiert haben, lesen Sie die [Installationsanleitung](/docs/how_to/install).
+
+---
+
+## Verständnis von Einschluss- und Ausschlussmustern
+
+Glob-Muster ermöglichen es Ihnen, Regeln für die Filterung von Dateien und Verzeichnissen anzugeben.
+
+- **Einschlussmuster** (`--include`): Geben Sie Dateien und Verzeichnisse an, die Sie einschließen möchten.
+- **Ausschlussmuster** (`--exclude`): Geben Sie Dateien und Verzeichnisse an, die Sie ausschließen möchten.
+- **Priorität** (`--include-priority`): Löst Konflikte zwischen Einschluss- und Ausschlussmustern.
+
+---
+
+## Einrichtung der Umgebung
+
+Um mit Glob-Mustern zu üben, erstellen wir eine Beispieldatenstruktur mit einigen Dateien.
+
+### Bash-Script zum Erstellen der Teststruktur
+
+Führen Sie dieses Skript aus, um eine temporäre Verzeichnisstruktur zu erstellen:
+
+```bash
+#!/bin/bash
+
+# Erstelle Basisverzeichnis
+mkdir -p test_dir/{lowercase,uppercase,.secret}
+
+# Erstelle Dateien in der Struktur
+echo "content foo.py" > "test_dir/lowercase/foo.py"
+echo "content bar.py" > "test_dir/lowercase/bar.py"
+echo "content baz.py" > "test_dir/lowercase/baz.py"
+echo "content qux.txt" > "test_dir/lowercase/qux.txt"
+echo "content corge.txt" > "test_dir/lowercase/corge.txt"
+echo "content grault.txt" > "test_dir/lowercase/grault.txt"
+
+echo "CONTENT FOO.py" > "test_dir/uppercase/FOO.PY"
+echo "CONTENT BAR.py" > "test_dir/uppercase/BAR.PY"
+echo "CONTENT BAZ.py" > "test_dir/uppercase/BAZ.PY"
+echo "CONTENT QUX.txt" > "test_dir/uppercase/QUX.TXT"
+echo "CONTENT CORGE.txt" > "test_dir/uppercase/CORGE.TXT"
+echo "CONTENT GRAULT.txt" > "test_dir/uppercase/GRAULT.TXT"
+
+echo "top secret" > "test_dir/.secret/secret.txt"
+```
+
+Um die Struktur später zu bereinigen, führen Sie aus:
+
+```bash
+rm -rf test_dir
+```
+
+Dies erstellt die folgende Verzeichnisstruktur:
+
+import { FileTree } from "@astrojs/starlight/components";
+
+<FileTree>
+  - test_dir - lowercase - foo.py - bar.py - baz.py - qux.txt - corge.txt -
+  grault.txt - uppercase - FOO.PY - BAR.PY - BAZ.PY - QUX.txt - CORGE.txt -
+  GRAULT.txt - .secret - secret.txt
+</FileTree>
+
+---
+
+## Beispiele: Filtern von Dateien mit Einschluss- und Ausschlussmustern
+
+### Fall 1: Kein Einschluss, kein Ausschluss
+
+Befehl:
+
+```bash
+code2prompt test_dir
+```
+
+#### Ergebnis
+
+Alle Dateien sind eingeschlossen:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+- `.secret/secret.txt`
+
+---
+
+### Fall 2: Ausschluss bestimmter Dateitypen
+
+`.txt`-Dateien ausschließen:
+
+```bash
+code2prompt test_dir --exclude="*.txt"
+```
+
+#### Ergebnis
+
+Ausschlossen:
+
+- Alle `.txt`-Dateien
+
+Eingeschlossen:
+
+- `lowercase/foo.py`
+- `lowercase/bar.py`
+- `uppercase/FOO.py`
+
+---
+
+### Fall 3: Einschluss bestimmter Dateitypen
+
+Nur Python-Dateien einschließen:
+
+```bash
+code2prompt test_dir --include="*.py"
+```
+
+#### Ergebnis
+
+Eingeschlossen:
+
+- Alle `.py`-Dateien
+
+Ausschlossen:
+
+- `.secret/secret.txt`
+
+---
+
+### Fall 4: Einschluss und Ausschluss mit Priorität
+
+`.py`-Dateien einschließen, aber Dateien im `uppercase`-Verzeichnis ausschließen:
+
+```bash
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+```
+
+#### Ergebnis
+
+Eingeschlossen:
+
+- Alle `lowercase/1`-Dateien mit `.py`-Erweiterung
+
+Ausschlossen:
+
+- Alle `uppercase`-Dateien
+- `.secret/secret.txt`
+
+---
+
+## Zusammenfassung
+
+Das Glob-Muster-Tool in `code2prompt` ermöglicht es Ihnen, Dateien und Verzeichnisse effektiv zu filtern, indem Sie:
+
+- `--include` verwenden, um Dateien anzugeben, die eingeschlossen werden sollen
+- `--exclude` verwenden, um Dateien anzugeben, die ausgeschlossen werden sollen
+- `--include-priority` verwenden, um Konflikte zwischen Mustern zu lösen
+
+Um zu üben, erstellen Sie die Beispieldatenstruktur, probieren Sie die Befehle aus und sehen Sie, wie das Tool Dateien dynamisch filtert.
+
+> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.

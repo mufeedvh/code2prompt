@@ -1,0 +1,109 @@
+---
+title: Lernen Sie Handlebar-Vorlagen mit Code2Prompt kennen
+description: Verstehen Sie, wie Sie benutzerdefinierte Handlebars-Vorlagen für die Prompt-Generierung verwenden und erstellen.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Tutorial-Überblick">
+  Dieses Tutorial zeigt, wie Sie benutzerdefinierte Handlebars-Vorlagen für die
+  Prompt-Generierung im `code2prompt`-CLI verwenden und erstellen.
+</Card>
+
+---
+
+## Voraussetzungen
+
+Stellen Sie sicher, dass Sie `code2prompt` installiert haben. Wenn Sie es noch nicht installiert haben, lesen Sie die [Installationsanleitung](/docs/how_to/install).
+
+---
+
+## Was sind Handlebars-Vorlagen?
+
+[Handlebars](https://handlebarsjs.com/) ist eine beliebte Template-Engine, die es ermöglicht, dynamische Vorlagen mit Platzhaltern zu erstellen.
+In `code2prompt` werden Handlebars-Vorlagen verwendet, um die generierten Prompts basierend auf der Codebasis-Struktur und benutzerdefinierten Variablen zu formatieren.
+
+## Wie werden Handlebars-Vorlagen verwendet?
+
+Sie können diese Vorlagen verwenden, indem Sie die `-t`- oder `--template`-Flagge gefolgt vom Pfad zur Vorlagendatei übergeben. Zum Beispiel:
+
+```sh
+code2prompt path/to/codebase -t templates/document-the-code.hbs
+```
+
+## Vorlage-Syntax
+
+Handlebars-Vorlagen verwenden eine einfache Syntax für Platzhalter und Ausdrücke. Sie platzieren Variablen in doppelten geschweiften Klammern `{{variable_name}}`, um sie in den generierten Prompt aufzunehmen.
+`Code2prompt` bietet eine Reihe von Standardvariablen, die Sie in Ihren Vorlagen verwenden können:
+
+- `absolute_code_path`: Der absolute Pfad zur Codebasis.
+- `source_tree`: Der Quellbaum der Codebasis, der alle Dateien und Verzeichnisse enthält.
+- `files`: Eine Liste von Dateien in der Codebasis, einschließlich ihrer Pfade und Inhalte.
+- `git_diff`: Der Git-Diff der Codebasis, wenn zutreffend.
+- `code`: Der Codeinhalt der aktuell verarbeiteten Datei.
+- `path`: Der Pfad der aktuell verarbeiteten Datei.
+
+Sie können auch Handlebars-Helfer verwenden, um bedingte Logik, Schleifen und andere Operationen innerhalb Ihrer Vorlagen auszuführen. Zum Beispiel:
+
+```handlebars
+{{#if files}}
+  {{#each files}}
+    Datei:
+    {{this.path}}
+    Inhalt:
+    {{this.content}}
+  {{/each}}
+{{else}}
+  Keine Dateien gefunden.
+{{/if}}
+```
+
+---
+
+## Vorhandene Vorlagen
+
+`code2prompt` wird mit einer Reihe von integrierten Vorlagen für gängige Anwendungsfälle geliefert. Sie finden sie im [`templates`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates)-Verzeichnis.
+
+### [`document-the-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/document-the-code.hbs)
+
+Verwenden Sie diese Vorlage, um Prompts für die Dokumentation des Codes zu generieren. Sie fügt Dokumentationskommentare zu allen öffentlichen Funktionen, Methoden, Klassen und Modulen in der Codebasis hinzu.
+
+### [`find-security-vulnerabilities.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/find-security-vulnerabilities.hbs)
+
+Verwenden Sie diese Vorlage, um Prompts für die Suche nach potenziellen Sicherheitslücken in der Codebasis zu generieren. Sie sucht nach gängigen Sicherheitsproblemen und bietet Empfehlungen, wie diese behoben oder gemildert werden können.
+
+### [`clean-up-code.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/clean-up-code.hbs)
+
+Verwenden Sie diese Vorlage, um Prompts für die Bereinigung und Verbesserung der Codequalität zu generieren. Sie sucht nach Möglichkeiten, die Lesbarkeit, Einhaltung von Best Practices, Effizienz, Fehlerbehandlung und mehr zu verbessern.
+
+### [`fix-bugs.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/fix-bugs.hbs)
+
+Verwenden Sie diese Vorlage, um Prompts für die Behebung von Fehlern in der Codebasis zu generieren. Sie hilft bei der Diagnose von Problemen, bietet Vorschläge für die Behebung und aktualisiert den Code mit den vorgeschlagenen Änderungen.
+
+### [`write-github-pull-request.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-pull-request.hbs)
+
+Verwenden Sie diese Vorlage, um eine GitHub-Pull-Request-Beschreibung in Markdown zu erstellen, indem Sie den Git-Diff und den Git-Log von zwei Branches vergleichen.
+
+### [`write-github-readme.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-github-readme.hbs)
+
+Verwenden Sie diese Vorlage, um eine hochwertige README-Datei für das Projekt zu erstellen, die für die Hosting auf GitHub geeignet ist. Sie analysiert die Codebasis, um ihren Zweck und ihre Funktionalität zu verstehen, und generiert den README-Inhalt im Markdown-Format.
+
+### [`write-git-commit.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/write-git-commit.hbs)
+
+Verwenden Sie diese Vorlage, um Git-Commits aus den gestagten Dateien in Ihrem Git-Verzeichnis zu generieren. Sie analysiert die Codebasis, um ihren Zweck und ihre Funktionalität zu verstehen, und generiert den Git-Commit-Nachrichtentext im Markdown-Format.
+
+### [`improve-performance.hbs`](https://github.com/mufeedvh/code2prompt/tree/main/crates/code2prompt-core/templates/improve-performance.hbs)
+
+Verwenden Sie diese Vorlage, um Prompts für die Verbesserung der Leistung der Codebasis zu generieren. Sie sucht nach Optimierungsmöglichkeiten, bietet spezifische Vorschläge und aktualisiert den Code mit den Änderungen.
+
+## Benutzerdefinierte Variablen
+
+`code2prompt` unterstützt die Verwendung von benutzerdefinierten Variablen in den Handlebars-Vorlagen. Alle Variablen in der Vorlage, die nicht Teil des Standardkontexts (`absolute_code_path`, `source_tree`, `files`) sind, werden als benutzerdefinierte Variablen behandelt.
+
+Während der Prompt-Generierung fordert `code2prompt` den Benutzer auf, Werte für diese benutzerdefinierten Variablen einzugeben. Dies ermöglicht eine weitere Anpassung der generierten Prompts basierend auf der Benutzereingabe.
+
+Zum Beispiel, wenn Ihre Vorlage `{{challenge_name}}` und `{{challenge_description}}` enthält, werden Sie aufgefordert, Werte für diese Variablen einzugeben, wenn Sie `code2prompt` ausführen.
+
+Diese Funktion ermöglicht die Erstellung von wiederverwendbaren Vorlagen, die an verschiedene Szenarien basierend auf der Benutzereingabe angepasst werden können.
+
+> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.

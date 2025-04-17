@@ -1,0 +1,245 @@
+---
+title: 安装 Code2Prompt
+description: 不同操作系统上安装 Code2Prompt 的完整指南。
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Steps } from "@astrojs/starlight/components";
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="指南概述">
+  欢迎来到 `Code2Prompt` 安装指南。本文档提供了在各种平台（包括 Windows、macOS
+  和 Linux）上安装 Code2Prompt 的逐步说明。
+</Card>
+
+**TL;DR**
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+## 前置条件
+
+确保您的系统上已安装 [Rust](https://www.rust-lang.org/tools/install) 和 cargo。
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+这是安装最新稳定版 Rust 和 Cargo 的官方方法。安装 Rust 后，请确保刷新您的 `PATH` 变量。重启您的终端或运行安装程序建议的命令。
+
+```sh
+source $HOME/.cargo/env
+```
+
+您可以通过运行以下命令检查所有内容是否正确安装：
+
+```sh
+cargo --version
+git --version
+```
+
+## 命令行界面（CLI） 👨‍💻
+
+```bash
+# Cargo
+$ cargo install code2prompt
+
+# Homebrew
+$ brew install code2prompt
+```
+
+#### 🧪 从 GitHub 安装最新（未发布）版本
+
+如果您想要在 crates.io 发布之前使用最新功能或修复：
+
+```sh
+cargo install --git https://github.com/mufeedvh/code2prompt
+```
+
+### 源代码构建
+
+适用于想要从源代码构建或为项目做出贡献的开发人员。
+
+<Steps>
+
+1.  🛠️ 安装前置条件：
+
+    - [Rust](https://www.rust-lang.org/tools/install) 和 Cargo
+    - [Git](https://git-scm.com/downloads)
+
+2.  📥 克隆仓库：
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt
+    ```
+
+3.  📦 安装二进制文件：
+
+    从源代码构建和安装：
+
+    ```sh
+    cargo install --path crates/code2prompt
+    ```
+
+    在不安装的情况下构建二进制文件：
+
+    ```sh
+    cargo build --release
+    ```
+
+    二进制文件将在 `target/release` 目录中可用。
+
+4.  🚀 运行它：
+
+    ```sh
+    code2prompt --help
+    ```
+
+</Steps>
+
+### 二进制发布
+
+最适合想要使用最新版本而无需从源代码构建的用户。
+
+从 [Releases](https://github.com/mufeedvh/code2prompt/releases) 下载您操作系统的最新二进制文件。
+
+⚠️ 二进制发布可能会落后于最新的 GitHub 版本。若要使用前沿功能，请考虑从源代码构建。
+
+### AUR
+
+专门为 Arch Linux 用户，`code2prompt` 可在 AUR 上使用。
+
+`code2prompt` 可在 [`AUR`](https://aur.archlinux.org/packages?O=0&K=code2prompt) 上使用。通过任何 AUR 助手安装它。
+
+```sh
+paru/yay -S code2prompt
+```
+
+### Nix
+
+如果您正在使用 Nix，可以使用 nix-env 或 nix profile 安装。
+
+```sh
+# without flakes:
+nix-env -iA nixpkgs.code2prompt
+# with flakes:
+nix profile install nixpkgs#code2prompt
+```
+
+## 软件开发工具包（SDK） 🐍
+
+### Pypi
+
+您可以从 Pypi 下载 Python 绑定。
+
+```sh
+pip install code2prompt_rs
+```
+
+### 源代码构建
+
+<Steps>
+
+1.  🛠️ 安装前置条件：
+
+    - [Rust](https://www.rust-lang.org/tools/install) 和 Cargo
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 克隆仓库：
+
+    ```sh
+    git clone https://github.com/mufeedvh/code2prompt.git
+    cd code2prompt/crates/code2prompt-python
+    ```
+
+3.  📦 安装依赖项：
+
+    `rye` 命令将创建虚拟环境并安装所有依赖项。
+
+    ```sh
+    rye sync
+    ```
+
+4.  ⚙️ 构建包：
+
+    您将在项目根目录的 `.venv` 文件夹中位于虚拟环境中开发包。
+
+    ```sh
+    rye run maturin develop -r
+    ```
+
+</Steps>
+
+## 模型上下文协议（MCP） 🤖
+
+### 自动安装
+
+`code2prompt` MCP 服务器将很快在 MCP 注册表中可用。
+
+### 手动安装
+
+`code2prompt` MCP 服务器仍处于原型阶段，很快将集成到主仓库中。
+
+在本地运行 MCP 服务器，以便与 `Cline`、`Goose` 或 `Aider` 一起使用：
+
+<Steps>
+
+1.  🛠️ 安装前置条件：
+
+    - [Git](https://git-scm.com/downloads)
+    - [Rye](https://rye.astral.sh/)
+
+2.  📥 克隆仓库：
+
+    ```sh
+    git clone https://github.com/odancona/code2prompt-mcp.git
+    cd code2prompt-mcp
+    ```
+
+3.  📦 安装依赖项：
+
+    `rye` 命令将创建虚拟环境并在 `.venv` 文件夹中安装所有依赖项。
+
+    ```sh
+    rye sync
+    ```
+
+4.  🚀 运行服务器：
+
+    MCP 服务器现已安装。您可以使用以下命令运行它：
+
+    ```sh
+    . .venv/bin/activate
+    python -m src/code2prompt_mcp/main.py
+    ```
+
+5.  🔌 与代理集成：
+
+            例如，您可以使用类似的配置将其与 `Cline` 集成：
+
+            ```json
+            {
+              "mcpServers": {
+                "code2prompt": {
+                  "command": "bash",
+                  "args": [
+                    "-c",
+                    "cd /home/olivier/projet/code2prompt-mcp && rye run python /home/olivier/projet/code2prompt-mcp/src/code2prompt_mcp/main.py"
+                  ],
+                  "env": {}
+                }
+              }
+            }
+            ```
+
+</Steps>
+
+> 为了您的方便，本页面已自动翻译。请参考英文版本获取原始内容。

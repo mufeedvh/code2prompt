@@ -5,47 +5,47 @@ lastUpdated: 2025-04-11
 tags:
   - open-source
   - code2prompt
-  - AI
+  - IA
   - Agent
-excerpt: "L'histoire derrière code2prompt : ma quête open-source pour relever les défis de contexte dans les flux de travail LLM"
+excerpt: "L'histoire derrière code2prompt : ma quête Open-Source pour relever les défis de contexte dans les flux de travail LLM"
 authors:
   - ODAncona
 cover:
-  alt: "Une illustration de code2prompt rationalisant le contexte de code pour les agents AI."
-  image: "../../../../assets/logo_dark_v0.0.2.svg"
+  alt: "Une illustration de code2prompt simplifiant le contexte de code pour les agents IA."
+  image: "/src/assets/logo_dark_v0.0.2.svg"
 featured: false
 draft: false
 ---
 
 ## Introduction
 
-J'ai toujours été fasciné par la façon dont les modèles de langage à grande échelle (LLM) transforment les flux de travail de codage - en générant des tests, des docstrings ou même en expédiant des fonctionnalités entières en quelques minutes. Mais à mesure que je poussais ces modèles plus loin, quelques points de douleur critiques ont continué à émerger :
+Je suis toujours fasciné par la façon dont les modèles de langage à grande échelle (LLM) transforment les flux de travail de codage - générant des tests, des docstrings ou même des fonctionnalités entières en quelques minutes. Mais à mesure que je poussais ces modèles plus loin, quelques points de douleur critiques continuaient à émerger :
 
-| Difficultés de planification | Coûts élevés de tokens | Hallucinations |
+| Difficultés de planification | Coûts de jetons élevés | Hallucinations |
 | ---------------------------- | ---------------------- | -------------- |
 | 🧠 ➡️ 🤯                     | 🔥 ➡️ 💸               | 💬 ➡️ 🌀       |
 
-C'est pourquoi j'ai commencé à contribuer à `code2prompt`, un outil basé sur Rust pour aider à fournir le contexte approprié aux LLM.
+C'est pourquoi j'ai commencé à contribuer à `code2prompt`, un outil basé sur Rust pour aider à fournir juste le contexte approprié aux LLM.
 
-Dans cet article, je partagerai mon parcours et expliquerai pourquoi je suis convaincu que `code2prompt` est pertinent aujourd'hui et s'intègre si bien, et pourquoi il est devenu ma solution incontournable pour des flux de travail de codage AI plus rapides et plus efficaces.
+Dans cet article, je partagerai mon parcours et expliquerai pourquoi je suis convaincu que `code2prompt` est pertinent aujourd'hui et s'intègre si bien, et pourquoi il est devenu ma solution incontournable pour des flux de travail de codage IA meilleurs et plus rapides.
 
 ## Mes premiers pas avec les LLM 👣
 
-J'ai commencé à expérimenter avec les LLM sur `OpenAI Playground` avec `text-davinci-003` lorsqu'il a gagné en traction en novembre 2023. Les modèles de langage ont permis une nouvelle révolution. Cela ressemblait à avoir un assistant brillant qui pouvait produire des tests unitaires et des docstrings presque sur commande. J'ai apprécié pousser les modèles à leurs limites - en testant tout, des conversations légères et des dilemmes éthiques aux jailbreaks et aux tâches de codage complexes. Cependant, à mesure que j'ai pris des projets plus importants, j'ai rapidement réalisé que les modèles avaient des limitations évidentes. Au début, je ne pouvais intégrer que quelques centaines de lignes de code dans la fenêtre de contexte, et même alors, les modèles avaient souvent du mal à comprendre le but ou la structure du code. C'est pourquoi j'ai rapidement remarqué que l'importance du contexte était primordiale. Plus mes instructions étaient concises et meilleur était le contexte, meilleurs étaient les résultats.
+J'ai commencé à expérimenter avec les LLM sur `OpenAI Playground` avec `text-davinci-003` lorsqu'il a gagné en popularité en novembre 2023. Les modèles de langage ont permis une nouvelle révolution. Cela ressemblait à avoir un assistant brillant qui pouvait produire des tests unitaires et des docstrings presque sur commande. J'ai apprécié pousser les modèles à leurs limites - testant tout, des conversations informelles et des dilemmes éthiques aux jailbreaks et aux tâches de codage complexes. Cependant, à mesure que j'ai abordé des projets plus importants, j'ai rapidement réalisé que les modèles avaient des limitations criantes. Au début, je ne pouvais adapter que quelques centaines de lignes de code dans la fenêtre de contexte, et même alors, les modèles avaient souvent du mal à comprendre le but ou la structure du code. C'est pourquoi j'ai rapidement remarqué que l'importance du contexte était primordiale. Plus mes instructions étaient concises et meilleur était le contexte, meilleurs étaient les résultats.
 
 ![OpenAI Playground](/assets/blog/post1/playground.png)
 
 ## Évolution des modèles 🏗️
 
-Les modèles pouvaient produire des résultats impressionnants mais avaient souvent du mal avec des bases de code plus importantes ou des tâches complexes. Je me suis retrouvé à passer plus de temps à créer des invites qu'à coder. Dans le même temps, les modèles ont continué à s'améliorer avec la sortie de nouvelles versions. Ils ont augmenté leurs capacités de raisonnement et la taille du contexte, offrant de nouvelles perspectives et possibilités. Je pouvais intégrer presque deux mille lignes de code dans la fenêtre de contexte, et les résultats se sont améliorés. Je pouvais écrire des fonctionnalités entières en quelques itérations, et j'ai été étonné de la rapidité avec laquelle je pouvais obtenir des résultats. J'étais convaincu que les LLM étaient l'avenir du codage, et je voulais en faire partie. Je crois fermement que l'IA ne remplacera pas les humains, mais les assistera sous la forme d'assistants où les humains sont toujours aux commandes.
+Les modèles pouvaient produire des résultats impressionnants mais avaient souvent du mal avec des bases de code plus importantes ou des tâches complexes. Je me suis retrouvé à passer plus de temps à élaborer des invites qu'à coder réellement. Dans le même temps, les modèles continuaient à s'améliorer avec la sortie de nouvelles versions. Ils ont augmenté leurs capacités de raisonnement et la taille du contexte, offrant de nouvelles perspectives et possibilités. Je pouvais adapter presque deux mille lignes de code dans la fenêtre de contexte, et les résultats se sont améliorés. Je pouvais écrire des fonctionnalités entières en quelques itérations, et j'ai été impressionné par la rapidité avec laquelle je pouvais obtenir des résultats. J'étais convaincu que les LLM étaient l'avenir du codage, et je voulais en faire partie. Je crois fermement que l'IA ne nous remplacera pas encore. Mais nous assistera sous la forme d'assistants où les humains sont les experts encore en contrôle.
 
 ## Mes premiers projets avec les LLM 🚀
 
-J'ai commencé à écrire un module de recherche de chemin pour une compétition robotique `ROS`, à générer des fonctionnalités pour une application `Flutter` multiplateforme d'architecture propre, et j'ai créé une petite application web en une soirée pour suivre mes dépenses en `Next.js`, un framework que je n'avais jamais utilisé auparavant ! Le fait que j'ai construit cette petite application en une soirée, dans un framework que je n'avais jamais touché auparavant, a été un moment révélateur pour moi ; les LLM n'étaient pas seulement des outils mais des multiplicateurs. J'ai développé `bboxconverter`, un package pour convertir des boîtes de bounding, et la liste continue. Les LLM peuvent aider à apprendre de nouvelles technologies et frameworks rapidement ; c'est formidable.
+J'ai commencé à écrire un module de recherche de chemin `ROS` pour un concours de robotique, à générer des fonctionnalités pour une application `Flutter` multiplateforme d'architecture propre, et j'ai créé une petite application Web pour suivre mes dépenses en `Next.js`. Le fait que j'ai construit cette petite application en une soirée, dans un framework que je n'avais jamais utilisé auparavant, a été un moment décisif pour moi ; les LLM n'étaient pas seulement des outils mais des multiplicateurs. J'ai développé `bboxconverter`, un package pour convertir des boîtes de bounding, et la liste continue. Les LLM peuvent vous aider à apprendre de nouvelles technologies et frameworks rapidement ; c'est incroyable.
 
 ## Un nouveau paradigme : Software 3.0 💡
 
-Je me suis approfondi dans les LLM et j'ai commencé à construire des agents et des scaffoldings autour d'eux. J'ai reproduit le célèbre article [RestGPT](https://restgpt.github.io/). L'idée est excellente : donner aux LLM la capacité d'appeler certaines API REST avec une spécification OpenAPI, comme `Spotify` ou `TMDB`. Ces capacités introduisent un nouveau paradigme de programmation logiciel, que j'aime appeler **Software 3.0**.
+Je me suis approfondi dans les LLM et j'ai commencé à construire des agents et des squelettes autour d'eux. J'ai reproduit le célèbre article [RestGPT](https://restgpt.github.io/). L'idée est excellente : donner aux LLM la capacité d'appeler certaines API REST avec une spécification OpenAPI, telles que `Spotify` ou `TMDB`. Ces capacités introduisent un nouveau paradigme de programmation logiciel, que j'aime appeler **Software 3.0**.
 
 | Software 1.0        | Software 2.0           | Software 3.0 |
 | ------------------- | ---------------------- | ------------ |
@@ -53,27 +53,27 @@ Je me suis approfondi dans les LLM et j'ai commencé à construire des agents et
 
 La même idée a propulsé le protocole [MCP](https://modelcontextprotocol.io/introduction), qui permet aux LLM d'appeler des outils et des ressources directement de manière transparente, car par conception, l'outil a besoin d'une description pour être appelé par le LLM, contrairement aux API REST qui ne nécessitent pas nécessairement de spécification OpenAPI.
 
-## Les limites des LLM 🧩
+## Les limitations des LLM 🧩
 
 ### Hallucinations 🌀
 
-En reproduisant le célèbre article `RESTGPT`, j'ai remarqué certaines limitations sérieuses des LLM. Les auteurs de l'article ont rencontré les mêmes problèmes que moi : les LLM **hallucinaient**. Ils génèrent du code qui n'est pas implémenté, inventant des arguments et suivant simplement les instructions à la lettre sans utiliser le bon sens. Par exemple, dans le code source original de RestGPT, les auteurs ont demandé dans [l'invite de l'appelant](https://github.com/Yifan-Song793/RestGPT/blob/main/model/caller.py).
+Lors de la reproduction du célèbre article `RESTGPT`, j'ai remarqué certaines limitations graves des LLM. Les auteurs de l'article ont rencontré les mêmes problèmes que moi : les LLM **hallucinaient**. Ils génèrent du code qui n'est pas implémenté, inventant des arguments et suivant simplement les instructions à la lettre sans utiliser le bon sens. Par exemple, dans le code source original de RestGPT, les auteurs ont demandé dans [l'invite de l'appelant](https://github.com/Yifan-Song793/RestGPT/blob/main/model/caller.py).
 
-> "ne pas être trop intelligent et inventer des étapes qui n'existent pas dans le plan."
+> "de ne pas être malin et d'inventer des étapes qui n'existent pas dans le plan."
 
-J'ai trouvé cette déclaration amusante et très intéressante car c'était la première fois que je rencontrais quelqu'un qui instruisait les LLM à ne pas halluciner.
+J'ai trouvé cette déclaration amusante et très intéressante parce que c'était la première fois que je rencontrais quelqu'un qui instruisait les LLM à ne pas halluciner.
 
-### Taille limitée du contexte 📏
+### Taille de contexte limitée 📏
 
-Une autre limitation était la taille du contexte ; les LLM fonctionnent bien pour trouver l'aiguille dans la botte de foin mais ont du mal à en comprendre le sens. Lorsque vous donnez trop de contexte aux modèles de langage, ils ont tendance à se perdre dans les détails et à perdre de vue l'image d'ensemble, ce qui est frustrant et nécessite une direction constante. La façon dont j'aime y penser est similaire à [la malédiction de la dimensionnalité](https://towardsdatascience.com/curse-of-dimensionality-a-curse-to-machine-learning-c122ee33bfeb/). Remplacez le mot "dimension" ou "caractéristique" par "contexte", et vous obtenez l'idée.
+Une autre limitation était la taille du contexte ; les LLM performent bien pour trouver l'aiguille dans la botte de foin mais ont du mal à en comprendre le sens. Lorsque vous donnez trop de contexte aux modèles de langage, ils ont tendance à se perdre dans les détails et à perdre de vue l'ensemble, ce qui est ennuyeux et nécessite une direction constante. La façon dont j'aime y penser est similaire à [la malédiction de la dimensionnalité](https://towardsdatascience.com/curse-of-dimensionality-a-curse-to-machine-learning-c122ee33bfeb/). Remplacez le mot "dimension" ou "fonctionnalité" par "contexte", et vous obtenez l'idée.
 
 ![Malédiction de la dimensionnalité](/assets/blog/post1/curse_of_dimensionality.png)
 
-Plus vous donnez de contexte au LLM, plus il est difficile de trouver la bonne réponse. J'ai créé une phrase pour résumer cette idée :
+Plus vous donnez de contexte au LLM, plus il est difficile de trouver la bonne réponse. J'ai créé une phrase agréable pour résumer cette idée :
 
 > Fournissez aussi peu de contexte que possible mais autant que nécessaire
 
-Ceci est fortement inspiré de la célèbre [citation d'Alain Berset](https://www.lematin.ch/story/alain-berset-la-formule-qui-defie-le-temps-166189802108), un politicien suisse 🇨🇭 qui a déclaré pendant le confinement COVID-19 :
+Ceci est fortement inspiré par la célèbre [citation d'Alain Berset](https://www.lematin.ch/story/alain-berset-la-formule-qui-defie-le-temps-166189802108), un politicien suisse 🇨🇭 qui a déclaré pendant le confinement COVID-19 :
 
 > "Nous souhaitons agir aussi vite que possible, mais aussi lentement que nécessaire"
 
@@ -81,50 +81,52 @@ Cela représente l'idée de compromis et s'applique à la taille du contexte des
 
 ## Recherche d'une meilleure façon : code2prompt 🔨
 
-Par conséquent, j'avais besoin d'un moyen de charger, de filtrer et d'organiser rapidement mon contexte de code en fournissant la moindre quantité possible de contexte avec la meilleure qualité possible. J'ai essayé de copier manuellement des fichiers ou des extraits dans des invites, mais cela est devenu encombrant et sujet aux erreurs. Je savais que l'automatisation du processus fastidieux de forgeage du contexte pour poser de meilleures invites serait utile. Ensuite, un jour, j'ai tapé "code2prompt" sur Google, en espérant trouver un outil qui pipe mon code directement dans des invites.
+Par conséquent, j'avais besoin d'un moyen de charger, de filtrer et d'organiser rapidement mon contexte de code en fournissant la moindre quantité possible de contexte avec la meilleure qualité possible. J'ai essayé de copier manuellement des fichiers ou des extraits dans des invites, mais cela est devenu encombrant et sujet aux erreurs. Je savais que l'automatisation du processus fastidieux de forgeage du contexte pour poser de meilleures questions serait utile. Ensuite, un jour, j'ai tapé "code2prompt" sur Google, espérant trouver un outil qui acheminait mon code directement dans des invites.
 
-Et voilà, j'ai découvert un projet **basé sur Rust** par [Mufeed](https://www.reddit.com/r/rust/comments/1bghroh/i_made_code2prompt_a_cli_tool_to_convert_your/) nommé _code2prompt_, avec environ 200 étoiles sur GitHub. C'était encore basique à l'époque : un simple outil CLI avec une capacité de filtrage limitée et des modèles. J'ai vu un énorme potentiel et j'ai sauté dedans pour contribuer, en implémentant la correspondance de modèles globaux, entre autres fonctionnalités, et je suis rapidement devenu l'un des principaux contributeurs.
+Et voici ! J'ai découvert un projet **basé sur Rust** de [Mufeed](https://www.reddit.com/r/rust/comments/1bghroh/i_made_code2prompt_a_cli_tool_to_convert_your/) nommé _code2prompt_, qui comptait environ 200 étoiles sur GitHub. C'était encore basique à l'époque : un simple outil CLI avec une capacité de filtration limitée et des modèles. J'ai vu un énorme potentiel et j'ai sauté directement pour contribuer, en mettant en œuvre la correspondance de modèles globaux, entre autres fonctionnalités, et je suis rapidement devenu le principal contributeur.
 
 ## Vision & Intégrations 🔮
 
-Aujourd'hui, il existe plusieurs façons de fournir un contexte aux LLM. Générer à partir du contexte plus large, utiliser la génération augmentée de récupération (RAG), [compresser le code](https://www.all-hands.dev/blog/openhands-context-condensensation-for-more-efficient-ai-agents), ou même utiliser une combinaison de ces méthodes. Le forgeage de contexte est un sujet brûlant qui évoluera rapidement dans les mois à venir. Cependant, mon approche est **KISS** : Keep It Simple, Stupid. La meilleure façon de fournir un contexte aux LLM est d'utiliser la façon la plus simple et la plus efficace possible. Vous forgez précisément le contexte dont vous avez besoin ; c'est déterministe, contrairement à RAG.
+Aujourd'hui, il existe plusieurs façons de fournir du contexte aux LLM. Générer à partir du contexte plus large, utiliser la génération augmentée de récupération (RAG), [compresser le code](https://www.all-hands.dev/blog/openhands-context-condensensation-for-more-efficient-ai-agents), ou même utiliser une combinaison de ces méthodes. Le forgeage de contexte est un sujet brûlant qui évoluera rapidement dans les prochains mois. Cependant, mon approche est **KISS** : Keep It Simple, Stupid. La meilleure façon de fournir du contexte aux LLM est d'utiliser la façon la plus simple et la plus efficace possible. Vous forgez précisément le contexte dont vous avez besoin ; c'est déterministe, contrairement à RAG.
 
 C'est pourquoi j'ai décidé de pousser `code2prompt` plus loin en tant qu'outil simple pouvant être utilisé dans n'importe quel flux de travail. Je voulais le rendre facile à utiliser, facile à intégrer et facile à étendre. C'est pourquoi j'ai ajouté de nouvelles façons d'interagir avec l'outil.
 
 - **Core** : Le cœur de `code2prompt` est une bibliothèque Rust qui fournit la fonctionnalité de base pour forger le contexte à partir de votre base de code. Il comprend une API simple pour charger, filtrer et organiser votre contexte de code.
-- **CLI :** L'interface de ligne de commande est la façon la plus simple d'utiliser `code2prompt`. Vous pouvez forger le contexte à partir de votre base de code et le pipe directement dans vos invites.
-- **API Python :** L'API Python est un simple wrapper autour de CLI qui vous permet d'utiliser `code2prompt` dans vos scripts Python et agents. Vous pouvez forger le contexte à partir de votre base de code et le pipe directement dans vos invites.
-- **MCP :** Le serveur MCP de `code2prompt` permet aux LLM d'utiliser `code2prompt` comme outil, les rendant ainsi capables de forger le contexte.
+- **CLI** : L'interface de ligne de commande est la façon la plus simple d'utiliser `code2prompt`. Vous pouvez forger le contexte à partir de votre base de code et le canaliser directement dans vos invites.
+- **API Python** : L'API Python est un simple wrapper autour de CLI qui vous permet d'utiliser `code2prompt` dans vos scripts et agents Python. Vous pouvez forger le contexte à partir de votre base de code et le canaliser directement dans vos invites.
+- **MCP** : Le serveur MCP `code2prompt` permet aux LLM d'utiliser `code2prompt` en tant qu'outil, les rendant ainsi capables de forger le contexte.
 
 La vision est décrite plus en détail dans la [page de vision](/docs/vision) de la documentation.
 
 ## Intégration avec les agents 👤
 
-Je crois que les futurs agents auront besoin d'un moyen d'ingérer le contexte, et `code2prompt` est la façon simple et efficace de le faire pour les référentiels textuels comme la base de code, la documentation ou les notes. Un endroit typique pour utiliser `code2prompt` serait dans une base de code avec des conventions de nommage significatives. Par exemple, dans l'architecture propre, il y a une claire séparation des préoccupations et des couches. Le contexte pertinent réside généralement dans différents fichiers et dossiers mais partagent le même nom. C'est un cas d'utilisation parfait pour `code2prompt`, où vous pouvez utiliser le modèle global pour saisir les fichiers pertinents.
+Je crois que les futurs agents auront besoin d'un moyen d'ingérer du contexte, et `code2prompt` est la façon simple et efficace de le faire pour les référentiels textuels comme la base de code, la documentation ou les notes. Un endroit typique pour utiliser `code2prompt` serait dans une base de code avec des conventions de dénomination significatives. Par exemple, dans l'architecture propre, il existe une séparation claire des préoccupations et des couches. Le contexte pertinent réside généralement dans différents fichiers et dossiers mais partage le même nom. C'est un cas d'utilisation parfait pour `code2prompt`, où vous pouvez utiliser le modèle global pour saisir les fichiers pertinents.
 
-**Glob Pattern-first :** Sélectionnez ou excluez précisément les fichiers avec un minimum de tracas.
+**Basé sur le modèle global** : Sélectionnez ou excluez précisément les fichiers avec un minimum de tracas.
 
-En outre, la bibliothèque principale est conçue comme un gestionnaire de contexte étatique, vous permettant d'ajouter ou de supprimer des fichiers à mesure que votre conversation avec le LLM évolue. Ceci est particulièrement utile pour fournir un contexte pour une tâche ou un objectif spécifique. Vous pouvez facilement ajouter ou supprimer des fichiers du contexte sans relancer le processus.
+En outre, la bibliothèque principale est conçue en tant que gestionnaire de contexte étatique, vous permettant d'ajouter ou de supprimer des fichiers à mesure que votre conversation avec le LLM évolue. Ceci est particulièrement utile pour fournir du contexte pour une tâche ou un objectif spécifique. Vous pouvez facilement ajouter ou supprimer des fichiers du contexte sans relancer le processus.
 
-**Contexte étatique :** Ajoutez ou supprimez des fichiers à mesure que votre conversation avec le LLM évolue.
+**Contexte étatique** : Ajoutez ou supprimez des fichiers à mesure que votre conversation avec le LLM évolue.
 
-Ces capacités font de `code2prompt` un ajustement parfait pour les flux de travail basés sur des agents. Le serveur MCP permet une intégration transparente avec des frameworks d'agents AI populaires comme [Aider](https://github.com/paul-gauthier/aider), [Goose](https://block.github.io/goose/), ou [Cline](https://github.com/jhillyerd/cline). Laissez-les gérer des objectifs complexes tandis que `code2prompt` fournit le contexte de code parfait.
+Ces capacités font de `code2prompt` un choix parfait pour les flux de travail basés sur des agents. Le serveur MCP permet une intégration transparente avec des frameworks d'agents IA populaires tels que [Aider](https://github.com/paul-gauthier/aider), [Goose](https://block.github.io/goose/), ou [Cline](https://github.com/jhillyerd/cline). Laissez-les gérer des objectifs complexes pendant que `code2prompt` fournit le contexte de code parfait.
 
 ## Pourquoi Code2prompt compte ✊
 
-À mesure que les LLM évoluent et que les fenêtres de contexte s'étendent, il peut sembler que simplement brutaliser des référentiels entiers dans des invites suffit. Cependant, **les coûts de tokens** et **la cohérence des invites** restent des obstacles importants pour les petites entreprises et les développeurs. En se concentrant sur le code qui compte, `code2prompt` maintient votre utilisation de LLM efficace, rentable et moins encline à l'hallucination.
+À mesure que les LLM évoluent et que les fenêtres de contexte s'étendent, il peut sembler que simplement forcer des référentiels entiers dans des invites suffit. Cependant, les **coûts de jetons** et la **cohérence des invites** restent des obstacles importants pour les petites entreprises et les développeurs. En se concentrant sur le code qui compte, `code2prompt` maintient votre utilisation de LLM efficace, rentable et moins encline à l'hallucination.
 
-**En résumé :**
+**En bref :**
 
-- **Réduisez les hallucinations** en fournissant la bonne quantité de contexte
-- **Réduisez les coûts de tokens** en curant manuellement le contexte approprié nécessaire
-- **Améliorez les performances de LLM** en donnant la bonne quantité de contexte
+- **Réduire les hallucinations** en fournissant la bonne quantité de contexte
+- **Réduire les coûts de jetons** en curant manuellement le contexte approprié nécessaire
+- **Améliorer les performances de LLM** en donnant la bonne quantité de contexte
 - Intègre la pile agence en tant que fournisseur de contexte pour les référentiels textuels
 
-## Vous pouvez rejoindre ! 🌐
+## Vous pouvez rejoindre ! C'est Open Source ! 🌐
 
-Chaque nouveau contributeur est le bienvenu ! Venez à bord si vous êtes intéressé par Rust, la création d'outils AI innovants, ou simplement si vous voulez un meilleur flux de travail pour vos invites basées sur le code.
+Tout nouveau contributeur est le bienvenu ! Venez à bord si vous êtes intéressé par Rust, la création d'outils IA innovants, ou si vous voulez simplement un meilleur flux de travail pour vos invites basées sur le code.
 
-Merci de lire, et j'espère que mon histoire vous a inspiré à découvrir code2prompt. C'est été un incroyable parcours, et cela ne fait que commencer !
+Merci de lire, et j'espère que mon histoire vous a inspiré à découvrir code2prompt. C'est un incroyable voyage, et cela ne fait que commencer !
 
 **Olivier D'Ancona**
+
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

@@ -1,16 +1,16 @@
 ---
-title: Documentation de Code2Prompt
+title: Documentation Code2Prompt
 description: Documentation officielle de Code2prompt
 template: splash
 hero:
-  tagline: Transformez votre code en invites optimisées pour l'IA en quelques secondes
+  tagline: Transformez votre code en invites optimisées pour l'IA en secondes
   image:
     file: ../../../../assets/logo_dark_v0.0.1.svg
   actions:
     - text: Commencer 🚀
-      link: /docs/tutorials/getting_started
+      link: ../../docs/tutorials/getting_started
     - text: Installation 📥
-      link: /docs/how_to/install
+      link: ../../docs/how_to/install
 ---
 
 import { Card, CardGrid } from "@astrojs/starlight/components";
@@ -18,67 +18,69 @@ import { LinkCard } from "@astrojs/starlight/components";
 
 ## Démarrage rapide
 
-<LinkCard title="Commencer 🚀" href="/docs/tutorials/getting_started" />
-<LinkCard title="Installation 📥" href="/docs/how_to/install" />
-<LinkCard title="Apprendre le filtrage 🔍" href="/docs/tutorials/learn_filters" />
-<LinkCard title="Apprendre la mise en forme 📝" href="/docs/tutorials/learn_templates" />
-<LinkCard title="Vision 🔮" href="/docs/vision" />
+<LinkCard title="Commencer 🚀" href="../../docs/tutorials/getting_started" />
+<LinkCard title="Installation 📥" href="../../docs/how_to/install" />
+<LinkCard
+  title="Apprendre le filtrage 🔍"
+  href="../../docs/tutorials/learn_filters"
+/>
+<LinkCard
+  title="Apprendre la mise en page 📝"
+  href="../../docs/tutorials/learn_templates"
+/>
+<LinkCard title="Vision 🔮" href="../../docs/vision" />
 
 `code2prompt` est un outil puissant d'ingestion de code conçu pour générer des invites pour l'analyse de code, la génération et d'autres tâches. Il fonctionne en parcourant les répertoires, en construisant une structure d'arbre et en collectant des informations sur chaque fichier.
 
-Il simplifie le processus de combinaison et de mise en forme du code, facilitant l'analyse, la documentation ou la refactorisation du code à l'aide de LLMs.
+Il simplifie le processus de combinaison et de formatage du code, facilitant l'analyse, la documentation ou la refactorisation du code à l'aide de LLMs.
 
 Vous pouvez utiliser `code2prompt` de les manières suivantes :
 
 <CardGrid>
   <Card title="Coeur" icon="seti:rust">
-    Bibliothèque principale extrêmement rapide pour l'ingestion de code
+    Bibliothèque centrale extrêmement rapide pour l'ingestion de code
   </Card>
   <Card title="CLI" icon="seti:powershell">
     Interface de ligne de commande spécialement conçue pour les humains
   </Card>
   <Card title="SDK" icon="seti:python">
-    Kit de développement logiciel pour les agents d'IA et les scripts d'automatisation
+    Kit de développement logiciel pour les agents d'IA et les scripts
+    d'automatisation
   </Card>
   <Card title="MCP" icon="seti:folder">
     Serveur de protocole de contexte de modèle pour LLMs sur steroids
   </Card>
 </CardGrid>
----
 
 ## Fonctionnalités clés
 
 - **Générer des invites LLM** : Convertissez rapidement des bases de code entières en invites structurées LLM.
 - **Filtrage par modèle Glob** : Incluez ou excluez des fichiers et des répertoires spécifiques à l'aide de modèles Glob.
 - **Modèles personnalisables** : Adaptez la génération d'invites avec des modèles Handlebars.
-- **Comptage de jetons** : Analysez l'utilisation des jetons et optimisez pour les LLMs avec des fenêtres de contexte variables.
-- **Intégration Git** : Incluez les différences Git et les messages de commit dans les invites pour les révisions de code.
-- **Respecte `.gitignore`** : Ignore automatiquement les fichiers répertoriés dans `.gitignore` pour simplifier la génération d'invites.
-
----
+- **Comptage des jetons** : Analysez l'utilisation des jetons et optimisez pour les LLMs avec des fenêtres de contexte variables.
+- **Intégration Git** : Incluez les différences Git et les messages de commit dans les invites pour les revues de code.
+- **Respecte `.gitignore`** : Ignore automatiquement les fichiers répertoriés dans `.gitignore` pour rationaliser la génération d'invites.
 
 ## Pourquoi `code2prompt` ?
 
-1. **Gagnez du temps** :
+1. **Gagner du temps** :
 
-   - Automatisez le processus de parcours d'une base de code et de mise en forme des fichiers pour les LLMs.
-   - Évitez la copie et le collage répétitifs de code.
+   - Automatise le processus de parcours d'une base de code et de formatage des fichiers pour les LLMs.
+   - Évite la copie et le collage répétitifs de code.
 
-2. **Améliorez la productivité** :
+2. **Améliorer la productivité** :
 
    - Fournit un format structuré et cohérent pour l'analyse de code.
    - Aide à identifier les bogues, à refactoriser le code et à écrire la documentation plus rapidement.
 
-3. **Gérez de grandes bases de code** :
+3. **Gérer de grandes bases de code** :
 
    - Conçu pour fonctionner de manière transparente avec de grandes bases de code, en respectant les limites de contexte des LLMs.
 
 4. **Workflows personnalisables** :
    - Options flexibles pour filtrer les fichiers, utiliser des modèles et générer des invites ciblées.
 
----
-
-## Exemples d'utilisation
+## Exemples de cas d'utilisation
 
 - **Documentation de code** :
   Générez automatiquement de la documentation pour les fonctions publiques, les méthodes et les classes.
@@ -92,5 +94,7 @@ Vous pouvez utiliser `code2prompt` de les manières suivantes :
 - **Apprentissage et exploration** :
   Comprenez de nouvelles bases de code en générant des résumés et des ventilations détaillées.
 
-- **Descriptions de commit et de PR Git** :
-  Générez des messages de commit et des descriptions de demandes de tirage significatifs à partir des différences Git.
+- **Descriptions de commit Git et de PR** :
+  Générez des messages de commit significatifs et des descriptions de demandes de tirage à partir des différences Git.
+
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

@@ -5,11 +5,13 @@ description: Découvrez comment exclure ou inclure des fichiers dans vos invites
 
 import { Card } from "@astrojs/starlight/components";
 
-<Card title="Aperçu du tutoriel">
-  Ce tutoriel démontre comment utiliser l'outil de modèle de glob dans l'interface de ligne de commande `code2prompt` pour filtrer et gérer des fichiers en fonction de modèles d'inclusion et d'exclusion.
+<Card title="Présentation du tutoriel">
+  Ce tutoriel démontre comment utiliser l'outil de modèle de glob dans
+  l'interface de ligne de commande `code2prompt` pour filtrer et gérer des
+  fichiers en fonction de modèles d'inclusion et d'exclusion.
 </Card>
 
-Les modèles de glob fonctionnent de manière similaire à des outils tels que `tree` ou `grep`, offrant des capacités de filtrage puissantes. Consultez l'[explication détaillée](/docs/explanations/glob_patterns) pour plus d'informations.
+Les modèles de glob fonctionnent de manière similaire à des outils comme `tree` ou `grep`, offrant des capacités de filtrage puissantes. Consultez l'[explication détaillée](/docs/explanations/glob_patterns) pour plus d'informations.
 
 ---
 
@@ -29,7 +31,7 @@ Les modèles de glob vous permettent de spécifier des règles pour filtrer des 
 
 ---
 
-## Configurer l'environnement
+## Configuration de l'environnement
 
 Pour pratiquer avec les modèles de glob, créons une structure de dossier échantillon avec quelques fichiers.
 
@@ -72,23 +74,9 @@ Cela créera la structure de répertoire suivante :
 import { FileTree } from "@astrojs/starlight/components";
 
 <FileTree>
-  - test_dir 
-    - lowercase 
-      - foo.py 
-      - bar.py 
-      - baz.py 
-      - qux.txt 
-      - corge.txt 
-      - grault.txt 
-    - uppercase 
-      - FOO.PY 
-      - BAR.PY 
-      - BAZ.PY 
-      - QUX.txt 
-      - CORGE.txt 
-      - GRAULT.txt 
-    - .secret 
-      - secret.txt
+  - test_dir - lowercase - foo.py - bar.py - baz.py - qux.txt - corge.txt -
+  grault.txt - uppercase - FOO.PY - BAR.PY - BAZ.PY - QUX.txt - CORGE.txt -
+  GRAULT.txt - .secret - secret.txt
 </FileTree>
 
 ---
@@ -187,6 +175,4 @@ L'outil de modèle de glob dans `code2prompt` vous permet de filtrer efficacemen
 
 Pour pratiquer, configurez le répertoire échantillon, essayez les commandes et voyez comment l'outil filtre les fichiers de manière dynamique.
 
-Note: I made adjustments to relative paths by adding one "../" level when they start with "../" but there were no such paths in the given content. 
-
-Also, I have kept code blocks, commands, and variable names unchanged as per your requirements. The translation aims to flow naturally in French with proper grammar and style while preserving technical concepts and using the appropriate terminology in French.
+> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.

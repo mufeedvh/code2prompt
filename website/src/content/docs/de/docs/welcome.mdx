@@ -1,0 +1,104 @@
+---
+title: Code2Prompt-Dokumentation
+description: Offizielle Code2prompt-Dokumentation
+template: splash
+hero:
+  tagline: Verwandeln Sie Ihren Code in Sekunden in KI-optimierte Prompts
+  image:
+    file: ../../../../assets/logo_dark_v0.0.1.svg
+  actions:
+    - text: Loslegen 🚀
+      link: /docs/tutorials/getting_started
+    - text: Installation 📥
+      link: /docs/how_to/install
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+import { LinkCard } from "@astrojs/starlight/components";
+
+## Schnellstart
+
+<LinkCard title="Loslegen 🚀" href="../../docs/tutorials/getting_started" />
+<LinkCard title="Installation 📥" href="../../docs/how_to/install" />
+<LinkCard title="Filtern lernen 🔍" href="../../docs/tutorials/learn_filters" />
+<LinkCard
+  title="Vorlagen lernen 📝"
+  href="../../docs/tutorials/learn_templates"
+/>
+<LinkCard title="Vision 🔮" href="../../docs/vision" />
+
+`code2prompt` ist ein leistungsstarkes Code-Ingestion-Tool, das entwickelt wurde, um Prompts für Code-Analyse, -Generierung und andere Aufgaben zu erstellen. Es funktioniert, indem es Verzeichnisse durchläuft, eine Baumstruktur aufbaut und Informationen über jede Datei sammelt.
+
+Es vereinfacht den Prozess der Kombination und Formatierung von Code, wodurch es leicht wird, Code mit LLMs zu analysieren, zu dokumentieren oder zu refactoren.
+
+Sie können `code2prompt` auf folgende Weise verwenden:
+
+<CardGrid>
+  <Card title="Core" icon="seti:rust">
+    Core-Bibliothek blitzschnell für Code-Ingestion
+  </Card>
+  <Card title="CLI" icon="seti:powershell">
+    Kommandozeilen-Interface speziell für Menschen entwickelt
+  </Card>
+  <Card title="SDK" icon="seti:python">
+    Software Development Kit für KI-Agenten und Automatisierungsskripte
+  </Card>
+  <Card title="MCP" icon="seti:folder">
+    Model Context Protocol-Server für LLMs auf Steroiden
+  </Card>
+</CardGrid>
+---
+
+## Hauptfunktionen
+
+- **LLM-Prompts generieren**: Schnell vollständige Codebasen in strukturierte LLM-Prompts umwandeln.
+- **Glob-Muster-Filterung**: Bestimmte Dateien und Verzeichnisse mithilfe von Glob-Mustern ein- oder ausschließen.
+- **Benutzerdefinierte Vorlagen**: Prompt-Generierung mit Handlebars-Vorlagen anpassen.
+- **Token-Zählung**: Token-Verwendung analysieren und für LLMs mit variierenden Kontextfenstern optimieren.
+- **Git-Integration**: Git-Diffs und Commit-Nachrichten in Prompts für Code-Reviews einschließen.
+- **Respektiert `.gitignore`**: Dateien, die in `.gitignore` aufgeführt sind, automatisch ignorieren, um die Prompt-Generierung zu optimieren.
+
+---
+
+## Warum `code2prompt`?
+
+1. **Zeit sparen**:
+
+   - Automatisiert den Prozess der Durchquerung einer Codebasis und der Formatierung von Dateien für LLMs.
+   - Vermeidet wiederholtes Kopieren und Einfügen von Code.
+
+2. **Produktivität steigern**:
+
+   - Bietet ein strukturiertes und konsistentes Format für Code-Analyse.
+   - Hilft dabei, Bugs zu identifizieren, Code zu refactoren und Dokumentation schneller zu schreiben.
+
+3. **Große Codebasen verarbeiten**:
+
+   - Entwickelt, um nahtlos mit großen Codebasen zu arbeiten, unter Berücksichtigung der Kontextlimits von LLMs.
+
+4. **Benutzerdefinierte Workflows**:
+   - Flexible Optionen für die Filterung von Dateien, die Verwendung von Vorlagen und die Generierung gezielter Prompts.
+
+---
+
+## Beispielanwendungsfälle
+
+- **Code-Dokumentation**:
+  Automatisch Dokumentation für öffentliche Funktionen, Methoden und Klassen generieren.
+
+- **Bug-Erkennung**:
+  Potenzielle Bugs und Schwachstellen durch Analyse der Codebasis mit LLMs finden.
+
+- **Refactoring**:
+  Code vereinfachen und optimieren, indem Prompts für Code-Qualitätsverbesserungen generiert werden.
+
+- **Lernen und Erkunden**:
+  Neue Codebasen verstehen, indem Zusammenfassungen und detaillierte Aufschlüsselungen generiert werden.
+
+- **Git-Commit- und PR-Beschreibungen**:
+  Sinnvolle Commit-Nachrichten und Pull-Request-Beschreibungen aus Git-Diffs generieren.
+
+```
+
+> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.
+```
