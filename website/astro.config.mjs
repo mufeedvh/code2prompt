@@ -14,6 +14,14 @@ import { passthroughImageService } from "astro/config";
 // https://astro.build/config
 export default defineConfig({
   site: "https://code2prompt.dev",
+  redirects: {
+    "/fr": "/",
+    "/de": "/",
+    "/es": "/",
+    "/zh": "/",
+    "/ja": "/",
+    "/ru": "/",
+  },
   integrations: [
     starlight({
       title: "Code2prompt",
