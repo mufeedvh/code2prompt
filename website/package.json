@@ -22,7 +22,7 @@
     "@tailwindcss/vite": "^4.1.4",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.1",
-    "astro": "^5.7.3",
+    "astro": "^5.7.4",
     "marked": "^15.0.8",
     "rehype-mathjax": "^7.1.0",
     "remark-math": "^6.0.0",

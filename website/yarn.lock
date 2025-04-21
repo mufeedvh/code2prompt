@@ -1443,10 +1443,10 @@ astro-remote@^0.3.3:
     marked-smartypants "^1.1.6"
     ultrahtml "^1.5.3"
 
-astro@^5.7.3:
-  version "5.7.3"
-  resolved "https://registry.yarnpkg.com/astro/-/astro-5.7.3.tgz#49f1684f10a794e13cb51ad101ae56a77803ae5f"
-  integrity sha512-2b/OOS/A6GO4QP94x6oRzwTfXabFqE2rlUbbi42o6wZm9+zzcOc6VRFAq4lTOEI/iCrEVl3wTdBAC5X3h3Es+Q==
+astro@^5.7.4:
+  version "5.7.4"
+  resolved "https://registry.yarnpkg.com/astro/-/astro-5.7.4.tgz#1888e4643342ae632043d6b2585f06add2f285cb"
+  integrity sha512-h+pndGOyoYbsBd0YvP7bL3gotUSlyltp8OLpcYg062w0n5c96wJ9xt/RmwwXzGbdcUjWFtw0c5z4zCA92NDmlA==
   dependencies:
     "@astrojs/compiler" "^2.11.0"
     "@astrojs/internal-helpers" "0.6.1"
