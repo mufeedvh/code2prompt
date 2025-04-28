@@ -4157,10 +4157,10 @@ speech-rule-engine@^4.0.6:
     commander "13.1.0"
     wicked-good-xpath "1.3.0"
 
-starlight-blog@^0.20.0:
-  version "0.20.0"
-  resolved "https://registry.yarnpkg.com/starlight-blog/-/starlight-blog-0.20.0.tgz#59da0eccbd93179b1ebc57bfc62985f3c937a5bd"
-  integrity sha512-+bhu1RBNsV9UQGieJRPKgV6rol5Jg92yuCRaMAevrprHZDejTGYm+2/MzV/guQM4/0QbYMfF50FdheiIZwbT4g==
+starlight-blog@^0.21.0:
+  version "0.21.0"
+  resolved "https://registry.yarnpkg.com/starlight-blog/-/starlight-blog-0.21.0.tgz#7288f3411d9d51ad44baf87ad66feaa30b003ff4"
+  integrity sha512-ZA6y+LTbEr2aH8IOsQ3yIFRcqDNEDJjFG/OVTYbWgDuWuO3DWPGYjovsG4oSarbpxkP1k5OLPtL8Zmhy6DxiNQ==
   dependencies:
     "@astrojs/mdx" "^4.0.8"
     "@astrojs/rss" "^4.0.11"
