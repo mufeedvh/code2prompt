@@ -29,10 +29,10 @@
   resolved "https://registry.yarnpkg.com/@astrojs/internal-helpers/-/internal-helpers-0.6.1.tgz#87d0f5dbe4bdc2b61c6409672b921bca193abad6"
   integrity sha512-l5Pqf6uZu31aG+3Lv8nl/3s4DbUzdlxTWDof4pEpto6GUJNhhCbelVi9dEyurOVyqaelwmS9oSyOWOENSfgo9A==
 
-"@astrojs/markdoc@^0.14.0":
-  version "0.14.0"
-  resolved "https://registry.yarnpkg.com/@astrojs/markdoc/-/markdoc-0.14.0.tgz#266bb33720dd33da9e96b9e5014ba4a15b97e68d"
-  integrity sha512-F4paXYbVz3rehRp7fhM3/MKpfyPVLgtPSvbLdN7vVyxjHwtCzo/AM3c8fg7l5Pcn9F009T/X0MC/PH/BJTqnSw==
+"@astrojs/markdoc@^0.14.2":
+  version "0.14.2"
+  resolved "https://registry.yarnpkg.com/@astrojs/markdoc/-/markdoc-0.14.2.tgz#9c793bc93ce3296456e7a20f13a3af2ed27843e5"
+  integrity sha512-GTW8V+8TKjplokvB4wYkjBLQmrJsqPQqTUfbb9d8falubUlWNdm6z0u9fxs1enqVVLezMeWIFbXYnMdMbtK4mA==
   dependencies:
     "@astrojs/internal-helpers" "0.6.1"
     "@astrojs/markdown-remark" "6.3.1"
