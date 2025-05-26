@@ -176,13 +176,13 @@
     is-wsl "^3.1.0"
     which-pm-runs "^1.1.0"
 
-"@astrojs/upgrade@^0.5.1":
-  version "0.5.1"
-  resolved "https://registry.yarnpkg.com/@astrojs/upgrade/-/upgrade-0.5.1.tgz#d6cf37d4f0d8f7a854aaaa20e45f52eff078afc3"
-  integrity sha512-jtp6547szK+XFAq3vYqf1s1xQN+9TxAu3uQID4+rdmevAefCQ4ZH/RSeG+tNIAweC/Ln2eZrSU4CDUzHBTxn+Q==
+"@astrojs/upgrade@^0.6.0":
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/@astrojs/upgrade/-/upgrade-0.6.0.tgz#8c279ed3d89d0177b76cbc827db7f092a4f82057"
+  integrity sha512-CNhupQN1uHqqxGqbtGQ6gSOux1LMKgy0IEHcTZtkRt2bUce35rMIEBQnQtt3vHISX/0i858TbbOOv0yp8WLpfw==
   dependencies:
     "@astrojs/cli-kit" "^0.4.1"
-    package-manager-detector "^1.0.0"
+    package-manager-detector "^1.1.0"
     semver "^7.7.1"
     terminal-link "^3.0.0"
 
@@ -3516,7 +3516,7 @@ p-timeout@^6.1.2:
   resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-6.1.4.tgz#418e1f4dd833fa96a2e3f532547dd2abdb08dbc2"
   integrity sha512-MyIV3ZA/PmyBN/ud8vV9XzwTrNtR4jFrObymZYnZqMmW0zA8Z17vnT0rBgFE/TlohB+YCHqXMgZzb3Csp49vqg==
 
-package-manager-detector@^1.0.0, package-manager-detector@^1.1.0:
+package-manager-detector@^1.1.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/package-manager-detector/-/package-manager-detector-1.2.0.tgz#e78d886b843c6fa4eacfb3a5739d1ef09980cd65"
   integrity sha512-PutJepsOtsqVfUsxCzgTTpyXmiAgvKptIgY4th5eq5UXXFhj5PxfQ9hnGkypMeovpAvVshFRItoFHYO18TCOqA==
