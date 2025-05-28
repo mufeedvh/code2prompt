@@ -3,6 +3,7 @@
 //! Authors: Mufeed VH (@mufeedvh), Olivier D'Ancona (@ODAncona)
 mod args;
 mod clipboard;
+mod token_map;
 
 use anyhow::{Context, Result};
 use args::Cli;
@@ -198,6 +199,16 @@ fn main() -> Result<()> {
         formatted_token_count,
         model_info
     );
+
+    // ~~~ Token Map Display ~~~
+    if args.token_map {
+        use crate::token_map::{generate_token_map, display_token_map};
+        
+        if let Some(files) = session.data.files.as_ref().and_then(|f| f.as_array()) {
+            let entries = generate_token_map(files, token_count);
+            display_token_map(&entries, token_count);
+        }
+    }
 
     // ~~~ Copy to Clipboard ~~~
     if !args.no_clipboard {

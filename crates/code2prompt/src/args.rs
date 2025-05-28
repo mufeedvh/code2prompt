@@ -98,6 +98,10 @@ pub struct Cli {
     #[clap(long)]
     pub sort: Option<String>,
 
+    /// Display a visual token map of files (similar to disk usage tools)
+    #[clap(long)]
+    pub token_map: bool,
+
     #[arg(long, hide = true)]
     pub clipboard_daemon: bool,
 }

@@ -2,6 +2,7 @@
 use crate::configuration::Code2PromptConfig;
 use crate::filter::{build_globset, should_include_file};
 use crate::sort::{sort_files, sort_tree, FileSortMethod};
+use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
 use anyhow::Result;
 use ignore::WalkBuilder;
@@ -104,6 +105,10 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                             json!(path.extension().and_then(|ext| ext.to_str()).unwrap_or("")),
                         );
                         file_entry.insert("code".to_string(), json!(code_block));
+
+                        // Add token count for the file
+                        let token_count = count_tokens(&code_block, &config.encoding);
+                        file_entry.insert("token_count".to_string(), json!(token_count));
 
                         // If date sorting is requested, record the file modification time.
                         if let Some(method) = config.sort_method {
