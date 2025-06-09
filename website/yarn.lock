@@ -2934,7 +2934,7 @@ mdast-util-math@^3.0.0:
     mdast-util-to-markdown "^2.1.0"
     unist-util-remove-position "^5.0.0"
 
-mdast-util-mdx-expression@^2.0.0:
+mdast-util-mdx-expression@^2.0.0, mdast-util-mdx-expression@^2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/mdast-util-mdx-expression/-/mdast-util-mdx-expression-2.0.1.tgz#43f0abac9adc756e2086f63822a38c8d3c3a5096"
   integrity sha512-J6f+9hUp+ldTZqKRSg7Vw5V6MqjATc+3E4gf3CFNcuZNWD8XdyI6zQ8GqH7f8169MM6P7hMBRDVGnn7oHB9kXQ==
@@ -4208,18 +4208,21 @@ speech-rule-engine@^4.0.6:
     commander "13.1.0"
     wicked-good-xpath "1.3.0"
 
-starlight-blog@^0.20.0:
-  version "0.20.0"
-  resolved "https://registry.yarnpkg.com/starlight-blog/-/starlight-blog-0.20.0.tgz#59da0eccbd93179b1ebc57bfc62985f3c937a5bd"
-  integrity sha512-+bhu1RBNsV9UQGieJRPKgV6rol5Jg92yuCRaMAevrprHZDejTGYm+2/MzV/guQM4/0QbYMfF50FdheiIZwbT4g==
+starlight-blog@^0.24.0:
+  version "0.24.0"
+  resolved "https://registry.yarnpkg.com/starlight-blog/-/starlight-blog-0.24.0.tgz#96be49a5858f842208bb77cab7373359e6a7bafa"
+  integrity sha512-judPLTD+hyeKyiX//0x6adcOs4QR3EqmNxzFJNP+2sauUDA/ux1CS+wNzwMkHAadxdCir13rj9YsA3l8X0h9fQ==
   dependencies:
+    "@astrojs/markdown-remark" "^6.3.1"
     "@astrojs/mdx" "^4.0.8"
     "@astrojs/rss" "^4.0.11"
     astro-remote "^0.3.3"
     github-slugger "^2.0.0"
     marked "^15.0.4"
     marked-plaintify "^1.1.1"
-    ultrahtml "^1.5.3"
+    mdast-util-mdx-expression "^2.0.1"
+    ultrahtml "^1.6.0"
+    unist-util-visit "^5.0.0"
 
 stream-replace-string@^2.0.0:
   version "2.0.0"
