@@ -1,199 +1,510 @@
 use colored::*;
-use num_format::{SystemLocale, ToFormattedString};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BinaryHeap, HashMap};
+use std::cmp::Ordering;
+use std::path::Path;
+use unicode_width::UnicodeWidthStr;
 
-#[derive(Debug)]
-pub struct TokenMapEntry {
-    pub path: String,
-    pub tokens: usize,
-    pub percentage: f64,
-    pub is_directory: bool,
-    pub depth: usize,
+// Unicode block characters for shading - from full to empty (dust-style)
+static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
+
+#[derive(Debug, Clone)]
+struct TreeNode {
+    tokens: usize,
+    children: BTreeMap<String, TreeNode>,
+    is_file: bool,
+    path: String,
 }
 
-pub fn generate_token_map(files: &[serde_json::Value], total_tokens: usize) -> Vec<TokenMapEntry> {
-    let mut entries = Vec::new();
-    let mut dir_tokens: HashMap<String, usize> = HashMap::new();
+impl TreeNode {
+    fn with_path(path: String) -> Self {
+        TreeNode {
+            tokens: 0,
+            children: BTreeMap::new(),
+            is_file: false,
+            path,
+        }
+    }
+}
+
+// For priority queue ordering
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct NodePriority {
+    tokens: usize,
+    path: String,
+    depth: usize,
+}
+
+impl Ord for NodePriority {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Order by tokens (descending), then by depth (ascending), then by path
+        self.tokens.cmp(&other.tokens)
+            .then_with(|| other.depth.cmp(&self.depth))
+            .then_with(|| self.path.cmp(&other.path))
+    }
+}
+
+impl PartialOrd for NodePriority {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+pub fn generate_token_map_with_limit(
+    files: &[serde_json::Value], 
+    total_tokens: usize, 
+    max_lines: Option<usize>, 
+    min_percent: Option<f64>
+) -> Vec<TokenMapEntry> {
+    // Default values
+    let max_lines = max_lines.unwrap_or(20);
+    let min_percent = min_percent.unwrap_or(0.1);
+    // Build tree structure
+    let mut root = TreeNode::with_path(String::new());
+    root.tokens = total_tokens;
     
-    // Collect token counts per file
+    // Insert all files into the tree
     for file in files {
-        if let (Some(path), Some(tokens)) = (
+        if let (Some(path_str), Some(tokens)) = (
             file.get("path").and_then(|p| p.as_str()),
             file.get("token_count").and_then(|t| t.as_u64()),
         ) {
             let tokens = tokens as usize;
-            let percentage = (tokens as f64 / total_tokens as f64) * 100.0;
-            let depth = path.matches('/').count();
+            let path = Path::new(path_str);
             
-            entries.push(TokenMapEntry {
-                path: path.to_string(),
-                tokens,
-                percentage,
-                is_directory: false,
-                depth,
-            });
+            // Skip the root component if it exists
+            let components: Vec<_> = path.components()
+                .filter_map(|c| c.as_os_str().to_str())
+                .collect();
             
-            // Aggregate by parent directories
-            let path_parts: Vec<&str> = path.split('/').collect();
-            for i in 1..path_parts.len() {
-                let dir_path = path_parts[..i].join("/");
-                *dir_tokens.entry(dir_path).or_insert(0) += tokens;
-            }
+            insert_path(&mut root, &components, tokens, String::new());
         }
     }
     
-    // Add directory entries
-    for (dir_path, tokens) in dir_tokens {
-        let percentage = (tokens as f64 / total_tokens as f64) * 100.0;
-        let depth = dir_path.matches('/').count();
+    // Use priority queue to select most significant entries
+    let allowed_nodes = select_nodes_to_display(&root, total_tokens, max_lines, min_percent);
+    
+    // Convert tree to sorted entries for display
+    let mut entries = Vec::new();
+    rebuild_filtered_tree(&root, String::new(), &allowed_nodes, &mut entries, 0, total_tokens, true);
+    
+    // Add summary for hidden files if needed
+    let displayed_tokens: usize = entries.iter().map(|e| {
+        if e.is_file {
+            e.tokens
+        } else {
+            // For directories, only count their direct file children to avoid double counting
+            0
+        }
+    }).sum();
+    
+    let hidden_tokens = calculate_file_tokens(&root) - displayed_tokens;
+    if hidden_tokens > 0 {
         entries.push(TokenMapEntry {
-            path: dir_path,
-            tokens,
-            percentage,
-            is_directory: true,
-            depth,
+            path: "(other files)".to_string(),
+            name: "(other files)".to_string(),
+            tokens: hidden_tokens,
+            percentage: (hidden_tokens as f64 / total_tokens as f64) * 100.0,
+            is_file: false,
+            depth: 0,
+            is_last: true,
+            parent_percentage: 0.0,
         });
     }
-    
-    // Sort by token count descending
-    entries.sort_by(|a, b| b.tokens.cmp(&a.tokens));
     
     entries
 }
 
-pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
-    let locale = SystemLocale::default().unwrap();
-    let terminal_width = 120; // Conservative terminal width
+fn calculate_file_tokens(node: &TreeNode) -> usize {
+    if node.is_file {
+        node.tokens
+    } else {
+        node.children.values().map(calculate_file_tokens).sum()
+    }
+}
+
+fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_path: String) {
+    if components.is_empty() {
+        return;
+    }
     
-    println!("\n{}", "╔═ Token Distribution Map ═╗".bold().cyan());
-    println!("{}", "═".repeat(terminal_width).cyan());
+    if components.len() == 1 {
+        // This is a file
+        let file_name = components[0].to_string();
+        let file_path = if parent_path.is_empty() {
+            file_name.clone()
+        } else {
+            format!("{}/{}", parent_path, file_name)
+        };
+        let child = node.children.entry(file_name).or_insert_with(|| TreeNode::with_path(file_path));
+        child.tokens = tokens;
+        child.is_file = true;
+    } else {
+        // This is a directory
+        let dir_name = components[0].to_string();
+        let dir_path = if parent_path.is_empty() {
+            dir_name.clone()
+        } else {
+            format!("{}/{}", parent_path, dir_name)
+        };
+        let child = node.children.entry(dir_name).or_insert_with(|| TreeNode::with_path(dir_path.clone()));
+        child.tokens += tokens;
+        insert_path(child, &components[1..], tokens, dir_path);
+    }
+}
+
+#[derive(Debug)]
+pub struct TokenMapEntry {
+    pub path: String,
+    pub name: String,
+    pub tokens: usize,
+    pub percentage: f64,
+    pub is_file: bool,
+    pub depth: usize,
+    pub is_last: bool,
+    pub parent_percentage: f64,  // Percentage that parent directories contribute
+}
+
+/// Select nodes to display using priority queue
+fn select_nodes_to_display(
+    root: &TreeNode,
+    total_tokens: usize,
+    max_lines: usize,
+    min_percent: f64,
+) -> HashMap<String, usize> {
+    let mut heap = BinaryHeap::new();
+    let mut allowed_nodes = HashMap::new();
+    let min_tokens = (total_tokens as f64 * min_percent / 100.0) as usize;
     
-    // Display total tokens
-    println!(
-        "\n{}: {} tokens\n",
-        "Total".bold().white(),
-        total_tokens.to_formatted_string(&locale).green().bold()
-    );
+    // Start with root children
+    for child in root.children.values() {
+        if child.tokens >= min_tokens {
+            heap.push(NodePriority {
+                tokens: child.tokens,
+                path: child.path.clone(),
+                depth: 0,
+            });
+        }
+    }
     
-    // Group entries by depth for better visualization
-    let mut displayed_paths = std::collections::HashSet::new();
-    let mut display_entries = Vec::new();
-    
-    // First, add top-level directories and significant files
-    for entry in entries.iter() {
-        if entry.percentage >= 0.5 || (entry.is_directory && entry.depth <= 2) {
-            display_entries.push(entry);
-            displayed_paths.insert(&entry.path);
+    // Process nodes by priority
+    while allowed_nodes.len() < max_lines.saturating_sub(1) && !heap.is_empty() {
+        if let Some(node_priority) = heap.pop() {
+            allowed_nodes.insert(node_priority.path.clone(), node_priority.depth);
             
-            if display_entries.len() >= 40 {
-                break;
+            // Find the node in the tree and add its children
+            if let Some(node) = find_node_by_path(root, &node_priority.path) {
+                for child in node.children.values() {
+                    if child.tokens >= min_tokens && !allowed_nodes.contains_key(&child.path) {
+                        heap.push(NodePriority {
+                            tokens: child.tokens,
+                            path: child.path.clone(),
+                            depth: node_priority.depth + 1,
+                        });
+                    }
+                }
             }
         }
     }
     
-    // Sort display entries by path for hierarchical display
-    display_entries.sort_by(|a, b| a.path.cmp(&b.path));
-    
-    // Calculate maximum path length for display
-    let max_path_len = display_entries
-        .iter()
-        .map(|e| e.path.len() + e.depth * 2) // Account for indentation
-        .max()
-        .unwrap_or(20)
-        .min(70);
-    
-    // Calculate bar width
-    let bar_width = terminal_width.saturating_sub(max_path_len + 30); // Reserve space for formatting
-    
-    for entry in display_entries {
-        // Create indentation based on depth
-        let indent = "  ".repeat(entry.depth);
-        let path_parts: Vec<&str> = entry.path.split('/').collect();
-        let display_name = path_parts.last().copied().unwrap_or(&entry.path);
-        
-        // Format the path with indentation
-        let indented_path = format!("{}{}", indent, display_name);
-        let truncated_path = if indented_path.len() > max_path_len {
-            format!("...{}", &indented_path[indented_path.len() - max_path_len + 3..])
-        } else {
-            indented_path
-        };
-        
-        // Calculate bar length (with minimum of 1 if percentage > 0)
-        let bar_length = if entry.percentage > 0.0 {
-            ((entry.percentage / 100.0) * bar_width as f64).max(1.0) as usize
-        } else {
-            0
-        };
-        
-        // Create gradient bar based on file size
-        let bar_char = if entry.percentage > 50.0 {
-            "█"
-        } else if entry.percentage > 25.0 {
-            "▓"
-        } else if entry.percentage > 10.0 {
-            "▒"
-        } else {
-            "░"
-        };
-        let bar = bar_char.repeat(bar_length);
-        
-        // Color based on percentage
-        let colored_bar = if entry.percentage > 30.0 {
-            bar.bright_red()
-        } else if entry.percentage > 15.0 {
-            bar.red()
-        } else if entry.percentage > 8.0 {
-            bar.yellow()
-        } else if entry.percentage > 4.0 {
-            bar.green()
-        } else if entry.percentage > 1.0 {
-            bar.cyan()
-        } else {
-            bar.blue()
-        };
-        
-        // Format tokens with locale
-        let formatted_tokens = if entry.tokens > 1_000_000 {
-            format!("{:.1}M", entry.tokens as f64 / 1_000_000.0)
-        } else if entry.tokens > 1_000 {
-            format!("{:.1}K", entry.tokens as f64 / 1_000.0)
-        } else {
-            entry.tokens.to_string()
-        };
-        
-        // Directory or file indicator
-        let path_display = if entry.is_directory {
-            format!("{}/", truncated_path).bold().white()
-        } else {
-            truncated_path.normal()
-        };
-        
-        // Size indicator
-        let size_indicator = if entry.percentage > 10.0 {
-            " ⚠".red()
-        } else if entry.percentage > 5.0 {
-            " ▲".yellow() 
-        } else {
-            "".normal()
-        };
-        
-        println!(
-            "{:<width$} │{:>8} {:>6.1}%{} │ {}",
-            path_display,
-            formatted_tokens,
-            entry.percentage,
-            size_indicator,
-            colored_bar,
-            width = max_path_len
-        );
+    allowed_nodes
+}
+
+/// Find a node by its path
+fn find_node_by_path<'a>(root: &'a TreeNode, path: &str) -> Option<&'a TreeNode> {
+    if path.is_empty() {
+        return Some(root);
     }
     
-    println!("\n{}", "═".repeat(terminal_width).cyan());
-    println!("{}", "Legend: ".bold());
-    println!("  {} Large files (>30%)", "█".bright_red());
-    println!("  {} Medium files (8-30%)", "▓".yellow());
-    println!("  {} Small files (<8%)", "░".cyan());
-    println!("  {} Warning - Large token count", "⚠".red());
-    println!("{}", "═".repeat(terminal_width).cyan());
+    let components: Vec<&str> = path.split('/').collect();
+    let mut current = root;
+    
+    for component in components {
+        match current.children.get(component) {
+            Some(child) => current = child,
+            None => return None,
+        }
+    }
+    
+    Some(current)
+}
+
+/// Rebuild tree with only allowed nodes
+fn rebuild_filtered_tree(
+    node: &TreeNode,
+    path: String,
+    allowed_nodes: &HashMap<String, usize>,
+    entries: &mut Vec<TokenMapEntry>,
+    depth: usize,
+    total_tokens: usize,
+    is_last: bool,
+) {
+    // Check if this node should be included
+    if !path.is_empty() && allowed_nodes.contains_key(&path) {
+        let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
+        let name = path.split('/').last().unwrap_or(&path).to_string();
+        
+        // Calculate parent percentage - this represents the cumulative percentage
+        // of all ancestor directories (not including this one)
+        let parent_percentage = if depth > 0 {
+            // Find parent directory path
+            let parent_path = if let Some(pos) = path.rfind('/') {
+                &path[..pos]
+            } else {
+                ""
+            };
+            
+            // Find parent in entries and get its cumulative percentage
+            entries.iter()
+                .find(|e| e.path == parent_path)
+                .map(|parent| {
+                    // Parent's cumulative = parent's own parent_percentage + parent's percentage
+                    parent.parent_percentage
+                })
+                .unwrap_or(0.0)
+        } else {
+            0.0
+        };
+        
+        entries.push(TokenMapEntry {
+            path: path.clone(),
+            name,
+            tokens: node.tokens,
+            percentage,
+            is_file: node.is_file,
+            depth,
+            is_last,
+            parent_percentage,
+        });
+    }
+    
+    // Process children that are in allowed_nodes
+    let mut filtered_children: Vec<_> = node.children.iter()
+        .filter(|(_, child)| allowed_nodes.contains_key(&child.path))
+        .collect();
+    
+    // Sort by tokens descending
+    filtered_children.sort_by(|a, b| b.1.tokens.cmp(&a.1.tokens));
+    
+    let child_count = filtered_children.len();
+    for (i, (name, child)) in filtered_children.into_iter().enumerate() {
+        let child_path = if path.is_empty() {
+            name.clone()
+        } else {
+            format!("{}/{}", path, name)
+        };
+        
+        let is_last_child = i == child_count - 1;
+        rebuild_filtered_tree(child, child_path, allowed_nodes, entries, depth + 1, total_tokens, is_last_child);
+    }
+}
+
+pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
+    if entries.is_empty() {
+        return;
+    }
+
+    // Terminal width detection (similar to dust)
+    let terminal_width = terminal_size::terminal_size()
+        .map(|(terminal_size::Width(w), _)| w as usize)
+        .unwrap_or(80);
+    
+    // Calculate max token width for alignment (dust uses right-aligned sizes)
+    let max_token_width = entries.iter()
+        .map(|e| format_tokens(e.tokens).len())
+        .max()
+        .unwrap_or(3)
+        .max(format_tokens(total_tokens).len())
+        .max(4);  // Minimum 4 chars for size column
+    
+    // Calculate max name length
+    let max_name_length = entries.iter()
+        .map(|e| {
+            let prefix_width = (e.depth + 1) * 2 + 3; // More accurate prefix calculation
+            prefix_width + UnicodeWidthStr::width(e.name.as_str())
+        })
+        .max()
+        .unwrap_or(20)
+        .min(terminal_width / 2); // Don't take more than half the terminal
+    
+    // Calculate bar width based on available space (dust uses much wider bars)
+    let bar_width = (terminal_width.saturating_sub(max_token_width + max_name_length + 15)).min(100).max(60);
+    
+    // Track parent bars for hierarchical shading
+    let mut parent_bars: Vec<String> = vec![String::new(); 10];
+    
+    for (i, entry) in entries.iter().enumerate() {
+        // Build prefix with proper tree characters and negative space (dust-style)
+        let mut prefix = String::new();
+        
+        // Add negative space padding for deep items (like dust does)
+        let negative_space_count = entry.depth * 2;
+        prefix.push_str(&" ".repeat(negative_space_count));
+        
+        // Add vertical lines for parent levels
+        for d in 0..entry.depth {
+            if d < entry.depth - 1 {
+                prefix.push_str("│ ");
+            } else {
+                // Current level - determine the right connector
+                if entry.is_last {
+                    prefix.push_str("└─");
+                } else {
+                    prefix.push_str("├─");
+                }
+            }
+        }
+        
+        // Special handling for root item
+        if entry.depth == 0 && i == 0 && entry.name != "(other files)" {
+            prefix = "┌─".to_string();
+        }
+        
+        // Determine if this has children
+        let has_children = entries.get(i + 1)
+            .map(|next| next.depth > entry.depth)
+            .unwrap_or(false);
+        
+        // Add the appropriate connector
+        if entry.depth > 0 || entry.name == "(other files)" {
+            if has_children {
+                prefix.push('┬');
+            } else {
+                prefix.push('─');
+            }
+        } else if i == 0 {
+            // Root item
+            prefix.push('┴');
+        }
+        
+        prefix.push(' ');
+        
+        // Format tokens with proper right alignment
+        let tokens_str = format_tokens(entry.tokens);
+        
+        // Build name display with color
+        let name_display = if entry.name == "(other files)" {
+            entry.name.normal().to_string()
+        } else if entry.is_file {
+            entry.name.normal().to_string()
+        } else {
+            entry.name.normal().to_string()
+        };
+        
+        // Generate hierarchical bar (dust-style)
+        let bar = generate_hierarchical_bar(entry, bar_width, entries);
+        
+        // Update parent bars for children
+        if has_children {
+            parent_bars[entry.depth] = bar.clone();
+        }
+        
+        // Format percentage
+        let percentage_str = format!("{:>4.0}%", entry.percentage);
+        
+        // Calculate padding for name to ensure alignment
+        let prefix_display_width = prefix.chars().count();
+        let name_padding = max_name_length.saturating_sub(
+            prefix_display_width + UnicodeWidthStr::width(entry.name.as_str())
+        );
+        
+        // Print the line with proper alignment
+        if entry.name == "(other files)" {
+            // Special formatting for "other files" - no tree prefix
+            println!(
+                "{:>width$} ┌── {}{} │{}│ {}",
+                tokens_str,
+                name_display,
+                " ".repeat(max_name_length.saturating_sub(3 + UnicodeWidthStr::width(entry.name.as_str()))),
+                bar,
+                percentage_str,
+                width = max_token_width
+            );
+        } else {
+            println!(
+                "{:>width$}   {}{}{} │{}│ {}",
+                tokens_str,
+                prefix,
+                name_display,
+                " ".repeat(name_padding),
+                bar,
+                percentage_str,
+                width = max_token_width
+            );
+        }
+    }
+}
+
+// Format token counts with K/M suffixes (dust-style)
+fn format_tokens(tokens: usize) -> String {
+    if tokens >= 1_000_000 {
+        format!("{:.0}M", tokens as f64 / 1_000_000.0)
+    } else if tokens >= 1_000 {
+        format!("{:.0}K", tokens as f64 / 1_000.0)
+    } else {
+        format!("{}", tokens)
+    }
+}
+
+// Generate bar with dust-style depth shading
+fn generate_hierarchical_bar(entry: &TokenMapEntry, bar_width: usize, _all_entries: &[TokenMapEntry]) -> String {
+    let filled_amount = ((entry.percentage / 100.0) * bar_width as f64).round() as usize;
+    let mut bar = String::new();
+    
+    // Dust's algorithm: use depth to determine shading level
+    // Deeper items get progressively lighter shading from left to right
+    for i in 0..bar_width {
+        if i < filled_amount {
+            // Calculate how far through the bar we are (0.0 to 1.0)
+            let progress = i as f64 / bar_width as f64;
+            
+            // Use depth and progress to determine shading
+            let shade_char = match entry.depth {
+                0 => '█',  // Root level - always solid
+                1 => '█',  // First level - solid
+                2 => {
+                    // Second level - transitions from solid to dark
+                    if progress < 0.3 { '█' } else { '▓' }
+                }
+                3 => {
+                    // Third level - multiple transitions
+                    if progress < 0.2 { '█' }
+                    else if progress < 0.5 { '▓' }
+                    else { '▒' }
+                }
+                4 => {
+                    // Fourth level - even more transitions
+                    if progress < 0.15 { '█' }
+                    else if progress < 0.35 { '▓' }
+                    else if progress < 0.65 { '▒' }
+                    else { '░' }
+                }
+                _ => {
+                    // Very deep levels - lots of transitions
+                    if progress < 0.1 { '█' }
+                    else if progress < 0.25 { '▓' }
+                    else if progress < 0.5 { '▒' }
+                    else { '░' }
+                }
+            };
+            bar.push(shade_char);
+        } else {
+            bar.push(' ');
+        }
+    }
+    
+    bar
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_format_tokens() {
+        assert_eq!(format_tokens(999), "999");
+        assert_eq!(format_tokens(1_000), "1K");
+        assert_eq!(format_tokens(1_500), "2K");
+        assert_eq!(format_tokens(1_000_000), "1M");
+        assert_eq!(format_tokens(2_500_000), "3M");
+    }
 }

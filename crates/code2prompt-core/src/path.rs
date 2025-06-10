@@ -106,9 +106,11 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                         );
                         file_entry.insert("code".to_string(), json!(code_block));
 
-                        // Add token count for the file
-                        let token_count = count_tokens(&code_block, &config.encoding);
-                        file_entry.insert("token_count".to_string(), json!(token_count));
+                        // Add token count for the file only if token map is enabled
+                        if config.token_map_enabled {
+                            let token_count = count_tokens(&code, &config.encoding);
+                            file_entry.insert("token_count".to_string(), json!(token_count));
+                        }
 
                         // If date sorting is requested, record the file modification time.
                         if let Some(method) = config.sort_method {

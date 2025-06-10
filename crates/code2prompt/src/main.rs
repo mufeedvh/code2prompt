@@ -117,7 +117,8 @@ fn main() -> Result<()> {
         .no_ignore(args.no_ignore)
         .hidden(args.hidden)
         .no_codeblock(args.no_codeblock)
-        .follow_symlinks(args.follow_symlinks);
+        .follow_symlinks(args.follow_symlinks)
+        .token_map_enabled(args.token_map);
 
     // ~~~ Code2Prompt ~~~
     let mut session = Code2PromptSession::new(configuration.build()?);
@@ -202,11 +203,35 @@ fn main() -> Result<()> {
 
     // ~~~ Token Map Display ~~~
     if args.token_map {
-        use crate::token_map::{generate_token_map, display_token_map};
+        use crate::token_map::{generate_token_map_with_limit, display_token_map};
         
         if let Some(files) = session.data.files.as_ref().and_then(|f| f.as_array()) {
-            let entries = generate_token_map(files, token_count);
-            display_token_map(&entries, token_count);
+            // Calculate total tokens from individual file counts
+            let total_from_files: usize = files.iter()
+                .filter_map(|f| f.get("token_count"))
+                .filter_map(|tc| tc.as_u64())
+                .map(|tc| tc as usize)
+                .sum();
+            
+            // Get max lines from command line or calculate from terminal height
+            let max_lines = args.token_map_lines.unwrap_or_else(|| {
+                terminal_size::terminal_size()
+                    .map(|(_, terminal_size::Height(h))| {
+                        let height = h as usize;
+                        // Ensure minimum of 10 lines, subtract 10 for other output
+                        if height > 20 { height - 10 } else { 10 }
+                    })
+                    .unwrap_or(20) // Default to 20 lines if terminal size detection fails
+            });
+            
+            // Use the sum of individual file tokens for the map with line limit
+            let entries = generate_token_map_with_limit(
+                files, 
+                total_from_files, 
+                Some(max_lines),
+                args.token_map_min_percent
+            );
+            display_token_map(&entries, total_from_files);
         }
     }
 
