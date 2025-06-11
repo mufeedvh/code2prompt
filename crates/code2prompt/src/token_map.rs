@@ -9,11 +9,7 @@ use unicode_width::UnicodeWidthStr;
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub struct EntryMetadata {
     pub is_dir: bool,
-    pub is_symlink: bool,
 }
-
-// Unicode block characters for shading - from full to empty (dust-style)
-static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 
 #[derive(Debug, Clone)]
 struct TreeNode {
@@ -117,8 +113,7 @@ pub fn generate_token_map_with_limit(
             percentage: (hidden_tokens as f64 / total_tokens as f64) * 100.0,
             depth: 0,
             is_last: true,
-            parent_percentage: 0.0,
-            metadata: EntryMetadata { is_dir: false, is_symlink: false },
+            metadata: EntryMetadata { is_dir: false },
         });
     }
     
@@ -159,7 +154,7 @@ fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_p
         };
         let child = node.children.entry(dir_name).or_insert_with(|| TreeNode::with_path(dir_path.clone()));
         child.tokens += tokens;
-        child.metadata = Some(EntryMetadata { is_dir: true, is_symlink: false });
+        child.metadata = Some(EntryMetadata { is_dir: true });
         insert_path(child, &components[1..], tokens, dir_path, file_metadata);
     }
 }
@@ -172,7 +167,6 @@ pub struct TokenMapEntry {
     pub percentage: f64,
     pub depth: usize,
     pub is_last: bool,
-    pub parent_percentage: f64,  // Percentage that parent directories contribute
     pub metadata: EntryMetadata,
 }
 
@@ -255,7 +249,7 @@ fn rebuild_filtered_tree(
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
         let name = path.split('/').last().unwrap_or(&path).to_string();
         
-        let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true, is_symlink: false });
+        let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true });
         
         entries.push(TokenMapEntry {
             path: path.clone(),
@@ -264,7 +258,6 @@ fn rebuild_filtered_tree(
             percentage,
             depth,
             is_last,
-            parent_percentage: 0.0,
             metadata,
         });
     }
@@ -426,7 +419,6 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         };
         
         let bar = generate_hierarchical_bar(
-            entry, 
             bar_width, 
             parent_bar,
             entry.percentage,
@@ -501,7 +493,6 @@ fn format_tokens(tokens: usize) -> String {
 
 // Generate bar with dust-style depth shading
 fn generate_hierarchical_bar(
-    entry: &TokenMapEntry, 
     bar_width: usize, 
     parent_bar: &str,
     percentage: f64,
