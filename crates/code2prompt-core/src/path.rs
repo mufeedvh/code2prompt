@@ -96,61 +96,67 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
             if path.is_file() && file_match {
                 if let Ok(metadata) = entry.metadata() {
                     if let Ok(code_bytes) = fs::read(path) {
-                    let clean_bytes = strip_utf8_bom(&code_bytes);
-                    let code = String::from_utf8_lossy(&clean_bytes);
+                        let clean_bytes = strip_utf8_bom(&code_bytes);
+                        let code = String::from_utf8_lossy(&clean_bytes);
 
-                    let code_block = wrap_code_block(
-                        &code,
-                        path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
-                        config.line_numbers,
-                        config.no_codeblock,
-                    );
-
-                    if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
-                        // ~~~ Filepath ~~~
-                        let file_path = if config.absolute_path {
-                            path.to_string_lossy().to_string()
-                        } else {
-                            relative_path.to_string_lossy().to_string()
-                        };
-
-                        // ~~~ File JSON Representation ~~~
-                        let mut file_entry = serde_json::Map::new();
-                        file_entry.insert("path".to_string(), json!(file_path));
-                        file_entry.insert(
-                            "extension".to_string(),
-                            json!(path.extension().and_then(|ext| ext.to_str()).unwrap_or("")),
+                        let code_block = wrap_code_block(
+                            &code,
+                            path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
+                            config.line_numbers,
+                            config.no_codeblock,
                         );
-                        file_entry.insert("code".to_string(), json!(code_block));
 
-                        // Store metadata
-                        let entry_meta = EntryMetadata::from(&metadata);
-                        file_entry.insert("metadata".to_string(), serde_json::to_value(entry_meta)?);
+                        if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
+                            // ~~~ Filepath ~~~
+                            let file_path = if config.absolute_path {
+                                path.to_string_lossy().to_string()
+                            } else {
+                                relative_path.to_string_lossy().to_string()
+                            };
 
-                        // Add token count for the file only if token map is enabled
-                        if config.token_map_enabled {
-                            let token_count = count_tokens(&code, &config.encoding);
-                            file_entry.insert("token_count".to_string(), json!(token_count));
-                        }
+                            // ~~~ File JSON Representation ~~~
+                            let mut file_entry = serde_json::Map::new();
+                            file_entry.insert("path".to_string(), json!(file_path));
+                            file_entry.insert(
+                                "extension".to_string(),
+                                json!(path.extension().and_then(|ext| ext.to_str()).unwrap_or("")),
+                            );
+                            file_entry.insert("code".to_string(), json!(code_block));
 
-                        // If date sorting is requested, record the file modification time.
-                        if let Some(method) = config.sort_method {
-                            if method == FileSortMethod::DateAsc
-                                || method == FileSortMethod::DateDesc
-                            {
-                                let mod_time = metadata.modified()
-                                    .ok()
-                                    .and_then(|mtime| mtime.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
-                                    .map(|d| d.as_secs())
-                                    .unwrap_or(0);
-                                file_entry.insert("mod_time".to_string(), json!(mod_time));
+                            // Store metadata
+                            let entry_meta = EntryMetadata::from(&metadata);
+                            file_entry
+                                .insert("metadata".to_string(), serde_json::to_value(entry_meta)?);
+
+                            // Add token count for the file only if token map is enabled
+                            if config.token_map_enabled {
+                                let token_count = count_tokens(&code, &config.encoding);
+                                file_entry.insert("token_count".to_string(), json!(token_count));
                             }
+
+                            // If date sorting is requested, record the file modification time.
+                            if let Some(method) = config.sort_method {
+                                if method == FileSortMethod::DateAsc
+                                    || method == FileSortMethod::DateDesc
+                                {
+                                    let mod_time = metadata
+                                        .modified()
+                                        .ok()
+                                        .and_then(|mtime| {
+                                            mtime
+                                                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                                                .ok()
+                                        })
+                                        .map(|d| d.as_secs())
+                                        .unwrap_or(0);
+                                    file_entry.insert("mod_time".to_string(), json!(mod_time));
+                                }
+                            }
+                            files.push(serde_json::Value::Object(file_entry));
+                            debug!(target: "included_files", "Included file: {}", file_path);
+                        } else {
+                            debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
                         }
-                        files.push(serde_json::Value::Object(file_entry));
-                        debug!(target: "included_files", "Included file: {}", file_path);
-                    } else {
-                        debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
-                    }
                     } else {
                         debug!("Failed to read file: {}", path.display());
                     }
