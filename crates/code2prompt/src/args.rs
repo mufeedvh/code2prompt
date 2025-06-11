@@ -98,6 +98,18 @@ pub struct Cli {
     #[clap(long)]
     pub sort: Option<String>,
 
+    /// Display a visual token map of files (similar to disk usage tools)
+    #[clap(long)]
+    pub token_map: bool,
+
+    /// Maximum number of lines to display in token map (default: terminal height - 10)
+    #[clap(long, value_name = "NUMBER")]
+    pub token_map_lines: Option<usize>,
+
+    /// Minimum percentage of tokens to display in token map (default: 0.1%)
+    #[clap(long, value_name = "PERCENT")]
+    pub token_map_min_percent: Option<f64>,
+
     #[arg(long, hide = true)]
     pub clipboard_daemon: bool,
 }

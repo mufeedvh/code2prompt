@@ -16,8 +16,13 @@ colored = { workspace = true }
 indicatif = { workspace = true }
 log = { workspace = true }
 num-format = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 inquire = { workspace = true }
+unicode-width = { workspace = true }
+terminal_size = { workspace = true }
+lscolors = { version = "0.20.0", features = ["ansi_term"] }
+ansi_term = "0.12.1"
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }
 

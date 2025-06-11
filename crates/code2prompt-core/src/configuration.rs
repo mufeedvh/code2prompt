@@ -101,6 +101,10 @@ pub struct Code2PromptConfig {
     /// Extra template data
     #[builder(default)]
     pub user_variables: HashMap<String, String>,
+
+    /// If true, token counting will be performed for each file (for token map display)
+    #[builder(default)]
+    pub token_map_enabled: bool,
 }
 
 impl Code2PromptConfig {
