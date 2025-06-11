@@ -1,4 +1,6 @@
-use colored::*;
+use lscolors::LsColors;
+use ansi_term::Style;
+use std::fs;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::cmp::Ordering;
 use std::path::Path;
@@ -276,10 +278,43 @@ fn rebuild_filtered_tree(
     }
 }
 
+fn should_enable_colors() -> bool {
+    // Check NO_COLOR environment variable (https://no-color.org/)
+    if std::env::var_os("NO_COLOR").is_some() {
+        return false;
+    }
+    
+    // Check if we're in a terminal
+    if terminal_size::terminal_size().is_none() {
+        return false;
+    }
+    
+    // On Windows, enable ANSI support
+    #[cfg(windows)]
+    {
+        match ansi_term::enable_ansi_support() {
+            Ok(_) => true,
+            Err(_) => {
+                eprintln!("This version of Windows does not support ANSI colors");
+                false
+            }
+        }
+    }
+    
+    #[cfg(not(windows))]
+    {
+        true
+    }
+}
+
 pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
     if entries.is_empty() {
         return;
     }
+
+    // Initialize LsColors from environment
+    let ls_colors = LsColors::from_env().unwrap_or_default();
+    let colors_enabled = should_enable_colors();
 
     // Terminal width detection
     let terminal_width = terminal_size::terminal_size()
@@ -304,7 +339,7 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         .unwrap_or(20)
         .min(terminal_width / 2);
 
-    // Calculate bar width with more reasonable spacing
+    // Calculate bar width
     let bar_width = terminal_width
         .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 5)
         .max(20);
@@ -313,37 +348,18 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
     let mut parent_bars: Vec<String> = vec![String::new(); 10];
     parent_bars[0] = "█".repeat(bar_width);
     
-    // Track which depths still have nodes coming (for vertical line continuation)
-    let mut has_more_at_depth = vec![false; 10];
-    
-    // Pre-calculate which depths have more nodes
-    for i in 0..entries.len() {
-        let entry = &entries[i];
-        // Check if there are more siblings at this depth
-        for j in (i + 1)..entries.len() {
-            if entries[j].depth < entry.depth {
-                break; // We've gone up the tree, no more siblings
-            }
-            if entries[j].depth == entry.depth {
-                has_more_at_depth[entry.depth] = true;
-                break;
-            }
-        }
-    }
-
     for (i, entry) in entries.iter().enumerate() {
         // Build tree prefix
         let mut prefix = String::new();
         
-        // For each level up to our depth, add the appropriate characters
+        // Add vertical lines for parent levels
         for d in 0..entry.depth {
             if d < entry.depth - 1 {
                 // Check if we need a vertical line at this depth
-                // We need one if there are more nodes at depth d+1 after this node
                 let mut needs_line = false;
                 for j in (i + 1)..entries.len() {
                     if entries[j].depth <= d {
-                        break; // Gone up past this level
+                        break;
                     }
                     if entries[j].depth == d + 1 {
                         needs_line = true;
@@ -356,7 +372,6 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
                     prefix.push_str("  ");
                 }
             } else {
-                // This is our immediate parent level
                 if entry.is_last {
                     prefix.push_str("└─");
                 } else {
@@ -391,7 +406,7 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         // Format tokens
         let tokens_str = format_tokens(entry.tokens);
 
-        // Generate hierarchical bar using parent's bar
+        // Generate hierarchical bar
         let parent_bar = if entry.depth > 0 {
             &parent_bars[entry.depth - 1]
         } else {
@@ -406,7 +421,7 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
             entry.depth
         );
 
-        // Update parent bars for this depth level
+        // Update parent bars
         if entry.depth < parent_bars.len() {
             parent_bars[entry.depth] = bar.clone();
         }
@@ -414,20 +429,40 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         // Format percentage
         let percentage_str = format!("{:>4.0}%", entry.percentage);
 
-        // Calculate padding
-        let name_display = &entry.name;
+        // Calculate padding for name
         let prefix_display_width = prefix.chars().count();
         let name_padding = max_name_length.saturating_sub(
-            prefix_display_width + UnicodeWidthStr::width(name_display.as_str())
+            prefix_display_width + UnicodeWidthStr::width(entry.name.as_str())
         );
 
-        // Print the line - no special case for "(other files)"
+        // Create name with padding FIRST
+        let name_with_padding = format!("{}{}", entry.name, " ".repeat(name_padding));
+
+        // THEN apply colors to the name+padding combination
+        let colored_name_with_padding = if colors_enabled && entry.name != "(other files)" {
+            // Try to get metadata - use the full path
+            let meta_result = fs::metadata(&entry.path);
+            
+            // Get style from ls_colors
+            let ansi_style = ls_colors
+                .style_for_path_with_metadata(&entry.path, meta_result.as_ref().ok())
+                .map(lscolors::Style::to_ansi_term_style)
+                .unwrap_or_default();
+            println!("Current path is {:?}", entry.path);
+            meta_result.unwrap();
+            
+            // Apply style to name WITH padding
+            format!("{}", ansi_style.paint(name_with_padding))
+        } else {
+            name_with_padding
+        };
+
+        // Print the line
         println!(
-            "{:>width$}   {}{}{} │{}│ {}",
+            "{:>width$}   {}{} │{}│ {}",
             tokens_str,
             prefix,
-            name_display,
-            " ".repeat(name_padding),
+            colored_name_with_padding,  // This now includes the padding
             bar,
             percentage_str,
             width = max_token_width
