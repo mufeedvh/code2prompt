@@ -243,28 +243,6 @@ fn rebuild_filtered_tree(
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
         let name = path.split('/').last().unwrap_or(&path).to_string();
         
-        // Calculate parent percentage - this represents the cumulative percentage
-        // of all ancestor directories (not including this one)
-        let parent_percentage = if depth > 0 {
-            // Find parent directory path
-            let parent_path = if let Some(pos) = path.rfind('/') {
-                &path[..pos]
-            } else {
-                ""
-            };
-            
-            // Find parent in entries and get its cumulative percentage
-            entries.iter()
-                .find(|e| e.path == parent_path)
-                .map(|parent| {
-                    // Parent's cumulative = parent's own parent_percentage + parent's percentage
-                    parent.parent_percentage
-                })
-                .unwrap_or(0.0)
-        } else {
-            0.0
-        };
-        
         entries.push(TokenMapEntry {
             path: path.clone(),
             name,
@@ -273,7 +251,7 @@ fn rebuild_filtered_tree(
             is_file: node.is_file,
             depth,
             is_last,
-            parent_percentage,
+            parent_percentage: 0.0,
         });
     }
     
@@ -327,27 +305,58 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         .min(terminal_width / 2);
 
     // Calculate bar width with more reasonable spacing
-    // Account for: token(max_token_width) + spaces(3) + tree+name(max_name_length) + " │" + bar + "│ " + percentage(4)
     let bar_width = terminal_width
         .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 5)
-        .max(20); // Minimum bar width
+        .max(20);
 
-    // Initialize parent bars array - start with all solid blocks for root
+    // Initialize parent bars array
     let mut parent_bars: Vec<String> = vec![String::new(); 10];
     parent_bars[0] = "█".repeat(bar_width);
     
-    // Track the current depth to manage parent bars correctly
-    let mut current_depth = 0;
+    // Track which depths still have nodes coming (for vertical line continuation)
+    let mut has_more_at_depth = vec![false; 10];
+    
+    // Pre-calculate which depths have more nodes
+    for i in 0..entries.len() {
+        let entry = &entries[i];
+        // Check if there are more siblings at this depth
+        for j in (i + 1)..entries.len() {
+            if entries[j].depth < entry.depth {
+                break; // We've gone up the tree, no more siblings
+            }
+            if entries[j].depth == entry.depth {
+                has_more_at_depth[entry.depth] = true;
+                break;
+            }
+        }
+    }
 
     for (i, entry) in entries.iter().enumerate() {
         // Build tree prefix
         let mut prefix = String::new();
         
-        // Add vertical lines for parent levels
+        // For each level up to our depth, add the appropriate characters
         for d in 0..entry.depth {
             if d < entry.depth - 1 {
-                prefix.push_str("│ ");
+                // Check if we need a vertical line at this depth
+                // We need one if there are more nodes at depth d+1 after this node
+                let mut needs_line = false;
+                for j in (i + 1)..entries.len() {
+                    if entries[j].depth <= d {
+                        break; // Gone up past this level
+                    }
+                    if entries[j].depth == d + 1 {
+                        needs_line = true;
+                        break;
+                    }
+                }
+                if needs_line {
+                    prefix.push_str("│ ");
+                } else {
+                    prefix.push_str("  ");
+                }
             } else {
+                // This is our immediate parent level
                 if entry.is_last {
                     prefix.push_str("└─");
                 } else {
@@ -412,29 +421,17 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
             prefix_display_width + UnicodeWidthStr::width(name_display.as_str())
         );
 
-        // Special case for "(other files)"
-        if entry.name == "(other files)" {
-            println!(
-                "{:>width$}   └── {}{} │{}│ {}",
-                tokens_str,
-                name_display,
-                " ".repeat(name_padding),
-                bar,
-                percentage_str,
-                width = max_token_width
-            );
-        } else {
-            println!(
-                "{:>width$}   {}{}{} │{}│ {}",
-                tokens_str,
-                prefix,
-                name_display,
-                " ".repeat(name_padding),
-                bar,
-                percentage_str,
-                width = max_token_width
-            );
-        }
+        // Print the line - no special case for "(other files)"
+        println!(
+            "{:>width$}   {}{}{} │{}│ {}",
+            tokens_str,
+            prefix,
+            name_display,
+            " ".repeat(name_padding),
+            bar,
+            percentage_str,
+            width = max_token_width
+        );
     }
 }
 
