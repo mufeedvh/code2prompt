@@ -303,49 +303,51 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         return;
     }
 
-    // Terminal width detection (similar to dust)
+    // Terminal width detection
     let terminal_width = terminal_size::terminal_size()
         .map(|(terminal_size::Width(w), _)| w as usize)
         .unwrap_or(80);
-    
-    // Calculate max token width for alignment (dust uses right-aligned sizes)
+
+    // Calculate max token width for alignment
     let max_token_width = entries.iter()
         .map(|e| format_tokens(e.tokens).len())
         .max()
         .unwrap_or(3)
         .max(format_tokens(total_tokens).len())
-        .max(4);  // Minimum 4 chars for size column
-    
-    // Calculate max name length
+        .max(4);
+
+    // Calculate max name length including tree prefix
     let max_name_length = entries.iter()
         .map(|e| {
-            let prefix_width = (e.depth + 1) * 2 + 3; // More accurate prefix calculation
+            let prefix_width = if e.depth == 0 { 3 } else { (e.depth * 2) + 3 };
             prefix_width + UnicodeWidthStr::width(e.name.as_str())
         })
         .max()
         .unwrap_or(20)
-        .min(terminal_width / 2); // Don't take more than half the terminal
-    
-    // Calculate bar width based on available space (dust uses much wider bars)
-    let bar_width = (terminal_width.saturating_sub(max_token_width + max_name_length + 15)).min(100).max(60);
-    
-    // Track parent bars for hierarchical shading
+        .min(terminal_width / 2);
+
+    // Calculate bar width with more reasonable spacing
+    // Account for: token(max_token_width) + spaces(3) + tree+name(max_name_length) + " │" + bar + "│ " + percentage(4)
+    let bar_width = terminal_width
+        .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 5)
+        .max(20); // Minimum bar width
+
+    // Initialize parent bars array - start with all solid blocks for root
     let mut parent_bars: Vec<String> = vec![String::new(); 10];
+    parent_bars[0] = "█".repeat(bar_width);
     
+    // Track the current depth to manage parent bars correctly
+    let mut current_depth = 0;
+
     for (i, entry) in entries.iter().enumerate() {
-        // Build prefix with proper tree characters and negative space (dust-style)
+        // Build tree prefix
         let mut prefix = String::new();
-        
-        // Add negative space padding for deep items (like dust does)
-        let negative_space_count = entry.depth * 2;
-        prefix.push_str(&" ".repeat(negative_space_count));
         
         // Add vertical lines for parent levels
         for d in 0..entry.depth {
             if d < entry.depth - 1 {
                 prefix.push_str("│ ");
             } else {
-                // Current level - determine the right connector
                 if entry.is_last {
                     prefix.push_str("└─");
                 } else {
@@ -353,18 +355,18 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
                 }
             }
         }
-        
-        // Special handling for root item
+
+        // Special handling for root
         if entry.depth == 0 && i == 0 && entry.name != "(other files)" {
             prefix = "┌─".to_string();
         }
-        
-        // Determine if this has children
+
+        // Check if has children
         let has_children = entries.get(i + 1)
             .map(|next| next.depth > entry.depth)
             .unwrap_or(false);
-        
-        // Add the appropriate connector
+
+        // Add the connecting character
         if entry.depth > 0 || entry.name == "(other files)" {
             if has_children {
                 prefix.push('┬');
@@ -372,49 +374,51 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
                 prefix.push('─');
             }
         } else if i == 0 {
-            // Root item
             prefix.push('┴');
         }
-        
+
         prefix.push(' ');
-        
-        // Format tokens with proper right alignment
+
+        // Format tokens
         let tokens_str = format_tokens(entry.tokens);
-        
-        // Build name display with color
-        let name_display = if entry.name == "(other files)" {
-            entry.name.normal().to_string()
-        } else if entry.is_file {
-            entry.name.normal().to_string()
+
+        // Generate hierarchical bar using parent's bar
+        let parent_bar = if entry.depth > 0 {
+            &parent_bars[entry.depth - 1]
         } else {
-            entry.name.normal().to_string()
+            &parent_bars[0]
         };
         
-        // Generate hierarchical bar (dust-style)
-        let bar = generate_hierarchical_bar(entry, bar_width, entries);
-        
-        // Update parent bars for children
-        if has_children {
+        let bar = generate_hierarchical_bar(
+            entry, 
+            bar_width, 
+            parent_bar,
+            entry.percentage,
+            entry.depth
+        );
+
+        // Update parent bars for this depth level
+        if entry.depth < parent_bars.len() {
             parent_bars[entry.depth] = bar.clone();
         }
-        
+
         // Format percentage
         let percentage_str = format!("{:>4.0}%", entry.percentage);
-        
-        // Calculate padding for name to ensure alignment
+
+        // Calculate padding
+        let name_display = &entry.name;
         let prefix_display_width = prefix.chars().count();
         let name_padding = max_name_length.saturating_sub(
-            prefix_display_width + UnicodeWidthStr::width(entry.name.as_str())
+            prefix_display_width + UnicodeWidthStr::width(name_display.as_str())
         );
-        
-        // Print the line with proper alignment
+
+        // Special case for "(other files)"
         if entry.name == "(other files)" {
-            // Special formatting for "other files" - no tree prefix
             println!(
-                "{:>width$} ┌── {}{} │{}│ {}",
+                "{:>width$}   └── {}{} │{}│ {}",
                 tokens_str,
                 name_display,
-                " ".repeat(max_name_length.saturating_sub(3 + UnicodeWidthStr::width(entry.name.as_str()))),
+                " ".repeat(name_padding),
                 bar,
                 percentage_str,
                 width = max_token_width
@@ -446,53 +450,48 @@ fn format_tokens(tokens: usize) -> String {
 }
 
 // Generate bar with dust-style depth shading
-fn generate_hierarchical_bar(entry: &TokenMapEntry, bar_width: usize, _all_entries: &[TokenMapEntry]) -> String {
-    let filled_amount = ((entry.percentage / 100.0) * bar_width as f64).round() as usize;
-    let mut bar = String::new();
+fn generate_hierarchical_bar(
+    entry: &TokenMapEntry, 
+    bar_width: usize, 
+    parent_bar: &str,
+    percentage: f64,
+    depth: usize,
+) -> String {
+    // Calculate how many characters should be filled for this entry
+    let filled_chars = ((percentage / 100.0) * bar_width as f64).round() as usize;
+    let mut result = String::new();
     
-    // Dust's algorithm: use depth to determine shading level
-    // Deeper items get progressively lighter shading from left to right
+    // Depth determines which shade to use for parent's solid blocks
+    let shade_char = match depth.max(1) {
+        1 => ' ',  // Level 1: parent blocks become spaces
+        2 => '░',  // Level 2: light shade
+        3 => '▒',  // Level 3: medium shade
+        _ => '▓',  // Level 4+: dark shade
+    };
+    
+    // Process each character position
+    let parent_chars: Vec<char> = parent_bar.chars().collect();
     for i in 0..bar_width {
-        if i < filled_amount {
-            // Calculate how far through the bar we are (0.0 to 1.0)
-            let progress = i as f64 / bar_width as f64;
-            
-            // Use depth and progress to determine shading
-            let shade_char = match entry.depth {
-                0 => '█',  // Root level - always solid
-                1 => '█',  // First level - solid
-                2 => {
-                    // Second level - transitions from solid to dark
-                    if progress < 0.3 { '█' } else { '▓' }
-                }
-                3 => {
-                    // Third level - multiple transitions
-                    if progress < 0.2 { '█' }
-                    else if progress < 0.5 { '▓' }
-                    else { '▒' }
-                }
-                4 => {
-                    // Fourth level - even more transitions
-                    if progress < 0.15 { '█' }
-                    else if progress < 0.35 { '▓' }
-                    else if progress < 0.65 { '▒' }
-                    else { '░' }
-                }
-                _ => {
-                    // Very deep levels - lots of transitions
-                    if progress < 0.1 { '█' }
-                    else if progress < 0.25 { '▓' }
-                    else if progress < 0.5 { '▒' }
-                    else { '░' }
-                }
-            };
-            bar.push(shade_char);
+        if i < filled_chars {
+            // This is our filled portion - always solid
+            result.push('█');
+        } else if i < parent_chars.len() {
+            // This is parent's portion
+            let parent_char = parent_chars[i];
+            if parent_char == '█' {
+                // Replace parent's solid blocks with our shade
+                result.push(shade_char);
+            } else {
+                // Keep parent's existing shading
+                result.push(parent_char);
+            }
         } else {
-            bar.push(' ');
+            // Beyond parent's bar - empty
+            result.push(' ');
         }
     }
     
-    bar
+    result
 }
 
 #[cfg(test)]
