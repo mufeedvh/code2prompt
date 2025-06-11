@@ -1,8 +1,8 @@
-use lscolors::{LsColors, Indicator};
+use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
-use std::fs;
-use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::cmp::Ordering;
+use std::collections::{BTreeMap, BinaryHeap, HashMap};
+use std::fs;
 use std::path::Path;
 use unicode_width::UnicodeWidthStr;
 
@@ -41,7 +41,8 @@ struct NodePriority {
 impl Ord for NodePriority {
     fn cmp(&self, other: &Self) -> Ordering {
         // Order by tokens (descending), then by depth (ascending), then by path
-        self.tokens.cmp(&other.tokens)
+        self.tokens
+            .cmp(&other.tokens)
             .then_with(|| other.depth.cmp(&self.depth))
             .then_with(|| self.path.cmp(&other.path))
     }
@@ -54,10 +55,10 @@ impl PartialOrd for NodePriority {
 }
 
 pub fn generate_token_map_with_limit(
-    files: &[serde_json::Value], 
-    total_tokens: usize, 
-    max_lines: Option<usize>, 
-    min_percent: Option<f64>
+    files: &[serde_json::Value],
+    total_tokens: usize,
+    max_lines: Option<usize>,
+    min_percent: Option<f64>,
 ) -> Vec<TokenMapEntry> {
     // Default values
     let max_lines = max_lines.unwrap_or(20);
@@ -65,7 +66,7 @@ pub fn generate_token_map_with_limit(
     // Build tree structure
     let mut root = TreeNode::with_path(String::new());
     root.tokens = total_tokens;
-    
+
     // Insert all files into the tree
     for file in files {
         if let (Some(path_str), Some(tokens), Some(metadata_json)) = (
@@ -76,34 +77,46 @@ pub fn generate_token_map_with_limit(
             let tokens = tokens as usize;
             if let Ok(metadata) = serde_json::from_value(metadata_json.clone()) {
                 let path = Path::new(path_str);
-                
+
                 // Skip the root component if it exists
-                let components: Vec<_> = path.components()
+                let components: Vec<_> = path
+                    .components()
                     .filter_map(|c| c.as_os_str().to_str())
                     .collect();
-                
+
                 insert_path(&mut root, &components, tokens, String::new(), metadata);
             }
         }
     }
-    
+
     // Use priority queue to select most significant entries
     let allowed_nodes = select_nodes_to_display(&root, total_tokens, max_lines, min_percent);
-    
+
     // Convert tree to sorted entries for display
     let mut entries = Vec::new();
-    rebuild_filtered_tree(&root, String::new(), &allowed_nodes, &mut entries, 0, total_tokens, true);
-    
+    rebuild_filtered_tree(
+        &root,
+        String::new(),
+        &allowed_nodes,
+        &mut entries,
+        0,
+        total_tokens,
+        true,
+    );
+
     // Add summary for hidden files if needed
-    let displayed_tokens: usize = entries.iter().map(|e| {
-        if !e.metadata.is_dir {
-            e.tokens
-        } else {
-            // For directories, only count their direct file children to avoid double counting
-            0
-        }
-    }).sum();
-    
+    let displayed_tokens: usize = entries
+        .iter()
+        .map(|e| {
+            if !e.metadata.is_dir {
+                e.tokens
+            } else {
+                // For directories, only count their direct file children to avoid double counting
+                0
+            }
+        })
+        .sum();
+
     let hidden_tokens = calculate_file_tokens(&root) - displayed_tokens;
     if hidden_tokens > 0 {
         entries.push(TokenMapEntry {
@@ -116,7 +129,7 @@ pub fn generate_token_map_with_limit(
             metadata: EntryMetadata { is_dir: false },
         });
     }
-    
+
     entries
 }
 
@@ -128,11 +141,17 @@ fn calculate_file_tokens(node: &TreeNode) -> usize {
     }
 }
 
-fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_path: String, file_metadata: EntryMetadata) {
+fn insert_path(
+    node: &mut TreeNode,
+    components: &[&str],
+    tokens: usize,
+    parent_path: String,
+    file_metadata: EntryMetadata,
+) {
     if components.is_empty() {
         return;
     }
-    
+
     if components.len() == 1 {
         // This is a file
         let file_name = components[0].to_string();
@@ -141,7 +160,10 @@ fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_p
         } else {
             format!("{}/{}", parent_path, file_name)
         };
-        let child = node.children.entry(file_name).or_insert_with(|| TreeNode::with_path(file_path));
+        let child = node
+            .children
+            .entry(file_name)
+            .or_insert_with(|| TreeNode::with_path(file_path));
         child.tokens = tokens;
         child.metadata = Some(file_metadata);
     } else {
@@ -152,7 +174,10 @@ fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_p
         } else {
             format!("{}/{}", parent_path, dir_name)
         };
-        let child = node.children.entry(dir_name).or_insert_with(|| TreeNode::with_path(dir_path.clone()));
+        let child = node
+            .children
+            .entry(dir_name)
+            .or_insert_with(|| TreeNode::with_path(dir_path.clone()));
         child.tokens += tokens;
         child.metadata = Some(EntryMetadata { is_dir: true });
         insert_path(child, &components[1..], tokens, dir_path, file_metadata);
@@ -180,7 +205,7 @@ fn select_nodes_to_display(
     let mut heap = BinaryHeap::new();
     let mut allowed_nodes = HashMap::new();
     let min_tokens = (total_tokens as f64 * min_percent / 100.0) as usize;
-    
+
     // Start with root children
     for child in root.children.values() {
         if child.tokens >= min_tokens {
@@ -191,12 +216,12 @@ fn select_nodes_to_display(
             });
         }
     }
-    
+
     // Process nodes by priority
     while allowed_nodes.len() < max_lines.saturating_sub(1) && !heap.is_empty() {
         if let Some(node_priority) = heap.pop() {
             allowed_nodes.insert(node_priority.path.clone(), node_priority.depth);
-            
+
             // Find the node in the tree and add its children
             if let Some(node) = find_node_by_path(root, &node_priority.path) {
                 for child in node.children.values() {
@@ -211,7 +236,7 @@ fn select_nodes_to_display(
             }
         }
     }
-    
+
     allowed_nodes
 }
 
@@ -220,17 +245,17 @@ fn find_node_by_path<'a>(root: &'a TreeNode, path: &str) -> Option<&'a TreeNode>
     if path.is_empty() {
         return Some(root);
     }
-    
+
     let components: Vec<&str> = path.split('/').collect();
     let mut current = root;
-    
+
     for component in components {
         match current.children.get(component) {
             Some(child) => current = child,
             None => return None,
         }
     }
-    
+
     Some(current)
 }
 
@@ -248,9 +273,9 @@ fn rebuild_filtered_tree(
     if !path.is_empty() && allowed_nodes.contains_key(&path) {
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
         let name = path.split('/').last().unwrap_or(&path).to_string();
-        
+
         let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true });
-        
+
         entries.push(TokenMapEntry {
             path: path.clone(),
             name,
@@ -261,15 +286,17 @@ fn rebuild_filtered_tree(
             metadata,
         });
     }
-    
+
     // Process children that are in allowed_nodes
-    let mut filtered_children: Vec<_> = node.children.iter()
+    let mut filtered_children: Vec<_> = node
+        .children
+        .iter()
         .filter(|(_, child)| allowed_nodes.contains_key(&child.path))
         .collect();
-    
+
     // Sort by tokens descending
     filtered_children.sort_by(|a, b| b.1.tokens.cmp(&a.1.tokens));
-    
+
     let child_count = filtered_children.len();
     for (i, (name, child)) in filtered_children.into_iter().enumerate() {
         let child_path = if path.is_empty() {
@@ -277,9 +304,17 @@ fn rebuild_filtered_tree(
         } else {
             format!("{}/{}", path, name)
         };
-        
+
         let is_last_child = i == child_count - 1;
-        rebuild_filtered_tree(child, child_path, allowed_nodes, entries, depth + 1, total_tokens, is_last_child);
+        rebuild_filtered_tree(
+            child,
+            child_path,
+            allowed_nodes,
+            entries,
+            depth + 1,
+            total_tokens,
+            is_last_child,
+        );
     }
 }
 
@@ -288,12 +323,12 @@ fn should_enable_colors() -> bool {
     if std::env::var_os("NO_COLOR").is_some() {
         return false;
     }
-    
+
     // Check if we're in a terminal
     if terminal_size::terminal_size().is_none() {
         return false;
     }
-    
+
     // On Windows, enable ANSI support
     #[cfg(windows)]
     {
@@ -305,7 +340,7 @@ fn should_enable_colors() -> bool {
             }
         }
     }
-    
+
     #[cfg(not(windows))]
     {
         true
@@ -327,7 +362,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         .unwrap_or(80);
 
     // Calculate max token width for alignment
-    let max_token_width = entries.iter()
+    let max_token_width = entries
+        .iter()
         .map(|e| format_tokens(e.tokens).len())
         .max()
         .unwrap_or(3)
@@ -335,7 +371,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         .max(4);
 
     // Calculate max name length including tree prefix
-    let max_name_length = entries.iter()
+    let max_name_length = entries
+        .iter()
         .map(|e| {
             let prefix_width = if e.depth == 0 { 3 } else { (e.depth * 2) + 3 };
             prefix_width + UnicodeWidthStr::width(e.name.as_str())
@@ -352,11 +389,11 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
     // Initialize parent bars array
     let mut parent_bars: Vec<String> = vec![String::new(); 10];
     parent_bars[0] = "█".repeat(bar_width);
-    
+
     for (i, entry) in entries.iter().enumerate() {
         // Build tree prefix
         let mut prefix = String::new();
-        
+
         // Add vertical lines for parent levels
         for d in 0..entry.depth {
             if d < entry.depth - 1 {
@@ -391,7 +428,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         }
 
         // Check if has children
-        let has_children = entries.get(i + 1)
+        let has_children = entries
+            .get(i + 1)
             .map(|next| next.depth > entry.depth)
             .unwrap_or(false);
 
@@ -417,13 +455,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         } else {
             &parent_bars[0]
         };
-        
-        let bar = generate_hierarchical_bar(
-            bar_width, 
-            parent_bar,
-            entry.percentage,
-            entry.depth
-        );
+
+        let bar = generate_hierarchical_bar(bar_width, parent_bar, entry.percentage, entry.depth);
 
         // Update parent bars
         if entry.depth < parent_bars.len() {
@@ -435,9 +468,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
 
         // Calculate padding for name
         let prefix_display_width = prefix.chars().count();
-        let name_padding = max_name_length.saturating_sub(
-            prefix_display_width + UnicodeWidthStr::width(entry.name.as_str())
-        );
+        let name_padding = max_name_length
+            .saturating_sub(prefix_display_width + UnicodeWidthStr::width(entry.name.as_str()));
 
         // Create name with padding FIRST
         let name_with_padding = format!("{}{}", entry.name, " ".repeat(name_padding));
@@ -460,7 +492,7 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
                     .map(lscolors::Style::to_ansi_term_style)
                     .unwrap_or_default()
             };
-            
+
             // Apply style to name WITH padding
             format!("{}", ansi_style.paint(name_with_padding))
         } else {
@@ -472,7 +504,7 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
             "{:>width$}   {}{} │{}│ {}",
             tokens_str,
             prefix,
-            colored_name_with_padding,  // This now includes the padding
+            colored_name_with_padding, // This now includes the padding
             bar,
             percentage_str,
             width = max_token_width
@@ -493,7 +525,7 @@ fn format_tokens(tokens: usize) -> String {
 
 // Generate bar with dust-style depth shading
 fn generate_hierarchical_bar(
-    bar_width: usize, 
+    bar_width: usize,
     parent_bar: &str,
     percentage: f64,
     depth: usize,
@@ -501,15 +533,15 @@ fn generate_hierarchical_bar(
     // Calculate how many characters should be filled for this entry
     let filled_chars = ((percentage / 100.0) * bar_width as f64).round() as usize;
     let mut result = String::new();
-    
+
     // Depth determines which shade to use for parent's solid blocks
     let shade_char = match depth.max(1) {
-        1 => ' ',  // Level 1: parent blocks become spaces
-        2 => '░',  // Level 2: light shade
-        3 => '▒',  // Level 3: medium shade
-        _ => '▓',  // Level 4+: dark shade
+        1 => ' ', // Level 1: parent blocks become spaces
+        2 => '░', // Level 2: light shade
+        3 => '▒', // Level 3: medium shade
+        _ => '▓', // Level 4+: dark shade
     };
-    
+
     // Process each character position
     let parent_chars: Vec<char> = parent_bar.chars().collect();
     for i in 0..bar_width {
@@ -531,14 +563,14 @@ fn generate_hierarchical_bar(
             result.push(' ');
         }
     }
-    
+
     result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_format_tokens() {
         assert_eq!(format_tokens(999), "999");

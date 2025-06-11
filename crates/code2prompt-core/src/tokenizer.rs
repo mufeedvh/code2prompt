@@ -1,7 +1,7 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
 use std::str::FromStr;
-use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
 use std::sync::OnceLock;
+use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
 
 #[derive(Debug, Clone)]
 pub enum TokenFormat {
@@ -105,13 +105,19 @@ pub fn count_tokens(rendered: &str, tokenizer_type: &TokenizerType) -> usize {
         TokenizerType::Cl100kBase => CL100K_BASE.get_or_init(|| cl100k_base().unwrap()),
         TokenizerType::P50kBase => P50K_BASE.get_or_init(|| p50k_base().unwrap()),
         TokenizerType::P50kEdit => P50K_EDIT.get_or_init(|| p50k_edit().unwrap()),
-        TokenizerType::R50kBase | TokenizerType::Gpt2 => R50K_BASE.get_or_init(|| r50k_base().unwrap()),
+        TokenizerType::R50kBase | TokenizerType::Gpt2 => {
+            R50K_BASE.get_or_init(|| r50k_base().unwrap())
+        }
     };
 
     let token_count = bpe.encode_with_special_tokens(rendered).len();
 
     if std::env::var("DEBUG_TOKENIZER").is_ok() {
-        eprintln!("Tokenized {} chars in {:?}", rendered.len(), start.elapsed());
+        eprintln!(
+            "Tokenized {} chars in {:?}",
+            rendered.len(),
+            start.elapsed()
+        );
     }
 
     token_count

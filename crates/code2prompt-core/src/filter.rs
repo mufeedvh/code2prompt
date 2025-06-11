@@ -26,7 +26,7 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
     } else {
         patterns.to_vec()
     };
-    
+
     for pattern in expanded_patterns {
         // If the pattern does not contain a '/' or the platform’s separator, prepend "**/"
         let normalized_pattern =
