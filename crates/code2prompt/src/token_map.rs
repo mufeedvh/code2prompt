@@ -1,10 +1,16 @@
-use lscolors::LsColors;
-use ansi_term::Style;
+use lscolors::{LsColors, Indicator};
+use serde::Deserialize;
 use std::fs;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::cmp::Ordering;
 use std::path::Path;
 use unicode_width::UnicodeWidthStr;
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct EntryMetadata {
+    pub is_dir: bool,
+    pub is_symlink: bool,
+}
 
 // Unicode block characters for shading - from full to empty (dust-style)
 static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
@@ -13,8 +19,8 @@ static BLOCKS: [char; 5] = ['█', '▓', '▒', '░', ' '];
 struct TreeNode {
     tokens: usize,
     children: BTreeMap<String, TreeNode>,
-    is_file: bool,
     path: String,
+    metadata: Option<EntryMetadata>,
 }
 
 impl TreeNode {
@@ -22,8 +28,8 @@ impl TreeNode {
         TreeNode {
             tokens: 0,
             children: BTreeMap::new(),
-            is_file: false,
             path,
+            metadata: None,
         }
     }
 }
@@ -66,19 +72,22 @@ pub fn generate_token_map_with_limit(
     
     // Insert all files into the tree
     for file in files {
-        if let (Some(path_str), Some(tokens)) = (
+        if let (Some(path_str), Some(tokens), Some(metadata_json)) = (
             file.get("path").and_then(|p| p.as_str()),
             file.get("token_count").and_then(|t| t.as_u64()),
+            file.get("metadata"),
         ) {
             let tokens = tokens as usize;
-            let path = Path::new(path_str);
-            
-            // Skip the root component if it exists
-            let components: Vec<_> = path.components()
-                .filter_map(|c| c.as_os_str().to_str())
-                .collect();
-            
-            insert_path(&mut root, &components, tokens, String::new());
+            if let Ok(metadata) = serde_json::from_value(metadata_json.clone()) {
+                let path = Path::new(path_str);
+                
+                // Skip the root component if it exists
+                let components: Vec<_> = path.components()
+                    .filter_map(|c| c.as_os_str().to_str())
+                    .collect();
+                
+                insert_path(&mut root, &components, tokens, String::new(), metadata);
+            }
         }
     }
     
@@ -91,7 +100,7 @@ pub fn generate_token_map_with_limit(
     
     // Add summary for hidden files if needed
     let displayed_tokens: usize = entries.iter().map(|e| {
-        if e.is_file {
+        if !e.metadata.is_dir {
             e.tokens
         } else {
             // For directories, only count their direct file children to avoid double counting
@@ -106,10 +115,10 @@ pub fn generate_token_map_with_limit(
             name: "(other files)".to_string(),
             tokens: hidden_tokens,
             percentage: (hidden_tokens as f64 / total_tokens as f64) * 100.0,
-            is_file: false,
             depth: 0,
             is_last: true,
             parent_percentage: 0.0,
+            metadata: EntryMetadata { is_dir: false, is_symlink: false },
         });
     }
     
@@ -117,14 +126,14 @@ pub fn generate_token_map_with_limit(
 }
 
 fn calculate_file_tokens(node: &TreeNode) -> usize {
-    if node.is_file {
+    if node.metadata.map_or(false, |m| !m.is_dir) {
         node.tokens
     } else {
         node.children.values().map(calculate_file_tokens).sum()
     }
 }
 
-fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_path: String) {
+fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_path: String, file_metadata: EntryMetadata) {
     if components.is_empty() {
         return;
     }
@@ -139,7 +148,7 @@ fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_p
         };
         let child = node.children.entry(file_name).or_insert_with(|| TreeNode::with_path(file_path));
         child.tokens = tokens;
-        child.is_file = true;
+        child.metadata = Some(file_metadata);
     } else {
         // This is a directory
         let dir_name = components[0].to_string();
@@ -150,7 +159,8 @@ fn insert_path(node: &mut TreeNode, components: &[&str], tokens: usize, parent_p
         };
         let child = node.children.entry(dir_name).or_insert_with(|| TreeNode::with_path(dir_path.clone()));
         child.tokens += tokens;
-        insert_path(child, &components[1..], tokens, dir_path);
+        child.metadata = Some(EntryMetadata { is_dir: true, is_symlink: false });
+        insert_path(child, &components[1..], tokens, dir_path, file_metadata);
     }
 }
 
@@ -160,10 +170,10 @@ pub struct TokenMapEntry {
     pub name: String,
     pub tokens: usize,
     pub percentage: f64,
-    pub is_file: bool,
     pub depth: usize,
     pub is_last: bool,
     pub parent_percentage: f64,  // Percentage that parent directories contribute
+    pub metadata: EntryMetadata,
 }
 
 /// Select nodes to display using priority queue
@@ -245,15 +255,17 @@ fn rebuild_filtered_tree(
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
         let name = path.split('/').last().unwrap_or(&path).to_string();
         
+        let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true, is_symlink: false });
+        
         entries.push(TokenMapEntry {
             path: path.clone(),
             name,
             tokens: node.tokens,
             percentage,
-            is_file: node.is_file,
             depth,
             is_last,
             parent_percentage: 0.0,
+            metadata,
         });
     }
     
@@ -440,16 +452,22 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
 
         // THEN apply colors to the name+padding combination
         let colored_name_with_padding = if colors_enabled && entry.name != "(other files)" {
-            // Try to get metadata - use the full path
-            let meta_result = fs::metadata(&entry.path);
-            
-            // Get style from ls_colors
-            let ansi_style = ls_colors
-                .style_for_path_with_metadata(&entry.path, meta_result.as_ref().ok())
-                .map(lscolors::Style::to_ansi_term_style)
-                .unwrap_or_default();
-            println!("Current path is {:?}", entry.path);
-            meta_result.unwrap();
+            // Use our cached metadata to choose the coloring strategy
+            let ansi_style = if entry.metadata.is_dir {
+                // For directories, we know the type. No need to hit the filesystem.
+                ls_colors
+                    .style_for_indicator(Indicator::Directory)
+                    .map(|s| s.to_ansi_term_style())
+                    .unwrap_or_default()
+            } else {
+                // For files, we still re-stat to get rich coloring for extensions, etc.
+                // This call will now succeed because we fixed the path logic in Step 1.
+                let meta_result = fs::metadata(&entry.path);
+                ls_colors
+                    .style_for_path_with_metadata(&entry.path, meta_result.as_ref().ok())
+                    .map(lscolors::Style::to_ansi_term_style)
+                    .unwrap_or_default()
+            };
             
             // Apply style to name WITH padding
             format!("{}", ansi_style.paint(name_with_padding))

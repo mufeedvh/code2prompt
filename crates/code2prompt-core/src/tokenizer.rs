@@ -99,7 +99,7 @@ static R50K_BASE: OnceLock<CoreBPE> = OnceLock::new();
 pub fn count_tokens(rendered: &str, tokenizer_type: &TokenizerType) -> usize {
     use std::time::Instant;
     let start = Instant::now();
-    
+
     let bpe = match tokenizer_type {
         TokenizerType::O200kBase => O200K_BASE.get_or_init(|| o200k_base().unwrap()),
         TokenizerType::Cl100kBase => CL100K_BASE.get_or_init(|| cl100k_base().unwrap()),
@@ -109,10 +109,10 @@ pub fn count_tokens(rendered: &str, tokenizer_type: &TokenizerType) -> usize {
     };
 
     let token_count = bpe.encode_with_special_tokens(rendered).len();
-    
+
     if std::env::var("DEBUG_TOKENIZER").is_ok() {
         eprintln!("Tokenized {} chars in {:?}", rendered.len(), start.elapsed());
     }
-    
+
     token_count
 }
