@@ -7,10 +7,26 @@ use crate::util::strip_utf8_bom;
 use anyhow::Result;
 use ignore::WalkBuilder;
 use log::debug;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
 use std::path::Path;
 use termtree::Tree;
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct EntryMetadata {
+    pub is_dir: bool,
+    pub is_symlink: bool,
+}
+
+impl From<&std::fs::Metadata> for EntryMetadata {
+    fn from(meta: &std::fs::Metadata) -> Self {
+        Self {
+            is_dir: meta.is_dir(),
+            is_symlink: meta.is_symlink(),
+        }
+    }
+}
 
 /// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
 ///
@@ -78,7 +94,8 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
 
             // ~~~ Processing File ~~~
             if path.is_file() && file_match {
-                if let Ok(code_bytes) = fs::read(path) {
+                if let Ok(metadata) = entry.metadata() {
+                    if let Ok(code_bytes) = fs::read(path) {
                     let clean_bytes = strip_utf8_bom(&code_bytes);
                     let code = String::from_utf8_lossy(&clean_bytes);
 
@@ -92,9 +109,9 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                     if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
                         // ~~~ Filepath ~~~
                         let file_path = if config.absolute_path {
-                            path.display().to_string()
+                            path.to_string_lossy().to_string()
                         } else {
-                            format!("{}/{}", parent_directory, relative_path.display())
+                            relative_path.to_string_lossy().to_string()
                         };
 
                         // ~~~ File JSON Representation ~~~
@@ -105,6 +122,10 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                             json!(path.extension().and_then(|ext| ext.to_str()).unwrap_or("")),
                         );
                         file_entry.insert("code".to_string(), json!(code_block));
+
+                        // Store metadata
+                        let entry_meta = EntryMetadata::from(&metadata);
+                        file_entry.insert("metadata".to_string(), serde_json::to_value(entry_meta)?);
 
                         // Add token count for the file only if token map is enabled
                         if config.token_map_enabled {
@@ -117,12 +138,10 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                             if method == FileSortMethod::DateAsc
                                 || method == FileSortMethod::DateDesc
                             {
-                                let mod_time = fs::metadata(path)
-                                    .and_then(|m| m.modified())
-                                    .and_then(|mtime| {
-                                        Ok(mtime.duration_since(std::time::SystemTime::UNIX_EPOCH))
-                                    })
-                                    .map(|d| d.unwrap().as_secs())
+                                let mod_time = metadata.modified()
+                                    .ok()
+                                    .and_then(|mtime| mtime.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
+                                    .map(|d| d.as_secs())
                                     .unwrap_or(0);
                                 file_entry.insert("mod_time".to_string(), json!(mod_time));
                             }
@@ -132,8 +151,9 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                     } else {
                         debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
                     }
-                } else {
-                    debug!("Failed to read file: {}", path.display());
+                    } else {
+                        debug!("Failed to read file: {}", path.display());
+                    }
                 }
             }
         }
