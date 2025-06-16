@@ -68,27 +68,37 @@ pub fn render_template(
     Ok(rendered.trim().to_string())
 }
 
-/// Writes the rendered template to a specified output file.
+/// Writes the rendered template to a specified output file or stdout.
 ///
 /// # Arguments
 ///
-/// * `output_path` - The path to the output file.
+/// * `output_path` - The path to the output file, or "-" for stdout.
 /// * `rendered` - The rendered template string.
+/// * `quiet` - If true, suppress success messages.
 ///
 /// # Returns
 ///
 /// * `Result<()>` - An empty result indicating success or an error.
-pub fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
-    let file = std::fs::File::create(output_path)?;
-    let mut writer = std::io::BufWriter::new(file);
-    write!(writer, "{}", rendered)?;
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        format!("Prompt written to file: {}", output_path).green()
-    );
+pub fn write_to_file(output_path: &str, rendered: &str, quiet: bool) -> Result<()> {
+    if output_path == "-" {
+        // Write to stdout
+        print!("{}", rendered);
+        std::io::stdout().flush()?;
+    } else {
+        // Write to file
+        let file = std::fs::File::create(output_path)?;
+        let mut writer = std::io::BufWriter::new(file);
+        write!(writer, "{}", rendered)?;
+        if !quiet {
+            println!(
+                "{}{}{} {}",
+                "[".bold().white(),
+                "✓".bold().green(),
+                "]".bold().white(),
+                format!("Prompt written to file: {}", output_path).green()
+            );
+        }
+    }
     Ok(())
 }
 

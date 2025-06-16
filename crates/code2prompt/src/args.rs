@@ -98,6 +98,10 @@ pub struct Cli {
     #[clap(long)]
     pub sort: Option<String>,
 
+    /// Suppress progress and success messages
+    #[clap(short, long)]
+    pub quiet: bool,
+
     #[arg(long, hide = true)]
     pub clipboard_daemon: bool,
 }
