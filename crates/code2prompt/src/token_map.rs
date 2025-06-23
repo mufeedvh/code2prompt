@@ -4,7 +4,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::fs;
 use std::path::Path;
-use log::error;
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -516,9 +515,11 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
 // Format token counts with K/M suffixes (dust-style)
 fn format_tokens(tokens: usize) -> String {
     if tokens >= 1_000_000 {
-        format!("{:.0}M", tokens as f64 / 1_000_000.0)
+        let millions = (tokens + 500_000) / 1_000_000;
+        format!("{}M", millions)
     } else if tokens >= 1_000 {
-        format!("{:.0}K", tokens as f64 / 1_000.0)
+        let thousands = (tokens + 500) / 1_000;
+        format!("{}K", thousands)
     } else {
         format!("{}", tokens)
     }
@@ -578,6 +579,7 @@ mod tests {
         assert_eq!(format_tokens(1_000), "1K");
         assert_eq!(format_tokens(1_500), "2K");
         assert_eq!(format_tokens(1_000_000), "1M");
+        assert_eq!(format_tokens(2_499_999), "2M");
         assert_eq!(format_tokens(2_500_000), "3M");
     }
 }
