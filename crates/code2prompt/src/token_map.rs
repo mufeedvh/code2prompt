@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::fs;
 use std::path::Path;
+use log::error;
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -335,7 +336,7 @@ fn should_enable_colors() -> bool {
         match ansi_term::enable_ansi_support() {
             Ok(_) => true,
             Err(_) => {
-                eprintln!("This version of Windows does not support ANSI colors");
+                error!("This version of Windows does not support ANSI colors");
                 false
             }
         }
