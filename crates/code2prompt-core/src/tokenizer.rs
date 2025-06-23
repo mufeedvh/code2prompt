@@ -2,6 +2,7 @@
 use std::str::FromStr;
 use std::sync::OnceLock;
 use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
+use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum TokenFormat {
@@ -113,7 +114,7 @@ pub fn count_tokens(rendered: &str, tokenizer_type: &TokenizerType) -> usize {
     let token_count = bpe.encode_with_special_tokens(rendered).len();
 
     if std::env::var("DEBUG_TOKENIZER").is_ok() {
-        eprintln!(
+        debug!(
             "Tokenized {} chars in {:?}",
             rendered.len(),
             start.elapsed()
