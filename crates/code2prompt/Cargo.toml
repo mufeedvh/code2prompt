@@ -32,7 +32,7 @@ path = "src/main.rs"
 
 [dev-dependencies]
 git2 = { workspace = true }
-tempfile = "3.3"
+tempfile = "3.20"
 assert_cmd = "2.0"
 predicates = "3.1"
 env_logger = "0.11.3"
