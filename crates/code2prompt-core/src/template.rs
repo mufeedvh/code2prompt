@@ -2,7 +2,9 @@
 //! It also includes functions for handling user-defined variables, copying the rendered output to the clipboard, and writing it to a file.
 use anyhow::{anyhow, Result};
 use colored::*;
-use handlebars::{no_escape, Handlebars};
+use handlebars::{
+    no_escape, Context, Handlebars, Helper, HelperResult, Output, RenderContext,
+};
 use regex::Regex;
 use std::io::Write;
 use std::str::FromStr;
@@ -20,6 +22,38 @@ use std::str::FromStr;
 pub fn handlebars_setup(template_str: &str, template_name: &str) -> Result<Handlebars<'static>> {
     let mut handlebars = Handlebars::new();
     handlebars.register_escape_fn(no_escape);
+
+    // Register custom helper for first N lines plus last line
+    handlebars.register_helper("firstLines", Box::new(|helper: &Helper, 
+                                                     _: &Handlebars,
+                                                     _: &Context,
+                                                     _: &mut RenderContext,
+                                                     out: &mut dyn Output| -> HelperResult {
+        // Get the text parameter
+        let text = helper.param(0).and_then(|v| v.value().as_str()).unwrap_or("");
+        // Get the count parameter
+        let count = helper.param(1).and_then(|v| v.value().as_u64()).unwrap_or(5) as usize;
+        
+        let lines: Vec<&str> = text.lines().collect();
+        
+        if lines.len() <= count + 1 {
+            // If there are fewer lines than count+1, just return the whole text
+            out.write(text)?;
+        } else {
+            // Take first N lines
+            let first_n_lines = lines.iter().take(count).cloned().collect::<Vec<&str>>();
+            
+            // Get the last line
+            let last_line = lines.last().unwrap_or(&"");
+            
+            // Combine first N lines and last line
+            let result = format!("{}\n{}", first_n_lines.join("\n"), last_line);
+            
+            out.write(&result)?;
+        }
+        
+        Ok(())
+    }));
 
     handlebars
         .register_template_string(template_name, template_str)
