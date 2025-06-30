@@ -11,7 +11,7 @@ codegen-units = 1
 [workspace.dependencies]
 anyhow = "1.0.98"
 colored = "2.1.0"
-indicatif = "0.17.8"
+indicatif = "0.17.12"
 log = "0.4"
 num-format = { version = "0.4.4", features = ["with-system-locale"] }
 serde = { version = "1.0", features = ["derive"] }
