@@ -36,5 +36,5 @@ env_logger = { version = "0.11.3" }
 arboard = { version = "3.6.0" }
 derive_builder = { version = "0.20.2" }
 winapi = { version = "0.3.9", features = ["errhandlingapi"] }
-unicode-width = "0.1"
+unicode-width = "0.2"
 terminal_size = "0.3"
