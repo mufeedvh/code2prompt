@@ -1,6 +1,8 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
 use std::str::FromStr;
-use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base};
+use std::sync::OnceLock;
+use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
+use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum TokenFormat {
@@ -78,6 +80,13 @@ impl Default for TokenizerType {
     }
 }
 
+// Cache tokenizers to avoid expensive re-initialization
+static O200K_BASE: OnceLock<CoreBPE> = OnceLock::new();
+static CL100K_BASE: OnceLock<CoreBPE> = OnceLock::new();
+static P50K_BASE: OnceLock<CoreBPE> = OnceLock::new();
+static P50K_EDIT: OnceLock<CoreBPE> = OnceLock::new();
+static R50K_BASE: OnceLock<CoreBPE> = OnceLock::new();
+
 /// Counts the tokens in the provided text using the specified tokenizer type.
 ///
 /// # Arguments
@@ -89,14 +98,28 @@ impl Default for TokenizerType {
 ///
 /// * `usize` - The number of tokens in the text
 pub fn count_tokens(rendered: &str, tokenizer_type: &TokenizerType) -> usize {
+    use std::time::Instant;
+    let start = Instant::now();
+
     let bpe = match tokenizer_type {
-        TokenizerType::O200kBase => o200k_base(),
-        TokenizerType::Cl100kBase => cl100k_base(),
-        TokenizerType::P50kBase => p50k_base(),
-        TokenizerType::P50kEdit => p50k_edit(),
-        TokenizerType::R50kBase | TokenizerType::Gpt2 => r50k_base(),
+        TokenizerType::O200kBase => O200K_BASE.get_or_init(|| o200k_base().unwrap()),
+        TokenizerType::Cl100kBase => CL100K_BASE.get_or_init(|| cl100k_base().unwrap()),
+        TokenizerType::P50kBase => P50K_BASE.get_or_init(|| p50k_base().unwrap()),
+        TokenizerType::P50kEdit => P50K_EDIT.get_or_init(|| p50k_edit().unwrap()),
+        TokenizerType::R50kBase | TokenizerType::Gpt2 => {
+            R50K_BASE.get_or_init(|| r50k_base().unwrap())
+        }
     };
 
-    let token_count = bpe.unwrap().encode_with_special_tokens(rendered).len();
+    let token_count = bpe.encode_with_special_tokens(rendered).len();
+
+    if std::env::var("DEBUG_TOKENIZER").is_ok() {
+        debug!(
+            "Tokenized {} chars in {:?}",
+            rendered.len(),
+            start.elapsed()
+        );
+    }
+
     token_count
 }

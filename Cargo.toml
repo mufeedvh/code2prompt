@@ -14,6 +14,7 @@ colored = "2.1.0"
 indicatif = "0.17.8"
 log = "0.4"
 num-format = { version = "0.4.4", features = ["with-system-locale"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.114"
 handlebars = "4.3"
 jwalk = "0.8"
@@ -35,3 +36,5 @@ env_logger = { version = "0.11.3" }
 arboard = { version = "3.4.0" }
 derive_builder = { version = "0.20.2" }
 winapi = { version = "0.3.9", features = ["errhandlingapi"] }
+unicode-width = "0.1"
+terminal_size = "0.3"
