@@ -21,7 +21,7 @@
     "@astrojs/upgrade": "^0.5.1",
     "@tailwindcss/vite": "^4.1.4",
     "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.1",
+    "@types/react-dom": "^19.1.6",
     "astro": "^5.10.1",
     "marked": "^15.0.8",
     "rehype-mathjax": "^7.1.0",
