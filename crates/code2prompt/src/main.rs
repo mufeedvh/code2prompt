@@ -34,6 +34,10 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
+    // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
+    let no_clipboard = args.no_clipboard || 
+        args.output_file.as_ref().map_or(false, |f| f == "-");
+
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
     {
@@ -122,23 +126,35 @@ fn main() -> Result<()> {
 
     // ~~~ Code2Prompt ~~~
     let mut session = Code2PromptSession::new(configuration.build()?);
-    let spinner = setup_spinner("Traversing directory and building tree...");
+    let spinner = if !args.quiet {
+        Some(setup_spinner("Traversing directory and building tree..."))
+    } else {
+        None
+    };
 
     // ~~~ Gather Repository Data ~~~
     // Load Codebase
     session.load_codebase().unwrap_or_else(|e| {
-        spinner.finish_with_message("Failed!".red().to_string());
+        if let Some(ref s) = spinner {
+            s.finish_with_message("Failed!".red().to_string());
+        }
         error!("Failed to build directory tree: {}", e);
         std::process::exit(1);
     });
-    spinner.finish_with_message("Done!".green().to_string());
+    if let Some(ref s) = spinner {
+        s.finish_with_message("Done!".green().to_string());
+    }
 
     // ~~~ Git Related ~~~
     // Git Diff
     if session.config.diff_enabled {
-        spinner.set_message("Generating git diff...");
+        if let Some(ref s) = spinner {
+            s.set_message("Generating git diff...");
+        }
         session.load_git_diff().unwrap_or_else(|e| {
-            spinner.finish_with_message("Failed!".red().to_string());
+            if let Some(ref s) = spinner {
+                s.finish_with_message("Failed!".red().to_string());
+            }
             error!("Failed to generate git diff: {}", e);
             std::process::exit(1);
         });
@@ -146,11 +162,15 @@ fn main() -> Result<()> {
 
     // Load Git diff between branches if provided
     if session.config.diff_branches.is_some() {
-        spinner.set_message("Generating git diff between two branches...");
+        if let Some(ref s) = spinner {
+            s.set_message("Generating git diff between two branches...");
+        }
         session
             .load_git_diff_between_branches()
             .unwrap_or_else(|e| {
-                spinner.finish_with_message("Failed!".red().to_string());
+                if let Some(ref s) = spinner {
+                    s.finish_with_message("Failed!".red().to_string());
+                }
                 error!("Failed to generate git diff: {}", e);
                 std::process::exit(1);
             });
@@ -158,15 +178,21 @@ fn main() -> Result<()> {
 
     // Load Git log between branches if provided
     if session.config.log_branches.is_some() {
-        spinner.set_message("Generating git log between two branches...");
+        if let Some(ref s) = spinner {
+            s.set_message("Generating git log between two branches...");
+        }
         session.load_git_log_between_branches().unwrap_or_else(|e| {
-            spinner.finish_with_message("Failed!".red().to_string());
+            if let Some(ref s) = spinner {
+                s.finish_with_message("Failed!".red().to_string());
+            }
             error!("Failed to generate git log: {}", e);
             std::process::exit(1);
         });
     }
 
-    spinner.finish_with_message("Done!".green().to_string());
+    if let Some(ref s) = spinner {
+        s.finish_with_message("Done!".green().to_string());
+    }
 
     // ~~~ Template ~~~
 
@@ -192,14 +218,16 @@ fn main() -> Result<()> {
     };
     let model_info = rendered.model_info;
 
-    println!(
-        "{}{}{} Token count: {}, Model info: {}",
-        "[".bold().white(),
-        "i".bold().blue(),
-        "]".bold().white(),
-        formatted_token_count,
-        model_info
-    );
+    if !args.quiet {
+        println!(
+            "{}{}{} Token count: {}, Model info: {}",
+            "[".bold().white(),
+            "i".bold().blue(),
+            "]".bold().white(),
+            formatted_token_count,
+            model_info
+        );
+    }
 
     // ~~~ Token Map Display ~~~
     if args.token_map {
@@ -241,7 +269,7 @@ fn main() -> Result<()> {
     }
 
     // ~~~ Copy to Clipboard ~~~
-    if !args.no_clipboard {
+    if !no_clipboard {
         #[cfg(target_os = "linux")]
         {
             use clipboard::spawn_clipboard_daemon;
@@ -252,22 +280,27 @@ fn main() -> Result<()> {
             use crate::clipboard::copy_text_to_clipboard;
             match copy_text_to_clipboard(&rendered.prompt) {
                 Ok(_) => {
-                    println!(
-                        "{}{}{} {}",
-                        "[".bold().white(),
-                        "✓".bold().green(),
-                        "]".bold().white(),
-                        "Copied to clipboard successfully.".green()
-                    );
+                    if !args.quiet {
+                        println!(
+                            "{}{}{} {}",
+                            "[".bold().white(),
+                            "✓".bold().green(),
+                            "]".bold().white(),
+                            "Copied to clipboard successfully.".green()
+                        );
+                    }
                 }
                 Err(e) => {
-                    eprintln!(
-                        "{}{}{} {}",
-                        "[".bold().white(),
-                        "!".bold().red(),
-                        "]".bold().white(),
-                        format!("Failed to copy to clipboard: {}", e).red()
-                    );
+                    if !args.quiet {
+                        eprintln!(
+                            "{}{}{} {}",
+                            "[".bold().white(),
+                            "!".bold().red(),
+                            "]".bold().white(),
+                            format!("Failed to copy to clipboard: {}", e).red()
+                        );
+                    }
+                    // Always print the prompt if clipboard fails, regardless of quiet mode
                     println!("{}", &rendered.prompt);
                 }
             }
@@ -276,7 +309,7 @@ fn main() -> Result<()> {
 
     // ~~~ Output File ~~~
     if let Some(output_path) = &args.output_file {
-        write_to_file(output_path, &rendered.prompt)?;
+        write_to_file(output_path, &rendered.prompt, args.quiet)?;
     }
 
     Ok(())
