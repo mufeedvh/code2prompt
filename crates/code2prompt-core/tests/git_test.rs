@@ -264,4 +264,125 @@ mod tests {
         assert!(log.contains("First commit in development"));
         assert!(log.contains("Second commit in development"));
     }
+
+    #[test]
+    fn test_git_diff_with_commit_hashes_and_tags() {
+        // Create a temporary directory
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let repo_path = temp_dir.path();
+
+        // Initialize a new Git repository
+        let mut binding = RepositoryInitOptions::new();
+        let init_options = binding.initial_head("master");
+        let repo = Repository::init_opts(repo_path, init_options)
+            .expect("Failed to initialize repository");
+
+        // Create a new file in the repository
+        let file_path = repo_path.join("test_file.txt");
+        fs::write(&file_path, "Initial content").expect("Failed to write to test file");
+
+        // Stage and commit the new file
+        let mut index = repo.index().expect("Failed to get repository index");
+        index
+            .add_path(file_path.strip_prefix(repo_path).unwrap())
+            .expect("Failed to add file to index");
+        index.write().expect("Failed to write index");
+
+        let tree_id = index.write_tree().expect("Failed to write tree");
+        let tree = repo.find_tree(tree_id).expect("Failed to find tree");
+        let signature =
+            Signature::now("Test", "test@example.com").expect("Failed to create signature");
+
+        let first_commit_id = repo
+            .commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                "First commit",
+                &tree,
+                &[],
+            )
+            .expect("Failed to commit");
+
+        // Create a tag for the first commit
+        let first_commit = repo
+            .find_commit(first_commit_id)
+            .expect("Failed to find first commit");
+        repo.tag(
+            "v1.0.0",
+            &first_commit.as_object(),
+            &signature,
+            "Version 1.0.0",
+            false,
+        )
+        .expect("Failed to create tag");
+
+        // Make a second commit
+        fs::write(&file_path, "Modified content").expect("Failed to modify test file");
+        let mut index = repo.index().expect("Failed to get repository index");
+        index
+            .add_path(file_path.strip_prefix(repo_path).unwrap())
+            .expect("Failed to add file to index");
+        index.write().expect("Failed to write index");
+
+        let tree_id = index.write_tree().expect("Failed to write tree");
+        let tree = repo.find_tree(tree_id).expect("Failed to find tree");
+
+        let second_commit_id = repo
+            .commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                "Second commit",
+                &tree,
+                &[&first_commit],
+            )
+            .expect("Failed to commit second change");
+
+        // Test 1: Diff between commit hashes (full hash)
+        let first_commit_hash = first_commit_id.to_string();
+        let second_commit_hash = second_commit_id.to_string();
+
+        let diff_full_hash =
+            get_git_diff_between_branches(repo_path, &first_commit_hash, &second_commit_hash)
+                .expect("Failed to get git diff between full commit hashes");
+
+        assert!(diff_full_hash.contains("Initial content"));
+        assert!(diff_full_hash.contains("Modified content"));
+
+        // Test 2: Diff between abbreviated commit hashes
+        let first_commit_short = &first_commit_hash[..7];
+        let second_commit_short = &second_commit_hash[..7];
+
+        let diff_short_hash =
+            get_git_diff_between_branches(repo_path, first_commit_short, second_commit_short)
+                .expect("Failed to get git diff between abbreviated commit hashes");
+
+        assert!(diff_short_hash.contains("Initial content"));
+        assert!(diff_short_hash.contains("Modified content"));
+
+        // Test 3: Diff between tag and commit hash
+        let diff_tag_to_hash =
+            get_git_diff_between_branches(repo_path, "v1.0.0", &second_commit_hash)
+                .expect("Failed to get git diff between tag and commit hash");
+
+        assert!(diff_tag_to_hash.contains("Initial content"));
+        assert!(diff_tag_to_hash.contains("Modified content"));
+
+        // Test 4: Diff between tag and HEAD
+        let diff_tag_to_head = get_git_diff_between_branches(repo_path, "v1.0.0", "HEAD")
+            .expect("Failed to get git diff between tag and HEAD");
+
+        assert!(diff_tag_to_head.contains("Initial content"));
+        assert!(diff_tag_to_head.contains("Modified content"));
+
+        // Test 5: Error case - invalid reference should still fail
+        let result = get_git_diff_between_branches(repo_path, "nonexistent_reference", "HEAD");
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Branch nonexistent_reference doesn't exist!"));
+    }
 }

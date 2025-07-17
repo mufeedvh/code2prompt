@@ -176,17 +176,22 @@ pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<Str
     Ok(log_text)
 }
 
-/// Checks if a local branch exists in the given repository
+/// Checks if a git reference exists in the given repository
+///
+/// This function can validate any git reference including:
+/// - Local and remote branch names
+/// - Commit hashes (full or abbreviated)
+/// - Tags
+/// - Any reference that git rev-parse can resolve
 ///
 /// # Arguments
 ///
-/// * `repo` - A reference to the `Repository` where the branch should be checked
-/// * `branch_name` - A string slice that holds the name of the branch to check
+/// * `repo` - A reference to the `Repository` where the reference should be checked
+/// * `branch_name` - A string slice that holds the name of the reference to check
 ///
 /// # Returns
 ///
-/// * `bool` - `true` if the branch exists, `false` otherwise
+/// * `bool` - `true` if the reference exists, `false` otherwise
 fn branch_exists(repo: &Repository, branch_name: &str) -> bool {
-    repo.find_branch(branch_name, git2::BranchType::Local)
-        .is_ok()
+    repo.revparse_single(branch_name).is_ok()
 }
