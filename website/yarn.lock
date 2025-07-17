@@ -176,10 +176,10 @@
     is-wsl "^3.1.0"
     which-pm-runs "^1.1.0"
 
-"@astrojs/upgrade@^0.5.1":
-  version "0.5.2"
-  resolved "https://registry.yarnpkg.com/@astrojs/upgrade/-/upgrade-0.5.2.tgz#bd9d73d3345eef51e9c2170e9f91fff95c3c5825"
-  integrity sha512-nXipA1RHamPSS0gcz8rbuJ+O+uEK5onRfV2ML7rgxBMI4HOacV6FJzYiM8QvRqChxcF6vO54nBa+cDqtDX/O2A==
+"@astrojs/upgrade@^0.6.0":
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/@astrojs/upgrade/-/upgrade-0.6.0.tgz#8c279ed3d89d0177b76cbc827db7f092a4f82057"
+  integrity sha512-CNhupQN1uHqqxGqbtGQ6gSOux1LMKgy0IEHcTZtkRt2bUce35rMIEBQnQtt3vHISX/0i858TbbOOv0yp8WLpfw==
   dependencies:
     "@astrojs/cli-kit" "^0.4.1"
     package-manager-detector "^1.1.0"
@@ -4334,7 +4334,7 @@ supports-hyperlinks@^2.2.0:
     has-flag "^4.0.0"
     supports-color "^7.0.0"
 
-tailwindcss@4.1.11, tailwindcss@^4.1.3:
+tailwindcss@4.1.11, tailwindcss@^4.1.11:
   version "4.1.11"
   resolved "https://registry.yarnpkg.com/tailwindcss/-/tailwindcss-4.1.11.tgz#799af3e98c19c5baaefafc6e0c16304a0e684854"
   integrity sha512-2E9TBm6MDD/xKYe+dvJZAmg3yxIEDNRc0jwlNyDg/4Fil2QcSLjFKGVff0lAf1jjeaArlG/M75Ey/EYr/OJtBA==
