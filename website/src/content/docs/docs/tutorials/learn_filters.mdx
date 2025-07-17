@@ -37,9 +37,9 @@ Glob patterns allow you to specify rules for filtering files and directories.
 
 To practice with glob patterns, let's create a sample folder structure with some files.
 
-### Bash Script to Generate the Test Structure
+### Generate Test Structure
 
-Run this script to set up a temporary directory structure:
+Run this script to set up a temporary directory structure
 
 ```bash
 #!/bin/bash
@@ -75,17 +75,40 @@ It will create the following directory structure:
 
 import { FileTree } from "@astrojs/starlight/components";
 
+
 <FileTree>
-  - test_dir - lowercase - foo.py - bar.py - baz.py - qux.txt - corge.txt -
-  grault.txt - uppercase - FOO.PY - BAR.PY - BAZ.PY - QUX.txt - CORGE.txt -
-  GRAULT.txt - .secret - secret.txt
+- test_dir 
+  - lowercase 
+    - foo.py 
+    - bar.py 
+    - baz.py 
+    - qux.txt 
+    - corge.txt 
+    - grault.txt
+  - uppercase 
+    - FOO.py 
+    - BAR.py 
+    - BAZ.py 
+    - QUX.txt 
+    - CORGE.txt 
+    - GRAULT.txt 
+  - .secret 
+    - secret.txt
 </FileTree>
 
 ---
 
-## Examples: Filtering Files with Include and Exclude Patterns
+## General Usage of `code2prompt`
 
-### Case 1: No Include, No Exclude
+By default, `code2prompt` includes all files in the specified directory respecting the `.gitignore`.
+
+
+
+## Filtering Files with Include and Exclude Patterns
+
+The `-e` for `--exclude` and `-i` for `--include` options allow you to filter files dynamically based on glob patterns.
+
+### Case 1: Default Behavior (No Filters)
 
 Command:
 
@@ -98,25 +121,25 @@ code2prompt test_dir
 All files are included:
 
 - `lowercase/foo.py`
-- `lowercase/bar.py`
-- `uppercase/FOO.py`
+- `lowercase/bar.py` ...
+- `uppercase/FOO.py` ...
 - `.secret/secret.txt`
 
 ---
 
 ### Case 2: Exclude Specific File Types
 
-Exclude `.txt` files:
+Exclude `.txt` or `.md` files:
 
 ```bash
-code2prompt test_dir --exclude="*.txt"
+code2prompt test_dir --exclude="*.txt,*.md"
 ```
 
 #### Result
 
 Excluded:
 
-- All `.txt` files
+- All `.txt` or `.md` files
 
 Included:
 
@@ -166,6 +189,30 @@ Excluded:
 - `.secret/secret.txt`
 
 ---
+
+### Case 5: Exclude Specific Directory
+
+Exclude the `uppercase` directory:
+
+```bash
+code2prompt test_dir --exclude "**/uppercase*"
+```
+
+or with short syntax:
+
+```bash
+code2prompt test_dir -e "uppercase*"
+```
+
+#### Result
+
+Included:
+
+- All files in `lowercase` and `.secret`
+
+Excluded:
+
+- All files in `uppercase`
 
 ## Summary
 
