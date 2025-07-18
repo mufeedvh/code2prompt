@@ -13,10 +13,11 @@
   "dependencies": {
     "@astrojs/markdoc": "0.15.1",
     "@astrojs/mdx": "4.3.1",
+    "@astrojs/partytown": "^2.1.4",
     "@astrojs/prism": "3.3.0",
     "@astrojs/react": "4.3.0",
     "@astrojs/sitemap": "3.4.1",
-    "@astrojs/starlight": "0.35.0",
+    "@astrojs/starlight": "^0.35.1",
     "@astrojs/tailwind": "^6.0.2",
     "@astrojs/upgrade": "^0.6.0",
     "@tailwindcss/vite": "^4.1.4",
