@@ -1,4 +1,5 @@
 use lscolors::{Indicator, LsColors};
+use log::error;
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};

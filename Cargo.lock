@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "code2prompt"
-version = "3.0.2"
+version = "3.0.3"
 dependencies = [
  "ansi_term",
  "anyhow",
