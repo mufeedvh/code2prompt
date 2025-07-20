@@ -1,4 +1,4 @@
-const { processData } = require("./utils");
+import express from "express";
 
-console.log("App started");
-processData();
+const app = express();
+const PORT = process.env.PORT || 3000;

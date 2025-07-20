@@ -24,6 +24,7 @@
     "@types/react-dom": "^19.1.6",
     "astro": "5.12.0",
     "marked": "^16.1.1",
+    "prismjs": "^1.30.0",
     "rehype-mathjax": "^7.1.0",
     "remark-math": "^6.0.0",
     "sharp": "^0.34.3",
