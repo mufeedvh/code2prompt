@@ -5,7 +5,7 @@ import Code2promptLogo from "/src/assets/logo_light_v0.0.1.svg";
 
 <section
   id="header"
-  class="w-full bg-gradient-to-b from-gray-900 to-blue-900 text-white py-16 min-h-[100vh]"
+  class="w-full bg-gradient-to-b from-gray-900 to-blue-900 text-white py-16 min-h-[100vh] relative"
 >
   <div class="flex flex-col items-center justify-center p-8">
     <a href="/docs/welcome">
@@ -39,4 +39,88 @@ import Code2promptLogo from "/src/assets/logo_light_v0.0.1.svg";
       </a>
     </div>
   </div>
+
+  <!-- Scroll Indicator Arrow -->
+  <div
+    id="scroll-indicator"
+    class="absolute bottom-8 opacity-70 hover:opacity-100 transition-all duration-300 cursor-pointer"
+    style="left: 50%; transform: translateX(-50%);"
+  >
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      class="text-white drop-shadow-lg block"
+    >
+      <path
+        d="M7 10L12 15L17 10"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"></path>
+    </svg>
+  </div>
 </section>
+
+<script>
+  // Handle scroll indicator visibility
+  const scrollIndicator = document.getElementById("scroll-indicator");
+
+  function handleScroll() {
+    if (scrollIndicator) {
+      if (window.scrollY > 50) {
+        // Hide arrow when scrolled down
+        scrollIndicator.style.opacity = "0";
+        scrollIndicator.style.transform = "translateX(-50%) translateY(20px)";
+        scrollIndicator.style.pointerEvents = "none";
+      } else {
+        // Show arrow when at top
+        scrollIndicator.style.opacity = "0.7";
+        scrollIndicator.style.transform = "translateX(-50%) translateY(0)";
+        scrollIndicator.style.pointerEvents = "auto";
+        scrollIndicator.style.display = "block";
+      }
+    }
+  }
+
+  // Add scroll event listener
+  window.addEventListener("scroll", handleScroll);
+
+  // Handle click on scroll indicator
+  if (scrollIndicator) {
+    scrollIndicator.addEventListener("click", () => {
+      window.scrollTo({
+        top: window.innerHeight,
+        behavior: "smooth",
+      });
+    });
+  }
+</script>
+
+<style>
+  @keyframes bounce {
+    0%,
+    20%,
+    53%,
+    80%,
+    100% {
+      transform: translateX(-50%) translateY(0);
+    }
+    40%,
+    43% {
+      transform: translateX(-50%) translateY(-10px);
+    }
+    70% {
+      transform: translateX(-50%) translateY(-5px);
+    }
+    90% {
+      transform: translateX(-50%) translateY(-2px);
+    }
+  }
+
+  #scroll-indicator {
+    animation: bounce 2s infinite;
+  }
+</style>
