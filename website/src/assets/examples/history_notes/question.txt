@@ -1,1 +1,7 @@
-Help me revising for my history exam, make flashcards based on my notes.
+Goal: Create interactive flashcards for my upcoming history exam
+
+Format: Generate question-answer pairs in markdown format:
+- Each flashcard as a separate section
+- Questions that test key facts, dates, and connections
+- Concise but comprehensive answers
+- Organized by historical period

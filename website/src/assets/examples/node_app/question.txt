@@ -1,1 +1,6 @@
-Add me a this cool feature
+Goal: Add a user filtering feature to sort users by age in ascending order
+
+Format: Provide the complete implementation with:
+- Updated utils.js with the new filterUsersByAge function
+- Modified index.js to demonstrate the filtering
+- Clear code comments explaining the logic

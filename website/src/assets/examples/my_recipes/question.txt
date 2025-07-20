@@ -1,1 +1,7 @@
-Based on the ingredients in my pantry, what recipe can I cook tonight?
+Goal: Suggest a recipe I can cook tonight based on my available ingredients
+
+Format: Provide a personalized recommendation with:
+- Recipe name and brief description
+- Ingredient checklist (what I have vs. what I need)
+- Step-by-step cooking instructions
+- Estimated prep and cooking time
