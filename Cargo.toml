@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = ["crates/code2prompt-core", "crates/code2prompt", "crates/code2prompt-python"]
 default-members = ["crates/code2prompt-core", "crates/code2prompt"]
 
 [profile.release]

@@ -4,6 +4,10 @@
 mod args;
 mod clipboard;
 mod token_map;
+mod tui;
+mod model;
+mod utils;
+mod widgets;
 
 use anyhow::{Context, Result};
 use args::Cli;
@@ -22,9 +26,30 @@ use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
 use std::{path::PathBuf, str::FromStr};
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     env_logger::init();
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
+    
+    // Check if we should run in CLI mode (help, version, or output redirection)
+    let args_vec: Vec<String> = std::env::args().collect();
+    if should_run_cli_mode(&args_vec) {
+        run_cli_mode().await
+    } else {
+        // Run TUI by default
+        tui::run_tui().await
+    }
+}
+
+/// Determine if we should run in CLI mode instead of TUI
+fn should_run_cli_mode(args: &[String]) -> bool {
+    // Run CLI mode for help, version, or when output is redirected
+    args.iter().any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V") ||
+    !atty::is(atty::Stream::Stdout)
+}
+
+/// Run the original CLI mode
+async fn run_cli_mode() -> Result<()> {
     let args = Cli::parse();
 
     // ~~~ Arguments Validation ~~~

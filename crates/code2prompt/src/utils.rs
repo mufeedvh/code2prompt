@@ -1,0 +1,232 @@
+use anyhow::{Result, Context};
+use code2prompt_core::{
+    configuration::Code2PromptConfig,
+    session::Code2PromptSession,
+};
+use std::path::Path;
+use std::fs;
+
+use crate::model::{FileNode, AnalysisResults};
+
+/// Build a file tree from the given configuration
+pub fn build_file_tree(config: &Code2PromptConfig) -> Result<Vec<FileNode>> {
+    let root_path = &config.path;
+    
+    if !root_path.exists() {
+        return Err(anyhow::anyhow!("Path does not exist: {}", root_path.display()));
+    }
+    
+    let mut root_nodes = Vec::new();
+    
+    // Get immediate children of the root directory
+    if root_path.is_dir() {
+        let entries = fs::read_dir(root_path)
+            .context("Failed to read root directory")?;
+        
+        for entry in entries {
+            let entry = entry.context("Failed to read directory entry")?;
+            let path = entry.path();
+            
+            // Skip hidden files unless configured to include them
+            if !config.hidden && is_hidden(&path) {
+                continue;
+            }
+            
+            let mut node = FileNode::new(path, 0);
+            
+            // Check if this file/directory should be selected based on patterns
+            node.is_selected = should_include_path(&node.path, config);
+            
+            root_nodes.push(node);
+        }
+    } else {
+        // Single file
+        let mut node = FileNode::new(root_path.to_path_buf(), 0);
+        node.is_selected = should_include_path(&node.path, config);
+        root_nodes.push(node);
+    }
+    
+    // Sort nodes
+    for node in &mut root_nodes {
+        node.sort_children();
+    }
+    
+    root_nodes.sort_by(|a, b| {
+        // Directories first, then files
+        match (a.is_directory, b.is_directory) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.cmp(&b.name),
+        }
+    });
+    
+    Ok(root_nodes)
+}
+
+/// Load children of a directory
+pub fn load_directory_children(dir_path: &Path, level: usize) -> Result<Vec<FileNode>> {
+    let mut children = Vec::new();
+    
+    if !dir_path.is_dir() {
+        return Ok(children);
+    }
+    
+    let entries = fs::read_dir(dir_path)
+        .context("Failed to read directory")?;
+    
+    for entry in entries {
+        let entry = entry.context("Failed to read directory entry")?;
+        let path = entry.path();
+        
+        let child_node = FileNode::new(path, level);
+        children.push(child_node);
+    }
+    
+    // Sort children
+    children.sort_by(|a, b| {
+        match (a.is_directory, b.is_directory) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.cmp(&b.name),
+        }
+    });
+    
+    Ok(children)
+}
+
+/// Check if a path should be included based on configuration patterns
+fn should_include_path(path: &Path, config: &Code2PromptConfig) -> bool {
+    let path_str = path.to_string_lossy();
+    
+    // Check exclude patterns first
+    for pattern in &config.exclude_patterns {
+        if glob_match(pattern, &path_str) {
+            // If include_priority is true and there's a matching include pattern, still include it
+            if config.include_priority {
+                for include_pattern in &config.include_patterns {
+                    if glob_match(include_pattern, &path_str) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+    
+    // Check include patterns
+    if !config.include_patterns.is_empty() {
+        for pattern in &config.include_patterns {
+            if glob_match(pattern, &path_str) {
+                return true;
+            }
+        }
+        return false; // No include patterns matched
+    }
+    
+    // Default to including if no patterns specified
+    true
+}
+
+/// Simple glob pattern matching (basic implementation)
+fn glob_match(pattern: &str, text: &str) -> bool {
+    // This is a simplified glob implementation
+    // For production, you'd want to use a proper glob library
+    if pattern.contains('*') {
+        let parts: Vec<&str> = pattern.split('*').collect();
+        if parts.len() == 2 {
+            text.starts_with(parts[0]) && text.ends_with(parts[1])
+        } else {
+            // More complex patterns - for now just do basic matching
+            pattern == text
+        }
+    } else {
+        text.contains(pattern)
+    }
+}
+
+/// Check if a path is hidden (starts with .)
+fn is_hidden(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|s| s.to_str())
+        .map(|s| s.starts_with('.'))
+        .unwrap_or(false)
+}
+
+/// Run the code2prompt analysis
+pub async fn run_analysis(config: Code2PromptConfig) -> Result<AnalysisResults> {
+    // Create a session with the configuration
+    let mut session = Code2PromptSession::new(config);
+    
+    // Load the codebase
+    session.load_codebase()
+        .context("Failed to load codebase")?;
+    
+    // Handle git operations if enabled
+    if session.config.diff_enabled {
+        session.load_git_diff()
+            .context("Failed to load git diff")?;
+    }
+    
+    if session.config.diff_branches.is_some() {
+        session.load_git_diff_between_branches()
+            .context("Failed to load git diff between branches")?;
+    }
+    
+    if session.config.log_branches.is_some() {
+        session.load_git_log_between_branches()
+            .context("Failed to load git log between branches")?;
+    }
+    
+    // Build template data
+    let data = session.build_template_data();
+    
+    // Render the prompt
+    let rendered = session.render_prompt(&data)
+        .context("Failed to render prompt")?;
+    
+    let mut file_count = 0;
+    
+    // Process files from the session data
+    if let Some(files) = data.get("files").and_then(|f| f.as_array()) {
+        for file_entry in files {
+            if let (Some(_path), Some(_lines), Some(_tokens)) = (
+                file_entry.get("path").and_then(|p| p.as_str()),
+                file_entry.get("lines").and_then(|l| l.as_u64()),
+                file_entry.get("token_count").and_then(|t| t.as_u64()),
+            ) {
+                file_count += 1;
+            }
+        }
+    }
+    
+    Ok(AnalysisResults {
+        file_count,
+        token_count: Some(rendered.token_count),
+        generated_prompt: rendered.prompt,
+    })
+}
+
+/// Copy text to clipboard
+pub fn copy_to_clipboard(text: &str) -> Result<()> {
+    #[cfg(not(target_os = "linux"))]
+    {
+        use crate::clipboard::copy_text_to_clipboard;
+        copy_text_to_clipboard(text).context("Failed to copy to clipboard")
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // For Linux, we'll use a different clipboard approach
+        // For now, just save to a temp file and show instructions
+        let temp_file = "/tmp/code2prompt_output.txt";
+        std::fs::write(temp_file, text)
+            .context("Failed to write to temp file")?;
+        println!("Prompt saved to {} (clipboard not available on Linux in TUI mode)", temp_file);
+        Ok(())
+    }
+}
+
+/// Save text to file
+pub fn save_to_file(filename: &str, content: &str) -> Result<()> {
+    use code2prompt_core::template::write_to_file;
+    write_to_file(filename, content, false).context("Failed to save to file")
+}

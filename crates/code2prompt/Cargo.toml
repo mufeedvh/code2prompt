@@ -23,6 +23,12 @@ unicode-width = { workspace = true }
 terminal_size = { workspace = true }
 lscolors = { version = "0.20.0", features = ["ansi_term"] }
 ansi_term = "0.12.1"
+ratatui = "0.29.0"
+crossterm = "0.28.1"
+tokio = { version = "1.40.0", features = ["full"] }
+tui-tree-widget = "0.23.0"
+atty = "0.2.14"
+walkdir = "2.4.0"
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }
 
