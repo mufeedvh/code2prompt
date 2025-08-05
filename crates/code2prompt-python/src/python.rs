@@ -64,21 +64,6 @@ impl PyCode2PromptSession {
         })
     }
 
-    fn include_priority(&mut self, value: bool) -> PyResult<Py<Self>> {
-        let mut config = self.inner.config.clone();
-        config.include_priority = value;
-        self.inner = Code2PromptSession::new(config);
-
-        Python::with_gil(|py| {
-            Ok(Py::new(
-                py,
-                Self {
-                    inner: self.inner.clone(),
-                },
-            )?)
-        })
-    }
-
     fn with_line_numbers(&mut self, value: bool) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
         config.line_numbers = value;

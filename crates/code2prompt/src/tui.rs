@@ -565,34 +565,6 @@ impl TuiApp {
                 };
                 self.model.statistics_scroll = new_scroll;
             }
-            Message::AddIncludePattern(pattern) => {
-                if !self.model.config.include_patterns.contains(&pattern) {
-                    self.model.config.include_patterns.push(pattern.clone());
-                    self.model.status_message = format!("Added include pattern: {}", pattern);
-                    // Refresh file tree to apply new pattern
-                    self.handle_message(Message::RefreshFileTree)?;
-                }
-            }
-            Message::AddExcludePattern(pattern) => {
-                if !self.model.config.exclude_patterns.contains(&pattern) {
-                    self.model.config.exclude_patterns.push(pattern.clone());
-                    self.model.status_message = format!("Added exclude pattern: {}", pattern);
-                    // Refresh file tree to apply new pattern
-                    self.handle_message(Message::RefreshFileTree)?;
-                }
-            }
-            Message::RemoveIncludePattern(pattern) => {
-                self.model.config.include_patterns.retain(|p| p != &pattern);
-                self.model.status_message = format!("Removed include pattern: {}", pattern);
-                // Refresh file tree to apply new pattern
-                self.handle_message(Message::RefreshFileTree)?;
-            }
-            Message::RemoveExcludePattern(pattern) => {
-                self.model.config.exclude_patterns.retain(|p| p != &pattern);
-                self.model.status_message = format!("Removed exclude pattern: {}", pattern);
-                // Refresh file tree to apply new pattern
-                self.handle_message(Message::RefreshFileTree)?;
-            }
         }
 
         Ok(())

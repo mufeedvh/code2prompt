@@ -10,16 +10,16 @@ pub struct Model {
     pub config: Code2PromptConfig,
     pub current_tab: Tab,
     pub should_quit: bool,
-    
+
     // File tree state (Tab 1)
     pub file_tree: Vec<FileNode>,
     pub selected_files: HashMap<String, bool>,
     pub search_query: String,
     pub tree_cursor: usize,
-    
+
     // Settings state (Tab 2)
     pub settings_cursor: usize,
-    
+
     // Prompt output state (Tab 3)
     pub generated_prompt: Option<String>,
     pub token_count: Option<usize>,
@@ -28,14 +28,14 @@ pub struct Model {
     pub analysis_error: Option<String>,
     pub output_scroll: u16,
     pub file_tree_scroll: u16,
-    
+
     // Token Map data
     pub token_map_entries: Vec<crate::token_map::TokenMapEntry>,
-    
+
     // Statistics state (Tab 3)
     pub statistics_view: StatisticsView,
     pub statistics_scroll: u16,
-    
+
     // Status messages
     pub status_message: String,
 }
@@ -43,18 +43,18 @@ pub struct Model {
 /// The four main tabs of the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
-    FileTree,      // Tab 1: File selection with search
-    Settings,      // Tab 2: Configuration options
-    Statistics,    // Tab 3: Analysis statistics and metrics
-    PromptOutput,  // Tab 4: Generated prompt and copy
+    FileTree,     // Tab 1: File selection with search
+    Settings,     // Tab 2: Configuration options
+    Statistics,   // Tab 3: Analysis statistics and metrics
+    PromptOutput, // Tab 4: Generated prompt and copy
 }
 
 /// Different views available in the Statistics tab
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StatisticsView {
-    Overview,      // General statistics and summary
-    TokenMap,      // Token distribution by directory/file
-    Extensions,    // Token distribution by file extension
+    Overview,   // General statistics and summary
+    TokenMap,   // Token distribution by directory/file
+    Extensions, // Token distribution by file extension
 }
 
 /// File tree node with selection state
@@ -68,7 +68,6 @@ pub struct FileNode {
     pub children: Vec<FileNode>,
     pub level: usize,
 }
-
 
 /// Settings group for organizing settings
 #[derive(Debug, Clone)]
@@ -88,7 +87,10 @@ pub struct SettingsItem {
 #[derive(Debug, Clone)]
 pub enum SettingType {
     Boolean(bool),
-    Choice { options: Vec<String>, selected: usize },
+    Choice {
+        options: Vec<String>,
+        selected: usize,
+    },
 }
 
 /// Messages for updating the model
@@ -97,7 +99,7 @@ pub enum Message {
     // Navigation
     SwitchTab(Tab),
     Quit,
-    
+
     // File tree
     UpdateSearchQuery(String),
     ToggleFileSelection(usize),
@@ -105,39 +107,33 @@ pub enum Message {
     CollapseDirectory(usize),
     MoveTreeCursor(i32),
     RefreshFileTree,
-    
+
     // Settings
     MoveSettingsCursor(i32),
     ToggleSetting(usize),
     CycleSetting(usize),
-    
+
     // Analysis
     RunAnalysis,
     AnalysisComplete(AnalysisResults), // Complete analysis results
     AnalysisError(String),
-    
+
     // Prompt output
     CopyToClipboard,
     SaveToFile(String),
-    ScrollOutput(i16), // Scroll delta (positive = down, negative = up)
+    ScrollOutput(i16),   // Scroll delta (positive = down, negative = up)
     ScrollFileTree(i16), // Scroll delta for file tree
-    
+
     // Statistics
     CycleStatisticsView(i8), // +1 = next view, -1 = previous view
-    ScrollStatistics(i16), // Scroll delta for statistics
-    
-    // Pattern management
-    AddIncludePattern(String),
-    AddExcludePattern(String),
-    RemoveIncludePattern(String),
-    RemoveExcludePattern(String),
-    
+    ScrollStatistics(i16),   // Scroll delta for statistics
+
 }
 
 impl Default for Model {
     fn default() -> Self {
         let config = Code2PromptConfig::default();
-        
+
         Model {
             config,
             current_tab: Tab::FileTree,
@@ -163,7 +159,6 @@ impl Default for Model {
 }
 
 impl Model {
-    
     /// Generate a glob pattern for a file/directory path
     pub fn path_to_glob_pattern(&self, path: &std::path::Path, is_directory: bool) -> String {
         let relative_path = if path.starts_with(&self.config.path) {
@@ -174,7 +169,7 @@ impl Model {
         } else {
             path.to_string_lossy().to_string()
         };
-        
+
         if is_directory {
             // For directories, match all files within
             format!("{}/**/*", relative_path.trim_start_matches('/'))
@@ -183,7 +178,7 @@ impl Model {
             relative_path.trim_start_matches('/').to_string()
         }
     }
-    
+
     pub fn new_with_cli_args(
         path: PathBuf,
         include_patterns: Vec<String>,
@@ -197,14 +192,14 @@ impl Model {
         model.config.token_map_enabled = true;
         model
     }
-    
+
     /// Get flattened list of visible file nodes for display
     pub fn get_visible_nodes(&self) -> Vec<&FileNode> {
         let mut visible = Vec::new();
         self.collect_visible_nodes(&self.file_tree, &mut visible);
         visible
     }
-    
+
     fn collect_visible_nodes<'a>(&'a self, nodes: &'a [FileNode], visible: &mut Vec<&'a FileNode>) {
         for node in nodes {
             // Apply search filter - support both simple text and glob patterns
@@ -212,25 +207,31 @@ impl Model {
                 true
             } else if self.search_query.contains('*') || self.search_query.contains("**") {
                 // Treat as glob pattern
-                self.glob_match_search(&self.search_query, &node.name) || 
-                self.glob_match_search(&self.search_query, &node.path.to_string_lossy())
+                self.glob_match_search(&self.search_query, &node.name)
+                    || self.glob_match_search(&self.search_query, &node.path.to_string_lossy())
             } else {
                 // Simple text search (case insensitive)
-                node.name.to_lowercase().contains(&self.search_query.to_lowercase()) ||
-                node.path.to_string_lossy().to_lowercase().contains(&self.search_query.to_lowercase())
+                node.name
+                    .to_lowercase()
+                    .contains(&self.search_query.to_lowercase())
+                    || node
+                        .path
+                        .to_string_lossy()
+                        .to_lowercase()
+                        .contains(&self.search_query.to_lowercase())
             };
-            
+
             if matches_search {
                 visible.push(node);
             }
-            
+
             // Add children if expanded and node matches search or has matching children
             if node.is_expanded && (matches_search || node.is_directory) {
                 self.collect_visible_nodes(&node.children, visible);
             }
         }
     }
-    
+
     /// Simple glob matching for search (similar to utils but accessible from model)
     fn glob_match_search(&self, pattern: &str, text: &str) -> bool {
         // Handle ** for recursive directory matching
@@ -239,18 +240,18 @@ impl Model {
             if parts.len() == 2 {
                 let prefix = parts[0].trim_end_matches('/');
                 let suffix = parts[1].trim_start_matches('/');
-                
+
                 if prefix.is_empty() && suffix.is_empty() {
                     return true; // "**" matches everything
                 }
-                
+
                 let prefix_match = prefix.is_empty() || text.contains(prefix);
                 let suffix_match = suffix.is_empty() || text.contains(suffix);
-                
+
                 return prefix_match && suffix_match;
             }
         }
-        
+
         // Handle single * wildcard
         if pattern.contains('*') && !pattern.contains("**") {
             let parts: Vec<&str> = pattern.split('*').collect();
@@ -258,11 +259,11 @@ impl Model {
                 return text.contains(parts[0]) && text.contains(parts[1]);
             }
         }
-        
+
         // Fallback to contains
         text.to_lowercase().contains(&pattern.to_lowercase())
     }
-    
+
     /// Get grouped settings for display
     pub fn get_settings_groups(&self) -> Vec<SettingsGroup> {
         vec![
@@ -288,12 +289,16 @@ impl Model {
                         name: "Output Format".to_string(),
                         description: "Format for generated output".to_string(),
                         setting_type: SettingType::Choice {
-                            options: vec!["Markdown".to_string(), "JSON".to_string(), "XML".to_string()],
+                            options: vec![
+                                "Markdown".to_string(),
+                                "JSON".to_string(),
+                                "XML".to_string(),
+                            ],
                             selected: match self.config.output_format {
                                 OutputFormat::Markdown => 0,
                                 OutputFormat::Json => 1,
                                 OutputFormat::Xml => 2,
-                            }
+                            },
                         },
                     },
                     SettingsItem {
@@ -304,20 +309,18 @@ impl Model {
                             selected: match self.config.token_format {
                                 TokenFormat::Raw => 0,
                                 TokenFormat::Format => 1,
-                            }
+                            },
                         },
                     },
                 ],
             },
             SettingsGroup {
                 name: "Git Integration".to_string(),
-                items: vec![
-                    SettingsItem {
-                        name: "Git Diff".to_string(),
-                        description: "Include git diff in output".to_string(),
-                        setting_type: SettingType::Boolean(self.config.diff_enabled),
-                    },
-                ],
+                items: vec![SettingsItem {
+                    name: "Git Diff".to_string(),
+                    description: "Include git diff in output".to_string(),
+                    setting_type: SettingType::Boolean(self.config.diff_enabled),
+                }],
             },
             SettingsGroup {
                 name: "File Selection".to_string(),
@@ -365,12 +368,16 @@ impl Model {
                 name: "Output Format".to_string(),
                 description: "Format for generated output".to_string(),
                 setting_type: SettingType::Choice {
-                    options: vec!["Markdown".to_string(), "JSON".to_string(), "XML".to_string()],
+                    options: vec![
+                        "Markdown".to_string(),
+                        "JSON".to_string(),
+                        "XML".to_string(),
+                    ],
                     selected: match self.config.output_format {
                         OutputFormat::Markdown => 0,
                         OutputFormat::Json => 1,
                         OutputFormat::Xml => 2,
-                    }
+                    },
                 },
             },
             // Tokenizer section
@@ -382,7 +389,7 @@ impl Model {
                     selected: match self.config.token_format {
                         TokenFormat::Raw => 0,
                         TokenFormat::Format => 1,
-                    }
+                    },
                 },
             },
             // Git section
@@ -409,15 +416,16 @@ impl Model {
             },
         ]
     }
-    
+
     /// Update setting based on index and action (works with grouped settings)
     pub fn update_setting(&mut self, index: usize, action: SettingAction) {
         // Map flat index to actual setting based on grouped structure
         match index {
             0 => self.config.line_numbers = !self.config.line_numbers, // Line Numbers
-            1 => self.config.absolute_path = !self.config.absolute_path, // Absolute Paths  
+            1 => self.config.absolute_path = !self.config.absolute_path, // Absolute Paths
             2 => self.config.no_codeblock = !self.config.no_codeblock, // No Codeblock
-            3 => { // Output Format
+            3 => {
+                // Output Format
                 if let SettingAction::Cycle = action {
                     self.config.output_format = match self.config.output_format {
                         OutputFormat::Markdown => OutputFormat::Json,
@@ -425,19 +433,20 @@ impl Model {
                         OutputFormat::Xml => OutputFormat::Markdown,
                     };
                 }
-            },
-            4 => { // Token Format
+            }
+            4 => {
+                // Token Format
                 if let SettingAction::Cycle = action {
                     self.config.token_format = match self.config.token_format {
                         TokenFormat::Raw => TokenFormat::Format,
                         TokenFormat::Format => TokenFormat::Raw,
                     };
                 }
-            },
+            }
             5 => self.config.diff_enabled = !self.config.diff_enabled, // Git Diff
             6 => self.config.follow_symlinks = !self.config.follow_symlinks, // Follow Symlinks
-            7 => self.config.hidden = !self.config.hidden, // Hidden Files
-            8 => self.config.no_ignore = !self.config.no_ignore, // No Ignore
+            7 => self.config.hidden = !self.config.hidden,             // Hidden Files
+            8 => self.config.no_ignore = !self.config.no_ignore,       // No Ignore
             _ => {}
         }
     }
@@ -460,12 +469,13 @@ pub struct AnalysisResults {
 
 impl FileNode {
     pub fn new(path: PathBuf, level: usize) -> Self {
-        let name = path.file_name()
+        let name = path
+            .file_name()
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| path.to_string_lossy().to_string());
-        
+
         let is_directory = path.is_dir();
-        
+
         Self {
             path,
             name,
@@ -476,8 +486,7 @@ impl FileNode {
             level,
         }
     }
-    
-    
+
     pub fn sort_children(&mut self) {
         self.children.sort_by(|a, b| {
             // Directories first, then files
@@ -487,7 +496,7 @@ impl FileNode {
                 _ => a.name.cmp(&b.name),
             }
         });
-        
+
         // Recursively sort children
         for child in &mut self.children {
             child.sort_children();

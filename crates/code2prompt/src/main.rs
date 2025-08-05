@@ -3,11 +3,10 @@
 //! Authors: Mufeed VH (@mufeedvh), Olivier D'Ancona (@ODAncona)
 mod args;
 mod clipboard;
+mod model;
 mod token_map;
 mod tui;
-mod model;
 mod utils;
-mod widgets;
 
 use anyhow::{Context, Result};
 use args::Cli;
@@ -30,7 +29,7 @@ use std::{path::PathBuf, str::FromStr};
 async fn main() -> Result<()> {
     env_logger::init();
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
-    
+
     // Check if we should run in CLI mode (help, version, or output redirection)
     let args_vec: Vec<String> = std::env::args().collect();
     if should_run_cli_mode(&args_vec) {
@@ -44,8 +43,9 @@ async fn main() -> Result<()> {
 /// Determine if we should run in CLI mode instead of TUI
 fn should_run_cli_mode(args: &[String]) -> bool {
     // Run CLI mode for help, version, or when output is redirected
-    args.iter().any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V") ||
-    !atty::is(atty::Stream::Stdout)
+    args.iter()
+        .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V")
+        || !atty::is(atty::Stream::Stdout)
 }
 
 /// Run the original CLI mode
@@ -60,8 +60,7 @@ async fn run_cli_mode() -> Result<()> {
     }
 
     // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
-    let no_clipboard = args.no_clipboard || 
-        args.output_file.as_ref().map_or(false, |f| f == "-");
+    let no_clipboard = args.no_clipboard || args.output_file.as_ref().map_or(false, |f| f == "-");
 
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
@@ -79,8 +78,7 @@ async fn run_cli_mode() -> Result<()> {
     let mut configuration = Code2PromptConfig::builder();
 
     // Configure Path
-    configuration
-        .path(args.path.clone());
+    configuration.path(args.path.clone());
 
     // Configure Selection Patterns
     configuration
