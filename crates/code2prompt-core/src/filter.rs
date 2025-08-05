@@ -58,20 +58,21 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
 /// # Arguments
 ///
 /// * `path` - A relative path to the file that will be checked against the patterns.
-/// * `include_patterns` - A slice of glob pattern strings specifying which files to include.
-///                        If empty, all files are considered included unless excluded.
-/// * `exclude_patterns` - A slice of glob pattern strings specifying which files to exclude.
-/// * `include_priority` - A boolean flag that, when set to `true`, gives include patterns
-///                        precedence over exclude patterns in cases where both match.
+/// * `include_globset` - A GlobSet specifying which files to include.
+///                       If empty, all files are considered included unless excluded.
+/// * `exclude_globset` - A GlobSet specifying which files to exclude.
 ///
 /// # Returns
 ///
 /// * `bool` - Returns `true` if the file should be included; otherwise, returns `false`.
+///
+/// # Behavior
+///
+/// When both include and exclude patterns match, exclude patterns take precedence.
 pub fn should_include_file(
     path: &Path,
     include_globset: &GlobSet,
     exclude_globset: &GlobSet,
-    include_priority: bool,
 ) -> bool {
     // ~~~ Matching ~~~
     let included = include_globset.is_match(path);
@@ -79,10 +80,10 @@ pub fn should_include_file(
 
     // ~~~ Decision ~~~
     let result = match (included, excluded) {
-        (true, true) => include_priority, // If both include and exclude patterns match, use the include_priority flag
-        (true, false) => true,            // If the path is included and not excluded, include it
-        (false, true) => false,           // If the path is excluded, exclude it
-        (false, false) => include_globset.is_empty(), // If no include patterns are provided, include everything
+        (true, true) => false,  // If both match, exclude takes precedence
+        (true, false) => true,  // If only included, include it
+        (false, true) => false, // If only excluded, exclude it
+        (false, false) => include_globset.is_empty(), // If no include patterns, include everything
     };
 
     debug!(

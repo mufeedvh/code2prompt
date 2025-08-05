@@ -68,7 +68,6 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                 relative_path,
                 &include_globset,
                 &exclude_globset,
-                config.include_priority,
             );
 
             // ~~~ Directory Tree ~~~

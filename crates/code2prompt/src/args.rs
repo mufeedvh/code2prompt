@@ -23,9 +23,6 @@ pub struct Cli {
     #[clap(short = 'e', long = "exclude", value_delimiter = ',')]
     pub exclude: Vec<String>,
 
-    /// Include files in case of conflict between include and exclude patterns
-    #[clap(long)]
-    pub include_priority: bool,
 
     /// Optional output file path
     #[clap(short = 'O', long = "output-file")]
