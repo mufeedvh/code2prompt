@@ -97,6 +97,7 @@ impl TuiApp {
         match model.current_tab {
             Tab::FileTree => Self::render_file_tree_tab_static(model, frame, main_layout[1]),
             Tab::Settings => Self::render_settings_tab_static(model, frame, main_layout[1]),
+            Tab::Statistics => Self::render_statistics_tab_static(model, frame, main_layout[1]),
             Tab::PromptOutput => {
                 Self::render_prompt_output_tab_static(model, frame, main_layout[1])
             }
@@ -115,12 +116,14 @@ impl TuiApp {
             KeyCode::Esc => return Some(Message::Quit),
             KeyCode::Char('1') => return Some(Message::SwitchTab(Tab::FileTree)),
             KeyCode::Char('2') => return Some(Message::SwitchTab(Tab::Settings)),
-            KeyCode::Char('3') => return Some(Message::SwitchTab(Tab::PromptOutput)),
+            KeyCode::Char('3') => return Some(Message::SwitchTab(Tab::Statistics)),
+            KeyCode::Char('4') => return Some(Message::SwitchTab(Tab::PromptOutput)),
             KeyCode::Tab => {
-                // Cycle through tabs: Selection -> Settings -> Output -> Selection
+                // Cycle through tabs: Selection -> Settings -> Statistics -> Output -> Selection
                 let next_tab = match self.model.current_tab {
                     Tab::FileTree => Tab::Settings,
-                    Tab::Settings => Tab::PromptOutput,
+                    Tab::Settings => Tab::Statistics,
+                    Tab::Statistics => Tab::PromptOutput,
                     Tab::PromptOutput => Tab::FileTree,
                 };
                 return Some(Message::SwitchTab(next_tab));
@@ -132,6 +135,7 @@ impl TuiApp {
         match self.model.current_tab {
             Tab::FileTree => self.handle_file_tree_keys(key),
             Tab::Settings => self.handle_settings_keys(key),
+            Tab::Statistics => self.handle_statistics_keys(key),
             Tab::PromptOutput => self.handle_prompt_output_keys(key),
         }
     }
@@ -183,6 +187,10 @@ impl TuiApp {
                     None
                 }
             }
+            KeyCode::PageUp => Some(Message::ScrollFileTree(-5)),
+            KeyCode::PageDown => Some(Message::ScrollFileTree(5)),
+            KeyCode::Home => Some(Message::ScrollFileTree(-9999)), // Scroll to top
+            KeyCode::End => Some(Message::ScrollFileTree(9999)),   // Scroll to bottom
             _ => None,
         }
     }
@@ -195,6 +203,13 @@ impl TuiApp {
             KeyCode::Left | KeyCode::Right => {
                 Some(Message::CycleSetting(self.model.settings_cursor))
             }
+            KeyCode::Enter => Some(Message::RunAnalysis),
+            _ => None,
+        }
+    }
+    
+    fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
+        match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
             _ => None,
         }
@@ -477,6 +492,20 @@ impl TuiApp {
                     self.model.output_scroll = new_scroll.min(max_scroll);
                 }
             }
+            Message::ScrollFileTree(delta) => {
+                let visible_count = self.model.get_visible_nodes().len() as u16;
+                let viewport_height = 20; // Approximate viewport height for file tree
+                let max_scroll = visible_count.saturating_sub(viewport_height);
+
+                let new_scroll = if delta < 0 {
+                    self.model.file_tree_scroll.saturating_sub((-delta) as u16)
+                } else {
+                    self.model.file_tree_scroll.saturating_add(delta as u16)
+                };
+
+                // Clamp scroll to valid range
+                self.model.file_tree_scroll = new_scroll.min(max_scroll);
+            }
             Message::AddIncludePattern(pattern) => {
                 if !self.model.config.include_patterns.contains(&pattern) {
                     self.model.config.include_patterns.push(pattern.clone());
@@ -639,11 +668,12 @@ impl TuiApp {
     }
 
     fn render_tab_bar_static(model: &Model, frame: &mut Frame, area: Rect) {
-        let tabs = vec!["1. Selection", "2. Settings", "3. Output"];
+        let tabs = vec!["1. Selection", "2. Settings", "3. Statistics", "4. Output"];
         let selected = match model.current_tab {
             Tab::FileTree => 0,
             Tab::Settings => 1,
-            Tab::PromptOutput => 2,
+            Tab::Statistics => 2,
+            Tab::PromptOutput => 3,
         };
 
         let tabs_widget = Tabs::new(tabs)
@@ -855,6 +885,143 @@ impl TuiApp {
         frame.render_widget(instructions, layout[1]);
     }
 
+    fn render_statistics_tab_static(model: &Model, frame: &mut Frame, area: Rect) {
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),    // Statistics content
+                Constraint::Length(3), // Instructions
+            ])
+            .split(area);
+
+        // Statistics content
+        let mut stats_items: Vec<ListItem> = Vec::new();
+
+        // File Statistics
+        stats_items.push(
+            ListItem::new("── File Statistics ──").style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+
+        let selected_count = model.selected_files.values().filter(|&&v| v).count();
+        let total_files = model.file_count;
+        stats_items.push(ListItem::new(format!("  Selected Files: {}", selected_count)));
+        stats_items.push(ListItem::new(format!("  Total Files: {}", total_files)));
+        stats_items.push(ListItem::new(""));
+
+        // Token Statistics
+        stats_items.push(
+            ListItem::new("── Token Statistics ──").style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+
+        if let Some(token_count) = model.token_count {
+            stats_items.push(ListItem::new(format!("  Token Count: {}", token_count)));
+        } else {
+            stats_items.push(ListItem::new("  Token Count: Not calculated"));
+        }
+        stats_items.push(ListItem::new(""));
+
+        // Configuration Statistics
+        stats_items.push(
+            ListItem::new("── Configuration ──").style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+
+        let output_format = match model.config.output_format {
+            code2prompt_core::template::OutputFormat::Markdown => "Markdown",
+            code2prompt_core::template::OutputFormat::Json => "JSON",
+            code2prompt_core::template::OutputFormat::Xml => "XML",
+        };
+        stats_items.push(ListItem::new(format!("  Output Format: {}", output_format)));
+
+        let token_format = match model.config.token_format {
+            code2prompt_core::tokenizer::TokenFormat::Raw => "Raw",
+            code2prompt_core::tokenizer::TokenFormat::Format => "Formatted",
+        };
+        stats_items.push(ListItem::new(format!("  Token Format: {}", token_format)));
+
+        stats_items.push(ListItem::new(format!("  Line Numbers: {}", if model.config.line_numbers { "Enabled" } else { "Disabled" })));
+        stats_items.push(ListItem::new(format!("  Git Diff: {}", if model.config.diff_enabled { "Enabled" } else { "Disabled" })));
+        stats_items.push(ListItem::new(""));
+
+        // Pattern Statistics
+        stats_items.push(
+            ListItem::new("── Filter Patterns ──").style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+
+        let include_count = model.config.include_patterns.len();
+        let exclude_count = model.config.exclude_patterns.len();
+        stats_items.push(ListItem::new(format!("  Include Patterns: {}", include_count)));
+        stats_items.push(ListItem::new(format!("  Exclude Patterns: {}", exclude_count)));
+        stats_items.push(ListItem::new(""));
+
+        // Analysis Status
+        stats_items.push(
+            ListItem::new("── Analysis Status ──").style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        );
+
+        let status = if model.analysis_in_progress {
+            "In Progress..."
+        } else if model.analysis_error.is_some() {
+            "Error"
+        } else if model.generated_prompt.is_some() {
+            "Completed"
+        } else {
+            "Ready"
+        };
+        let status_color = if model.analysis_in_progress {
+            Color::Yellow
+        } else if model.analysis_error.is_some() {
+            Color::Red
+        } else if model.generated_prompt.is_some() {
+            Color::Green
+        } else {
+            Color::Gray
+        };
+
+        stats_items.push(
+            ListItem::new(format!("  Status: {}", status))
+                .style(Style::default().fg(status_color))
+        );
+
+        if let Some(error) = &model.analysis_error {
+            stats_items.push(
+                ListItem::new(format!("  Error: {}", error))
+                    .style(Style::default().fg(Color::Red))
+            );
+        }
+
+        let stats_widget = List::new(stats_items)
+            .block(Block::default().borders(Borders::ALL).title("Statistics & Analysis"))
+            .style(Style::default().fg(Color::White));
+
+        frame.render_widget(stats_widget, layout[0]);
+
+        // Instructions
+        let instructions = Paragraph::new("Enter: Run Analysis")
+            .block(Block::default().borders(Borders::ALL).title("Controls"))
+            .style(Style::default().fg(Color::Gray));
+        frame.render_widget(instructions, layout[1]);
+    }
+
     fn render_prompt_output_tab_static(model: &Model, frame: &mut Frame, area: Rect) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
@@ -865,17 +1032,13 @@ impl TuiApp {
             ])
             .split(area);
 
-        // Info bar
-        let info_text = if let Some(token_count) = model.token_count {
-            let selected_count = model.selected_files.values().filter(|&&v| v).count();
-            format!(
-                "Files: {} selected ({} total) | Tokens: {} | Status: Ready",
-                selected_count, model.file_count, token_count
-            )
-        } else if model.analysis_in_progress {
+        // Info bar (simplified - detailed stats are now in Statistics tab)
+        let info_text = if model.analysis_in_progress {
             "Analysis in progress...".to_string()
         } else if let Some(error) = &model.analysis_error {
             format!("Error: {}", error)
+        } else if model.generated_prompt.is_some() {
+            "Analysis complete! View detailed statistics in the Statistics tab.".to_string()
         } else {
             let selected_count = model.selected_files.values().filter(|&&v| v).count();
             if selected_count > 0 {
@@ -892,7 +1055,7 @@ impl TuiApp {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title("Analysis Info"),
+                    .title("Prompt Status"),
             )
             .style(if model.analysis_error.is_some() {
                 Style::default().fg(Color::Red)
@@ -944,7 +1107,7 @@ impl TuiApp {
         let status_text = if !model.status_message.is_empty() {
             model.status_message.clone()
         } else {
-            "Tab: Next tab | 1/2/3: Direct tab | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
+            "Tab: Next tab | 1/2/3/4: Direct tab | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
         };
 
         let status_widget = Paragraph::new(status_text)

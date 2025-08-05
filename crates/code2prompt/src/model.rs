@@ -27,17 +27,19 @@ pub struct Model {
     pub analysis_in_progress: bool,
     pub analysis_error: Option<String>,
     pub output_scroll: u16,
+    pub file_tree_scroll: u16,
     
     // Status messages
     pub status_message: String,
 }
 
-/// The three main tabs of the TUI
+/// The four main tabs of the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     FileTree,      // Tab 1: File selection with search
     Settings,      // Tab 2: Configuration options
-    PromptOutput,  // Tab 3: Generated prompt and copy
+    Statistics,    // Tab 3: Analysis statistics and metrics
+    PromptOutput,  // Tab 4: Generated prompt and copy
 }
 
 /// File tree node with selection state
@@ -103,6 +105,7 @@ pub enum Message {
     CopyToClipboard,
     SaveToFile(String),
     ScrollOutput(i16), // Scroll delta (positive = down, negative = up)
+    ScrollFileTree(i16), // Scroll delta for file tree
     
     // Pattern management
     AddIncludePattern(String),
@@ -131,6 +134,7 @@ impl Default for Model {
             analysis_in_progress: false,
             analysis_error: None,
             output_scroll: 0,
+            file_tree_scroll: 0,
             status_message: String::new(),
         }
     }

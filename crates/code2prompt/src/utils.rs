@@ -41,6 +41,9 @@ pub fn build_file_tree(config: &Code2PromptConfig) -> Result<Vec<FileNode>> {
             if node.is_directory {
                 if let Ok(children) = load_directory_children_with_config(&node.path, 1, Some(config)) {
                     node.children = children;
+                    
+                    // Auto-expand if this directory contains selected files (recursively)
+                    node.is_expanded = should_auto_expand_directory(&node, config);
                 }
             }
             
@@ -98,6 +101,15 @@ pub fn load_directory_children_with_config(dir_path: &Path, level: usize, config
         // Set selection based on patterns if config is provided
         if let Some(cfg) = config {
             child_node.is_selected = should_include_path(&child_node.path, cfg);
+            
+            // For directories, only load children for auto-expansion if we're not too deep
+            // to avoid performance issues with very deep directory trees
+            if child_node.is_directory && level < 3 {
+                if let Ok(grandchildren) = load_directory_children_with_config(&child_node.path, level + 1, Some(cfg)) {
+                    child_node.children = grandchildren;
+                    child_node.is_expanded = should_auto_expand_directory(&child_node, cfg);
+                }
+            }
         }
         
         children.push(child_node);
@@ -205,6 +217,41 @@ fn is_hidden(path: &Path) -> bool {
         .and_then(|s| s.to_str())
         .map(|s| s.starts_with('.'))
         .unwrap_or(false)
+}
+
+/// Check if a directory should be auto-expanded because it contains selected files
+fn should_auto_expand_directory(node: &FileNode, config: &Code2PromptConfig) -> bool {
+    if !node.is_directory {
+        return false;
+    }
+    
+    // Check if the directory itself is selected
+    if node.is_selected {
+        return true;
+    }
+    
+    // Recursively check all children and subdirectories
+    contains_selected_files_recursive(node, config)
+}
+
+/// Recursively check if a directory contains any selected files
+fn contains_selected_files_recursive(node: &FileNode, config: &Code2PromptConfig) -> bool {
+    // Check immediate children
+    for child in &node.children {
+        if child.is_selected {
+            return true;
+        }
+        
+        // If child is a directory, check its contents recursively
+        // but only if it has children already loaded to avoid deep scanning
+        if child.is_directory && !child.children.is_empty() {
+            if contains_selected_files_recursive(child, config) {
+                return true;
+            }
+        }
+    }
+    
+    false
 }
 
 /// Run the code2prompt analysis
