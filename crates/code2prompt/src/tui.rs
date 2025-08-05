@@ -1149,21 +1149,67 @@ impl TuiApp {
         let scroll_start = model.statistics_scroll as usize;
         let scroll_end = (scroll_start + content_height).min(model.token_map_entries.len());
 
-        // Create list items for visible entries
+        // Create list items for visible entries with proper tree structure
         let items: Vec<ListItem> = model.token_map_entries
             .iter()
             .skip(scroll_start)
             .take(content_height)
-            .map(|entry| {
-                // Create tree-like indent
-                let indent = "  ".repeat(entry.depth);
-                let tree_connector = if entry.depth > 0 {
-                    if entry.is_last { "└─ " } else { "├─ " }
-                } else {
-                    ""
-                };
+            .enumerate()
+            .map(|(viewport_index, entry)| {
+                let actual_index = scroll_start + viewport_index;
+                
+                // Build tree prefix with proper vertical lines
+                let mut prefix = String::new();
+                
+                // Add vertical lines for parent levels
+                for d in 0..entry.depth {
+                    if d < entry.depth - 1 {
+                        // Check if we need a vertical line at this depth
+                        let needs_line = model.token_map_entries
+                            .iter()
+                            .skip(actual_index + 1)
+                            .take_while(|next_entry| next_entry.depth > d)
+                            .any(|next_entry| next_entry.depth == d + 1);
+                        
+                        if needs_line {
+                            prefix.push_str("│ ");
+                        } else {
+                            prefix.push_str("  ");
+                        }
+                    } else {
+                        if entry.is_last {
+                            prefix.push_str("└─");
+                        } else {
+                            prefix.push_str("├─");
+                        }
+                    }
+                }
+                
+                // Special handling for root level
+                if entry.depth == 0 && actual_index == 0 && entry.name != "(other files)" {
+                    prefix = "┌─".to_string();
+                }
+                
+                // Check if has children
+                let has_children = model.token_map_entries
+                    .get(actual_index + 1)
+                    .map(|next| next.depth > entry.depth)
+                    .unwrap_or(false);
+                
+                // Add the connecting character
+                if entry.depth > 0 || entry.name == "(other files)" {
+                    if has_children {
+                        prefix.push('┬');
+                    } else {
+                        prefix.push('─');
+                    }
+                } else if actual_index == 0 {
+                    prefix.push('┴');
+                }
+                
+                prefix.push(' ');
 
-                // Create the visual bar (simplified for TUI)
+                // Create the visual bar
                 let bar_width: usize = 20;
                 let filled_chars = ((entry.percentage / 100.0) * bar_width as f64) as usize;
                 let bar = format!("{}{}",
@@ -1187,8 +1233,8 @@ impl TuiApp {
                 };
 
                 let content = format!(
-                    "{}{}{} │{}│ {:>6} ({:>4.1}%)",
-                    indent, tree_connector, entry.name,
+                    "{}{} │{}│ {:>6} ({:>4.1}%)",
+                    prefix, entry.name,
                     bar, tokens_str, entry.percentage
                 );
 

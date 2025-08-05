@@ -330,13 +330,9 @@ pub fn copy_to_clipboard(text: &str) -> Result<()> {
     }
     #[cfg(target_os = "linux")]
     {
-        // For Linux, we'll use a different clipboard approach
-        // For now, just save to a temp file and show instructions
-        let temp_file = "/tmp/code2prompt_output.txt";
-        std::fs::write(temp_file, text)
-            .context("Failed to write to temp file")?;
-        println!("Prompt saved to {} (clipboard not available on Linux in TUI mode)", temp_file);
-        Ok(())
+        // Use the clipboard daemon system for Linux
+        use crate::clipboard::spawn_clipboard_daemon;
+        spawn_clipboard_daemon(text).context("Failed to spawn clipboard daemon")
     }
 }
 
