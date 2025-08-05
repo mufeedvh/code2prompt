@@ -301,10 +301,23 @@ pub async fn run_analysis(config: Code2PromptConfig) -> Result<AnalysisResults> 
         }
     }
     
+    // Generate token map entries if enabled
+    let token_map_entries = if rendered.token_count > 0 {
+        crate::token_map::generate_token_map_with_limit(
+            &data.get("files").and_then(|f| f.as_array()).unwrap_or(&vec![]).to_vec(),
+            rendered.token_count,
+            Some(50), // Show more entries in TUI
+            Some(0.5), // Lower threshold for more detail
+        )
+    } else {
+        Vec::new()
+    };
+
     Ok(AnalysisResults {
         file_count,
         token_count: Some(rendered.token_count),
         generated_prompt: rendered.prompt,
+        token_map_entries,
     })
 }
 

@@ -184,7 +184,7 @@ fn insert_path(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TokenMapEntry {
     pub path: String,
     pub name: String,

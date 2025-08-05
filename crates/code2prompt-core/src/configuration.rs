@@ -26,7 +26,6 @@ pub struct Code2PromptConfig {
     #[builder(default)]
     pub exclude_patterns: Vec<String>,
 
-
     /// If true, code lines will be numbered in the output.
     #[builder(default)]
     pub line_numbers: bool,

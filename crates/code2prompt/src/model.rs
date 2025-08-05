@@ -29,6 +29,13 @@ pub struct Model {
     pub output_scroll: u16,
     pub file_tree_scroll: u16,
     
+    // Token Map data
+    pub token_map_entries: Vec<crate::token_map::TokenMapEntry>,
+    
+    // Statistics state (Tab 3)
+    pub statistics_view: StatisticsView,
+    pub statistics_scroll: u16,
+    
     // Status messages
     pub status_message: String,
 }
@@ -40,6 +47,14 @@ pub enum Tab {
     Settings,      // Tab 2: Configuration options
     Statistics,    // Tab 3: Analysis statistics and metrics
     PromptOutput,  // Tab 4: Generated prompt and copy
+}
+
+/// Different views available in the Statistics tab
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatisticsView {
+    Overview,      // General statistics and summary
+    TokenMap,      // Token distribution by directory/file
+    Extensions,    // Token distribution by file extension
 }
 
 /// File tree node with selection state
@@ -98,7 +113,7 @@ pub enum Message {
     
     // Analysis
     RunAnalysis,
-    AnalysisComplete(String, usize, usize), // prompt, tokens, files
+    AnalysisComplete(AnalysisResults), // Complete analysis results
     AnalysisError(String),
     
     // Prompt output
@@ -106,6 +121,10 @@ pub enum Message {
     SaveToFile(String),
     ScrollOutput(i16), // Scroll delta (positive = down, negative = up)
     ScrollFileTree(i16), // Scroll delta for file tree
+    
+    // Statistics
+    CycleStatisticsView,
+    ScrollStatistics(i16), // Scroll delta for statistics
     
     // Pattern management
     AddIncludePattern(String),
@@ -135,6 +154,9 @@ impl Default for Model {
             analysis_error: None,
             output_scroll: 0,
             file_tree_scroll: 0,
+            token_map_entries: Vec::new(),
+            statistics_view: StatisticsView::Overview,
+            statistics_scroll: 0,
             status_message: String::new(),
         }
     }
@@ -171,6 +193,8 @@ impl Model {
         model.config.path = path;
         model.config.include_patterns = include_patterns;
         model.config.exclude_patterns = exclude_patterns;
+        // Enable token map for TUI
+        model.config.token_map_enabled = true;
         model
     }
     
@@ -431,6 +455,7 @@ pub struct AnalysisResults {
     pub file_count: usize,
     pub token_count: Option<usize>,
     pub generated_prompt: String,
+    pub token_map_entries: Vec<crate::token_map::TokenMapEntry>,
 }
 
 impl FileNode {

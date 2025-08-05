@@ -211,6 +211,13 @@ impl TuiApp {
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
+            KeyCode::Tab => Some(Message::CycleStatisticsView),
+            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
+            KeyCode::Down => Some(Message::ScrollStatistics(1)),
+            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
+            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
+            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
+            KeyCode::End => Some(Message::ScrollStatistics(9999)),
             _ => None,
         }
     }
@@ -300,6 +307,9 @@ impl TuiApp {
                         self.model.tree_cursor.saturating_sub((-delta) as usize)
                     };
                     self.model.tree_cursor = new_cursor;
+                    
+                    // Auto-adjust scroll to keep cursor visible
+                    self.adjust_file_tree_scroll_for_cursor();
                 }
             }
             Message::MoveSettingsCursor(delta) => {
@@ -425,11 +435,7 @@ impl TuiApp {
                     tokio::spawn(async move {
                         match run_analysis(config).await {
                             Ok(result) => {
-                                let _ = tx.send(Message::AnalysisComplete(
-                                    result.generated_prompt,
-                                    result.token_count.unwrap_or(0),
-                                    result.file_count,
-                                ));
+                                let _ = tx.send(Message::AnalysisComplete(result));
                             }
                             Err(e) => {
                                 let _ = tx.send(Message::AnalysisError(e.to_string()));
@@ -438,13 +444,15 @@ impl TuiApp {
                     });
                 }
             }
-            Message::AnalysisComplete(prompt, tokens, files) => {
+            Message::AnalysisComplete(results) => {
                 self.model.analysis_in_progress = false;
-                self.model.generated_prompt = Some(prompt);
-                self.model.token_count = Some(tokens);
-                self.model.file_count = files;
+                self.model.generated_prompt = Some(results.generated_prompt);
+                self.model.token_count = results.token_count;
+                self.model.file_count = results.file_count;
+                self.model.token_map_entries = results.token_map_entries;
+                let tokens = results.token_count.unwrap_or(0);
                 self.model.status_message =
-                    format!("Analysis complete! {} tokens, {} files", tokens, files);
+                    format!("Analysis complete! {} tokens, {} files", tokens, results.file_count);
             }
             Message::AnalysisError(error) => {
                 self.model.analysis_in_progress = false;
@@ -505,6 +513,29 @@ impl TuiApp {
 
                 // Clamp scroll to valid range
                 self.model.file_tree_scroll = new_scroll.min(max_scroll);
+            }
+            Message::CycleStatisticsView => {
+                self.model.statistics_view = match self.model.statistics_view {
+                    crate::model::StatisticsView::Overview => crate::model::StatisticsView::TokenMap,
+                    crate::model::StatisticsView::TokenMap => crate::model::StatisticsView::Extensions,
+                    crate::model::StatisticsView::Extensions => crate::model::StatisticsView::Overview,
+                };
+                self.model.statistics_scroll = 0; // Reset scroll when changing views
+                let view_name = match self.model.statistics_view {
+                    crate::model::StatisticsView::Overview => "Overview",
+                    crate::model::StatisticsView::TokenMap => "Token Map",
+                    crate::model::StatisticsView::Extensions => "Extensions",
+                };
+                self.model.status_message = format!("Switched to {} view", view_name);
+            }
+            Message::ScrollStatistics(delta) => {
+                // For now, simple scroll logic - will be refined per view
+                let new_scroll = if delta < 0 {
+                    self.model.statistics_scroll.saturating_sub((-delta) as u16)
+                } else {
+                    self.model.statistics_scroll.saturating_add(delta as u16)
+                };
+                self.model.statistics_scroll = new_scroll;
             }
             Message::AddIncludePattern(pattern) => {
                 if !self.model.config.include_patterns.contains(&pattern) {
@@ -667,6 +698,35 @@ impl TuiApp {
         }
     }
 
+    /// Adjust file tree scroll to keep the cursor visible in the viewport
+    fn adjust_file_tree_scroll_for_cursor(&mut self) {
+        let visible_count = self.model.get_visible_nodes().len();
+        if visible_count == 0 {
+            return;
+        }
+
+        // Estimate viewport height (this will be more accurate in practice)
+        let viewport_height = 20; // This should match the actual content height in render
+        
+        let cursor_pos = self.model.tree_cursor;
+        let scroll_pos = self.model.file_tree_scroll as usize;
+        
+        // If cursor is above viewport, scroll up
+        if cursor_pos < scroll_pos {
+            self.model.file_tree_scroll = cursor_pos as u16;
+        }
+        // If cursor is below viewport, scroll down
+        else if cursor_pos >= scroll_pos + viewport_height {
+            self.model.file_tree_scroll = (cursor_pos.saturating_sub(viewport_height - 1)) as u16;
+        }
+        
+        // Ensure scroll doesn't go beyond bounds
+        let max_scroll = visible_count.saturating_sub(viewport_height);
+        if self.model.file_tree_scroll as usize > max_scroll {
+            self.model.file_tree_scroll = max_scroll as u16;
+        }
+    }
+
     fn render_tab_bar_static(model: &Model, frame: &mut Frame, area: Rect) {
         let tabs = vec!["1. Selection", "2. Settings", "3. Statistics", "4. Output"];
         let selected = match model.current_tab {
@@ -704,11 +764,24 @@ impl TuiApp {
             ])
             .split(area);
 
-        // File tree
+        // File tree with scroll support
         let visible_nodes = model.get_visible_nodes();
+        let total_nodes = visible_nodes.len();
+        
+        // Calculate viewport dimensions
+        let tree_area = layout[0];
+        let content_height = tree_area.height.saturating_sub(2) as usize; // Account for borders
+        
+        // Calculate scroll position and viewport
+        let scroll_start = model.file_tree_scroll as usize;
+        let scroll_end = (scroll_start + content_height).min(total_nodes);
+        
+        // Create items only for visible viewport
         let items: Vec<ListItem> = visible_nodes
             .iter()
             .enumerate()
+            .skip(scroll_start)
+            .take(content_height)
             .map(|(i, node)| {
                 let indent = "  ".repeat(node.level);
                 let icon = if node.is_directory {
@@ -725,6 +798,7 @@ impl TuiApp {
                 let content = format!("{}{} {} {}", indent, icon, checkbox, node.name);
                 let mut style = Style::default();
 
+                // Adjust cursor position for viewport
                 if i == model.tree_cursor {
                     style = style.bg(Color::Blue).fg(Color::White);
                 }
@@ -737,11 +811,23 @@ impl TuiApp {
             })
             .collect();
 
+        // Create title with scroll indicator
+        let scroll_indicator = if total_nodes > content_height {
+            let current_start = scroll_start + 1;
+            let current_end = scroll_end;
+            format!(
+                "Files ({}) | Showing {}-{} of {}",
+                total_nodes, current_start, current_end, total_nodes
+            )
+        } else {
+            format!("Files ({})", total_nodes)
+        };
+
         let tree_widget = List::new(items)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(format!("Files ({})", visible_nodes.len())),
+                    .title(scroll_indicator),
             )
             .highlight_style(Style::default().bg(Color::Blue).fg(Color::White));
 
@@ -786,7 +872,7 @@ impl TuiApp {
 
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | Enter: Run Analysis | Type to Search"
+            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | PgUp/PgDn: Scroll | Enter: Run Analysis | Type to Search"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
@@ -894,43 +980,104 @@ impl TuiApp {
             ])
             .split(area);
 
-        // Statistics content
+        // Create title with current view indicator
+        let view_name = match model.statistics_view {
+            crate::model::StatisticsView::Overview => "📊 Overview",
+            crate::model::StatisticsView::TokenMap => "🗂️  Token Map",
+            crate::model::StatisticsView::Extensions => "📁 By Extension",
+        };
+        let title = format!("Statistics & Analysis - {}", view_name);
+
+        // Render based on current view
+        match model.statistics_view {
+            crate::model::StatisticsView::Overview => {
+                Self::render_overview_view(model, frame, layout[0], &title);
+            }
+            crate::model::StatisticsView::TokenMap => {
+                Self::render_token_map_view(model, frame, layout[0], &title);
+            }
+            crate::model::StatisticsView::Extensions => {
+                Self::render_extensions_view(model, frame, layout[0], &title);
+            }
+        }
+
+        // Instructions
+        let instructions = Paragraph::new("Enter: Run Analysis | Tab: Switch View | ↑↓/PgUp/PgDn: Scroll")
+            .block(Block::default().borders(Borders::ALL).title("Controls"))
+            .style(Style::default().fg(Color::Gray));
+        frame.render_widget(instructions, layout[1]);
+    }
+
+    fn render_overview_view(model: &Model, frame: &mut Frame, area: Rect, title: &str) {
         let mut stats_items: Vec<ListItem> = Vec::new();
 
-        // File Statistics
+        // Analysis Status (most important first)
+        let status = if model.analysis_in_progress {
+            ("🔄 Analysis in Progress...", Color::Yellow)
+        } else if model.analysis_error.is_some() {
+            ("❌ Analysis Failed", Color::Red)
+        } else if model.generated_prompt.is_some() {
+            ("✅ Analysis Complete", Color::Green)
+        } else {
+            ("⏳ Ready to Analyze", Color::Gray)
+        };
+        
         stats_items.push(
-            ListItem::new("── File Statistics ──").style(
+            ListItem::new(format!("Status: {}", status.0))
+                .style(Style::default().fg(status.1).add_modifier(Modifier::BOLD))
+        );
+        
+        if let Some(error) = &model.analysis_error {
+            stats_items.push(
+                ListItem::new(format!("  Error: {}", error))
+                    .style(Style::default().fg(Color::Red))
+            );
+        }
+        stats_items.push(ListItem::new(""));
+
+        // File Summary
+        stats_items.push(
+            ListItem::new("📁 File Summary").style(
                 Style::default()
-                    .fg(Color::Yellow)
+                    .fg(Color::Cyan)
                     .add_modifier(Modifier::BOLD),
             ),
         );
-
+        
         let selected_count = model.selected_files.values().filter(|&&v| v).count();
         let total_files = model.file_count;
-        stats_items.push(ListItem::new(format!("  Selected Files: {}", selected_count)));
-        stats_items.push(ListItem::new(format!("  Total Files: {}", total_files)));
+        stats_items.push(ListItem::new(format!("  • Selected: {} files", selected_count)));
+        stats_items.push(ListItem::new(format!("  • Total Found: {} files", total_files)));
+        
+        if selected_count > 0 {
+            let percentage = (selected_count as f64 / total_files as f64 * 100.0) as usize;
+            stats_items.push(ListItem::new(format!("  • Coverage: {}%", percentage)));
+        }
         stats_items.push(ListItem::new(""));
 
-        // Token Statistics
+        // Token Summary
         stats_items.push(
-            ListItem::new("── Token Statistics ──").style(
+            ListItem::new("🎯 Token Summary").style(
                 Style::default()
-                    .fg(Color::Yellow)
+                    .fg(Color::Magenta)
                     .add_modifier(Modifier::BOLD),
             ),
         );
 
         if let Some(token_count) = model.token_count {
-            stats_items.push(ListItem::new(format!("  Token Count: {}", token_count)));
+            stats_items.push(ListItem::new(format!("  • Total Tokens: {}", Self::format_number(token_count))));
+            if selected_count > 0 {
+                let avg_tokens = token_count / selected_count;
+                stats_items.push(ListItem::new(format!("  • Avg per File: {}", Self::format_number(avg_tokens))));
+            }
         } else {
-            stats_items.push(ListItem::new("  Token Count: Not calculated"));
+            stats_items.push(ListItem::new("  • Total Tokens: Not calculated"));
         }
         stats_items.push(ListItem::new(""));
 
-        // Configuration Statistics
+        // Configuration Summary
         stats_items.push(
-            ListItem::new("── Configuration ──").style(
+            ListItem::new("⚙️  Configuration").style(
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
@@ -942,84 +1089,227 @@ impl TuiApp {
             code2prompt_core::template::OutputFormat::Json => "JSON",
             code2prompt_core::template::OutputFormat::Xml => "XML",
         };
-        stats_items.push(ListItem::new(format!("  Output Format: {}", output_format)));
-
-        let token_format = match model.config.token_format {
-            code2prompt_core::tokenizer::TokenFormat::Raw => "Raw",
-            code2prompt_core::tokenizer::TokenFormat::Format => "Formatted",
-        };
-        stats_items.push(ListItem::new(format!("  Token Format: {}", token_format)));
-
-        stats_items.push(ListItem::new(format!("  Line Numbers: {}", if model.config.line_numbers { "Enabled" } else { "Disabled" })));
-        stats_items.push(ListItem::new(format!("  Git Diff: {}", if model.config.diff_enabled { "Enabled" } else { "Disabled" })));
-        stats_items.push(ListItem::new(""));
-
-        // Pattern Statistics
-        stats_items.push(
-            ListItem::new("── Filter Patterns ──").style(
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
+        stats_items.push(ListItem::new(format!("  • Output: {}", output_format)));
+        stats_items.push(ListItem::new(format!("  • Line Numbers: {}", if model.config.line_numbers { "On" } else { "Off" })));
+        stats_items.push(ListItem::new(format!("  • Git Diff: {}", if model.config.diff_enabled { "On" } else { "Off" })));
+        
+        let pattern_summary = format!("  • Patterns: {} include, {} exclude", 
+            model.config.include_patterns.len(), 
+            model.config.exclude_patterns.len()
         );
-
-        let include_count = model.config.include_patterns.len();
-        let exclude_count = model.config.exclude_patterns.len();
-        stats_items.push(ListItem::new(format!("  Include Patterns: {}", include_count)));
-        stats_items.push(ListItem::new(format!("  Exclude Patterns: {}", exclude_count)));
-        stats_items.push(ListItem::new(""));
-
-        // Analysis Status
-        stats_items.push(
-            ListItem::new("── Analysis Status ──").style(
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        );
-
-        let status = if model.analysis_in_progress {
-            "In Progress..."
-        } else if model.analysis_error.is_some() {
-            "Error"
-        } else if model.generated_prompt.is_some() {
-            "Completed"
-        } else {
-            "Ready"
-        };
-        let status_color = if model.analysis_in_progress {
-            Color::Yellow
-        } else if model.analysis_error.is_some() {
-            Color::Red
-        } else if model.generated_prompt.is_some() {
-            Color::Green
-        } else {
-            Color::Gray
-        };
-
-        stats_items.push(
-            ListItem::new(format!("  Status: {}", status))
-                .style(Style::default().fg(status_color))
-        );
-
-        if let Some(error) = &model.analysis_error {
-            stats_items.push(
-                ListItem::new(format!("  Error: {}", error))
-                    .style(Style::default().fg(Color::Red))
-            );
-        }
+        stats_items.push(ListItem::new(pattern_summary));
 
         let stats_widget = List::new(stats_items)
-            .block(Block::default().borders(Borders::ALL).title("Statistics & Analysis"))
+            .block(Block::default().borders(Borders::ALL).title(title))
             .style(Style::default().fg(Color::White));
 
-        frame.render_widget(stats_widget, layout[0]);
+        frame.render_widget(stats_widget, area);
+    }
 
-        // Instructions
-        let instructions = Paragraph::new("Enter: Run Analysis")
-            .block(Block::default().borders(Borders::ALL).title("Controls"))
-            .style(Style::default().fg(Color::Gray));
-        frame.render_widget(instructions, layout[1]);
+    fn render_token_map_view(model: &Model, frame: &mut Frame, area: Rect, title: &str) {
+        if model.token_map_entries.is_empty() {
+            let placeholder_text = if model.generated_prompt.is_some() {
+                "🗂️  Token Map View\n\nNo token map data available.\nMake sure token_map is enabled in configuration.\n\nPress Enter to re-run analysis."
+            } else {
+                "🗂️  Token Map View\n\nRun analysis first to see token distribution.\n\nPress Enter to analyze selected files."
+            };
+
+            let placeholder_widget = Paragraph::new(placeholder_text)
+                .block(Block::default().borders(Borders::ALL).title(title))
+                .wrap(Wrap { trim: true })
+                .style(Style::default().fg(Color::Gray));
+
+            frame.render_widget(placeholder_widget, area);
+            return;
+        }
+
+        // Calculate viewport for scrolling
+        let content_height = area.height.saturating_sub(2) as usize; // Account for borders
+        let scroll_start = model.statistics_scroll as usize;
+        let scroll_end = (scroll_start + content_height).min(model.token_map_entries.len());
+
+        // Create list items for visible entries
+        let items: Vec<ListItem> = model.token_map_entries
+            .iter()
+            .skip(scroll_start)
+            .take(content_height)
+            .map(|entry| {
+                // Create tree-like indent
+                let indent = "  ".repeat(entry.depth);
+                let tree_connector = if entry.depth > 0 {
+                    if entry.is_last { "└─ " } else { "├─ " }
+                } else {
+                    ""
+                };
+
+                // Create the visual bar (simplified for TUI)
+                let bar_width: usize = 20;
+                let filled_chars = ((entry.percentage / 100.0) * bar_width as f64) as usize;
+                let bar = format!("{}{}",
+                    "█".repeat(filled_chars),
+                    "░".repeat(bar_width.saturating_sub(filled_chars))
+                );
+
+                // Format the tokens with K/M suffix
+                let tokens_str = Self::format_number(entry.tokens);
+
+                // Determine color based on entry type and size
+                let color = if entry.metadata.is_dir {
+                    Color::Cyan
+                } else {
+                    match entry.name.split('.').last().unwrap_or("") {
+                        "rs" => Color::Yellow,
+                        "md" => Color::Green,
+                        "toml" | "json" => Color::Magenta,
+                        _ => Color::White,
+                    }
+                };
+
+                let content = format!(
+                    "{}{}{} │{}│ {:>6} ({:>4.1}%)",
+                    indent, tree_connector, entry.name,
+                    bar, tokens_str, entry.percentage
+                );
+
+                ListItem::new(content).style(Style::default().fg(color))
+            })
+            .collect();
+
+        // Create title with scroll indicator
+        let scroll_title = if model.token_map_entries.len() > content_height {
+            format!("{} | Showing {}-{} of {}",
+                title,
+                scroll_start + 1,
+                scroll_end,
+                model.token_map_entries.len()
+            )
+        } else {
+            title.to_string()
+        };
+
+        let token_map_widget = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title(scroll_title))
+            .style(Style::default().fg(Color::White));
+
+        frame.render_widget(token_map_widget, area);
+    }
+
+    fn render_extensions_view(model: &Model, frame: &mut Frame, area: Rect, title: &str) {
+        if model.token_map_entries.is_empty() {
+            let placeholder_text = if model.generated_prompt.is_some() {
+                "📁 Extensions View\n\nNo token map data available.\nMake sure token_map is enabled in configuration.\n\nPress Enter to re-run analysis."
+            } else {
+                "📁 Extensions View\n\nRun analysis first to see token breakdown by file extension.\n\nPress Enter to analyze selected files."
+            };
+
+            let placeholder_widget = Paragraph::new(placeholder_text)
+                .block(Block::default().borders(Borders::ALL).title(title))
+                .wrap(Wrap { trim: true })
+                .style(Style::default().fg(Color::Gray));
+
+            frame.render_widget(placeholder_widget, area);
+            return;
+        }
+
+        // Aggregate tokens by file extension
+        let mut extension_stats: std::collections::HashMap<String, (usize, usize)> = std::collections::HashMap::new();
+        let total_tokens = model.token_count.unwrap_or(0);
+
+        for entry in &model.token_map_entries {
+            if !entry.metadata.is_dir {
+                let extension = entry.name.split('.').last()
+                    .map(|ext| format!(".{}", ext))
+                    .unwrap_or_else(|| "(no extension)".to_string());
+                
+                let (tokens, count) = extension_stats.entry(extension).or_insert((0, 0));
+                *tokens += entry.tokens;
+                *count += 1;
+            }
+        }
+
+        // Convert to sorted vec
+        let mut ext_vec: Vec<(String, usize, usize)> = extension_stats
+            .into_iter()
+            .map(|(ext, (tokens, count))| (ext, tokens, count))
+            .collect();
+        ext_vec.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by tokens desc
+
+        // Calculate viewport for scrolling
+        let content_height = area.height.saturating_sub(2) as usize;
+        let scroll_start = model.statistics_scroll as usize;
+        let scroll_end = (scroll_start + content_height).min(ext_vec.len());
+
+        // Create list items
+        let items: Vec<ListItem> = ext_vec
+            .iter()
+            .skip(scroll_start)
+            .take(content_height)
+            .map(|(extension, tokens, count)| {
+                let percentage = if total_tokens > 0 {
+                    (*tokens as f64 / total_tokens as f64) * 100.0
+                } else {
+                    0.0
+                };
+
+                // Create visual bar
+                let bar_width: usize = 25;
+                let filled_chars = ((percentage / 100.0) * bar_width as f64) as usize;
+                let bar = format!("{}{}",
+                    "█".repeat(filled_chars),
+                    "░".repeat(bar_width.saturating_sub(filled_chars))
+                );
+
+                // Choose color based on extension
+                let color = match extension.as_str() {
+                    ".rs" => Color::Yellow,
+                    ".md" => Color::Green,
+                    ".toml" | ".json" | ".yaml" | ".yml" => Color::Magenta,
+                    ".js" | ".ts" | ".jsx" | ".tsx" => Color::Cyan,
+                    ".py" => Color::Blue,
+                    ".go" => Color::LightBlue,
+                    ".java" | ".kt" => Color::Red,
+                    ".cpp" | ".c" | ".h" => Color::LightYellow,
+                    _ => Color::White,
+                };
+
+                let content = format!(
+                    "{:<12} │{}│ {:>6} ({:>4.1}%) | {} files",
+                    extension, bar, Self::format_number(*tokens), percentage, count
+                );
+
+                ListItem::new(content).style(Style::default().fg(color))
+            })
+            .collect();
+
+        // Create title with scroll indicator
+        let scroll_title = if ext_vec.len() > content_height {
+            format!("{} | Showing {}-{} of {}",
+                title,
+                scroll_start + 1,
+                scroll_end,
+                ext_vec.len()
+            )
+        } else {
+            title.to_string()
+        };
+
+        let extensions_widget = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title(scroll_title))
+            .style(Style::default().fg(Color::White));
+
+        frame.render_widget(extensions_widget, area);
+    }
+
+    fn format_number(num: usize) -> String {
+        if num >= 1_000_000 {
+            let millions = (num + 500_000) / 1_000_000;
+            format!("{}M", millions)
+        } else if num >= 1_000 {
+            let thousands = (num + 500) / 1_000;
+            format!("{}K", thousands)
+        } else {
+            format!("{}", num)
+        }
     }
 
     fn render_prompt_output_tab_static(model: &Model, frame: &mut Frame, area: Rect) {
@@ -1032,30 +1322,22 @@ impl TuiApp {
             ])
             .split(area);
 
-        // Info bar (simplified - detailed stats are now in Statistics tab)
+        // Simplified status bar - focus only on prompt availability
         let info_text = if model.analysis_in_progress {
-            "Analysis in progress...".to_string()
+            "Generating prompt...".to_string()
         } else if let Some(error) = &model.analysis_error {
-            format!("Error: {}", error)
+            format!("Generation failed: {}", error)
         } else if model.generated_prompt.is_some() {
-            "Analysis complete! View detailed statistics in the Statistics tab.".to_string()
+            "✓ Prompt ready! Copy (C) or Save (S)".to_string()
         } else {
-            let selected_count = model.selected_files.values().filter(|&&v| v).count();
-            if selected_count > 0 {
-                format!(
-                    "Ready: {} files selected. Press Enter to run analysis.",
-                    selected_count
-                )
-            } else {
-                "No files selected. Select files in the Selection tab first.".to_string()
-            }
+            "Press Enter to generate prompt from selected files".to_string()
         };
 
         let info_widget = Paragraph::new(info_text)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title("Prompt Status"),
+                    .title("Generated Prompt"),
             )
             .style(if model.analysis_error.is_some() {
                 Style::default().fg(Color::Red)
