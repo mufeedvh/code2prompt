@@ -123,7 +123,7 @@ pub enum Message {
     ScrollFileTree(i16), // Scroll delta for file tree
     
     // Statistics
-    CycleStatisticsView,
+    CycleStatisticsView(i8), // +1 = next view, -1 = previous view
     ScrollStatistics(i16), // Scroll delta for statistics
     
     // Pattern management

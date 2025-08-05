@@ -118,7 +118,7 @@ impl TuiApp {
             KeyCode::Char('2') => return Some(Message::SwitchTab(Tab::Settings)),
             KeyCode::Char('3') => return Some(Message::SwitchTab(Tab::Statistics)),
             KeyCode::Char('4') => return Some(Message::SwitchTab(Tab::PromptOutput)),
-            KeyCode::Tab => {
+            KeyCode::Tab if !key.modifiers.contains(KeyModifiers::SHIFT) => {
                 // Cycle through tabs: Selection -> Settings -> Statistics -> Output -> Selection
                 let next_tab = match self.model.current_tab {
                     Tab::FileTree => Tab::Settings,
@@ -127,6 +127,16 @@ impl TuiApp {
                     Tab::PromptOutput => Tab::FileTree,
                 };
                 return Some(Message::SwitchTab(next_tab));
+            }
+            KeyCode::BackTab | KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                // Cycle through tabs in reverse: Selection <- Settings <- Statistics <- Output <- Selection
+                let prev_tab = match self.model.current_tab {
+                    Tab::FileTree => Tab::PromptOutput,
+                    Tab::Settings => Tab::FileTree,
+                    Tab::Statistics => Tab::Settings,
+                    Tab::PromptOutput => Tab::Statistics,
+                };
+                return Some(Message::SwitchTab(prev_tab));
             }
             _ => {}
         }
@@ -211,7 +221,8 @@ impl TuiApp {
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Tab => Some(Message::CycleStatisticsView),
+            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
+            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view  
             KeyCode::Up => Some(Message::ScrollStatistics(-1)),
             KeyCode::Down => Some(Message::ScrollStatistics(1)),
             KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
@@ -514,11 +525,21 @@ impl TuiApp {
                 // Clamp scroll to valid range
                 self.model.file_tree_scroll = new_scroll.min(max_scroll);
             }
-            Message::CycleStatisticsView => {
-                self.model.statistics_view = match self.model.statistics_view {
-                    crate::model::StatisticsView::Overview => crate::model::StatisticsView::TokenMap,
-                    crate::model::StatisticsView::TokenMap => crate::model::StatisticsView::Extensions,
-                    crate::model::StatisticsView::Extensions => crate::model::StatisticsView::Overview,
+            Message::CycleStatisticsView(direction) => {
+                self.model.statistics_view = if direction > 0 {
+                    // Next view (forward)
+                    match self.model.statistics_view {
+                        crate::model::StatisticsView::Overview => crate::model::StatisticsView::TokenMap,
+                        crate::model::StatisticsView::TokenMap => crate::model::StatisticsView::Extensions,
+                        crate::model::StatisticsView::Extensions => crate::model::StatisticsView::Overview,
+                    }
+                } else {
+                    // Previous view (backward)
+                    match self.model.statistics_view {
+                        crate::model::StatisticsView::Overview => crate::model::StatisticsView::Extensions,
+                        crate::model::StatisticsView::TokenMap => crate::model::StatisticsView::Overview,
+                        crate::model::StatisticsView::Extensions => crate::model::StatisticsView::TokenMap,
+                    }
                 };
                 self.model.statistics_scroll = 0; // Reset scroll when changing views
                 let view_name = match self.model.statistics_view {
@@ -1002,7 +1023,7 @@ impl TuiApp {
         }
 
         // Instructions
-        let instructions = Paragraph::new("Enter: Run Analysis | Tab: Switch View | ↑↓/PgUp/PgDn: Scroll")
+        let instructions = Paragraph::new("Enter: Run Analysis | ←→: Switch View | ↑↓/PgUp/PgDn: Scroll | Tab/Shift+Tab: Switch Tab")
             .block(Block::default().borders(Borders::ALL).title("Controls"))
             .style(Style::default().fg(Color::Gray));
         frame.render_widget(instructions, layout[1]);
@@ -1389,7 +1410,7 @@ impl TuiApp {
         let status_text = if !model.status_message.is_empty() {
             model.status_message.clone()
         } else {
-            "Tab: Next tab | 1/2/3/4: Direct tab | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
+            "Tab/Shift+Tab: Switch tabs | 1/2/3/4: Direct tab | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
         };
 
         let status_widget = Paragraph::new(status_text)
