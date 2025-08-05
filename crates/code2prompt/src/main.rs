@@ -60,7 +60,7 @@ async fn run_cli_mode() -> Result<()> {
     }
 
     // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
-    let no_clipboard = args.no_clipboard || args.output_file.as_ref().map_or(false, |f| f == "-");
+    let no_clipboard = args.no_clipboard || args.output_file.as_ref().is_some_and(|f| f == "-");
 
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
@@ -77,23 +77,18 @@ async fn run_cli_mode() -> Result<()> {
     // ~~~ Configuration ~~~
     let mut configuration = Code2PromptConfig::builder();
 
-    // Configure Path
     configuration.path(args.path.clone());
 
-    // Configure Selection Patterns
     configuration
         .include_patterns(args.include)
         .exclude_patterns(args.exclude);
 
-    // Configure Output Format
     let output_format = args.output_format.clone();
     configuration
         .line_numbers(args.line_numbers)
         .absolute_path(args.absolute_paths)
         .full_directory_tree(args.full_directory_tree)
         .output_format(output_format);
-
-    // Configure Sort Method
     let sort_method = args
         .sort
         .as_deref()
@@ -107,7 +102,6 @@ async fn run_cli_mode() -> Result<()> {
 
     configuration.sort_method(sort_method);
 
-    // Configure Tokenizer
     let tokenizer_type = args
         .encoding
         .as_deref()
@@ -118,8 +112,6 @@ async fn run_cli_mode() -> Result<()> {
     configuration
         .encoding(tokenizer_type)
         .token_format(args.tokens);
-
-    // Configure Template
     let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
         error!("Failed to parse template: {}", e);
         std::process::exit(1);
@@ -129,7 +121,6 @@ async fn run_cli_mode() -> Result<()> {
         .template_str(template_str.clone())
         .template_name(template_name);
 
-    // Configure Git
     let diff_branches = parse_branch_argument(&args.git_diff_branch);
     let log_branches = parse_branch_argument(&args.git_log_branch);
 
@@ -137,8 +128,6 @@ async fn run_cli_mode() -> Result<()> {
         .diff_enabled(args.diff)
         .diff_branches(diff_branches)
         .log_branches(log_branches);
-
-    // Boolean arguments
     configuration
         .no_ignore(args.no_ignore)
         .hidden(args.hidden)

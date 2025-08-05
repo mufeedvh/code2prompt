@@ -1,3 +1,10 @@
+//! Command-line argument parsing and validation.
+//!
+//! This module defines the CLI structure using clap for parsing command-line arguments
+//! and options for the code2prompt tool. It supports both TUI and CLI modes with
+//! comprehensive configuration options for file selection, output formatting,
+//! tokenization, and git integration.
+
 use clap::Parser;
 use code2prompt_core::{template::OutputFormat, tokenizer::TokenFormat};
 use std::path::PathBuf;

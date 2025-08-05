@@ -1,3 +1,10 @@
+//! Terminal User Interface implementation.
+//!
+//! This module implements the complete TUI for code2prompt using ratatui and crossterm.
+//! It provides a tabbed interface with file selection, settings configuration,
+//! statistics viewing, and prompt output. The interface supports keyboard navigation,
+//! file tree browsing, real-time analysis, and clipboard integration.
+
 use anyhow::Result;
 use clap::Parser;
 use crossterm::{
@@ -20,6 +27,24 @@ pub struct TuiApp {
 }
 
 impl TuiApp {
+    /// Create a new TUI application with specified parameters.
+    ///
+    /// Initializes the TUI with a default configuration using the provided path
+    /// and file patterns, builds the initial file tree, and sets up the application state.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Root path of the codebase to analyze
+    /// * `include_patterns` - Patterns for files to include
+    /// * `exclude_patterns` - Patterns for files to exclude
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - The initialized TUI application
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the terminal cannot be initialized or the file tree cannot be built.
     pub fn new_with_args(
         path: std::path::PathBuf,
         include_patterns: Vec<String>,
@@ -377,13 +402,11 @@ impl TuiApp {
                                 .config
                                 .include_patterns
                                 .retain(|p| p != &glob_pattern);
-                        } else {
-                            if !self.model.config.exclude_patterns.contains(&glob_pattern) {
-                                self.model
-                                    .config
-                                    .exclude_patterns
-                                    .push(glob_pattern.clone());
-                            }
+                        } else if !self.model.config.exclude_patterns.contains(&glob_pattern) {
+                            self.model
+                                .config
+                                .exclude_patterns
+                                .push(glob_pattern.clone());
                         }
                     }
 
@@ -688,13 +711,13 @@ impl TuiApp {
         self.model.file_tree = tree;
     }
 
-    fn collapse_directory_recursive(&self, nodes: &mut [crate::model::FileNode], path: &str) {
+    fn collapse_directory_recursive(&self, nodes: &mut [crate::model::FileNode], target_path: &str) {
         for node in nodes.iter_mut() {
-            if node.path.to_string_lossy() == path && node.is_directory {
+            if node.path.to_string_lossy() == target_path && node.is_directory {
                 node.is_expanded = false;
                 return;
             }
-            self.collapse_directory_recursive(&mut node.children, path);
+            self.collapse_directory_recursive(&mut node.children, target_path);
         }
     }
 
@@ -1178,12 +1201,10 @@ impl TuiApp {
                         } else {
                             prefix.push_str("  ");
                         }
+                    } else if entry.is_last {
+                        prefix.push_str("└─");
                     } else {
-                        if entry.is_last {
-                            prefix.push_str("└─");
-                        } else {
-                            prefix.push_str("├─");
-                        }
+                        prefix.push_str("├─");
                     }
                 }
                 
@@ -1226,7 +1247,7 @@ impl TuiApp {
                 let color = if entry.metadata.is_dir {
                     Color::Cyan
                 } else {
-                    match entry.name.split('.').last().unwrap_or("") {
+                    match entry.name.split('.').next_back().unwrap_or("") {
                         "rs" => Color::Yellow,
                         "md" => Color::Green,
                         "toml" | "json" => Color::Magenta,
@@ -1285,7 +1306,7 @@ impl TuiApp {
 
         for entry in &model.token_map_entries {
             if !entry.metadata.is_dir {
-                let extension = entry.name.split('.').last()
+                let extension = entry.name.split('.').next_back()
                     .map(|ext| format!(".{}", ext))
                     .unwrap_or_else(|| "(no extension)".to_string());
                 
@@ -1483,6 +1504,18 @@ impl TuiApp {
     }
 }
 
+/// Run the Terminal User Interface.
+///
+/// This is the main entry point for the TUI mode. It parses command-line arguments,
+/// initializes the TUI application, and runs the main event loop until the user exits.
+///
+/// # Returns
+///
+/// * `Result<()>` - Ok on successful exit, Err if initialization or runtime errors occur
+///
+/// # Errors
+///
+/// Returns an error if the TUI cannot be initialized or if runtime errors occur during execution.
 pub async fn run_tui() -> Result<()> {
     // Parse CLI arguments properly to extract include/exclude patterns
     let args = crate::args::Cli::parse();

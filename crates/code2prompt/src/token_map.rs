@@ -1,3 +1,10 @@
+//! Token map visualization and analysis.
+//!
+//! This module provides functionality for generating and displaying visual token maps
+//! that show how tokens are distributed across files in a codebase. It creates
+//! hierarchical tree structures with visual bars and colors, similar to disk usage
+//! analyzers but for token consumption.
+
 use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
@@ -54,16 +61,31 @@ impl PartialOrd for NodePriority {
     }
 }
 
+/// Generate a hierarchical token map with optional display limits.
+///
+/// Creates a tree structure showing token distribution across files and directories,
+/// with optional limits on the number of entries and minimum percentage thresholds
+/// for inclusion in the output.
+///
+/// # Arguments
+///
+/// * `files` - Array of file metadata from the code2prompt session
+/// * `total_tokens` - Total token count for percentage calculations
+/// * `max_lines` - Maximum number of entries to return (None for unlimited)
+/// * `min_percent` - Minimum percentage threshold for inclusion (None for no limit)
+///
+/// # Returns
+///
+/// * `Vec<TokenMapEntry>` - Hierarchical list of token map entries ready for display
 pub fn generate_token_map_with_limit(
     files: &[serde_json::Value],
     total_tokens: usize,
     max_lines: Option<usize>,
     min_percent: Option<f64>,
 ) -> Vec<TokenMapEntry> {
-    // Default values
     let max_lines = max_lines.unwrap_or(20);
     let min_percent = min_percent.unwrap_or(0.1);
-    // Build tree structure
+    
     let mut root = TreeNode::with_path(String::new());
     root.tokens = total_tokens;
 
@@ -134,7 +156,7 @@ pub fn generate_token_map_with_limit(
 }
 
 fn calculate_file_tokens(node: &TreeNode) -> usize {
-    if node.metadata.map_or(false, |m| !m.is_dir) {
+    if node.metadata.is_some_and(|m| !m.is_dir) {
         node.tokens
     } else {
         node.children.values().map(calculate_file_tokens).sum()
@@ -272,7 +294,7 @@ fn rebuild_filtered_tree(
     // Check if this node should be included
     if !path.is_empty() && allowed_nodes.contains_key(&path) {
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
-        let name = path.split('/').last().unwrap_or(&path).to_string();
+        let name = path.split('/').next_back().unwrap_or(&path).to_string();
 
         let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true });
 
@@ -347,6 +369,16 @@ fn should_enable_colors() -> bool {
     }
 }
 
+/// Display a visual token map with colors and hierarchical tree structure.
+///
+/// Renders the token map entries as a formatted tree with visual progress bars,
+/// colors based on file types, and proper Unicode tree drawing characters.
+/// Automatically adapts to terminal width and applies appropriate colors.
+///
+/// # Arguments
+///
+/// * `entries` - The token map entries to display
+/// * `total_tokens` - Total token count for percentage calculations
 pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
     if entries.is_empty() {
         return;
@@ -398,27 +430,20 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         for d in 0..entry.depth {
             if d < entry.depth - 1 {
                 // Check if we need a vertical line at this depth
-                let mut needs_line = false;
-                for j in (i + 1)..entries.len() {
-                    if entries[j].depth <= d {
-                        break;
-                    }
-                    if entries[j].depth == d + 1 {
-                        needs_line = true;
-                        break;
-                    }
-                }
+                let needs_line = entries
+                    .iter()
+                    .skip(i + 1)
+                    .take_while(|entry| entry.depth > d)
+                    .any(|entry| entry.depth == d + 1);
                 if needs_line {
                     prefix.push_str("│ ");
                 } else {
                     prefix.push_str("  ");
                 }
+            } else if entry.is_last {
+                prefix.push_str("└─");
             } else {
-                if entry.is_last {
-                    prefix.push_str("└─");
-                } else {
-                    prefix.push_str("├─");
-                }
+                prefix.push_str("├─");
             }
         }
 

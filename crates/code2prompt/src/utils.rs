@@ -1,3 +1,9 @@
+//! File system utilities and analysis operations.
+//!
+//! This module provides utilities for building file trees, handling file selection
+//! patterns, running code analysis, and managing clipboard/file operations.
+//! It bridges the TUI interface with the core code2prompt functionality.
+
 use anyhow::{Result, Context};
 use code2prompt_core::{
     configuration::Code2PromptConfig,
@@ -175,31 +181,37 @@ fn glob_match(pattern: &str, text: &str) -> bool {
     // Handle single * wildcard
     if pattern.contains('*') && !pattern.contains("**") {
         let parts: Vec<&str> = pattern.split('*').collect();
-        if parts.len() == 2 {
-            return text.starts_with(parts[0]) && text.ends_with(parts[1]);
-        } else if parts.len() > 2 {
-            // Multiple wildcards - check sequentially
-            let mut current_pos = 0;
-            for (i, part) in parts.iter().enumerate() {
-                if i == 0 {
-                    // First part must match from beginning
-                    if !text[current_pos..].starts_with(part) {
-                        return false;
-                    }
-                    current_pos += part.len();
-                } else if i == parts.len() - 1 {
-                    // Last part must match at end
-                    return text[current_pos..].ends_with(part);
-                } else {
-                    // Middle parts
-                    if let Some(pos) = text[current_pos..].find(part) {
-                        current_pos += pos + part.len();
+        match parts.len().cmp(&2) {
+            std::cmp::Ordering::Equal => {
+                return text.starts_with(parts[0]) && text.ends_with(parts[1]);
+            }
+            std::cmp::Ordering::Greater => {
+                // Multiple wildcards - check sequentially
+                let mut current_pos = 0;
+                for (i, part) in parts.iter().enumerate() {
+                    if i == 0 {
+                        // First part must match from beginning
+                        if !text[current_pos..].starts_with(part) {
+                            return false;
+                        }
+                        current_pos += part.len();
+                    } else if i == parts.len() - 1 {
+                        // Last part must match at end
+                        return text[current_pos..].ends_with(part);
                     } else {
-                        return false;
+                        // Middle parts
+                        if let Some(pos) = text[current_pos..].find(part) {
+                            current_pos += pos + part.len();
+                        } else {
+                            return false;
+                        }
                     }
                 }
+                return true;
             }
-            return true;
+            std::cmp::Ordering::Less => {
+                // Less than 2 parts, continue to exact match logic
+            }
         }
     }
     
@@ -235,7 +247,7 @@ fn should_auto_expand_directory(node: &FileNode, config: &Code2PromptConfig) -> 
 }
 
 /// Recursively check if a directory contains any selected files
-fn contains_selected_files_recursive(node: &FileNode, config: &Code2PromptConfig) -> bool {
+fn contains_selected_files_recursive(node: &FileNode, _config: &Code2PromptConfig) -> bool {
     // Check immediate children
     for child in &node.children {
         if child.is_selected {
@@ -244,17 +256,31 @@ fn contains_selected_files_recursive(node: &FileNode, config: &Code2PromptConfig
         
         // If child is a directory, check its contents recursively
         // but only if it has children already loaded to avoid deep scanning
-        if child.is_directory && !child.children.is_empty() {
-            if contains_selected_files_recursive(child, config) {
-                return true;
-            }
+        if child.is_directory && !child.children.is_empty() && contains_selected_files_recursive(child, _config) {
+            return true;
         }
     }
     
     false
 }
 
-/// Run the code2prompt analysis
+/// Run the code2prompt analysis on the configured codebase.
+///
+/// This function creates a session with the provided configuration, loads the codebase,
+/// processes git operations if enabled, renders the prompt template, and returns
+/// comprehensive analysis results including token counts and token map data.
+///
+/// # Arguments
+///
+/// * `config` - The configuration containing paths, patterns, and analysis options
+///
+/// # Returns
+///
+/// * `Result<AnalysisResults>` - Analysis results with file count, token count, prompt, and token map
+///
+/// # Errors
+///
+/// Returns an error if the codebase cannot be loaded, git operations fail, or template rendering fails.
 pub async fn run_analysis(config: Code2PromptConfig) -> Result<AnalysisResults> {
     // Create a session with the configuration
     let mut session = Code2PromptSession::new(config);

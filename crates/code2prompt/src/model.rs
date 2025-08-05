@@ -1,3 +1,10 @@
+//! Data structures and application state management for the TUI.
+//!
+//! This module contains the core data structures that represent the application state,
+//! including the main Model struct, tab definitions, message types for event handling,
+//! file tree nodes, and settings management. It serves as the central state container
+//! for the terminal user interface.
+
 use code2prompt_core::configuration::Code2PromptConfig;
 use code2prompt_core::template::OutputFormat;
 use code2prompt_core::tokenizer::TokenFormat;
