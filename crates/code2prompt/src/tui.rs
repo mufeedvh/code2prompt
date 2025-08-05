@@ -220,7 +220,14 @@ impl TuiApp {
     
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
+            KeyCode::Enter => {
+                // If no analysis has been run, switch to Selection tab
+                if self.model.generated_prompt.is_none() && !self.model.analysis_in_progress {
+                    Some(Message::SwitchTab(Tab::FileTree))
+                } else {
+                    Some(Message::RunAnalysis)
+                }
+            },
             KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
             KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view  
             KeyCode::Up => Some(Message::ScrollStatistics(-1)),
@@ -1001,6 +1008,27 @@ impl TuiApp {
             ])
             .split(area);
 
+        // Check if analysis has been run
+        if model.generated_prompt.is_none() && !model.analysis_in_progress {
+            // Show placeholder when no analysis has been run
+            let placeholder_text = "📊 Statistics & Analysis\n\nNo analysis data available yet.\n\nTo view statistics:\n1. Go to Selection tab (Tab/Shift+Tab)\n2. Select files to analyze\n3. Press Enter to run analysis\n4. Return here to view results\n\nPress Enter to go to Selection tab or run analysis.";
+            
+            let placeholder_widget = Paragraph::new(placeholder_text)
+                .block(Block::default().borders(Borders::ALL).title("Statistics & Analysis"))
+                .wrap(Wrap { trim: true })
+                .style(Style::default().fg(Color::Gray))
+                .alignment(Alignment::Center);
+            
+            frame.render_widget(placeholder_widget, layout[0]);
+            
+            // Instructions for when no analysis is available
+            let instructions = Paragraph::new("Enter: Go to Selection | Tab/Shift+Tab: Switch Tab")
+                .block(Block::default().borders(Borders::ALL).title("Controls"))
+                .style(Style::default().fg(Color::Gray));
+            frame.render_widget(instructions, layout[1]);
+            return;
+        }
+
         // Create title with current view indicator
         let view_name = match model.statistics_view {
             crate::model::StatisticsView::Overview => "📊 Overview",
@@ -1066,13 +1094,15 @@ impl TuiApp {
         );
         
         let selected_count = model.selected_files.values().filter(|&&v| v).count();
+        let eligible_count = model.selected_files.len(); // Total eligible files (matching patterns)
         let total_files = model.file_count;
         stats_items.push(ListItem::new(format!("  • Selected: {} files", selected_count)));
+        stats_items.push(ListItem::new(format!("  • Eligible: {} files", eligible_count)));
         stats_items.push(ListItem::new(format!("  • Total Found: {} files", total_files)));
         
-        if selected_count > 0 {
-            let percentage = (selected_count as f64 / total_files as f64 * 100.0) as usize;
-            stats_items.push(ListItem::new(format!("  • Coverage: {}%", percentage)));
+        if selected_count > 0 && eligible_count > 0 {
+            let percentage = (selected_count as f64 / eligible_count as f64 * 100.0) as usize;
+            stats_items.push(ListItem::new(format!("  • Selection Rate: {}%", percentage)));
         }
         stats_items.push(ListItem::new(""));
 
@@ -1086,10 +1116,10 @@ impl TuiApp {
         );
 
         if let Some(token_count) = model.token_count {
-            stats_items.push(ListItem::new(format!("  • Total Tokens: {}", Self::format_number(token_count))));
+            stats_items.push(ListItem::new(format!("  • Total Tokens: {}", Self::format_number(token_count, &model.config.token_format))));
             if selected_count > 0 {
                 let avg_tokens = token_count / selected_count;
-                stats_items.push(ListItem::new(format!("  • Avg per File: {}", Self::format_number(avg_tokens))));
+                stats_items.push(ListItem::new(format!("  • Avg per File: {}", Self::format_number(avg_tokens, &model.config.token_format))));
             }
         } else {
             stats_items.push(ListItem::new("  • Total Tokens: Not calculated"));
@@ -1218,7 +1248,7 @@ impl TuiApp {
                 );
 
                 // Format the tokens with K/M suffix
-                let tokens_str = Self::format_number(entry.tokens);
+                let tokens_str = Self::format_number(entry.tokens, &model.config.token_format);
 
                 // Determine color based on entry type and size
                 let color = if entry.metadata.is_dir {
@@ -1255,8 +1285,7 @@ impl TuiApp {
         };
 
         let token_map_widget = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title(scroll_title))
-            .style(Style::default().fg(Color::White));
+            .block(Block::default().borders(Borders::ALL).title(scroll_title));
 
         frame.render_widget(token_map_widget, area);
     }
@@ -1341,7 +1370,7 @@ impl TuiApp {
 
                 let content = format!(
                     "{:<12} │{}│ {:>6} ({:>4.1}%) | {} files",
-                    extension, bar, Self::format_number(*tokens), percentage, count
+                    extension, bar, Self::format_number(*tokens, &model.config.token_format), percentage, count
                 );
 
                 ListItem::new(content).style(Style::default().fg(color))
@@ -1367,15 +1396,31 @@ impl TuiApp {
         frame.render_widget(extensions_widget, area);
     }
 
-    fn format_number(num: usize) -> String {
-        if num >= 1_000_000 {
-            let millions = (num + 500_000) / 1_000_000;
-            format!("{}M", millions)
-        } else if num >= 1_000 {
-            let thousands = (num + 500) / 1_000;
-            format!("{}K", thousands)
-        } else {
-            format!("{}", num)
+    fn format_number(num: usize, token_format: &code2prompt_core::tokenizer::TokenFormat) -> String {
+        use code2prompt_core::tokenizer::TokenFormat;
+        use num_format::{SystemLocale, ToFormattedString};
+        
+        match token_format {
+            TokenFormat::Raw => {
+                if num >= 1_000_000 {
+                    let millions = (num + 500_000) / 1_000_000;
+                    format!("{}M", millions)
+                } else if num >= 1_000 {
+                    let thousands = (num + 500) / 1_000;
+                    format!("{}K", thousands)
+                } else {
+                    format!("{}", num)
+                }
+            }
+            TokenFormat::Format => {
+                // Use locale-aware formatting with thousands separators
+                if let Ok(locale) = SystemLocale::default() {
+                    num.to_formatted_string(&locale)
+                } else {
+                    // Fallback to raw formatting if locale fails
+                    num.to_string()
+                }
+            }
         }
     }
 
