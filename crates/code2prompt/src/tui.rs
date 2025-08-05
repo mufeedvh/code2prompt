@@ -143,17 +143,26 @@ impl TuiApp {
             KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
             KeyCode::Down => Some(Message::MoveTreeCursor(1)),
             KeyCode::Char(' ') => Some(Message::ToggleFileSelection(self.model.tree_cursor)),
-            KeyCode::Enter => {
+            KeyCode::Enter => Some(Message::RunAnalysis),
+            KeyCode::Right => {
                 let visible_nodes = self.model.get_visible_nodes();
                 if let Some(node) = visible_nodes.get(self.model.tree_cursor) {
-                    if node.is_directory {
-                        if node.is_expanded {
-                            Some(Message::CollapseDirectory(self.model.tree_cursor))
-                        } else {
-                            Some(Message::ExpandDirectory(self.model.tree_cursor))
-                        }
+                    if node.is_directory && !node.is_expanded {
+                        Some(Message::ExpandDirectory(self.model.tree_cursor))
                     } else {
-                        Some(Message::ToggleFileSelection(self.model.tree_cursor))
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            KeyCode::Left => {
+                let visible_nodes = self.model.get_visible_nodes();
+                if let Some(node) = visible_nodes.get(self.model.tree_cursor) {
+                    if node.is_directory && node.is_expanded {
+                        Some(Message::CollapseDirectory(self.model.tree_cursor))
+                    } else {
+                        None
                     }
                 } else {
                     None
@@ -233,6 +242,11 @@ impl TuiApp {
                 match build_file_tree(&self.model.config) {
                     Ok(tree) => {
                         self.model.file_tree = tree;
+                        
+                        // Sync selected_files HashMap with the tree state
+                        self.model.selected_files.clear();
+                        Self::sync_selected_files_from_tree(&self.model.file_tree, &mut self.model.selected_files);
+                        
                         self.model.status_message = "File tree refreshed".to_string();
                     }
                     Err(e) => {
@@ -272,18 +286,20 @@ impl TuiApp {
                 if let Some(node) = visible_nodes.get(index) {
                     let path = node.path.to_string_lossy().to_string();
                     let name = node.name.clone();
-                    let current = self.model.selected_files.get(&path).copied().unwrap_or(false);
+                    let is_directory = node.is_directory;
+                    let current = self.model.selected_files.get(&path).copied().unwrap_or(node.is_selected);
                     
-                    self.model.selected_files.insert(path.clone(), !current);
+                    // Update the node in the tree (and recursively if it's a directory)
+                    if is_directory {
+                        self.toggle_directory_selection(&path, !current);
+                    } else {
+                        self.model.selected_files.insert(path.clone(), !current);
+                        self.update_node_selection(&path, !current);
+                    }
                     
-                    // Update the actual node in the tree
-                    self.update_node_selection(&path, !current);
-                    
-                    self.model.status_message = format!(
-                        "{} {}", 
-                        if current { "Deselected" } else { "Selected" },
-                        name
-                    );
+                    let action = if current { "Deselected" } else { "Selected" };
+                    let extra = if is_directory { " (and contents)" } else { "" };
+                    self.model.status_message = format!("{} {}{}", action, name, extra);
                 }
             }
             Message::ExpandDirectory(index) => {
@@ -387,12 +403,6 @@ impl TuiApp {
                     }
                 }
             }
-            Message::SetStatus(message) => {
-                self.model.status_message = message;
-            }
-            Message::ClearStatus => {
-                self.model.status_message.clear();
-            }
             Message::ScrollOutput(delta) => {
                 let new_scroll = if delta < 0 {
                     self.model.output_scroll.saturating_sub((-delta) as u16)
@@ -407,6 +417,57 @@ impl TuiApp {
     }
     
     // Helper methods for tree manipulation
+    fn sync_selected_files_from_tree(nodes: &[crate::model::FileNode], selected_files: &mut std::collections::HashMap<String, bool>) {
+        for node in nodes {
+            if node.is_selected {
+                selected_files.insert(node.path.to_string_lossy().to_string(), true);
+            }
+            Self::sync_selected_files_from_tree(&node.children, selected_files);
+        }
+    }
+    
+    fn toggle_directory_selection(&mut self, path: &str, selected: bool) {
+        // Update the directory itself
+        self.model.selected_files.insert(path.to_string(), selected);
+        Self::update_node_selection_recursive(&mut self.model.file_tree, path, selected);
+        
+        // Recursively update all children
+        Self::toggle_directory_children_selection(&mut self.model.file_tree, path, selected, &mut self.model.selected_files);
+    }
+    
+    fn toggle_directory_children_selection(
+        nodes: &mut [crate::model::FileNode], 
+        dir_path: &str, 
+        selected: bool,
+        selected_files: &mut std::collections::HashMap<String, bool>
+    ) {
+        for node in nodes.iter_mut() {
+            if node.path.to_string_lossy() == dir_path && node.is_directory {
+                // Found the directory, now update all its children recursively
+                Self::select_all_children(&mut node.children, selected, selected_files);
+                return;
+            }
+            Self::toggle_directory_children_selection(&mut node.children, dir_path, selected, selected_files);
+        }
+    }
+    
+    fn select_all_children(
+        nodes: &mut [crate::model::FileNode], 
+        selected: bool,
+        selected_files: &mut std::collections::HashMap<String, bool>
+    ) {
+        for node in nodes.iter_mut() {
+            node.is_selected = selected;
+            let path = node.path.to_string_lossy().to_string();
+            selected_files.insert(path, selected);
+            
+            // Recursively select children if this is a directory
+            if node.is_directory {
+                Self::select_all_children(&mut node.children, selected, selected_files);
+            }
+        }
+    }
+    
     fn update_node_selection(&mut self, path: &str, selected: bool) {
         Self::update_node_selection_recursive(&mut self.model.file_tree, path, selected);
     }
@@ -485,6 +546,7 @@ impl TuiApp {
             .constraints([
                 Constraint::Min(0),    // File tree
                 Constraint::Length(3), // Search bar
+                Constraint::Length(3), // Pattern info
                 Constraint::Length(3), // Instructions
             ])
             .split(area);
@@ -534,13 +596,31 @@ impl TuiApp {
             .style(Style::default().fg(Color::Green));
         frame.render_widget(search_widget, layout[1]);
         
+        // Pattern info
+        let include_text = if model.config.include_patterns.is_empty() {
+            "All files".to_string()
+        } else {
+            format!("Include: {}", model.config.include_patterns.join(", "))
+        };
+        let exclude_text = if model.config.exclude_patterns.is_empty() {
+            "".to_string()
+        } else {
+            format!(" | Exclude: {}", model.config.exclude_patterns.join(", "))
+        };
+        let pattern_info = format!("{}{}", include_text, exclude_text);
+        
+        let pattern_widget = Paragraph::new(pattern_info)
+            .block(Block::default().borders(Borders::ALL).title("Filter Patterns"))
+            .style(Style::default().fg(Color::Cyan));
+        frame.render_widget(pattern_widget, layout[2]);
+        
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Select/Deselect | Enter: Expand/Collapse | R: Run Analysis | Type to Search"
+            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | Enter/R: Run Analysis | Type to Search"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
-        frame.render_widget(instructions, layout[2]);
+        frame.render_widget(instructions, layout[3]);
     }
     
     fn render_settings_tab_static(model: &Model, frame: &mut Frame, area: Rect) {
@@ -575,9 +655,9 @@ impl TuiApp {
                     }
                     crate::model::SettingType::Choice { options, selected } => {
                         let current = options.get(*selected).cloned().unwrap_or_default();
-                        format!("< {} >", current)
+                        let total = options.len();
+                        format!("[▼ {} ({}/{})]", current, selected + 1, total)
                     }
-                    crate::model::SettingType::Text(text) => format!("\"{}\"", text),
                 };
                 
                 let content = format!("  {}: {} - {}", item.name, value_display, item.description);
@@ -598,7 +678,6 @@ impl TuiApp {
                     crate::model::SettingType::Choice { .. } => {
                         style = style.fg(Color::Cyan);
                     }
-                    _ => {}
                 }
                 
                 items.push(ListItem::new(content).style(style));
@@ -619,7 +698,7 @@ impl TuiApp {
         
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Toggle | Tab: Cycle | Enter: Run Analysis"
+            "↑↓: Navigate | Space: Toggle | Tab: Cycle Options | Enter: Run Analysis"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
@@ -638,14 +717,20 @@ impl TuiApp {
         
         // Info bar
         let info_text = if let Some(token_count) = model.token_count {
-            format!("Files: {} | Tokens: {} | Status: Ready", 
-                   model.file_count, token_count)
+            let selected_count = model.selected_files.values().filter(|&&v| v).count();
+            format!("Files: {} selected ({} total) | Tokens: {} | Status: Ready", 
+                   selected_count, model.file_count, token_count)
         } else if model.analysis_in_progress {
             "Analysis in progress...".to_string()
         } else if let Some(error) = &model.analysis_error {
             format!("Error: {}", error)
         } else {
-            "No analysis run yet. Press R to run analysis.".to_string()
+            let selected_count = model.selected_files.values().filter(|&&v| v).count();
+            if selected_count > 0 {
+                format!("Ready: {} files selected. Press Enter to run analysis.", selected_count)
+            } else {
+                "No files selected. Select files in the Selection tab first.".to_string()
+            }
         };
         
         let info_widget = Paragraph::new(info_text)

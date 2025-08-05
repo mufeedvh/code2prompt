@@ -80,8 +80,7 @@ async fn run_cli_mode() -> Result<()> {
 
     // Configure Path
     configuration
-        .path(args.path.clone())
-        .include_priority(args.include_priority);
+        .path(args.path.clone());
 
     // Configure Selection Patterns
     configuration

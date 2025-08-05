@@ -72,7 +72,6 @@ pub struct SettingsItem {
 pub enum SettingType {
     Boolean(bool),
     Choice { options: Vec<String>, selected: usize },
-    Text(String),
 }
 
 /// Messages for updating the model
@@ -104,10 +103,6 @@ pub enum Message {
     CopyToClipboard,
     SaveToFile(String),
     ScrollOutput(i16), // Scroll delta (positive = down, negative = up)
-    
-    // Status
-    SetStatus(String),
-    ClearStatus,
     
 }
 

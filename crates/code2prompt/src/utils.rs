@@ -101,14 +101,6 @@ fn should_include_path(path: &Path, config: &Code2PromptConfig) -> bool {
     // Check exclude patterns first
     for pattern in &config.exclude_patterns {
         if glob_match(pattern, &path_str) {
-            // If include_priority is true and there's a matching include pattern, still include it
-            if config.include_priority {
-                for include_pattern in &config.include_patterns {
-                    if glob_match(include_pattern, &path_str) {
-                        return true;
-                    }
-                }
-            }
             return false;
         }
     }
