@@ -1,4 +1,5 @@
 use anyhow::Result;
+use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
@@ -7,10 +8,9 @@ use crossterm::{
 use ratatui::{prelude::*, widgets::*};
 use std::io::{stdout, Stdout};
 use tokio::sync::mpsc;
-use clap::Parser;
 
-use crate::model::{Message, Model, Tab, SettingAction};
-use crate::utils::{run_analysis, build_file_tree};
+use crate::model::{Message, Model, SettingAction, Tab};
+use crate::utils::{build_file_tree, run_analysis};
 
 pub struct TuiApp {
     model: Model,
@@ -20,7 +20,6 @@ pub struct TuiApp {
 }
 
 impl TuiApp {
-    
     pub fn new_with_args(
         path: std::path::PathBuf,
         include_patterns: Vec<String>,
@@ -29,7 +28,7 @@ impl TuiApp {
         let terminal = init_terminal()?;
         let (message_tx, message_rx) = mpsc::unbounded_channel();
         let model = Model::new_with_cli_args(path, include_patterns, exclude_patterns);
-        
+
         Ok(Self {
             model,
             terminal,
@@ -37,18 +36,18 @@ impl TuiApp {
             message_rx,
         })
     }
-    
+
     pub async fn run(&mut self) -> Result<()> {
         // Initialize file tree
         self.handle_message(Message::RefreshFileTree)?;
-        
+
         loop {
             // Draw UI
             let model = self.model.clone();
             self.terminal.draw(|frame| {
                 TuiApp::render_with_model(&model, frame);
             })?;
-            
+
             // Handle events with timeout
             tokio::select! {
                 // Handle keyboard events
@@ -63,24 +62,24 @@ impl TuiApp {
                         }
                     }
                 }
-                
+
                 // Handle internal messages
                 Some(message) = self.message_rx.recv() => {
                     self.handle_message(message)?;
                 }
             }
-            
+
             if self.model.should_quit {
                 break;
             }
         }
-        
+
         Ok(())
     }
-    
+
     fn render_with_model(model: &Model, frame: &mut Frame) {
         let area = frame.area();
-        
+
         // Main layout: tabs + content + status
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -90,22 +89,23 @@ impl TuiApp {
                 Constraint::Length(3), // Status bar
             ])
             .split(area);
-        
+
         // Render tab bar
         Self::render_tab_bar_static(model, frame, main_layout[0]);
-        
+
         // Render current tab content
         match model.current_tab {
             Tab::FileTree => Self::render_file_tree_tab_static(model, frame, main_layout[1]),
             Tab::Settings => Self::render_settings_tab_static(model, frame, main_layout[1]),
-            Tab::PromptOutput => Self::render_prompt_output_tab_static(model, frame, main_layout[1]),
+            Tab::PromptOutput => {
+                Self::render_prompt_output_tab_static(model, frame, main_layout[1])
+            }
         }
-        
+
         // Render status bar
         Self::render_status_bar_static(model, frame, main_layout[2]);
     }
-    
-    
+
     fn handle_key_event(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         // Global shortcuts
         match key.code {
@@ -127,7 +127,7 @@ impl TuiApp {
             }
             _ => {}
         }
-        
+
         // Tab-specific shortcuts
         match self.model.current_tab {
             Tab::FileTree => self.handle_file_tree_keys(key),
@@ -135,7 +135,7 @@ impl TuiApp {
             Tab::PromptOutput => self.handle_prompt_output_keys(key),
         }
     }
-    
+
     fn handle_file_tree_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
@@ -176,7 +176,6 @@ impl TuiApp {
                 query.pop();
                 Some(Message::UpdateSearchQuery(query))
             }
-            KeyCode::Char('r') | KeyCode::Char('R') => Some(Message::RunAnalysis),
             KeyCode::Esc => {
                 if !self.model.search_query.is_empty() {
                     Some(Message::UpdateSearchQuery(String::new()))
@@ -187,26 +186,36 @@ impl TuiApp {
             _ => None,
         }
     }
-    
+
     fn handle_settings_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
             KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
             KeyCode::Char(' ') => Some(Message::ToggleSetting(self.model.settings_cursor)),
-            KeyCode::Left | KeyCode::Right => Some(Message::CycleSetting(self.model.settings_cursor)),
+            KeyCode::Left | KeyCode::Right => {
+                Some(Message::CycleSetting(self.model.settings_cursor))
+            }
             KeyCode::Enter => Some(Message::RunAnalysis),
             _ => None,
         }
     }
-    
+
     fn handle_prompt_output_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
             // Check for Ctrl+Up/Down first for faster scrolling
-            KeyCode::Up if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+            KeyCode::Up
+                if key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+            {
                 Some(Message::ScrollOutput(-10))
             }
-            KeyCode::Down if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+            KeyCode::Down
+                if key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+            {
                 Some(Message::ScrollOutput(10))
             }
             KeyCode::Up => Some(Message::ScrollOutput(-1)),
@@ -232,7 +241,7 @@ impl TuiApp {
             _ => None,
         }
     }
-    
+
     fn handle_message(&mut self, message: Message) -> Result<()> {
         match message {
             Message::Quit => {
@@ -247,11 +256,14 @@ impl TuiApp {
                 match build_file_tree(&self.model.config) {
                     Ok(tree) => {
                         self.model.file_tree = tree;
-                        
+
                         // Sync selected_files HashMap with the tree state
                         self.model.selected_files.clear();
-                        Self::sync_selected_files_from_tree(&self.model.file_tree, &mut self.model.selected_files);
-                        
+                        Self::sync_selected_files_from_tree(
+                            &self.model.file_tree,
+                            &mut self.model.selected_files,
+                        );
+
                         self.model.status_message = "File tree refreshed".to_string();
                     }
                     Err(e) => {
@@ -292,8 +304,46 @@ impl TuiApp {
                     let path = node.path.to_string_lossy().to_string();
                     let name = node.name.clone();
                     let is_directory = node.is_directory;
-                    let current = self.model.selected_files.get(&path).copied().unwrap_or(node.is_selected);
-                    
+                    let current = self
+                        .model
+                        .selected_files
+                        .get(&path)
+                        .copied()
+                        .unwrap_or(node.is_selected);
+
+                    // Generate glob pattern for this file/directory
+                    let glob_pattern = self.model.path_to_glob_pattern(&node.path, is_directory);
+
+                    // Update patterns dynamically
+                    if !current {
+                        // Selecting: add to include patterns if not present, remove from exclude
+                        if !self.model.config.include_patterns.contains(&glob_pattern) {
+                            self.model
+                                .config
+                                .include_patterns
+                                .push(glob_pattern.clone());
+                        }
+                        self.model
+                            .config
+                            .exclude_patterns
+                            .retain(|p| p != &glob_pattern);
+                    } else {
+                        // Deselecting: add to exclude patterns if not in include, or remove from include
+                        if self.model.config.include_patterns.contains(&glob_pattern) {
+                            self.model
+                                .config
+                                .include_patterns
+                                .retain(|p| p != &glob_pattern);
+                        } else {
+                            if !self.model.config.exclude_patterns.contains(&glob_pattern) {
+                                self.model
+                                    .config
+                                    .exclude_patterns
+                                    .push(glob_pattern.clone());
+                            }
+                        }
+                    }
+
                     // Update the node in the tree (and recursively if it's a directory)
                     if is_directory {
                         self.toggle_directory_selection(&path, !current);
@@ -301,10 +351,11 @@ impl TuiApp {
                         self.model.selected_files.insert(path.clone(), !current);
                         self.update_node_selection(&path, !current);
                     }
-                    
+
                     let action = if current { "Deselected" } else { "Selected" };
                     let extra = if is_directory { " (and contents)" } else { "" };
-                    self.model.status_message = format!("{} {}{}", action, name, extra);
+                    self.model.status_message =
+                        format!("{} {}{} (pattern: {})", action, name, extra, glob_pattern);
                 }
             }
             Message::ExpandDirectory(index) => {
@@ -348,14 +399,14 @@ impl TuiApp {
                     self.model.analysis_in_progress = true;
                     self.model.analysis_error = None;
                     self.model.status_message = "Running analysis...".to_string();
-                    
+
                     // Switch to prompt output tab
                     self.model.current_tab = Tab::PromptOutput;
-                    
+
                     // Run analysis in background
                     let config = self.model.config.clone();
                     let tx = self.message_tx.clone();
-                    
+
                     tokio::spawn(async move {
                         match run_analysis(config).await {
                             Ok(result) => {
@@ -377,7 +428,8 @@ impl TuiApp {
                 self.model.generated_prompt = Some(prompt);
                 self.model.token_count = Some(tokens);
                 self.model.file_count = files;
-                self.model.status_message = format!("Analysis complete! {} tokens, {} files", tokens, files);
+                self.model.status_message =
+                    format!("Analysis complete! {} tokens, {} files", tokens, files);
             }
             Message::AnalysisError(error) => {
                 self.model.analysis_in_progress = false;
@@ -414,24 +466,55 @@ impl TuiApp {
                     let total_lines = prompt.lines().count() as u16;
                     let viewport_height = 20; // Approximate viewport height
                     let max_scroll = total_lines.saturating_sub(viewport_height);
-                    
+
                     let new_scroll = if delta < 0 {
                         self.model.output_scroll.saturating_sub((-delta) as u16)
                     } else {
                         self.model.output_scroll.saturating_add(delta as u16)
                     };
-                    
+
                     // Clamp scroll to valid range
                     self.model.output_scroll = new_scroll.min(max_scroll);
                 }
             }
+            Message::AddIncludePattern(pattern) => {
+                if !self.model.config.include_patterns.contains(&pattern) {
+                    self.model.config.include_patterns.push(pattern.clone());
+                    self.model.status_message = format!("Added include pattern: {}", pattern);
+                    // Refresh file tree to apply new pattern
+                    self.handle_message(Message::RefreshFileTree)?;
+                }
+            }
+            Message::AddExcludePattern(pattern) => {
+                if !self.model.config.exclude_patterns.contains(&pattern) {
+                    self.model.config.exclude_patterns.push(pattern.clone());
+                    self.model.status_message = format!("Added exclude pattern: {}", pattern);
+                    // Refresh file tree to apply new pattern
+                    self.handle_message(Message::RefreshFileTree)?;
+                }
+            }
+            Message::RemoveIncludePattern(pattern) => {
+                self.model.config.include_patterns.retain(|p| p != &pattern);
+                self.model.status_message = format!("Removed include pattern: {}", pattern);
+                // Refresh file tree to apply new pattern
+                self.handle_message(Message::RefreshFileTree)?;
+            }
+            Message::RemoveExcludePattern(pattern) => {
+                self.model.config.exclude_patterns.retain(|p| p != &pattern);
+                self.model.status_message = format!("Removed exclude pattern: {}", pattern);
+                // Refresh file tree to apply new pattern
+                self.handle_message(Message::RefreshFileTree)?;
+            }
         }
-        
+
         Ok(())
     }
-    
+
     // Helper methods for tree manipulation
-    fn sync_selected_files_from_tree(nodes: &[crate::model::FileNode], selected_files: &mut std::collections::HashMap<String, bool>) {
+    fn sync_selected_files_from_tree(
+        nodes: &[crate::model::FileNode],
+        selected_files: &mut std::collections::HashMap<String, bool>,
+    ) {
         for node in nodes {
             if node.is_selected {
                 selected_files.insert(node.path.to_string_lossy().to_string(), true);
@@ -439,21 +522,26 @@ impl TuiApp {
             Self::sync_selected_files_from_tree(&node.children, selected_files);
         }
     }
-    
+
     fn toggle_directory_selection(&mut self, path: &str, selected: bool) {
         // Update the directory itself
         self.model.selected_files.insert(path.to_string(), selected);
         Self::update_node_selection_recursive(&mut self.model.file_tree, path, selected);
-        
+
         // Recursively update all children
-        Self::toggle_directory_children_selection(&mut self.model.file_tree, path, selected, &mut self.model.selected_files);
+        Self::toggle_directory_children_selection(
+            &mut self.model.file_tree,
+            path,
+            selected,
+            &mut self.model.selected_files,
+        );
     }
-    
+
     fn toggle_directory_children_selection(
-        nodes: &mut [crate::model::FileNode], 
-        dir_path: &str, 
+        nodes: &mut [crate::model::FileNode],
+        dir_path: &str,
         selected: bool,
-        selected_files: &mut std::collections::HashMap<String, bool>
+        selected_files: &mut std::collections::HashMap<String, bool>,
     ) {
         for node in nodes.iter_mut() {
             if node.path.to_string_lossy() == dir_path && node.is_directory {
@@ -461,32 +549,41 @@ impl TuiApp {
                 Self::select_all_children(&mut node.children, selected, selected_files);
                 return;
             }
-            Self::toggle_directory_children_selection(&mut node.children, dir_path, selected, selected_files);
+            Self::toggle_directory_children_selection(
+                &mut node.children,
+                dir_path,
+                selected,
+                selected_files,
+            );
         }
     }
-    
+
     fn select_all_children(
-        nodes: &mut [crate::model::FileNode], 
+        nodes: &mut [crate::model::FileNode],
         selected: bool,
-        selected_files: &mut std::collections::HashMap<String, bool>
+        selected_files: &mut std::collections::HashMap<String, bool>,
     ) {
         for node in nodes.iter_mut() {
             node.is_selected = selected;
             let path = node.path.to_string_lossy().to_string();
             selected_files.insert(path, selected);
-            
+
             // Recursively select children if this is a directory
             if node.is_directory {
                 Self::select_all_children(&mut node.children, selected, selected_files);
             }
         }
     }
-    
+
     fn update_node_selection(&mut self, path: &str, selected: bool) {
         Self::update_node_selection_recursive(&mut self.model.file_tree, path, selected);
     }
-    
-    fn update_node_selection_recursive(nodes: &mut [crate::model::FileNode], path: &str, selected: bool) -> bool {
+
+    fn update_node_selection_recursive(
+        nodes: &mut [crate::model::FileNode],
+        path: &str,
+        selected: bool,
+    ) -> bool {
         for node in nodes.iter_mut() {
             if node.path.to_string_lossy() == path {
                 node.is_selected = selected;
@@ -498,20 +595,24 @@ impl TuiApp {
         }
         false
     }
-    
+
     fn expand_directory(&mut self, path: &str) {
         let mut tree = self.model.file_tree.clone();
         self.expand_directory_recursive(&mut tree, path);
         self.model.file_tree = tree;
     }
-    
+
     fn expand_directory_recursive(&self, nodes: &mut [crate::model::FileNode], path: &str) {
         for node in nodes.iter_mut() {
             if node.path.to_string_lossy() == path && node.is_directory {
                 node.is_expanded = true;
                 // Load children if not already loaded
                 if node.children.is_empty() {
-                    if let Ok(children) = crate::utils::load_directory_children(&node.path, node.level + 1) {
+                    if let Ok(children) = crate::utils::load_directory_children_with_config(
+                        &node.path,
+                        node.level + 1,
+                        Some(&self.model.config),
+                    ) {
                         node.children = children;
                     }
                 }
@@ -520,13 +621,13 @@ impl TuiApp {
             self.expand_directory_recursive(&mut node.children, path);
         }
     }
-    
+
     fn collapse_directory(&mut self, path: &str) {
         let mut tree = self.model.file_tree.clone();
         self.collapse_directory_recursive(&mut tree, path);
         self.model.file_tree = tree;
     }
-    
+
     fn collapse_directory_recursive(&self, nodes: &mut [crate::model::FileNode], path: &str) {
         for node in nodes.iter_mut() {
             if node.path.to_string_lossy() == path && node.is_directory {
@@ -536,7 +637,7 @@ impl TuiApp {
             self.collapse_directory_recursive(&mut node.children, path);
         }
     }
-    
+
     fn render_tab_bar_static(model: &Model, frame: &mut Frame, area: Rect) {
         let tabs = vec!["1. Selection", "2. Settings", "3. Output"];
         let selected = match model.current_tab {
@@ -544,16 +645,24 @@ impl TuiApp {
             Tab::Settings => 1,
             Tab::PromptOutput => 2,
         };
-        
+
         let tabs_widget = Tabs::new(tabs)
-            .block(Block::default().borders(Borders::ALL).title("Code2Prompt TUI"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Code2Prompt TUI"),
+            )
             .select(selected)
             .style(Style::default().fg(Color::White))
-            .highlight_style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD));
-        
+            .highlight_style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            );
+
         frame.render_widget(tabs_widget, area);
     }
-    
+
     fn render_file_tree_tab_static(model: &Model, frame: &mut Frame, area: Rect) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
@@ -564,7 +673,7 @@ impl TuiApp {
                 Constraint::Length(3), // Instructions
             ])
             .split(area);
-        
+
         // File tree
         let visible_nodes = model.get_visible_nodes();
         let items: Vec<ListItem> = visible_nodes
@@ -573,43 +682,56 @@ impl TuiApp {
             .map(|(i, node)| {
                 let indent = "  ".repeat(node.level);
                 let icon = if node.is_directory {
-                    if node.is_expanded { "📂" } else { "📁" }
+                    if node.is_expanded {
+                        "📂"
+                    } else {
+                        "📁"
+                    }
                 } else {
                     "📄"
                 };
                 let checkbox = if node.is_selected { "☑" } else { "☐" };
-                
+
                 let content = format!("{}{} {} {}", indent, icon, checkbox, node.name);
                 let mut style = Style::default();
-                
+
                 if i == model.tree_cursor {
                     style = style.bg(Color::Blue).fg(Color::White);
                 }
-                
+
                 if node.is_selected {
                     style = style.fg(Color::Green);
                 }
-                
+
                 ListItem::new(content).style(style)
             })
             .collect();
-        
+
         let tree_widget = List::new(items)
-            .block(Block::default()
-                .borders(Borders::ALL)
-                .title(format!("Files ({})", visible_nodes.len())))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(format!("Files ({})", visible_nodes.len())),
+            )
             .highlight_style(Style::default().bg(Color::Blue).fg(Color::White));
-        
+
         frame.render_widget(tree_widget, layout[0]);
-        
+
         // Search bar (moved below tree)
+        let search_title = if model.search_query.contains('*') {
+            "Search (glob pattern active)"
+        } else {
+            "Search (text or glob pattern)"
+        };
         let search_widget = Paragraph::new(model.search_query.as_str())
-            .block(Block::default()
-                .borders(Borders::ALL)
-                .title("Search (type to filter)"))
-            .style(Style::default().fg(Color::Green));
+            .block(Block::default().borders(Borders::ALL).title(search_title))
+            .style(Style::default().fg(if model.search_query.contains('*') {
+                Color::Yellow
+            } else {
+                Color::Green
+            }));
         frame.render_widget(search_widget, layout[1]);
-        
+
         // Pattern info
         let include_text = if model.config.include_patterns.is_empty() {
             "All files".to_string()
@@ -622,12 +744,16 @@ impl TuiApp {
             format!(" | Exclude: {}", model.config.exclude_patterns.join(", "))
         };
         let pattern_info = format!("{}{}", include_text, exclude_text);
-        
+
         let pattern_widget = Paragraph::new(pattern_info)
-            .block(Block::default().borders(Borders::ALL).title("Filter Patterns"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Filter Patterns"),
+            )
             .style(Style::default().fg(Color::Cyan));
         frame.render_widget(pattern_widget, layout[2]);
-        
+
         // Instructions
         let instructions = Paragraph::new(
             "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | Enter: Run Analysis | Type to Search"
@@ -636,10 +762,10 @@ impl TuiApp {
         .style(Style::default().fg(Color::Gray));
         frame.render_widget(instructions, layout[3]);
     }
-    
+
     fn render_settings_tab_static(model: &Model, frame: &mut Frame, area: Rect) {
         let settings_groups = model.get_settings_groups();
-        
+
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -647,23 +773,28 @@ impl TuiApp {
                 Constraint::Length(3), // Instructions
             ])
             .split(area);
-        
+
         // Build grouped settings display
         let mut items: Vec<ListItem> = Vec::new();
         let mut item_index = 0;
-        
+
         for group in &settings_groups {
             // Group header
-            items.push(ListItem::new(format!("── {} ──", group.name))
-                .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)));
-            
+            items.push(
+                ListItem::new(format!("── {} ──", group.name)).style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            );
+
             // Group items
             for item in &group.items {
                 let value_display = match &item.setting_type {
                     crate::model::SettingType::Boolean(val) => {
-                        if *val { 
+                        if *val {
                             "[●] ON".to_string()
-                        } else { 
+                        } else {
                             "[○] OFF".to_string()
                         }
                     }
@@ -673,14 +804,21 @@ impl TuiApp {
                         format!("[▼ {} ({}/{})]", current, selected + 1, total)
                     }
                 };
-                
-                let content = format!("  {}: {} - {}", item.name, value_display, item.description);
+
+                // Better aligned layout: Name (20 chars) | Value (15 chars) | Description
+                let content = format!(
+                    "  {:<20} {:<15} {}",
+                    item.name, value_display, item.description
+                );
                 let mut style = Style::default();
-                
+
                 if item_index == model.settings_cursor {
-                    style = style.bg(Color::Blue).fg(Color::White).add_modifier(Modifier::BOLD);
+                    style = style
+                        .bg(Color::Blue)
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD);
                 }
-                
+
                 // Color based on setting type
                 match &item.setting_type {
                     crate::model::SettingType::Boolean(true) => {
@@ -693,32 +831,30 @@ impl TuiApp {
                         style = style.fg(Color::Cyan);
                     }
                 }
-                
+
                 items.push(ListItem::new(content).style(style));
                 item_index += 1;
             }
-            
+
             // Add spacing between groups
             items.push(ListItem::new(""));
         }
-        
+
         let settings_widget = List::new(items)
-            .block(Block::default()
-                .borders(Borders::ALL)
-                .title("Settings"))
+            .block(Block::default().borders(Borders::ALL).title("Settings"))
             .highlight_style(Style::default().bg(Color::Blue).fg(Color::White));
-        
+
         frame.render_widget(settings_widget, layout[0]);
-        
+
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Toggle | ←→: Cycle Options | Enter: Run Analysis"
+            "↑↓: Navigate | Space: Toggle | ←→: Cycle Options | Enter: Run Analysis",
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
         frame.render_widget(instructions, layout[1]);
     }
-    
+
     fn render_prompt_output_tab_static(model: &Model, frame: &mut Frame, area: Rect) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
@@ -728,12 +864,14 @@ impl TuiApp {
                 Constraint::Length(3), // Controls
             ])
             .split(area);
-        
+
         // Info bar
         let info_text = if let Some(token_count) = model.token_count {
             let selected_count = model.selected_files.values().filter(|&&v| v).count();
-            format!("Files: {} selected ({} total) | Tokens: {} | Status: Ready", 
-                   selected_count, model.file_count, token_count)
+            format!(
+                "Files: {} selected ({} total) | Tokens: {} | Status: Ready",
+                selected_count, model.file_count, token_count
+            )
         } else if model.analysis_in_progress {
             "Analysis in progress...".to_string()
         } else if let Some(error) = &model.analysis_error {
@@ -741,14 +879,21 @@ impl TuiApp {
         } else {
             let selected_count = model.selected_files.values().filter(|&&v| v).count();
             if selected_count > 0 {
-                format!("Ready: {} files selected. Press Enter to run analysis.", selected_count)
+                format!(
+                    "Ready: {} files selected. Press Enter to run analysis.",
+                    selected_count
+                )
             } else {
                 "No files selected. Select files in the Selection tab first.".to_string()
             }
         };
-        
+
         let info_widget = Paragraph::new(info_text)
-            .block(Block::default().borders(Borders::ALL).title("Analysis Info"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Analysis Info"),
+            )
             .style(if model.analysis_error.is_some() {
                 Style::default().fg(Color::Red)
             } else if model.analysis_in_progress {
@@ -757,16 +902,16 @@ impl TuiApp {
                 Style::default().fg(Color::Green)
             });
         frame.render_widget(info_widget, layout[0]);
-        
+
         // Prompt content
         let content = if let Some(prompt) = &model.generated_prompt {
             prompt.clone()
         } else if model.analysis_in_progress {
             "Generating prompt...".to_string()
         } else {
-            "Press R to run analysis and generate prompt.\n\nSelected files will be processed according to your settings.".to_string()
+            "Press <Enter> to run analysis and generate prompt.\n\nSelected files will be processed according to your settings.".to_string()
         };
-        
+
         // Calculate scroll position for display
         let scroll_info = if let Some(prompt) = &model.generated_prompt {
             let total_lines = prompt.lines().count();
@@ -775,33 +920,33 @@ impl TuiApp {
         } else {
             "Generated Prompt".to_string()
         };
-        
+
         let prompt_widget = Paragraph::new(content)
             .block(Block::default().borders(Borders::ALL).title(scroll_info))
             .wrap(Wrap { trim: true })
             .scroll((model.output_scroll, 0));
         frame.render_widget(prompt_widget, layout[1]);
-        
+
         // Controls
         let controls_text = if model.generated_prompt.is_some() {
             "↑↓/PgUp/PgDn: Scroll | C: Copy | S: Save | Enter: Re-run"
         } else {
             "Enter: Run Analysis"
         };
-        
+
         let controls_widget = Paragraph::new(controls_text)
             .block(Block::default().borders(Borders::ALL).title("Controls"))
             .style(Style::default().fg(Color::Gray));
         frame.render_widget(controls_widget, layout[2]);
     }
-    
+
     fn render_status_bar_static(model: &Model, frame: &mut Frame, area: Rect) {
         let status_text = if !model.status_message.is_empty() {
             model.status_message.clone()
         } else {
             "Tab: Next tab | 1/2/3: Direct tab | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
         };
-        
+
         let status_widget = Paragraph::new(status_text)
             .block(Block::default().borders(Borders::ALL))
             .style(Style::default().fg(Color::Cyan));
@@ -812,18 +957,18 @@ impl TuiApp {
 pub async fn run_tui() -> Result<()> {
     // Parse CLI arguments properly to extract include/exclude patterns
     let args = crate::args::Cli::parse();
-    
+
     let mut app = TuiApp::new_with_args(
         args.path.clone(),
         args.include.clone(),
-        args.exclude.clone()
+        args.exclude.clone(),
     )?;
-    
+
     let result = app.run().await;
-    
+
     // Clean up terminal
     restore_terminal()?;
-    
+
     result
 }
 

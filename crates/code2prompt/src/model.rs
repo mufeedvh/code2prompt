@@ -104,6 +104,12 @@ pub enum Message {
     SaveToFile(String),
     ScrollOutput(i16), // Scroll delta (positive = down, negative = up)
     
+    // Pattern management
+    AddIncludePattern(String),
+    AddExcludePattern(String),
+    RemoveIncludePattern(String),
+    RemoveExcludePattern(String),
+    
 }
 
 impl Default for Model {
@@ -132,6 +138,26 @@ impl Default for Model {
 
 impl Model {
     
+    /// Generate a glob pattern for a file/directory path
+    pub fn path_to_glob_pattern(&self, path: &std::path::Path, is_directory: bool) -> String {
+        let relative_path = if path.starts_with(&self.config.path) {
+            path.strip_prefix(&self.config.path)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .to_string()
+        } else {
+            path.to_string_lossy().to_string()
+        };
+        
+        if is_directory {
+            // For directories, match all files within
+            format!("{}/**/*", relative_path.trim_start_matches('/'))
+        } else {
+            // For files, exact match
+            relative_path.trim_start_matches('/').to_string()
+        }
+    }
+    
     pub fn new_with_cli_args(
         path: PathBuf,
         include_patterns: Vec<String>,
@@ -153,17 +179,60 @@ impl Model {
     
     fn collect_visible_nodes<'a>(&'a self, nodes: &'a [FileNode], visible: &mut Vec<&'a FileNode>) {
         for node in nodes {
-            // Apply search filter
-            if self.search_query.is_empty() || 
-               node.name.to_lowercase().contains(&self.search_query.to_lowercase()) {
+            // Apply search filter - support both simple text and glob patterns
+            let matches_search = if self.search_query.is_empty() {
+                true
+            } else if self.search_query.contains('*') || self.search_query.contains("**") {
+                // Treat as glob pattern
+                self.glob_match_search(&self.search_query, &node.name) || 
+                self.glob_match_search(&self.search_query, &node.path.to_string_lossy())
+            } else {
+                // Simple text search (case insensitive)
+                node.name.to_lowercase().contains(&self.search_query.to_lowercase()) ||
+                node.path.to_string_lossy().to_lowercase().contains(&self.search_query.to_lowercase())
+            };
+            
+            if matches_search {
                 visible.push(node);
             }
             
             // Add children if expanded and node matches search or has matching children
-            if node.is_expanded && (!self.search_query.is_empty() || node.is_directory) {
+            if node.is_expanded && (matches_search || node.is_directory) {
                 self.collect_visible_nodes(&node.children, visible);
             }
         }
+    }
+    
+    /// Simple glob matching for search (similar to utils but accessible from model)
+    fn glob_match_search(&self, pattern: &str, text: &str) -> bool {
+        // Handle ** for recursive directory matching
+        if pattern.contains("**") {
+            let parts: Vec<&str> = pattern.split("**").collect();
+            if parts.len() == 2 {
+                let prefix = parts[0].trim_end_matches('/');
+                let suffix = parts[1].trim_start_matches('/');
+                
+                if prefix.is_empty() && suffix.is_empty() {
+                    return true; // "**" matches everything
+                }
+                
+                let prefix_match = prefix.is_empty() || text.contains(prefix);
+                let suffix_match = suffix.is_empty() || text.contains(suffix);
+                
+                return prefix_match && suffix_match;
+            }
+        }
+        
+        // Handle single * wildcard
+        if pattern.contains('*') && !pattern.contains("**") {
+            let parts: Vec<&str> = pattern.split('*').collect();
+            if parts.len() == 2 {
+                return text.contains(parts[0]) && text.contains(parts[1]);
+            }
+        }
+        
+        // Fallback to contains
+        text.to_lowercase().contains(&pattern.to_lowercase())
     }
     
     /// Get grouped settings for display

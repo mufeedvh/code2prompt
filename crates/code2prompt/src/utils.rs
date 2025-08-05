@@ -37,6 +37,13 @@ pub fn build_file_tree(config: &Code2PromptConfig) -> Result<Vec<FileNode>> {
             // Check if this file/directory should be selected based on patterns
             node.is_selected = should_include_path(&node.path, config);
             
+            // If it's a directory, also load immediate children to check selection
+            if node.is_directory {
+                if let Ok(children) = load_directory_children_with_config(&node.path, 1, Some(config)) {
+                    node.children = children;
+                }
+            }
+            
             root_nodes.push(node);
         }
     } else {
@@ -63,8 +70,9 @@ pub fn build_file_tree(config: &Code2PromptConfig) -> Result<Vec<FileNode>> {
     Ok(root_nodes)
 }
 
-/// Load children of a directory
-pub fn load_directory_children(dir_path: &Path, level: usize) -> Result<Vec<FileNode>> {
+
+/// Load children of a directory with configuration for selection
+pub fn load_directory_children_with_config(dir_path: &Path, level: usize, config: Option<&Code2PromptConfig>) -> Result<Vec<FileNode>> {
     let mut children = Vec::new();
     
     if !dir_path.is_dir() {
@@ -78,7 +86,20 @@ pub fn load_directory_children(dir_path: &Path, level: usize) -> Result<Vec<File
         let entry = entry.context("Failed to read directory entry")?;
         let path = entry.path();
         
-        let child_node = FileNode::new(path, level);
+        // Skip hidden files if config specifies
+        if let Some(cfg) = config {
+            if !cfg.hidden && is_hidden(&path) {
+                continue;
+            }
+        }
+        
+        let mut child_node = FileNode::new(path, level);
+        
+        // Set selection based on patterns if config is provided
+        if let Some(cfg) = config {
+            child_node.is_selected = should_include_path(&child_node.path, cfg);
+        }
+        
         children.push(child_node);
     }
     
@@ -119,18 +140,60 @@ fn should_include_path(path: &Path, config: &Code2PromptConfig) -> bool {
     true
 }
 
-/// Simple glob pattern matching (basic implementation)
+/// Improved glob pattern matching
 fn glob_match(pattern: &str, text: &str) -> bool {
-    // This is a simplified glob implementation
-    // For production, you'd want to use a proper glob library
-    if pattern.contains('*') {
+    // Handle ** for recursive directory matching
+    if pattern.contains("**") {
+        let parts: Vec<&str> = pattern.split("**").collect();
+        if parts.len() == 2 {
+            let prefix = parts[0].trim_end_matches('/');
+            let suffix = parts[1].trim_start_matches('/');
+            
+            if prefix.is_empty() && suffix.is_empty() {
+                return true; // "**" matches everything
+            }
+            
+            let prefix_match = prefix.is_empty() || text.starts_with(prefix);
+            let suffix_match = suffix.is_empty() || text.ends_with(suffix);
+            
+            return prefix_match && suffix_match;
+        }
+    }
+    
+    // Handle single * wildcard
+    if pattern.contains('*') && !pattern.contains("**") {
         let parts: Vec<&str> = pattern.split('*').collect();
         if parts.len() == 2 {
-            text.starts_with(parts[0]) && text.ends_with(parts[1])
-        } else {
-            // More complex patterns - for now just do basic matching
-            pattern == text
+            return text.starts_with(parts[0]) && text.ends_with(parts[1]);
+        } else if parts.len() > 2 {
+            // Multiple wildcards - check sequentially
+            let mut current_pos = 0;
+            for (i, part) in parts.iter().enumerate() {
+                if i == 0 {
+                    // First part must match from beginning
+                    if !text[current_pos..].starts_with(part) {
+                        return false;
+                    }
+                    current_pos += part.len();
+                } else if i == parts.len() - 1 {
+                    // Last part must match at end
+                    return text[current_pos..].ends_with(part);
+                } else {
+                    // Middle parts
+                    if let Some(pos) = text[current_pos..].find(part) {
+                        current_pos += pos + part.len();
+                    } else {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
+    }
+    
+    // Exact match or contains
+    if pattern == text {
+        true
     } else {
         text.contains(pattern)
     }
