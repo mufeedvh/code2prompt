@@ -7,6 +7,7 @@ use crossterm::{
 use ratatui::{prelude::*, widgets::*};
 use std::io::{stdout, Stdout};
 use tokio::sync::mpsc;
+use clap::Parser;
 
 use crate::model::{Message, Model, Tab, SettingAction};
 use crate::utils::{run_analysis, build_file_tree};
@@ -19,18 +20,6 @@ pub struct TuiApp {
 }
 
 impl TuiApp {
-    pub fn new() -> Result<Self> {
-        let terminal = init_terminal()?;
-        let (message_tx, message_rx) = mpsc::unbounded_channel();
-        let model = Model::default();
-        
-        Ok(Self {
-            model,
-            terminal,
-            message_tx,
-            message_rx,
-        })
-    }
     
     pub fn new_with_args(
         path: std::path::PathBuf,
@@ -127,6 +116,15 @@ impl TuiApp {
             KeyCode::Char('1') => return Some(Message::SwitchTab(Tab::FileTree)),
             KeyCode::Char('2') => return Some(Message::SwitchTab(Tab::Settings)),
             KeyCode::Char('3') => return Some(Message::SwitchTab(Tab::PromptOutput)),
+            KeyCode::Tab => {
+                // Cycle through tabs: Selection -> Settings -> Output -> Selection
+                let next_tab = match self.model.current_tab {
+                    Tab::FileTree => Tab::Settings,
+                    Tab::Settings => Tab::PromptOutput,
+                    Tab::PromptOutput => Tab::FileTree,
+                };
+                return Some(Message::SwitchTab(next_tab));
+            }
             _ => {}
         }
         
@@ -195,7 +193,7 @@ impl TuiApp {
             KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
             KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
             KeyCode::Char(' ') => Some(Message::ToggleSetting(self.model.settings_cursor)),
-            KeyCode::Tab => Some(Message::CycleSetting(self.model.settings_cursor)),
+            KeyCode::Left | KeyCode::Right => Some(Message::CycleSetting(self.model.settings_cursor)),
             KeyCode::Enter => Some(Message::RunAnalysis),
             _ => None,
         }
@@ -204,12 +202,19 @@ impl TuiApp {
     fn handle_prompt_output_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
+            // Check for Ctrl+Up/Down first for faster scrolling
+            KeyCode::Up if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                Some(Message::ScrollOutput(-10))
+            }
+            KeyCode::Down if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                Some(Message::ScrollOutput(10))
+            }
             KeyCode::Up => Some(Message::ScrollOutput(-1)),
             KeyCode::Down => Some(Message::ScrollOutput(1)),
-            KeyCode::PageUp => Some(Message::ScrollOutput(-10)),
-            KeyCode::PageDown => Some(Message::ScrollOutput(10)),
-            KeyCode::Home => Some(Message::ScrollOutput(-1000)), // Scroll to top
-            KeyCode::End => Some(Message::ScrollOutput(1000)),   // Scroll to bottom
+            KeyCode::PageUp => Some(Message::ScrollOutput(-5)),
+            KeyCode::PageDown => Some(Message::ScrollOutput(5)),
+            KeyCode::Home => Some(Message::ScrollOutput(-9999)), // Scroll to top
+            KeyCode::End => Some(Message::ScrollOutput(9999)),   // Scroll to bottom
             KeyCode::Char('c') | KeyCode::Char('C') => {
                 if self.model.generated_prompt.is_some() {
                     Some(Message::CopyToClipboard)
@@ -404,12 +409,21 @@ impl TuiApp {
                 }
             }
             Message::ScrollOutput(delta) => {
-                let new_scroll = if delta < 0 {
-                    self.model.output_scroll.saturating_sub((-delta) as u16)
-                } else {
-                    self.model.output_scroll.saturating_add(delta as u16)
-                };
-                self.model.output_scroll = new_scroll;
+                if let Some(prompt) = &self.model.generated_prompt {
+                    // Calculate approximate total lines (rough estimate)
+                    let total_lines = prompt.lines().count() as u16;
+                    let viewport_height = 20; // Approximate viewport height
+                    let max_scroll = total_lines.saturating_sub(viewport_height);
+                    
+                    let new_scroll = if delta < 0 {
+                        self.model.output_scroll.saturating_sub((-delta) as u16)
+                    } else {
+                        self.model.output_scroll.saturating_add(delta as u16)
+                    };
+                    
+                    // Clamp scroll to valid range
+                    self.model.output_scroll = new_scroll.min(max_scroll);
+                }
             }
         }
         
@@ -616,7 +630,7 @@ impl TuiApp {
         
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | Enter/R: Run Analysis | Type to Search"
+            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | Enter: Run Analysis | Type to Search"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
@@ -698,7 +712,7 @@ impl TuiApp {
         
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Toggle | Tab: Cycle Options | Enter: Run Analysis"
+            "↑↓: Navigate | Space: Toggle | ←→: Cycle Options | Enter: Run Analysis"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
@@ -753,8 +767,17 @@ impl TuiApp {
             "Press R to run analysis and generate prompt.\n\nSelected files will be processed according to your settings.".to_string()
         };
         
+        // Calculate scroll position for display
+        let scroll_info = if let Some(prompt) = &model.generated_prompt {
+            let total_lines = prompt.lines().count();
+            let current_line = model.output_scroll as usize + 1;
+            format!("Generated Prompt (Line {}/{})", current_line, total_lines)
+        } else {
+            "Generated Prompt".to_string()
+        };
+        
         let prompt_widget = Paragraph::new(content)
-            .block(Block::default().borders(Borders::ALL).title("Generated Prompt"))
+            .block(Block::default().borders(Borders::ALL).title(scroll_info))
             .wrap(Wrap { trim: true })
             .scroll((model.output_scroll, 0));
         frame.render_widget(prompt_widget, layout[1]);
@@ -776,7 +799,7 @@ impl TuiApp {
         let status_text = if !model.status_message.is_empty() {
             model.status_message.clone()
         } else {
-            "Press 1/2/3 to switch tabs | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
+            "Tab: Next tab | 1/2/3: Direct tab | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
         };
         
         let status_widget = Paragraph::new(status_text)
@@ -787,16 +810,14 @@ impl TuiApp {
 }
 
 pub async fn run_tui() -> Result<()> {
-    // Check if we have CLI arguments to parse
-    let args: Vec<String> = std::env::args().collect();
+    // Parse CLI arguments properly to extract include/exclude patterns
+    let args = crate::args::Cli::parse();
     
-    let mut app = if args.len() > 1 {
-        // Parse basic CLI args for initial state
-        let path = std::path::PathBuf::from(&args[1]);
-        TuiApp::new_with_args(path, vec![], vec![])?
-    } else {
-        TuiApp::new()?
-    };
+    let mut app = TuiApp::new_with_args(
+        args.path.clone(),
+        args.include.clone(),
+        args.exclude.clone()
+    )?;
     
     let result = app.run().await;
     

@@ -313,8 +313,9 @@ impl Model {
         ]
     }
     
-    /// Update setting based on index and action
+    /// Update setting based on index and action (works with grouped settings)
     pub fn update_setting(&mut self, index: usize, action: SettingAction) {
+        // Map flat index to actual setting based on grouped structure
         match index {
             0 => self.config.line_numbers = !self.config.line_numbers, // Line Numbers
             1 => self.config.absolute_path = !self.config.absolute_path, // Absolute Paths  
