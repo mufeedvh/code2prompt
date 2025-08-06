@@ -1,6 +1,6 @@
 ---
 title: How the Glob Pattern Filter Works
-description: An in-depth look at how Code2Prompt processes include and exclude patterns.
+description: How Code2Prompt decides which files to keep or discard using include (-i) and exclude (-e) globs.
 ---
 
 Code2Prompt uses glob patterns to include or exclude files and directories, working similarly to tools like tree or grep. It lets you pass two independent _lists_ of glob patterns:
@@ -8,11 +8,11 @@ Code2Prompt uses glob patterns to include or exclude files and directories, work
 - **include list** (`--include` or `-i`) - “these patterns allow files”
 - **exclude list** (`--exclude` or `-e`) - “these patterns disallow files”
 
-Code2prompt must decide, for every file in the project, whether it is kept or discarded. This page explains the rules, the special role of `--include-priority`, and the design choices behind them.
+Code2prompt must decide, for every file in the project, whether it is kept or discarded. This page explains the rules, and the design choices behind them.
 
 ---
 
-## 1. Sets and symbols
+## 1. Sets and Symbols
 
 Throughout the explanation we use the usual set notation
 
@@ -26,94 +26,57 @@ Throughout the explanation we use the usual set notation
 
 ---
 
-## 2. Four basic situations
+## 2. Four Situations
+
+### Overview of the four situations
+
+| Include list | Exclude list | Files kept |
+| ------------ | ------------ | ---------- |
+| A = ∅        | B = ∅        | Ω          |
+| A = ∅        | B ≠ ∅        | ¬B         |
+| A ≠ ∅        | B = ∅        | A          |
+| A ≠ ∅        | B ≠ ∅        | A \ B      |
 
 1. **No include list, no exclude list**
 
-   $$
-   A = \varnothing,\;B = \varnothing
-   \quad\Longrightarrow\quad
-   \text{result} = \Omega
-   $$
+   If no patterns are specified, all files are kept (`Ω`).
 
 2. **Exclude list only**
 
-   $$
-   A = \varnothing,\;B \neq \varnothing
-   \quad\Longrightarrow\quad
-   \text{result} = \Omega \setminus B
-                  \;=\; \neg B
-   $$
+   In this case, Code2Prompt acts as a blacklist, removing files that match the excluded patterns (` Ω \ B = ¬B`).
 
 3. **Include list only**
 
-   $$
-   A \neq \varnothing,\;B = \varnothing
-   \quad\Longrightarrow\quad
-   \text{result} = A
-   $$
+   If only an include list is specified, Code2Prompt acts as a whitelist, keeping only files that match the included patterns (`A`).
 
 4. **Include _and_ exclude lists**
 
-   Here there is an overlap $C = A \cap B$ that satisfies contradictory
-   rules: “keep” (because it is in $A$) and “discard” (because it is in $B$).
-   The flag `--include-priority` exists _solely_ to resolve that
-   contradiction:
-
-   | `--include-priority` | result               | set expression                        |
-   | -------------------- | -------------------- | ------------------------------------- |
-   | _off_ (default)      | keep $A \setminus B$ | $A \setminus B$                       |
-   | _on_                 | keep _all_ of $A$    | $(A \setminus B) \cup (A \cap B) = A$ |
-
-   Note that the “rest” $D$ is **never** included when an include list is
-   present - otherwise the include list would no longer behave as a
-   whitelist.
-
-### Visual Representation of Case 4
-
-Let (A) and (B) overlap. Depending on the priority, the intersection $$( A \cap B )$$ is either included or excluded based on the `include_priority` parameter. By default, the intersection is excluded (exclusion primes over inclusion).
-
-![Visual Representation of Case 4](../../../../assets/filter.png)
+   If both lists are specified, Code2Prompt keeps files that match the include patterns, but removes those that match the exclude patterns (`A \ B`).
 
 ---
 
-## 3. Why keep `--include-priority`?
+## 3. More on the overlap
 
-For trivial directories you can drop `--exclude` and obtain the same set of
-files. But in real-world projects we frequently need the pattern
+With both lists present (`A ≠ ∅`, `B ≠ ∅`) you have four logical possibilities
+for the overlap `C` and the rest `D`.
 
-- include _many_ files (e.g. “every `*.md`”)
-- exclude _huge_ sub-trees (e.g. `node_modules/**`, `target/**`)
-- keep just a handful of exceptions _inside_ those excluded trees  
-  (e.g. `node_modules/**/LICENSE`, `docs/private/keep.md`)
+| Want `C`? | Want `D`? | Reasonable?                                                     |
+| --------- | --------- | --------------------------------------------------------------- |
+| No        | No        | Default behaviour (`A \ B`)                                     |
+| Yes       | No        | Same behavior as case 3 (`A`)                                   |
+| No        | Yes       | surprising (“discard what I asked for `C`, keep what I didn't”) |
+| Yes       | Yes       | Same behavior as case 1 (`Ω`)                                   |
 
-Without `--include-priority` you must choose between
-
-- removing the exclusion (pulls thousands of files back), or
-- writing a gigantic include list that enumerates every allowed path.
-
-The flag offers an ergonomic shorthand:
-
-```bash
-code2prompt . \
-  -i "**/*.md,node_modules/**/LICENSE" \
-  -e "node_modules/**,target/**" \
-  --include-priority
-```
-
-One line, easy to read, easy to maintain.
-
----
+This is for this reason that the `--include-priority` option was removed. Because, it would be the same result as if you had only an include list (case 3).
 
 ## 4. Quick reference table
 
-| Want to keep…                                  | Use                              |
-| ---------------------------------------------- | -------------------------------- |
-| everything                                     | no `-i`, no `-e`                 |
-| everything _except_ some patterns              | `-e` only                        |
-| _only_ what matches the patterns               | `-i` only                        |
-| what matches `-i`, minus what matches `-e`     | `-i` **and** `-e`                |
-| same as above **but** keep the overlap as well | `-i`, `-e`, `--include-priority` |
+| Want to keep…                              | Use               |
+| ------------------------------------------ | ----------------- |
+| everything                                 | no `-i`, no `-e`  |
+| everything _except_ some patterns          | `-e` only         |
+| _only_ what matches the patterns           | `-i` only         |
+| what matches `-i`, minus what matches `-e` | `-i` **and** `-e` |
 
 ---
 
@@ -121,4 +84,4 @@ This design keeps the mental model simple:
 
 - The include list is a whitelist as soon as it exists.
 - The exclude list is a blacklist layered on top.
-- The flag `--include-priority` changes the fate of the _overlap only_, nothing else.
+- The overlap is discarded by default
