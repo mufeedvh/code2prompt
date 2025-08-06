@@ -1,59 +1,87 @@
 ---
 title: Wie der Glob-Musterfilter funktioniert
-description: Ein detaillierter Blick darauf, wie Code2Prompt Include- und Exclude-Muster verarbeitet.
+description: Wie Code2Prompt entscheidet, welche Dateien mit Include- (-i) und Exclude- (-e) Glob-Mustern beibehalten oder verworfen werden.
 ---
 
-Das Tool verwendet Glob-Muster, um Dateien und Verzeichnisse einzuschließen oder auszuschließen, ähnlich wie bei Tools wie `tree` oder `grep`. Hier ist eine detaillierte Erklärung:
+Code2Prompt verwendet Glob-Muster, um Dateien und Verzeichnisse einzuschließen oder auszuschließen, ähnlich wie Tools wie tree oder grep. Es ermöglicht Ihnen, zwei unabhängige _Listen_ von Glob-Mustern zu übergeben:
 
-## Schlüsselkonzepte
+- **Include-Liste** (`--include` oder `-i`) - "Diese Muster erlauben Dateien"
+- **Exclude-Liste** (`--exclude` oder `-e`) - "Diese Muster verbieten Dateien"
 
-- **Einschlussliste (A)**: Eine Menge, die die Glob-Muster für Dateien und Verzeichnisse enthält, die Sie einschließen möchten.
-- **Ausschlussliste (B)**: Eine Menge, die die Glob-Muster für Dateien und Verzeichnisse enthält, die Sie ausschließen möchten.
-- **Universum (Ω)**: Die Menge aller Dateien und Verzeichnisse.
+Code2prompt muss für jede Datei im Projekt entscheiden, ob sie beibehalten oder verworfen wird. Diese Seite erklärt die Regeln und die dahinter stehenden Design-Entscheidungen.
 
-Wenn Sie eine `--exclude`-Liste und/oder eine `--include`-Liste angeben, gilt die folgende Logik:
+---
 
-### Fälle und Logik
+## 1. Mengen und Symbole
 
-1. **Keine Einschlussliste, keine Ausschlussliste**  
-   Alles einschließen:
+Während der Erklärung verwenden wir die übliche Mengennotation
 
-   $$
-   \neg A \cap \neg B \implies \Omega
-   $$
+| Symbol                            | Bedeutung                                                        |
+| --------------------------------- | ---------------------------------------------------------------- |
+| $A$                               | Menge der Dateien, die **mindestens ein** Include-Muster treffen |
+| $B$                               | Menge der Dateien, die **mindestens ein** Exclude-Muster treffen |
+| $\Omega$                          | der gesamte Projektbaum (das _Universum_)                        |
+| $C = A \cap B$                    | Dateien, die beide Listen treffen (die _Überschneidung_)         |
+| $D = \Omega \setminus (A \cup B)$ | Dateien, die keine Liste treffen                                 |
 
-2. **Keine Einschlussliste, mit Ausschlussliste**  
-   Alles einschließen, außer was der Ausschlussliste entspricht:
+---
 
-   $$
-   \neg A \cap B \implies \Omega \setminus B
-   $$
+## 2. Vier Situationen
 
-3. **Mit Einschlussliste, keine Ausschlussliste**  
-   Nur was der Einschlussliste entspricht, einschließen:
+### Übersicht der vier Situationen
 
-   $$
-   A \cap \neg B \implies A
-   $$
+| Include-Liste | Exclude-Liste | Behaltene Dateien |
+| ------------- | ------------- | ----------------- |
+| A = ∅         | B = ∅         | Ω                 |
+| A = ∅         | B ≠ ∅         | ¬B                |
+| A ≠ ∅         | B = ∅         | A                 |
+| A ≠ ∅         | B ≠ ∅         | A \ B             |
 
-4. **Mit Einschlussliste und Ausschlussliste**  
-   Was der Einschlussliste entspricht, einschließen und was der Ausschlussliste entspricht, ausschließen. Die Schnittmenge basierend auf dem `include_priority`-Parameter behandeln:
+1. **Keine Include-Liste, keine Exclude-Liste**
 
-   - **Einschluss-Priorität == true**:
+   Wenn keine Muster angegeben sind, werden alle Dateien beibehalten (`Ω`).
 
-     $$
-     A \setminus (A \cap B)
-     $$
+2. **Nur Exclude-Liste**
 
-   - **Einschluss-Priorität != true\***:
-     $$
-     B \setminus (A \cap B)
-     $$
+   In diesem Fall fungiert Code2Prompt als Blacklist und entfernt Dateien, die den ausgeschlossenen Mustern entsprechen (` Ω \ B = ¬B`).
 
-### Visuelle Darstellung von Fall 4
+3. **Nur Include-Liste**
 
-Lassen Sie (A) und (B) überlappen. Abhängig von der Priorität wird die Schnittmenge $$( A \cap B )$$ entweder einbezogen oder ausgeschlossen, basierend auf dem `include_priority`-Parameter.
+   Wenn nur eine Include-Liste angegeben ist, fungiert Code2Prompt als Whitelist und behält nur Dateien, die den eingeschlossenen Mustern entsprechen (`A`).
 
-![Visuelle Darstellung von Fall 4](../../../../../assets/filter.png)
+4. **Include- _und_ Exclude-Listen**
 
-> Diese Seite wurde für Ihre Bequemlichkeit automatisch übersetzt. Bitte greifen Sie für den Originalinhalt auf die englische Version zurück.
+   Wenn beide Listen angegeben sind, behält Code2Prompt Dateien, die den Include-Mustern entsprechen, entfernt aber diejenigen, die den Exclude-Mustern entsprechen (`A \ B`).
+
+---
+
+## 3. Mehr über die Überschneidung
+
+Mit beiden Listen vorhanden (`A ≠ ∅`, `B ≠ ∅`) haben Sie vier logische Möglichkeiten
+für die Überschneidung `C` und den Rest `D`.
+
+| `C` gewünscht? | `D` gewünscht? | Vernünftig?                                                               |
+| -------------- | -------------- | ------------------------------------------------------------------------- |
+| Nein           | Nein           | Standardverhalten (`A \ B`)                                               |
+| Ja             | Nein           | Gleiches Verhalten wie Fall 3 (`A`)                                       |
+| Nein           | Ja             | überraschend ("verwerfe was ich angefordert habe `C`, behalte was nicht") |
+| Ja             | Ja             | Gleiches Verhalten wie Fall 1 (`Ω`)                                       |
+
+Aus diesem Grund wurde die Option `--include-priority` entfernt. Denn es wäre das gleiche Ergebnis, als hätten Sie nur eine Include-Liste (Fall 3).
+
+## 4. Schnelle Referenztabelle
+
+| Behalten möchten…                              | Verwenden            |
+| ---------------------------------------------- | -------------------- |
+| alles                                          | kein `-i`, kein `-e` |
+| alles _außer_ bestimmten Mustern               | nur `-e`             |
+| _nur_ was den Mustern entspricht               | nur `-i`             |
+| was `-i` entspricht, minus was `-e` entspricht | `-i` **und** `-e`    |
+
+---
+
+Dieses Design hält das mentale Modell einfach:
+
+- Die Include-Liste ist eine Whitelist, sobald sie existiert.
+- Die Exclude-Liste ist eine darüber gelegte Blacklist.
+- Die Überschneidung wird standardmäßig verworfen
