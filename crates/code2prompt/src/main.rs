@@ -30,27 +30,20 @@ async fn main() -> Result<()> {
     env_logger::init();
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
 
-    // Check if we should run in CLI mode (help, version, or output redirection)
-    let args_vec: Vec<String> = std::env::args().collect();
-    if should_run_cli_mode(&args_vec) {
-        run_cli_mode().await
+    // Parse arguments to check for --tui flag
+    let args = Cli::parse();
+    
+    if args.tui {
+        // Run TUI when --tui flag is provided
+        tui::run_tui_with_args(args.path, args.include, args.exclude).await
     } else {
-        // Run TUI by default
-        tui::run_tui().await
+        // Run CLI by default
+        run_cli_mode_with_args(args).await
     }
 }
 
-/// Determine if we should run in CLI mode instead of TUI
-fn should_run_cli_mode(args: &[String]) -> bool {
-    // Run CLI mode for help, version, or when output is redirected
-    args.iter()
-        .any(|arg| arg == "--help" || arg == "-h" || arg == "--version" || arg == "-V")
-        || !atty::is(atty::Stream::Stdout)
-}
-
-/// Run the original CLI mode
-async fn run_cli_mode() -> Result<()> {
-    let args = Cli::parse();
+/// Run the CLI mode with parsed arguments
+async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // ~~~ Arguments Validation ~~~
     // if no_clipboard is true, output_file must be specified.

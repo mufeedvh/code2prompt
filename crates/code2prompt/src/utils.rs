@@ -14,61 +14,74 @@ use std::fs;
 
 use crate::model::{FileNode, AnalysisResults};
 
-/// Build a file tree from the given configuration
-pub fn build_file_tree(config: &Code2PromptConfig) -> Result<Vec<FileNode>> {
-    let root_path = &config.path;
+/// Build a file tree using session data from core traversal
+pub fn build_file_tree_from_session(session: &mut Code2PromptSession) -> Result<Vec<FileNode>> {
+    // Load codebase data using the session
+    session.load_codebase()
+        .context("Failed to load codebase from session")?;
     
-    if !root_path.exists() {
-        return Err(anyhow::anyhow!("Path does not exist: {}", root_path.display()));
-    }
+    // Get the files data from session
+    let files_data = session.data.files.as_ref()
+        .and_then(|f| f.as_array())
+        .context("No files data available from session")?;
     
+    // For now, let's simplify and just create a flat structure with immediate children
+    // This avoids the complex hierarchy building while still using session data
     let mut root_nodes = Vec::new();
     
-    // Get immediate children of the root directory
-    if root_path.is_dir() {
-        let entries = fs::read_dir(root_path)
-            .context("Failed to read root directory")?;
+    // Use the core's own directory traversal by doing a simple file system scan
+    // but respect the session's include/exclude configuration
+    let entries = fs::read_dir(&session.config.path)
+        .context("Failed to read root directory")?;
+    
+    for entry in entries {
+        let entry = entry.context("Failed to read directory entry")?;
+        let path = entry.path();
         
-        for entry in entries {
-            let entry = entry.context("Failed to read directory entry")?;
-            let path = entry.path();
-            
-            // Skip hidden files unless configured to include them
-            if !config.hidden && is_hidden(&path) {
-                continue;
-            }
-            
-            let mut node = FileNode::new(path, 0);
-            
-            // Check if this file/directory should be selected based on patterns
-            node.is_selected = should_include_path(&node.path, config);
-            
-            // If it's a directory, also load immediate children to check selection
-            if node.is_directory {
-                if let Ok(children) = load_directory_children_with_config(&node.path, 1, Some(config)) {
-                    node.children = children;
-                    
-                    // Auto-expand if this directory contains selected files (recursively)
-                    node.is_expanded = should_auto_expand_directory(&node, config);
-                }
-            }
-            
-            root_nodes.push(node);
+        // Skip hidden files unless configured to include them
+        if !session.config.hidden && is_hidden(&path) {
+            continue;
         }
-    } else {
-        // Single file
-        let mut node = FileNode::new(root_path.to_path_buf(), 0);
-        node.is_selected = should_include_path(&node.path, config);
+        
+        let mut node = FileNode::new(path, 0);
+        
+        // Check if this file appears in the session data to determine selection
+        let relative_path = node.path.strip_prefix(&session.config.path)
+            .unwrap_or(&node.path);
+        let relative_str = relative_path.to_string_lossy();
+        
+        // Find if this file is included in the session data
+        node.is_selected = files_data.iter().any(|file_entry| {
+            if let Some(file_path) = file_entry.get("path").and_then(|p| p.as_str()) {
+                file_path == relative_str || file_path.starts_with(&format!("{}/", relative_str))
+            } else {
+                false
+            }
+        });
+        
+        // If it's a directory, load its immediate children
+        if node.is_directory {
+            if let Ok(children) = load_directory_children_with_config(&node.path, 1, Some(&session.config)) {
+                node.children = children;
+                
+                // Auto-expand if this directory contains selected files
+                node.is_expanded = should_auto_expand_directory(&node, &session.config);
+            }
+        }
+        
         root_nodes.push(node);
     }
     
-    // Sort nodes
-    for node in &mut root_nodes {
-        node.sort_children();
-    }
+    // Sort all nodes
+    sort_nodes(&mut root_nodes);
     
-    root_nodes.sort_by(|a, b| {
-        // Directories first, then files
+    Ok(root_nodes)
+}
+
+
+/// Sort file nodes (directories first, then alphabetically)
+fn sort_nodes(nodes: &mut Vec<FileNode>) {
+    nodes.sort_by(|a, b| {
         match (a.is_directory, b.is_directory) {
             (true, false) => std::cmp::Ordering::Less,
             (false, true) => std::cmp::Ordering::Greater,
@@ -76,8 +89,12 @@ pub fn build_file_tree(config: &Code2PromptConfig) -> Result<Vec<FileNode>> {
         }
     });
     
-    Ok(root_nodes)
+    // Recursively sort children
+    for node in nodes {
+        sort_nodes(&mut node.children);
+    }
 }
+
 
 
 /// Load children of a directory with configuration for selection
@@ -133,94 +150,12 @@ pub fn load_directory_children_with_config(dir_path: &Path, level: usize, config
     Ok(children)
 }
 
-/// Check if a path should be included based on configuration patterns
-fn should_include_path(path: &Path, config: &Code2PromptConfig) -> bool {
-    let path_str = path.to_string_lossy();
-    
-    // Check exclude patterns first
-    for pattern in &config.exclude_patterns {
-        if glob_match(pattern, &path_str) {
-            return false;
-        }
-    }
-    
-    // Check include patterns
-    if !config.include_patterns.is_empty() {
-        for pattern in &config.include_patterns {
-            if glob_match(pattern, &path_str) {
-                return true;
-            }
-        }
-        return false; // No include patterns matched
-    }
-    
-    // Default to including if no patterns specified
+/// Check if a path should be included - simplified version that just returns true
+/// Real filtering logic is handled by core session
+fn should_include_path(_path: &Path, _config: &Code2PromptConfig) -> bool {
+    // For now, let session handle inclusion logic
+    // This is just a placeholder for UI file tree building
     true
-}
-
-/// Improved glob pattern matching
-fn glob_match(pattern: &str, text: &str) -> bool {
-    // Handle ** for recursive directory matching
-    if pattern.contains("**") {
-        let parts: Vec<&str> = pattern.split("**").collect();
-        if parts.len() == 2 {
-            let prefix = parts[0].trim_end_matches('/');
-            let suffix = parts[1].trim_start_matches('/');
-            
-            if prefix.is_empty() && suffix.is_empty() {
-                return true; // "**" matches everything
-            }
-            
-            let prefix_match = prefix.is_empty() || text.starts_with(prefix);
-            let suffix_match = suffix.is_empty() || text.ends_with(suffix);
-            
-            return prefix_match && suffix_match;
-        }
-    }
-    
-    // Handle single * wildcard
-    if pattern.contains('*') && !pattern.contains("**") {
-        let parts: Vec<&str> = pattern.split('*').collect();
-        match parts.len().cmp(&2) {
-            std::cmp::Ordering::Equal => {
-                return text.starts_with(parts[0]) && text.ends_with(parts[1]);
-            }
-            std::cmp::Ordering::Greater => {
-                // Multiple wildcards - check sequentially
-                let mut current_pos = 0;
-                for (i, part) in parts.iter().enumerate() {
-                    if i == 0 {
-                        // First part must match from beginning
-                        if !text[current_pos..].starts_with(part) {
-                            return false;
-                        }
-                        current_pos += part.len();
-                    } else if i == parts.len() - 1 {
-                        // Last part must match at end
-                        return text[current_pos..].ends_with(part);
-                    } else {
-                        // Middle parts
-                        if let Some(pos) = text[current_pos..].find(part) {
-                            current_pos += pos + part.len();
-                        } else {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            }
-            std::cmp::Ordering::Less => {
-                // Less than 2 parts, continue to exact match logic
-            }
-        }
-    }
-    
-    // Exact match or contains
-    if pattern == text {
-        true
-    } else {
-        text.contains(pattern)
-    }
 }
 
 /// Check if a path is hidden (starts with .)
@@ -285,56 +220,28 @@ pub async fn run_analysis(config: Code2PromptConfig) -> Result<AnalysisResults> 
     // Create a session with the configuration
     let mut session = Code2PromptSession::new(config);
     
-    // Load the codebase
-    session.load_codebase()
-        .context("Failed to load codebase")?;
+    // Use the session's generate_prompt method which handles all the orchestration
+    let rendered = session.generate_prompt()
+        .context("Failed to generate prompt")?;
     
-    // Handle git operations if enabled
-    if session.config.diff_enabled {
-        session.load_git_diff()
-            .context("Failed to load git diff")?;
-    }
-    
-    if session.config.diff_branches.is_some() {
-        session.load_git_diff_between_branches()
-            .context("Failed to load git diff between branches")?;
-    }
-    
-    if session.config.log_branches.is_some() {
-        session.load_git_log_between_branches()
-            .context("Failed to load git log between branches")?;
-    }
-    
-    // Build template data
-    let data = session.build_template_data();
-    
-    // Render the prompt
-    let rendered = session.render_prompt(&data)
-        .context("Failed to render prompt")?;
-    
-    let mut file_count = 0;
-    
-    // Process files from the session data
-    if let Some(files) = data.get("files").and_then(|f| f.as_array()) {
-        for file_entry in files {
-            if let (Some(_path), Some(_lines), Some(_tokens)) = (
-                file_entry.get("path").and_then(|p| p.as_str()),
-                file_entry.get("lines").and_then(|l| l.as_u64()),
-                file_entry.get("token_count").and_then(|t| t.as_u64()),
-            ) {
-                file_count += 1;
-            }
-        }
-    }
+    let file_count = rendered.files.len();
     
     // Generate token map entries if enabled
     let token_map_entries = if rendered.token_count > 0 {
-        crate::token_map::generate_token_map_with_limit(
-            &data.get("files").and_then(|f| f.as_array()).unwrap_or(&vec![]).to_vec(),
-            rendered.token_count,
-            Some(50), // Show more entries in TUI
-            Some(0.5), // Lower threshold for more detail
-        )
+        if let Some(files_value) = session.data.files.as_ref() {
+            if let Some(files_array) = files_value.as_array() {
+                crate::token_map::generate_token_map_with_limit(
+                    files_array,
+                    rendered.token_count,
+                    Some(50), // Show more entries in TUI
+                    Some(0.5), // Lower threshold for more detail
+                )
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        }
     } else {
         Vec::new()
     };

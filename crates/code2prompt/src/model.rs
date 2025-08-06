@@ -6,6 +6,7 @@
 //! for the terminal user interface.
 
 use code2prompt_core::configuration::Code2PromptConfig;
+use code2prompt_core::session::Code2PromptSession;
 use code2prompt_core::template::OutputFormat;
 use code2prompt_core::tokenizer::TokenFormat;
 use std::collections::HashMap;
@@ -15,6 +16,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub struct Model {
     pub config: Code2PromptConfig,
+    pub session: Code2PromptSession,
     pub current_tab: Tab,
     pub should_quit: bool,
 
@@ -141,9 +143,11 @@ pub enum Message {
 impl Default for Model {
     fn default() -> Self {
         let config = Code2PromptConfig::default();
+        let session = Code2PromptSession::new(config.clone());
 
         Model {
             config,
+            session,
             current_tab: Tab::FileTree,
             should_quit: false,
             file_tree: Vec::new(),
@@ -192,13 +196,37 @@ impl Model {
         include_patterns: Vec<String>,
         exclude_patterns: Vec<String>,
     ) -> Self {
-        let mut model = Self::default();
-        model.config.path = path;
-        model.config.include_patterns = include_patterns;
-        model.config.exclude_patterns = exclude_patterns;
+        let mut config = Code2PromptConfig::default();
+        config.path = path;
+        config.include_patterns = include_patterns;
+        config.exclude_patterns = exclude_patterns;
         // Enable token map for TUI
-        model.config.token_map_enabled = true;
-        model
+        config.token_map_enabled = true;
+        
+        let session = Code2PromptSession::new(config.clone());
+        
+        Model {
+            config,
+            session,
+            current_tab: Tab::FileTree,
+            should_quit: false,
+            file_tree: Vec::new(),
+            selected_files: HashMap::new(),
+            search_query: String::new(),
+            tree_cursor: 0,
+            settings_cursor: 0,
+            generated_prompt: None,
+            token_count: None,
+            file_count: 0,
+            analysis_in_progress: false,
+            analysis_error: None,
+            output_scroll: 0,
+            file_tree_scroll: 0,
+            token_map_entries: Vec::new(),
+            statistics_view: StatisticsView::Overview,
+            statistics_scroll: 0,
+            status_message: String::new(),
+        }
     }
 
     /// Get flattened list of visible file nodes for display
@@ -495,19 +523,4 @@ impl FileNode {
         }
     }
 
-    pub fn sort_children(&mut self) {
-        self.children.sort_by(|a, b| {
-            // Directories first, then files
-            match (a.is_directory, b.is_directory) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.cmp(&b.name),
-            }
-        });
-
-        // Recursively sort children
-        for child in &mut self.children {
-            child.sort_children();
-        }
-    }
 }

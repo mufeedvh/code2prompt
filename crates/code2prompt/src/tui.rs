@@ -6,7 +6,6 @@
 //! file tree browsing, real-time analysis, and clipboard integration.
 
 use anyhow::Result;
-use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
@@ -17,7 +16,7 @@ use std::io::{stdout, Stdout};
 use tokio::sync::mpsc;
 
 use crate::model::{Message, Model, SettingAction, Tab};
-use crate::utils::{build_file_tree, run_analysis};
+use crate::utils::{build_file_tree_from_session, run_analysis};
 
 pub struct TuiApp {
     model: Model,
@@ -317,8 +316,8 @@ impl TuiApp {
                 self.model.status_message = format!("Switched to {:?} tab", tab);
             }
             Message::RefreshFileTree => {
-                // Build file tree from config path
-                match build_file_tree(&self.model.config) {
+                // Build file tree using session data
+                match build_file_tree_from_session(&mut self.model.session) {
                     Ok(tree) => {
                         self.model.file_tree = tree;
 
@@ -1516,15 +1515,12 @@ impl TuiApp {
 /// # Errors
 ///
 /// Returns an error if the TUI cannot be initialized or if runtime errors occur during execution.
-pub async fn run_tui() -> Result<()> {
-    // Parse CLI arguments properly to extract include/exclude patterns
-    let args = crate::args::Cli::parse();
-
-    let mut app = TuiApp::new_with_args(
-        args.path.clone(),
-        args.include.clone(),
-        args.exclude.clone(),
-    )?;
+pub async fn run_tui_with_args(
+    path: std::path::PathBuf,
+    include_patterns: Vec<String>,
+    exclude_patterns: Vec<String>,
+) -> Result<()> {
+    let mut app = TuiApp::new_with_args(path, include_patterns, exclude_patterns)?;
 
     let result = app.run().await;
 
@@ -1533,6 +1529,7 @@ pub async fn run_tui() -> Result<()> {
 
     result
 }
+
 
 fn init_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
     enable_raw_mode()?;

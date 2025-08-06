@@ -22,6 +22,10 @@ pub struct Cli {
     #[arg()]
     pub path: PathBuf,
 
+    /// Launch the Terminal User Interface
+    #[clap(long)]
+    pub tui: bool,
+
     /// Patterns to include
     #[clap(short = 'i', long = "include", value_delimiter = ',')]
     pub include: Vec<String>,
