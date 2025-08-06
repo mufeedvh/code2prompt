@@ -30,7 +30,6 @@ pub struct Cli {
     #[clap(short = 'e', long = "exclude", value_delimiter = ',')]
     pub exclude: Vec<String>,
 
-
     /// Optional output file path
     #[clap(short = 'O', long = "output-file")]
     pub output_file: Option<String>,

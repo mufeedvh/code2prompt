@@ -1,5 +1,3 @@
-// code2prompt/crates/code2prompt/tests/template_integration_test.rs
-
 use assert_cmd::Command;
 use log::{debug, info};
 use predicates::prelude::*;

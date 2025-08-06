@@ -27,7 +27,11 @@ pub struct Model {
     // Settings state (Tab 2)
     pub settings_cursor: usize,
 
-    // Prompt output state (Tab 3)
+    // Statistics state (Tab 3)
+    pub statistics_view: StatisticsView,
+    pub statistics_scroll: u16,
+
+    // Prompt output state (Tab 4)
     pub generated_prompt: Option<String>,
     pub token_count: Option<usize>,
     pub file_count: usize,
@@ -39,12 +43,9 @@ pub struct Model {
     // Token Map data
     pub token_map_entries: Vec<crate::token_map::TokenMapEntry>,
 
-    // Statistics state (Tab 3)
-    pub statistics_view: StatisticsView,
-    pub statistics_scroll: u16,
-
     // Status messages
     pub status_message: String,
+    
 }
 
 /// The four main tabs of the TUI

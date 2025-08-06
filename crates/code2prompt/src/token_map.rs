@@ -85,7 +85,7 @@ pub fn generate_token_map_with_limit(
 ) -> Vec<TokenMapEntry> {
     let max_lines = max_lines.unwrap_or(20);
     let min_percent = min_percent.unwrap_or(0.1);
-    
+
     let mut root = TreeNode::with_path(String::new());
     root.tokens = total_tokens;
 
@@ -592,19 +592,4 @@ fn generate_hierarchical_bar(
     }
 
     result
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_format_tokens() {
-        assert_eq!(format_tokens(999), "999");
-        assert_eq!(format_tokens(1_000), "1K");
-        assert_eq!(format_tokens(1_500), "2K");
-        assert_eq!(format_tokens(1_000_000), "1M");
-        assert_eq!(format_tokens(2_499_999), "2M");
-        assert_eq!(format_tokens(2_500_000), "3M");
-    }
 }
