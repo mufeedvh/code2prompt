@@ -5,24 +5,20 @@
 //! file tree nodes, and settings management. It serves as the central state container
 //! for the terminal user interface.
 
-use code2prompt_core::configuration::Code2PromptConfig;
 use code2prompt_core::session::Code2PromptSession;
 use code2prompt_core::template::OutputFormat;
 use code2prompt_core::tokenizer::TokenFormat;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Represents the overall state of the TUI application.
 #[derive(Debug, Clone)]
 pub struct Model {
-    pub config: Code2PromptConfig,
     pub session: Code2PromptSession,
     pub current_tab: Tab,
     pub should_quit: bool,
 
     // File tree state (Tab 1)
     pub file_tree: Vec<FileNode>,
-    pub selected_files: HashMap<String, bool>,
     pub search_query: String,
     pub tree_cursor: usize,
 
@@ -142,16 +138,14 @@ pub enum Message {
 
 impl Default for Model {
     fn default() -> Self {
-        let config = Code2PromptConfig::default();
-        let session = Code2PromptSession::new(config.clone());
+        let config = code2prompt_core::configuration::Code2PromptConfig::default();
+        let session = Code2PromptSession::new(config);
 
         Model {
-            config,
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
             file_tree: Vec::new(),
-            selected_files: HashMap::new(),
             search_query: String::new(),
             tree_cursor: 0,
             settings_cursor: 0,
@@ -171,47 +165,26 @@ impl Default for Model {
 }
 
 impl Model {
-    /// Generate a glob pattern for a file/directory path
-    pub fn path_to_glob_pattern(&self, path: &std::path::Path, is_directory: bool) -> String {
-        let relative_path = if path.starts_with(&self.config.path) {
-            path.strip_prefix(&self.config.path)
-                .unwrap_or(path)
-                .to_string_lossy()
-                .to_string()
-        } else {
-            path.to_string_lossy().to_string()
-        };
-
-        if is_directory {
-            // For directories, match all files within
-            format!("{}/**/*", relative_path.trim_start_matches('/'))
-        } else {
-            // For files, exact match
-            relative_path.trim_start_matches('/').to_string()
-        }
-    }
 
     pub fn new_with_cli_args(
         path: PathBuf,
         include_patterns: Vec<String>,
         exclude_patterns: Vec<String>,
     ) -> Self {
-        let mut config = Code2PromptConfig::default();
+        let mut config = code2prompt_core::configuration::Code2PromptConfig::default();
         config.path = path;
         config.include_patterns = include_patterns;
         config.exclude_patterns = exclude_patterns;
         // Enable token map for TUI
         config.token_map_enabled = true;
         
-        let session = Code2PromptSession::new(config.clone());
+        let session = Code2PromptSession::new(config);
         
         Model {
-            config,
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
             file_tree: Vec::new(),
-            selected_files: HashMap::new(),
             search_query: String::new(),
             tree_cursor: 0,
             settings_cursor: 0,
@@ -309,17 +282,17 @@ impl Model {
                     SettingsItem {
                         name: "Line Numbers".to_string(),
                         description: "Show line numbers in output".to_string(),
-                        setting_type: SettingType::Boolean(self.config.line_numbers),
+                        setting_type: SettingType::Boolean(self.session.config.line_numbers),
                     },
                     SettingsItem {
                         name: "Absolute Paths".to_string(),
                         description: "Use absolute instead of relative paths".to_string(),
-                        setting_type: SettingType::Boolean(self.config.absolute_path),
+                        setting_type: SettingType::Boolean(self.session.config.absolute_path),
                     },
                     SettingsItem {
                         name: "No Codeblock".to_string(),
                         description: "Don't wrap code in markdown blocks".to_string(),
-                        setting_type: SettingType::Boolean(self.config.no_codeblock),
+                        setting_type: SettingType::Boolean(self.session.config.no_codeblock),
                     },
                     SettingsItem {
                         name: "Output Format".to_string(),
@@ -330,7 +303,7 @@ impl Model {
                                 "JSON".to_string(),
                                 "XML".to_string(),
                             ],
-                            selected: match self.config.output_format {
+                            selected: match self.session.config.output_format {
                                 OutputFormat::Markdown => 0,
                                 OutputFormat::Json => 1,
                                 OutputFormat::Xml => 2,
@@ -342,7 +315,7 @@ impl Model {
                         description: "How to display token counts".to_string(),
                         setting_type: SettingType::Choice {
                             options: vec!["Raw".to_string(), "Formatted".to_string()],
-                            selected: match self.config.token_format {
+                            selected: match self.session.config.token_format {
                                 TokenFormat::Raw => 0,
                                 TokenFormat::Format => 1,
                             },
@@ -355,7 +328,7 @@ impl Model {
                 items: vec![SettingsItem {
                     name: "Git Diff".to_string(),
                     description: "Include git diff in output".to_string(),
-                    setting_type: SettingType::Boolean(self.config.diff_enabled),
+                    setting_type: SettingType::Boolean(self.session.config.diff_enabled),
                 }],
             },
             SettingsGroup {
@@ -364,17 +337,17 @@ impl Model {
                     SettingsItem {
                         name: "Follow Symlinks".to_string(),
                         description: "Follow symbolic links".to_string(),
-                        setting_type: SettingType::Boolean(self.config.follow_symlinks),
+                        setting_type: SettingType::Boolean(self.session.config.follow_symlinks),
                     },
                     SettingsItem {
                         name: "Hidden Files".to_string(),
                         description: "Include hidden files and directories".to_string(),
-                        setting_type: SettingType::Boolean(self.config.hidden),
+                        setting_type: SettingType::Boolean(self.session.config.hidden),
                     },
                     SettingsItem {
                         name: "No Ignore".to_string(),
                         description: "Ignore .gitignore rules".to_string(),
-                        setting_type: SettingType::Boolean(self.config.no_ignore),
+                        setting_type: SettingType::Boolean(self.session.config.no_ignore),
                     },
                 ],
             },
@@ -388,17 +361,17 @@ impl Model {
             SettingsItem {
                 name: "Line Numbers".to_string(),
                 description: "Show line numbers in output".to_string(),
-                setting_type: SettingType::Boolean(self.config.line_numbers),
+                setting_type: SettingType::Boolean(self.session.config.line_numbers),
             },
             SettingsItem {
                 name: "Absolute Paths".to_string(),
                 description: "Use absolute instead of relative paths".to_string(),
-                setting_type: SettingType::Boolean(self.config.absolute_path),
+                setting_type: SettingType::Boolean(self.session.config.absolute_path),
             },
             SettingsItem {
                 name: "No Codeblock".to_string(),
                 description: "Don't wrap code in markdown blocks".to_string(),
-                setting_type: SettingType::Boolean(self.config.no_codeblock),
+                setting_type: SettingType::Boolean(self.session.config.no_codeblock),
             },
             SettingsItem {
                 name: "Output Format".to_string(),
@@ -409,7 +382,7 @@ impl Model {
                         "JSON".to_string(),
                         "XML".to_string(),
                     ],
-                    selected: match self.config.output_format {
+                    selected: match self.session.config.output_format {
                         OutputFormat::Markdown => 0,
                         OutputFormat::Json => 1,
                         OutputFormat::Xml => 2,
@@ -422,7 +395,7 @@ impl Model {
                 description: "How to display token counts".to_string(),
                 setting_type: SettingType::Choice {
                     options: vec!["Raw".to_string(), "Formatted".to_string()],
-                    selected: match self.config.token_format {
+                    selected: match self.session.config.token_format {
                         TokenFormat::Raw => 0,
                         TokenFormat::Format => 1,
                     },
@@ -432,23 +405,23 @@ impl Model {
             SettingsItem {
                 name: "Git Diff".to_string(),
                 description: "Include git diff in output".to_string(),
-                setting_type: SettingType::Boolean(self.config.diff_enabled),
+                setting_type: SettingType::Boolean(self.session.config.diff_enabled),
             },
             // File selection section
             SettingsItem {
                 name: "Follow Symlinks".to_string(),
                 description: "Follow symbolic links".to_string(),
-                setting_type: SettingType::Boolean(self.config.follow_symlinks),
+                setting_type: SettingType::Boolean(self.session.config.follow_symlinks),
             },
             SettingsItem {
                 name: "Hidden Files".to_string(),
                 description: "Include hidden files and directories".to_string(),
-                setting_type: SettingType::Boolean(self.config.hidden),
+                setting_type: SettingType::Boolean(self.session.config.hidden),
             },
             SettingsItem {
                 name: "No Ignore".to_string(),
                 description: "Ignore .gitignore rules".to_string(),
-                setting_type: SettingType::Boolean(self.config.no_ignore),
+                setting_type: SettingType::Boolean(self.session.config.no_ignore),
             },
         ]
     }
@@ -457,13 +430,13 @@ impl Model {
     pub fn update_setting(&mut self, index: usize, action: SettingAction) {
         // Map flat index to actual setting based on grouped structure
         match index {
-            0 => self.config.line_numbers = !self.config.line_numbers, // Line Numbers
-            1 => self.config.absolute_path = !self.config.absolute_path, // Absolute Paths
-            2 => self.config.no_codeblock = !self.config.no_codeblock, // No Codeblock
+            0 => self.session.config.line_numbers = !self.session.config.line_numbers, // Line Numbers
+            1 => self.session.config.absolute_path = !self.session.config.absolute_path, // Absolute Paths
+            2 => self.session.config.no_codeblock = !self.session.config.no_codeblock, // No Codeblock
             3 => {
                 // Output Format
                 if let SettingAction::Cycle = action {
-                    self.config.output_format = match self.config.output_format {
+                    self.session.config.output_format = match self.session.config.output_format {
                         OutputFormat::Markdown => OutputFormat::Json,
                         OutputFormat::Json => OutputFormat::Xml,
                         OutputFormat::Xml => OutputFormat::Markdown,
@@ -473,16 +446,16 @@ impl Model {
             4 => {
                 // Token Format
                 if let SettingAction::Cycle = action {
-                    self.config.token_format = match self.config.token_format {
+                    self.session.config.token_format = match self.session.config.token_format {
                         TokenFormat::Raw => TokenFormat::Format,
                         TokenFormat::Format => TokenFormat::Raw,
                     };
                 }
             }
-            5 => self.config.diff_enabled = !self.config.diff_enabled, // Git Diff
-            6 => self.config.follow_symlinks = !self.config.follow_symlinks, // Follow Symlinks
-            7 => self.config.hidden = !self.config.hidden,             // Hidden Files
-            8 => self.config.no_ignore = !self.config.no_ignore,       // No Ignore
+            5 => self.session.config.diff_enabled = !self.session.config.diff_enabled, // Git Diff
+            6 => self.session.config.follow_symlinks = !self.session.config.follow_symlinks, // Follow Symlinks
+            7 => self.session.config.hidden = !self.session.config.hidden,             // Hidden Files
+            8 => self.session.config.no_ignore = !self.session.config.no_ignore,       // No Ignore
             _ => {}
         }
     }

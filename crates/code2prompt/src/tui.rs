@@ -16,7 +16,7 @@ use std::io::{stdout, Stdout};
 use tokio::sync::mpsc;
 
 use crate::model::{Message, Model, SettingAction, Tab};
-use crate::utils::{build_file_tree_from_session, run_analysis};
+use crate::utils::build_file_tree_from_session;
 
 pub struct TuiApp {
     model: Model,
@@ -321,12 +321,8 @@ impl TuiApp {
                     Ok(tree) => {
                         self.model.file_tree = tree;
 
-                        // Sync selected_files HashMap with the tree state
-                        self.model.selected_files.clear();
-                        Self::sync_selected_files_from_tree(
-                            &self.model.file_tree,
-                            &mut self.model.selected_files,
-                        );
+                        // File tree will get selection state from session data
+                        // No need to maintain separate HashMap
 
                         self.model.status_message = "File tree refreshed".to_string();
                     }
@@ -371,56 +367,29 @@ impl TuiApp {
                     let path = node.path.to_string_lossy().to_string();
                     let name = node.name.clone();
                     let is_directory = node.is_directory;
-                    let current = self
-                        .model
-                        .selected_files
-                        .get(&path)
-                        .copied()
-                        .unwrap_or(node.is_selected);
+                    let current = node.is_selected;
 
-                    // Generate glob pattern for this file/directory
-                    let glob_pattern = self.model.path_to_glob_pattern(&node.path, is_directory);
-
-                    // Update patterns dynamically
+                    // Use session methods for file selection instead of direct config manipulation
                     if !current {
-                        // Selecting: add to include patterns if not present, remove from exclude
-                        if !self.model.config.include_patterns.contains(&glob_pattern) {
-                            self.model
-                                .config
-                                .include_patterns
-                                .push(glob_pattern.clone());
-                        }
-                        self.model
-                            .config
-                            .exclude_patterns
-                            .retain(|p| p != &glob_pattern);
+                        // Selecting file: use session include_file method
+                        self.model.session.include_file(node.path.clone());
                     } else {
-                        // Deselecting: add to exclude patterns if not in include, or remove from include
-                        if self.model.config.include_patterns.contains(&glob_pattern) {
-                            self.model
-                                .config
-                                .include_patterns
-                                .retain(|p| p != &glob_pattern);
-                        } else if !self.model.config.exclude_patterns.contains(&glob_pattern) {
-                            self.model
-                                .config
-                                .exclude_patterns
-                                .push(glob_pattern.clone());
-                        }
+                        // Deselecting file: use session exclude_file method  
+                        self.model.session.exclude_file(node.path.clone());
                     }
 
-                    // Update the node in the tree (and recursively if it's a directory)
+                    // Session methods handle config updates automatically
+
+                    // Update the node in the tree  
                     if is_directory {
                         self.toggle_directory_selection(&path, !current);
                     } else {
-                        self.model.selected_files.insert(path.clone(), !current);
                         self.update_node_selection(&path, !current);
                     }
 
                     let action = if current { "Deselected" } else { "Selected" };
                     let extra = if is_directory { " (and contents)" } else { "" };
-                    self.model.status_message =
-                        format!("{} {}{} (pattern: {})", action, name, extra, glob_pattern);
+                    self.model.status_message = format!("{} {}{}", action, name, extra);
                 }
             }
             Message::ExpandDirectory(index) => {
@@ -468,13 +437,39 @@ impl TuiApp {
                     // Switch to prompt output tab
                     self.model.current_tab = Tab::PromptOutput;
 
-                    // Run analysis in background
-                    let config = self.model.config.clone();
+                    // Run analysis in background using session directly (same as CLI)
+                    let mut session = self.model.session.clone();
                     let tx = self.message_tx.clone();
 
                     tokio::spawn(async move {
-                        match run_analysis(config).await {
-                            Ok(result) => {
+                        match session.generate_prompt() {
+                            Ok(rendered) => {
+                                // Convert to AnalysisResults format expected by TUI
+                                let token_map_entries = if rendered.token_count > 0 {
+                                    if let Some(files_value) = session.data.files.as_ref() {
+                                        if let Some(files_array) = files_value.as_array() {
+                                            crate::token_map::generate_token_map_with_limit(
+                                                files_array,
+                                                rendered.token_count,
+                                                Some(50),
+                                                Some(0.5),
+                                            )
+                                        } else {
+                                            Vec::new()
+                                        }
+                                    } else {
+                                        Vec::new()
+                                    }
+                                } else {
+                                    Vec::new()
+                                };
+
+                                let result = crate::model::AnalysisResults {
+                                    file_count: rendered.files.len(),
+                                    token_count: Some(rendered.token_count),
+                                    generated_prompt: rendered.prompt,
+                                    token_map_entries,
+                                };
                                 let _ = tx.send(Message::AnalysisComplete(result));
                             }
                             Err(e) => {
@@ -593,66 +588,36 @@ impl TuiApp {
     }
 
     // Helper methods for tree manipulation
-    fn sync_selected_files_from_tree(
-        nodes: &[crate::model::FileNode],
-        selected_files: &mut std::collections::HashMap<String, bool>,
-    ) {
-        for node in nodes {
-            if node.is_selected {
-                selected_files.insert(node.path.to_string_lossy().to_string(), true);
-            }
-            Self::sync_selected_files_from_tree(&node.children, selected_files);
-        }
-    }
 
     fn toggle_directory_selection(&mut self, path: &str, selected: bool) {
-        // Update the directory itself
-        self.model.selected_files.insert(path.to_string(), selected);
+        // Update the directory itself in the tree
         Self::update_node_selection_recursive(&mut self.model.file_tree, path, selected);
 
         // Recursively update all children
-        Self::toggle_directory_children_selection(
-            &mut self.model.file_tree,
-            path,
-            selected,
-            &mut self.model.selected_files,
-        );
+        Self::toggle_directory_children_selection(&mut self.model.file_tree, path, selected);
     }
 
     fn toggle_directory_children_selection(
         nodes: &mut [crate::model::FileNode],
         dir_path: &str,
         selected: bool,
-        selected_files: &mut std::collections::HashMap<String, bool>,
     ) {
         for node in nodes.iter_mut() {
             if node.path.to_string_lossy() == dir_path && node.is_directory {
                 // Found the directory, now update all its children recursively
-                Self::select_all_children(&mut node.children, selected, selected_files);
+                Self::select_all_children(&mut node.children, selected);
                 return;
             }
-            Self::toggle_directory_children_selection(
-                &mut node.children,
-                dir_path,
-                selected,
-                selected_files,
-            );
+            Self::toggle_directory_children_selection(&mut node.children, dir_path, selected);
         }
     }
 
-    fn select_all_children(
-        nodes: &mut [crate::model::FileNode],
-        selected: bool,
-        selected_files: &mut std::collections::HashMap<String, bool>,
-    ) {
+    fn select_all_children(nodes: &mut [crate::model::FileNode], selected: bool) {
         for node in nodes.iter_mut() {
             node.is_selected = selected;
-            let path = node.path.to_string_lossy().to_string();
-            selected_files.insert(path, selected);
-
             // Recursively select children if this is a directory
             if node.is_directory {
-                Self::select_all_children(&mut node.children, selected, selected_files);
+                Self::select_all_children(&mut node.children, selected);
             }
         }
     }
@@ -684,18 +649,50 @@ impl TuiApp {
         self.model.file_tree = tree;
     }
 
+    // Helper methods for statistics
+    fn count_selected_files(nodes: &[crate::model::FileNode]) -> usize {
+        let mut count = 0;
+        for node in nodes {
+            if node.is_selected && !node.is_directory {
+                count += 1;
+            }
+            count += Self::count_selected_files(&node.children);
+        }
+        count
+    }
+
+    fn count_total_files(nodes: &[crate::model::FileNode]) -> usize {
+        let mut count = 0;
+        for node in nodes {
+            if !node.is_directory {
+                count += 1;
+            }
+            count += Self::count_total_files(&node.children);
+        }
+        count
+    }
+
     fn expand_directory_recursive(&self, nodes: &mut [crate::model::FileNode], path: &str) {
         for node in nodes.iter_mut() {
             if node.path.to_string_lossy() == path && node.is_directory {
                 node.is_expanded = true;
-                // Load children if not already loaded
+                // Load children if not already loaded - simplified approach
                 if node.children.is_empty() {
-                    if let Ok(children) = crate::utils::load_directory_children_with_config(
-                        &node.path,
-                        node.level + 1,
-                        Some(&self.model.config),
-                    ) {
-                        node.children = children;
+                    if let Ok(entries) = std::fs::read_dir(&node.path) {
+                        for entry in entries.flatten() {
+                            let child_path = entry.path();
+                            let mut child_node = crate::model::FileNode::new(child_path, node.level + 1);
+                            child_node.is_selected = false; // New directories are not selected by default
+                            node.children.push(child_node);
+                        }
+                        // Sort children
+                        node.children.sort_by(|a, b| {
+                            match (a.is_directory, b.is_directory) {
+                                (true, false) => std::cmp::Ordering::Less,
+                                (false, true) => std::cmp::Ordering::Greater,
+                                _ => a.name.cmp(&b.name),
+                            }
+                        });
                     }
                 }
                 return;
@@ -871,15 +868,15 @@ impl TuiApp {
         frame.render_widget(search_widget, layout[1]);
 
         // Pattern info
-        let include_text = if model.config.include_patterns.is_empty() {
+        let include_text = if model.session.config.include_patterns.is_empty() {
             "All files".to_string()
         } else {
-            format!("Include: {}", model.config.include_patterns.join(", "))
+            format!("Include: {}", model.session.config.include_patterns.join(", "))
         };
-        let exclude_text = if model.config.exclude_patterns.is_empty() {
+        let exclude_text = if model.session.config.exclude_patterns.is_empty() {
             "".to_string()
         } else {
-            format!(" | Exclude: {}", model.config.exclude_patterns.join(", "))
+            format!(" | Exclude: {}", model.session.config.exclude_patterns.join(", "))
         };
         let pattern_info = format!("{}{}", include_text, exclude_text);
 
@@ -1087,8 +1084,8 @@ impl TuiApp {
             ),
         );
         
-        let selected_count = model.selected_files.values().filter(|&&v| v).count();
-        let eligible_count = model.selected_files.len(); // Total eligible files (matching patterns)
+        let selected_count = Self::count_selected_files(&model.file_tree);
+        let eligible_count = Self::count_total_files(&model.file_tree);
         let total_files = model.file_count;
         stats_items.push(ListItem::new(format!("  • Selected: {} files", selected_count)));
         stats_items.push(ListItem::new(format!("  • Eligible: {} files", eligible_count)));
@@ -1110,10 +1107,10 @@ impl TuiApp {
         );
 
         if let Some(token_count) = model.token_count {
-            stats_items.push(ListItem::new(format!("  • Total Tokens: {}", Self::format_number(token_count, &model.config.token_format))));
+            stats_items.push(ListItem::new(format!("  • Total Tokens: {}", Self::format_number(token_count, &model.session.config.token_format))));
             if selected_count > 0 {
                 let avg_tokens = token_count / selected_count;
-                stats_items.push(ListItem::new(format!("  • Avg per File: {}", Self::format_number(avg_tokens, &model.config.token_format))));
+                stats_items.push(ListItem::new(format!("  • Avg per File: {}", Self::format_number(avg_tokens, &model.session.config.token_format))));
             }
         } else {
             stats_items.push(ListItem::new("  • Total Tokens: Not calculated"));
@@ -1129,18 +1126,18 @@ impl TuiApp {
             ),
         );
 
-        let output_format = match model.config.output_format {
+        let output_format = match model.session.config.output_format {
             code2prompt_core::template::OutputFormat::Markdown => "Markdown",
             code2prompt_core::template::OutputFormat::Json => "JSON",
             code2prompt_core::template::OutputFormat::Xml => "XML",
         };
         stats_items.push(ListItem::new(format!("  • Output: {}", output_format)));
-        stats_items.push(ListItem::new(format!("  • Line Numbers: {}", if model.config.line_numbers { "On" } else { "Off" })));
-        stats_items.push(ListItem::new(format!("  • Git Diff: {}", if model.config.diff_enabled { "On" } else { "Off" })));
+        stats_items.push(ListItem::new(format!("  • Line Numbers: {}", if model.session.config.line_numbers { "On" } else { "Off" })));
+        stats_items.push(ListItem::new(format!("  • Git Diff: {}", if model.session.config.diff_enabled { "On" } else { "Off" })));
         
         let pattern_summary = format!("  • Patterns: {} include, {} exclude", 
-            model.config.include_patterns.len(), 
-            model.config.exclude_patterns.len()
+            model.session.config.include_patterns.len(), 
+            model.session.config.exclude_patterns.len()
         );
         stats_items.push(ListItem::new(pattern_summary));
 
@@ -1240,7 +1237,7 @@ impl TuiApp {
                 );
 
                 // Format the tokens with K/M suffix
-                let tokens_str = Self::format_number(entry.tokens, &model.config.token_format);
+                let tokens_str = Self::format_number(entry.tokens, &model.session.config.token_format);
 
                 // Determine color based on entry type and size
                 let color = if entry.metadata.is_dir {
@@ -1362,7 +1359,7 @@ impl TuiApp {
 
                 let content = format!(
                     "{:<12} │{}│ {:>6} ({:>4.1}%) | {} files",
-                    extension, bar, Self::format_number(*tokens, &model.config.token_format), percentage, count
+                    extension, bar, Self::format_number(*tokens, &model.session.config.token_format), percentage, count
                 );
 
                 ListItem::new(content).style(Style::default().fg(color))
