@@ -1,6 +1,6 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 //!
-//! Authors: Mufeed VH (@mufeedvh), Olivier D'Ancona (@ODAncona)
+//! Authors: Olivier D'Ancona (@ODAncona), Mufeed VH (@mufeedvh)
 mod args;
 mod clipboard;
 mod model;
@@ -24,27 +24,24 @@ use inquire::Text;
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
 use std::{path::PathBuf, str::FromStr};
+use tui::run_tui_with_args;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
 
-    // Parse arguments to check for --tui flag
-    let args = Cli::parse();
-    
+    let args: Cli = Cli::parse();
+
     if args.tui {
-        // Run TUI when --tui flag is provided
-        tui::run_tui_with_args(args.path, args.include, args.exclude).await
+        run_tui_with_args(args.path, args.include, args.exclude).await
     } else {
-        // Run CLI by default
         run_cli_mode_with_args(args).await
     }
 }
 
 /// Run the CLI mode with parsed arguments
 async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
-
     // ~~~ Arguments Validation ~~~
     // if no_clipboard is true, output_file must be specified.
     if args.no_clipboard && args.output_file.is_none() {
@@ -137,7 +134,6 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     };
 
     // ~~~ Gather Repository Data ~~~
-    // Load Codebase
     session.load_codebase().unwrap_or_else(|e| {
         if let Some(ref s) = spinner {
             s.finish_with_message("Failed!".red().to_string());
