@@ -17,6 +17,12 @@ use std::io::{stdout, Stdout};
 use tokio::sync::mpsc;
 
 use crate::model::{Message, Model, SettingAction, Tab};
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum InputMode {
+    Normal,
+    Search,
+}
 use crate::utils::build_file_tree_from_session;
 
 pub struct TuiApp {
@@ -24,6 +30,7 @@ pub struct TuiApp {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     message_tx: mpsc::UnboundedSender<Message>,
     message_rx: mpsc::UnboundedReceiver<Message>,
+    input_mode: InputMode,
 }
 
 impl TuiApp {
@@ -55,6 +62,7 @@ impl TuiApp {
             terminal,
             message_tx,
             message_rx,
+            input_mode: InputMode::Normal,
         })
     }
 
@@ -129,7 +137,12 @@ impl TuiApp {
     }
 
     fn handle_key_event(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
-        // Global shortcuts
+        // Check if we're in search mode first - this takes priority over global shortcuts
+        if self.input_mode == InputMode::Search && self.model.current_tab == Tab::FileTree {
+            return self.handle_file_tree_keys(key);
+        }
+
+        // Global shortcuts (only when not in search mode)
         match key.code {
             KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 return Some(Message::Quit);
@@ -172,6 +185,32 @@ impl TuiApp {
     }
 
     fn handle_file_tree_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
+        // Handle search mode input
+        if self.input_mode == InputMode::Search {
+            match key.code {
+                KeyCode::Esc => {
+                    // Exit search mode
+                    return Some(Message::ExitSearchMode);
+                }
+                KeyCode::Char(c) => {
+                    let mut query = self.model.search_query.clone();
+                    query.push(c);
+                    return Some(Message::UpdateSearchQuery(query));
+                }
+                KeyCode::Backspace => {
+                    let mut query = self.model.search_query.clone();
+                    query.pop();
+                    return Some(Message::UpdateSearchQuery(query));
+                }
+                KeyCode::Enter => {
+                    // Exit search mode and run analysis
+                    return Some(Message::ExitSearchMode);
+                }
+                _ => return None,
+            }
+        }
+
+        // Handle normal mode input
         match key.code {
             KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
             KeyCode::Down => Some(Message::MoveTreeCursor(1)),
@@ -201,22 +240,9 @@ impl TuiApp {
                     None
                 }
             }
-            KeyCode::Char(c) if c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' => {
-                let mut query = self.model.search_query.clone();
-                query.push(c);
-                Some(Message::UpdateSearchQuery(query))
-            }
-            KeyCode::Backspace => {
-                let mut query = self.model.search_query.clone();
-                query.pop();
-                Some(Message::UpdateSearchQuery(query))
-            }
-            KeyCode::Esc => {
-                if !self.model.search_query.is_empty() {
-                    Some(Message::UpdateSearchQuery(String::new()))
-                } else {
-                    None
-                }
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                // Enter search mode
+                Some(Message::EnterSearchMode)
             }
             KeyCode::PageUp => Some(Message::ScrollFileTree(-5)),
             KeyCode::PageDown => Some(Message::ScrollFileTree(5)),
@@ -332,6 +358,14 @@ impl TuiApp {
                 self.model.search_query = query;
                 // Reset cursor when search changes
                 self.model.tree_cursor = 0;
+            }
+            Message::EnterSearchMode => {
+                self.input_mode = InputMode::Search;
+                self.model.status_message = "Search mode - Type to search, Esc to exit".to_string();
+            }
+            Message::ExitSearchMode => {
+                self.input_mode = InputMode::Normal;
+                self.model.status_message = "Exited search mode".to_string();
             }
             Message::MoveTreeCursor(delta) => {
                 let visible_count = self.model.get_visible_nodes().len();
@@ -867,14 +901,30 @@ impl TuiApp {
 
         frame.render_widget(tree_widget, layout[0]);
 
-        // Search bar (moved below tree)
-        let search_title = if model.search_query.contains('*') {
-            "Search (glob pattern active)"
-        } else {
-            "Search (text or glob pattern)"
-        };
+        // Search bar (moved below tree) with red 'S' to indicate hotkey
+        // Create a styled title with red 'S'
+        let title_spans = vec![
+            Span::styled(
+                "s",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("earch", Style::default().fg(Color::White)),
+            Span::styled(
+                if model.search_query.contains('*') {
+                    " (glob pattern active)"
+                } else {
+                    " (text or glob pattern)"
+                },
+                Style::default().fg(Color::Gray),
+            ),
+        ];
+
         let search_widget = Paragraph::new(model.search_query.as_str())
-            .block(Block::default().borders(Borders::ALL).title(search_title))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(Line::from(title_spans)),
+            )
             .style(Style::default().fg(if model.search_query.contains('*') {
                 Color::Yellow
             } else {
@@ -912,7 +962,7 @@ impl TuiApp {
 
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | PgUp/PgDn: Scroll | Enter: Run Analysis | Type to Search"
+            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | PgUp/PgDn: Scroll | Enter: Run Analysis | S: Search Mode | Esc: Exit"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));

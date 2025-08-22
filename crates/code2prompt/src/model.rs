@@ -113,6 +113,10 @@ pub enum Message {
     MoveTreeCursor(i32),
     RefreshFileTree,
 
+    // Search mode
+    EnterSearchMode,
+    ExitSearchMode,
+
     // Settings
     MoveSettingsCursor(i32),
     ToggleSetting(usize),
