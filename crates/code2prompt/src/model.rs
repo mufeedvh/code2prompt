@@ -43,7 +43,6 @@ pub struct Model {
 
     // Status messages
     pub status_message: String,
-    
 }
 
 /// The four main tabs of the TUI
@@ -133,7 +132,6 @@ pub enum Message {
     // Statistics
     CycleStatisticsView(i8), // +1 = next view, -1 = previous view
     ScrollStatistics(i16),   // Scroll delta for statistics
-
 }
 
 impl Default for Model {
@@ -165,21 +163,7 @@ impl Default for Model {
 }
 
 impl Model {
-
-    pub fn new_with_cli_args(
-        path: PathBuf,
-        include_patterns: Vec<String>,
-        exclude_patterns: Vec<String>,
-    ) -> Self {
-        let mut config = code2prompt_core::configuration::Code2PromptConfig::default();
-        config.path = path;
-        config.include_patterns = include_patterns;
-        config.exclude_patterns = exclude_patterns;
-        // Enable token map for TUI
-        config.token_map_enabled = true;
-        
-        let session = Code2PromptSession::new(config);
-        
+    pub fn new_with_cli_args(session: Code2PromptSession) -> Self {
         Model {
             session,
             current_tab: Tab::FileTree,
@@ -321,6 +305,64 @@ impl Model {
                             },
                         },
                     },
+                    SettingsItem {
+                        name: "Full Directory Tree".to_string(),
+                        description: "Show complete directory structure".to_string(),
+                        setting_type: SettingType::Boolean(self.session.config.full_directory_tree),
+                    },
+                ],
+            },
+            SettingsGroup {
+                name: "Sorting & Organization".to_string(),
+                items: vec![SettingsItem {
+                    name: "Sort Method".to_string(),
+                    description: "How to sort files in output".to_string(),
+                    setting_type: SettingType::Choice {
+                        options: vec![
+                            "Name (A→Z)".to_string(),
+                            "Name (Z→A)".to_string(),
+                            "Date (Old→New)".to_string(),
+                            "Date (New→Old)".to_string(),
+                        ],
+                        selected: match self.session.config.sort_method {
+                            Some(code2prompt_core::sort::FileSortMethod::NameAsc) => 0,
+                            Some(code2prompt_core::sort::FileSortMethod::NameDesc) => 1,
+                            Some(code2prompt_core::sort::FileSortMethod::DateAsc) => 2,
+                            Some(code2prompt_core::sort::FileSortMethod::DateDesc) => 3,
+                            None => 0,
+                        },
+                    },
+                }],
+            },
+            SettingsGroup {
+                name: "Tokenizer & Encoding".to_string(),
+                items: vec![
+                    SettingsItem {
+                        name: "Tokenizer Type".to_string(),
+                        description: "Encoding method for token counting".to_string(),
+                        setting_type: SettingType::Choice {
+                            options: vec![
+                                "cl100k (ChatGPT)".to_string(),
+                                "o200k (GPT-4o)".to_string(),
+                                "p50k (Code models)".to_string(),
+                                "p50k_edit (Edit models)".to_string(),
+                                "r50k (GPT-3)".to_string(),
+                            ],
+                            selected: match self.session.config.encoding {
+                                code2prompt_core::tokenizer::TokenizerType::Cl100kBase => 0,
+                                code2prompt_core::tokenizer::TokenizerType::O200kBase => 1,
+                                code2prompt_core::tokenizer::TokenizerType::P50kBase => 2,
+                                code2prompt_core::tokenizer::TokenizerType::P50kEdit => 3,
+                                code2prompt_core::tokenizer::TokenizerType::R50kBase
+                                | code2prompt_core::tokenizer::TokenizerType::Gpt2 => 4,
+                            },
+                        },
+                    },
+                    SettingsItem {
+                        name: "Token Map".to_string(),
+                        description: "Enable detailed token counting per file".to_string(),
+                        setting_type: SettingType::Boolean(self.session.config.token_map_enabled),
+                    },
                 ],
             },
             SettingsGroup {
@@ -357,7 +399,7 @@ impl Model {
     /// Get flattened list of settings for display (keeping for backward compatibility)
     pub fn get_settings_items(&self) -> Vec<SettingsItem> {
         vec![
-            // Format section
+            // Output Format section
             SettingsItem {
                 name: "Line Numbers".to_string(),
                 description: "Show line numbers in output".to_string(),
@@ -389,7 +431,6 @@ impl Model {
                     },
                 },
             },
-            // Tokenizer section
             SettingsItem {
                 name: "Token Format".to_string(),
                 description: "How to display token counts".to_string(),
@@ -401,13 +442,65 @@ impl Model {
                     },
                 },
             },
-            // Git section
+            SettingsItem {
+                name: "Full Directory Tree".to_string(),
+                description: "Show complete directory structure".to_string(),
+                setting_type: SettingType::Boolean(self.session.config.full_directory_tree),
+            },
+            // Sorting & Organization section
+            SettingsItem {
+                name: "Sort Method".to_string(),
+                description: "How to sort files in output".to_string(),
+                setting_type: SettingType::Choice {
+                    options: vec![
+                        "Name (A→Z)".to_string(),
+                        "Name (Z→A)".to_string(),
+                        "Date (Old→New)".to_string(),
+                        "Date (New→Old)".to_string(),
+                    ],
+                    selected: match self.session.config.sort_method {
+                        Some(code2prompt_core::sort::FileSortMethod::NameAsc) => 0,
+                        Some(code2prompt_core::sort::FileSortMethod::NameDesc) => 1,
+                        Some(code2prompt_core::sort::FileSortMethod::DateAsc) => 2,
+                        Some(code2prompt_core::sort::FileSortMethod::DateDesc) => 3,
+                        None => 0,
+                    },
+                },
+            },
+            // Tokenizer & Encoding section
+            SettingsItem {
+                name: "Tokenizer Type".to_string(),
+                description: "Encoding method for token counting".to_string(),
+                setting_type: SettingType::Choice {
+                    options: vec![
+                        "cl100k (ChatGPT)".to_string(),
+                        "o200k (GPT-4o)".to_string(),
+                        "p50k (Code models)".to_string(),
+                        "p50k_edit (Edit models)".to_string(),
+                        "r50k (GPT-3)".to_string(),
+                    ],
+                    selected: match self.session.config.encoding {
+                        code2prompt_core::tokenizer::TokenizerType::Cl100kBase => 0,
+                        code2prompt_core::tokenizer::TokenizerType::O200kBase => 1,
+                        code2prompt_core::tokenizer::TokenizerType::P50kBase => 2,
+                        code2prompt_core::tokenizer::TokenizerType::P50kEdit => 3,
+                        code2prompt_core::tokenizer::TokenizerType::R50kBase
+                        | code2prompt_core::tokenizer::TokenizerType::Gpt2 => 4,
+                    },
+                },
+            },
+            SettingsItem {
+                name: "Token Map".to_string(),
+                description: "Enable detailed token counting per file".to_string(),
+                setting_type: SettingType::Boolean(self.session.config.token_map_enabled),
+            },
+            // Git Integration section
             SettingsItem {
                 name: "Git Diff".to_string(),
                 description: "Include git diff in output".to_string(),
                 setting_type: SettingType::Boolean(self.session.config.diff_enabled),
             },
-            // File selection section
+            // File Selection section
             SettingsItem {
                 name: "Follow Symlinks".to_string(),
                 description: "Follow symbolic links".to_string(),
@@ -430,6 +523,7 @@ impl Model {
     pub fn update_setting(&mut self, index: usize, action: SettingAction) {
         // Map flat index to actual setting based on grouped structure
         match index {
+            // Output Format section (0-5)
             0 => self.session.config.line_numbers = !self.session.config.line_numbers, // Line Numbers
             1 => self.session.config.absolute_path = !self.session.config.absolute_path, // Absolute Paths
             2 => self.session.config.no_codeblock = !self.session.config.no_codeblock, // No Codeblock
@@ -452,10 +546,63 @@ impl Model {
                     };
                 }
             }
-            5 => self.session.config.diff_enabled = !self.session.config.diff_enabled, // Git Diff
-            6 => self.session.config.follow_symlinks = !self.session.config.follow_symlinks, // Follow Symlinks
-            7 => self.session.config.hidden = !self.session.config.hidden,             // Hidden Files
-            8 => self.session.config.no_ignore = !self.session.config.no_ignore,       // No Ignore
+            5 => self.session.config.full_directory_tree = !self.session.config.full_directory_tree, // Full Directory Tree
+
+            // Sorting & Organization section (6)
+            6 => {
+                // Sort Method
+                if let SettingAction::Cycle = action {
+                    self.session.config.sort_method = Some(match self.session.config.sort_method {
+                        Some(code2prompt_core::sort::FileSortMethod::NameAsc) => {
+                            code2prompt_core::sort::FileSortMethod::NameDesc
+                        }
+                        Some(code2prompt_core::sort::FileSortMethod::NameDesc) => {
+                            code2prompt_core::sort::FileSortMethod::DateAsc
+                        }
+                        Some(code2prompt_core::sort::FileSortMethod::DateAsc) => {
+                            code2prompt_core::sort::FileSortMethod::DateDesc
+                        }
+                        Some(code2prompt_core::sort::FileSortMethod::DateDesc) | None => {
+                            code2prompt_core::sort::FileSortMethod::NameAsc
+                        }
+                    });
+                }
+            }
+
+            // Tokenizer & Encoding section (7-8)
+            7 => {
+                // Tokenizer Type
+                if let SettingAction::Cycle = action {
+                    self.session.config.encoding = match self.session.config.encoding {
+                        code2prompt_core::tokenizer::TokenizerType::Cl100kBase => {
+                            code2prompt_core::tokenizer::TokenizerType::O200kBase
+                        }
+                        code2prompt_core::tokenizer::TokenizerType::O200kBase => {
+                            code2prompt_core::tokenizer::TokenizerType::P50kBase
+                        }
+                        code2prompt_core::tokenizer::TokenizerType::P50kBase => {
+                            code2prompt_core::tokenizer::TokenizerType::P50kEdit
+                        }
+                        code2prompt_core::tokenizer::TokenizerType::P50kEdit => {
+                            code2prompt_core::tokenizer::TokenizerType::R50kBase
+                        }
+                        code2prompt_core::tokenizer::TokenizerType::R50kBase
+                        | code2prompt_core::tokenizer::TokenizerType::Gpt2 => {
+                            code2prompt_core::tokenizer::TokenizerType::Cl100kBase
+                        }
+                    };
+                }
+            }
+            8 => self.session.config.token_map_enabled = !self.session.config.token_map_enabled, // Token Map
+
+            // Git Integration section (9)
+            9 => self.session.config.diff_enabled = !self.session.config.diff_enabled, // Git Diff
+
+            // File Selection section (10-12)
+            10 => self.session.config.follow_symlinks = !self.session.config.follow_symlinks, // Follow Symlinks
+            11 => self.session.config.hidden = !self.session.config.hidden, // Hidden Files
+            12 => self.session.config.no_ignore = !self.session.config.no_ignore, // No Ignore
+
             _ => {}
         }
     }
@@ -495,5 +642,4 @@ impl FileNode {
             level,
         }
     }
-
 }

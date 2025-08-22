@@ -33,24 +33,12 @@ async fn main() -> Result<()> {
 
     let args: Cli = Cli::parse();
 
-    if args.tui {
-        run_tui_with_args(args.path, args.include, args.exclude).await
-    } else {
-        run_cli_mode_with_args(args).await
-    }
-}
-
-/// Run the CLI mode with parsed arguments
-async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     // ~~~ Arguments Validation ~~~
     // if no_clipboard is true, output_file must be specified.
     if args.no_clipboard && args.output_file.is_none() {
-        eprintln!("Error: --output-file is required when --no-clipboard is used.");
+        error!("Error: --output-file is required when --no-clipboard is used.");
         std::process::exit(1);
     }
-
-    // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
-    let no_clipboard = args.no_clipboard || args.output_file.as_ref().is_some_and(|f| f == "-");
 
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
@@ -64,14 +52,28 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         }
     }
 
-    // ~~~ Configuration ~~~
+    // ~~~ Build Session ~~~
+    let mut session = create_session_from_args(&args).unwrap_or_else(|e| {
+        error!("Failed to create session: {}", e);
+        std::process::exit(1);
+    });
+
+    if args.tui {
+        run_tui_with_args(session).await
+    } else {
+        run_cli_mode_with_args(args, &mut session).await
+    }
+}
+
+/// Create a Code2PromptSession from command line arguments
+fn create_session_from_args(args: &Cli) -> Result<Code2PromptSession> {
     let mut configuration = Code2PromptConfig::builder();
 
     configuration.path(args.path.clone());
 
     configuration
-        .include_patterns(args.include)
-        .exclude_patterns(args.exclude);
+        .include_patterns(args.include.clone())
+        .exclude_patterns(args.exclude.clone());
 
     let output_format = args.output_format.clone();
     configuration
@@ -79,6 +81,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         .absolute_path(args.absolute_paths)
         .full_directory_tree(args.full_directory_tree)
         .output_format(output_format);
+
     let sort_method = args
         .sort
         .as_deref()
@@ -101,7 +104,8 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     configuration
         .encoding(tokenizer_type)
-        .token_format(args.tokens);
+        .token_format(args.tokens.clone());
+
     let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
         error!("Failed to parse template: {}", e);
         std::process::exit(1);
@@ -118,6 +122,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         .diff_enabled(args.diff)
         .diff_branches(diff_branches)
         .log_branches(log_branches);
+
     configuration
         .no_ignore(args.no_ignore)
         .hidden(args.hidden)
@@ -125,8 +130,16 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         .follow_symlinks(args.follow_symlinks)
         .token_map_enabled(args.token_map);
 
-    // ~~~ Code2Prompt ~~~
-    let mut session = Code2PromptSession::new(configuration.build()?);
+    let session = Code2PromptSession::new(configuration.build()?);
+    Ok(session)
+}
+
+/// Run the CLI mode with parsed arguments
+async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> Result<()> {
+    // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
+    let no_clipboard = args.no_clipboard || args.output_file.as_ref().is_some_and(|f| f == "-");
+
+    // ~~~ Create Session ~~~
     let spinner = if !args.quiet {
         Some(setup_spinner("Traversing directory and building tree..."))
     } else {
@@ -198,7 +211,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // Data
     let mut data = session.build_template_data();
-    handle_undefined_variables(&mut data, &template_str)?;
+    handle_undefined_variables(&mut data, &session.config.template_str)?;
     debug!(
         "JSON Data: {}",
         serde_json::to_string_pretty(&data).unwrap()

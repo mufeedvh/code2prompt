@@ -6,6 +6,7 @@
 //! file tree browsing, real-time analysis, and clipboard integration.
 
 use anyhow::Result;
+use code2prompt_core::session::Code2PromptSession;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
@@ -44,14 +45,10 @@ impl TuiApp {
     /// # Errors
     ///
     /// Returns an error if the terminal cannot be initialized or the file tree cannot be built.
-    pub fn new_with_args(
-        path: std::path::PathBuf,
-        include_patterns: Vec<String>,
-        exclude_patterns: Vec<String>,
-    ) -> Result<Self> {
+    pub fn new_with_args(session: Code2PromptSession) -> Result<Self> {
         let terminal = init_terminal()?;
         let (message_tx, message_rx) = mpsc::unbounded_channel();
-        let model = Model::new_with_cli_args(path, include_patterns, exclude_patterns);
+        let model = Model::new_with_cli_args(session);
 
         Ok(Self {
             model,
@@ -241,7 +238,7 @@ impl TuiApp {
             _ => None,
         }
     }
-    
+
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Enter => {
@@ -251,9 +248,9 @@ impl TuiApp {
                 } else {
                     Some(Message::RunAnalysis)
                 }
-            },
+            }
             KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
-            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view  
+            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
             KeyCode::Up => Some(Message::ScrollStatistics(-1)),
             KeyCode::Down => Some(Message::ScrollStatistics(1)),
             KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
@@ -345,7 +342,7 @@ impl TuiApp {
                         self.model.tree_cursor.saturating_sub((-delta) as usize)
                     };
                     self.model.tree_cursor = new_cursor;
-                    
+
                     // Auto-adjust scroll to keep cursor visible
                     self.adjust_file_tree_scroll_for_cursor();
                 }
@@ -374,13 +371,13 @@ impl TuiApp {
                         // Selecting file: use session include_file method
                         self.model.session.include_file(node.path.clone());
                     } else {
-                        // Deselecting file: use session exclude_file method  
+                        // Deselecting file: use session exclude_file method
                         self.model.session.exclude_file(node.path.clone());
                     }
 
                     // Session methods handle config updates automatically
 
-                    // Update the node in the tree  
+                    // Update the node in the tree
                     if is_directory {
                         self.toggle_directory_selection(&path, !current);
                     } else {
@@ -486,8 +483,10 @@ impl TuiApp {
                 self.model.file_count = results.file_count;
                 self.model.token_map_entries = results.token_map_entries;
                 let tokens = results.token_count.unwrap_or(0);
-                self.model.status_message =
-                    format!("Analysis complete! {} tokens, {} files", tokens, results.file_count);
+                self.model.status_message = format!(
+                    "Analysis complete! {} tokens, {} files",
+                    tokens, results.file_count
+                );
             }
             Message::AnalysisError(error) => {
                 self.model.analysis_in_progress = false;
@@ -553,16 +552,28 @@ impl TuiApp {
                 self.model.statistics_view = if direction > 0 {
                     // Next view (forward)
                     match self.model.statistics_view {
-                        crate::model::StatisticsView::Overview => crate::model::StatisticsView::TokenMap,
-                        crate::model::StatisticsView::TokenMap => crate::model::StatisticsView::Extensions,
-                        crate::model::StatisticsView::Extensions => crate::model::StatisticsView::Overview,
+                        crate::model::StatisticsView::Overview => {
+                            crate::model::StatisticsView::TokenMap
+                        }
+                        crate::model::StatisticsView::TokenMap => {
+                            crate::model::StatisticsView::Extensions
+                        }
+                        crate::model::StatisticsView::Extensions => {
+                            crate::model::StatisticsView::Overview
+                        }
                     }
                 } else {
                     // Previous view (backward)
                     match self.model.statistics_view {
-                        crate::model::StatisticsView::Overview => crate::model::StatisticsView::Extensions,
-                        crate::model::StatisticsView::TokenMap => crate::model::StatisticsView::Overview,
-                        crate::model::StatisticsView::Extensions => crate::model::StatisticsView::TokenMap,
+                        crate::model::StatisticsView::Overview => {
+                            crate::model::StatisticsView::Extensions
+                        }
+                        crate::model::StatisticsView::TokenMap => {
+                            crate::model::StatisticsView::Overview
+                        }
+                        crate::model::StatisticsView::Extensions => {
+                            crate::model::StatisticsView::TokenMap
+                        }
                     }
                 };
                 self.model.statistics_scroll = 0; // Reset scroll when changing views
@@ -681,18 +692,18 @@ impl TuiApp {
                     if let Ok(entries) = std::fs::read_dir(&node.path) {
                         for entry in entries.flatten() {
                             let child_path = entry.path();
-                            let mut child_node = crate::model::FileNode::new(child_path, node.level + 1);
+                            let mut child_node =
+                                crate::model::FileNode::new(child_path, node.level + 1);
                             child_node.is_selected = false; // New directories are not selected by default
                             node.children.push(child_node);
                         }
                         // Sort children
-                        node.children.sort_by(|a, b| {
-                            match (a.is_directory, b.is_directory) {
+                        node.children
+                            .sort_by(|a, b| match (a.is_directory, b.is_directory) {
                                 (true, false) => std::cmp::Ordering::Less,
                                 (false, true) => std::cmp::Ordering::Greater,
                                 _ => a.name.cmp(&b.name),
-                            }
-                        });
+                            });
                     }
                 }
                 return;
@@ -707,7 +718,11 @@ impl TuiApp {
         self.model.file_tree = tree;
     }
 
-    fn collapse_directory_recursive(&self, nodes: &mut [crate::model::FileNode], target_path: &str) {
+    fn collapse_directory_recursive(
+        &self,
+        nodes: &mut [crate::model::FileNode],
+        target_path: &str,
+    ) {
         for node in nodes.iter_mut() {
             if node.path.to_string_lossy() == target_path && node.is_directory {
                 node.is_expanded = false;
@@ -726,10 +741,10 @@ impl TuiApp {
 
         // Estimate viewport height (this will be more accurate in practice)
         let viewport_height = 20; // This should match the actual content height in render
-        
+
         let cursor_pos = self.model.tree_cursor;
         let scroll_pos = self.model.file_tree_scroll as usize;
-        
+
         // If cursor is above viewport, scroll up
         if cursor_pos < scroll_pos {
             self.model.file_tree_scroll = cursor_pos as u16;
@@ -738,7 +753,7 @@ impl TuiApp {
         else if cursor_pos >= scroll_pos + viewport_height {
             self.model.file_tree_scroll = (cursor_pos.saturating_sub(viewport_height - 1)) as u16;
         }
-        
+
         // Ensure scroll doesn't go beyond bounds
         let max_scroll = visible_count.saturating_sub(viewport_height);
         if self.model.file_tree_scroll as usize > max_scroll {
@@ -786,15 +801,15 @@ impl TuiApp {
         // File tree with scroll support
         let visible_nodes = model.get_visible_nodes();
         let total_nodes = visible_nodes.len();
-        
+
         // Calculate viewport dimensions
         let tree_area = layout[0];
         let content_height = tree_area.height.saturating_sub(2) as usize; // Account for borders
-        
+
         // Calculate scroll position and viewport
         let scroll_start = model.file_tree_scroll as usize;
         let scroll_end = (scroll_start + content_height).min(total_nodes);
-        
+
         // Create items only for visible viewport
         let items: Vec<ListItem> = visible_nodes
             .iter()
@@ -871,12 +886,18 @@ impl TuiApp {
         let include_text = if model.session.config.include_patterns.is_empty() {
             "All files".to_string()
         } else {
-            format!("Include: {}", model.session.config.include_patterns.join(", "))
+            format!(
+                "Include: {}",
+                model.session.config.include_patterns.join(", ")
+            )
         };
         let exclude_text = if model.session.config.exclude_patterns.is_empty() {
             "".to_string()
         } else {
-            format!(" | Exclude: {}", model.session.config.exclude_patterns.join(", "))
+            format!(
+                " | Exclude: {}",
+                model.session.config.exclude_patterns.join(", ")
+            )
         };
         let pattern_info = format!("{}{}", include_text, exclude_text);
 
@@ -1003,15 +1024,19 @@ impl TuiApp {
         if model.generated_prompt.is_none() && !model.analysis_in_progress {
             // Show placeholder when no analysis has been run
             let placeholder_text = "📊 Statistics & Analysis\n\nNo analysis data available yet.\n\nTo view statistics:\n1. Go to Selection tab (Tab/Shift+Tab)\n2. Select files to analyze\n3. Press Enter to run analysis\n4. Return here to view results\n\nPress Enter to go to Selection tab or run analysis.";
-            
+
             let placeholder_widget = Paragraph::new(placeholder_text)
-                .block(Block::default().borders(Borders::ALL).title("Statistics & Analysis"))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("Statistics & Analysis"),
+                )
                 .wrap(Wrap { trim: true })
                 .style(Style::default().fg(Color::Gray))
                 .alignment(Alignment::Center);
-            
+
             frame.render_widget(placeholder_widget, layout[0]);
-            
+
             // Instructions for when no analysis is available
             let instructions = Paragraph::new("Enter: Go to Selection | Tab/Shift+Tab: Switch Tab")
                 .block(Block::default().borders(Borders::ALL).title("Controls"))
@@ -1061,16 +1086,15 @@ impl TuiApp {
         } else {
             ("⏳ Ready to Analyze", Color::Gray)
         };
-        
+
         stats_items.push(
             ListItem::new(format!("Status: {}", status.0))
-                .style(Style::default().fg(status.1).add_modifier(Modifier::BOLD))
+                .style(Style::default().fg(status.1).add_modifier(Modifier::BOLD)),
         );
-        
+
         if let Some(error) = &model.analysis_error {
             stats_items.push(
-                ListItem::new(format!("  Error: {}", error))
-                    .style(Style::default().fg(Color::Red))
+                ListItem::new(format!("  Error: {}", error)).style(Style::default().fg(Color::Red)),
             );
         }
         stats_items.push(ListItem::new(""));
@@ -1083,17 +1107,29 @@ impl TuiApp {
                     .add_modifier(Modifier::BOLD),
             ),
         );
-        
+
         let selected_count = Self::count_selected_files(&model.file_tree);
         let eligible_count = Self::count_total_files(&model.file_tree);
         let total_files = model.file_count;
-        stats_items.push(ListItem::new(format!("  • Selected: {} files", selected_count)));
-        stats_items.push(ListItem::new(format!("  • Eligible: {} files", eligible_count)));
-        stats_items.push(ListItem::new(format!("  • Total Found: {} files", total_files)));
-        
+        stats_items.push(ListItem::new(format!(
+            "  • Selected: {} files",
+            selected_count
+        )));
+        stats_items.push(ListItem::new(format!(
+            "  • Eligible: {} files",
+            eligible_count
+        )));
+        stats_items.push(ListItem::new(format!(
+            "  • Total Found: {} files",
+            total_files
+        )));
+
         if selected_count > 0 && eligible_count > 0 {
             let percentage = (selected_count as f64 / eligible_count as f64 * 100.0) as usize;
-            stats_items.push(ListItem::new(format!("  • Selection Rate: {}%", percentage)));
+            stats_items.push(ListItem::new(format!(
+                "  • Selection Rate: {}%",
+                percentage
+            )));
         }
         stats_items.push(ListItem::new(""));
 
@@ -1107,10 +1143,16 @@ impl TuiApp {
         );
 
         if let Some(token_count) = model.token_count {
-            stats_items.push(ListItem::new(format!("  • Total Tokens: {}", Self::format_number(token_count, &model.session.config.token_format))));
+            stats_items.push(ListItem::new(format!(
+                "  • Total Tokens: {}",
+                Self::format_number(token_count, &model.session.config.token_format)
+            )));
             if selected_count > 0 {
                 let avg_tokens = token_count / selected_count;
-                stats_items.push(ListItem::new(format!("  • Avg per File: {}", Self::format_number(avg_tokens, &model.session.config.token_format))));
+                stats_items.push(ListItem::new(format!(
+                    "  • Avg per File: {}",
+                    Self::format_number(avg_tokens, &model.session.config.token_format)
+                )));
             }
         } else {
             stats_items.push(ListItem::new("  • Total Tokens: Not calculated"));
@@ -1132,11 +1174,26 @@ impl TuiApp {
             code2prompt_core::template::OutputFormat::Xml => "XML",
         };
         stats_items.push(ListItem::new(format!("  • Output: {}", output_format)));
-        stats_items.push(ListItem::new(format!("  • Line Numbers: {}", if model.session.config.line_numbers { "On" } else { "Off" })));
-        stats_items.push(ListItem::new(format!("  • Git Diff: {}", if model.session.config.diff_enabled { "On" } else { "Off" })));
-        
-        let pattern_summary = format!("  • Patterns: {} include, {} exclude", 
-            model.session.config.include_patterns.len(), 
+        stats_items.push(ListItem::new(format!(
+            "  • Line Numbers: {}",
+            if model.session.config.line_numbers {
+                "On"
+            } else {
+                "Off"
+            }
+        )));
+        stats_items.push(ListItem::new(format!(
+            "  • Git Diff: {}",
+            if model.session.config.diff_enabled {
+                "On"
+            } else {
+                "Off"
+            }
+        )));
+
+        let pattern_summary = format!(
+            "  • Patterns: {} include, {} exclude",
+            model.session.config.include_patterns.len(),
             model.session.config.exclude_patterns.len()
         );
         stats_items.push(ListItem::new(pattern_summary));
@@ -1171,27 +1228,29 @@ impl TuiApp {
         let scroll_end = (scroll_start + content_height).min(model.token_map_entries.len());
 
         // Create list items for visible entries with proper tree structure
-        let items: Vec<ListItem> = model.token_map_entries
+        let items: Vec<ListItem> = model
+            .token_map_entries
             .iter()
             .skip(scroll_start)
             .take(content_height)
             .enumerate()
             .map(|(viewport_index, entry)| {
                 let actual_index = scroll_start + viewport_index;
-                
+
                 // Build tree prefix with proper vertical lines
                 let mut prefix = String::new();
-                
+
                 // Add vertical lines for parent levels
                 for d in 0..entry.depth {
                     if d < entry.depth - 1 {
                         // Check if we need a vertical line at this depth
-                        let needs_line = model.token_map_entries
+                        let needs_line = model
+                            .token_map_entries
                             .iter()
                             .skip(actual_index + 1)
                             .take_while(|next_entry| next_entry.depth > d)
                             .any(|next_entry| next_entry.depth == d + 1);
-                        
+
                         if needs_line {
                             prefix.push_str("│ ");
                         } else {
@@ -1203,18 +1262,19 @@ impl TuiApp {
                         prefix.push_str("├─");
                     }
                 }
-                
+
                 // Special handling for root level
                 if entry.depth == 0 && actual_index == 0 && entry.name != "(other files)" {
                     prefix = "┌─".to_string();
                 }
-                
+
                 // Check if has children
-                let has_children = model.token_map_entries
+                let has_children = model
+                    .token_map_entries
                     .get(actual_index + 1)
                     .map(|next| next.depth > entry.depth)
                     .unwrap_or(false);
-                
+
                 // Add the connecting character
                 if entry.depth > 0 || entry.name == "(other files)" {
                     if has_children {
@@ -1225,19 +1285,21 @@ impl TuiApp {
                 } else if actual_index == 0 {
                     prefix.push('┴');
                 }
-                
+
                 prefix.push(' ');
 
                 // Create the visual bar
                 let bar_width: usize = 20;
                 let filled_chars = ((entry.percentage / 100.0) * bar_width as f64) as usize;
-                let bar = format!("{}{}",
+                let bar = format!(
+                    "{}{}",
                     "█".repeat(filled_chars),
                     "░".repeat(bar_width.saturating_sub(filled_chars))
                 );
 
                 // Format the tokens with K/M suffix
-                let tokens_str = Self::format_number(entry.tokens, &model.session.config.token_format);
+                let tokens_str =
+                    Self::format_number(entry.tokens, &model.session.config.token_format);
 
                 // Determine color based on entry type and size
                 let color = if entry.metadata.is_dir {
@@ -1253,8 +1315,7 @@ impl TuiApp {
 
                 let content = format!(
                     "{}{} │{}│ {:>6} ({:>4.1}%)",
-                    prefix, entry.name,
-                    bar, tokens_str, entry.percentage
+                    prefix, entry.name, bar, tokens_str, entry.percentage
                 );
 
                 ListItem::new(content).style(Style::default().fg(color))
@@ -1263,7 +1324,8 @@ impl TuiApp {
 
         // Create title with scroll indicator
         let scroll_title = if model.token_map_entries.len() > content_height {
-            format!("{} | Showing {}-{} of {}",
+            format!(
+                "{} | Showing {}-{} of {}",
                 title,
                 scroll_start + 1,
                 scroll_end,
@@ -1273,8 +1335,8 @@ impl TuiApp {
             title.to_string()
         };
 
-        let token_map_widget = List::new(items)
-            .block(Block::default().borders(Borders::ALL).title(scroll_title));
+        let token_map_widget =
+            List::new(items).block(Block::default().borders(Borders::ALL).title(scroll_title));
 
         frame.render_widget(token_map_widget, area);
     }
@@ -1297,15 +1359,19 @@ impl TuiApp {
         }
 
         // Aggregate tokens by file extension
-        let mut extension_stats: std::collections::HashMap<String, (usize, usize)> = std::collections::HashMap::new();
+        let mut extension_stats: std::collections::HashMap<String, (usize, usize)> =
+            std::collections::HashMap::new();
         let total_tokens = model.token_count.unwrap_or(0);
 
         for entry in &model.token_map_entries {
             if !entry.metadata.is_dir {
-                let extension = entry.name.split('.').next_back()
+                let extension = entry
+                    .name
+                    .split('.')
+                    .next_back()
                     .map(|ext| format!(".{}", ext))
                     .unwrap_or_else(|| "(no extension)".to_string());
-                
+
                 let (tokens, count) = extension_stats.entry(extension).or_insert((0, 0));
                 *tokens += entry.tokens;
                 *count += 1;
@@ -1339,7 +1405,8 @@ impl TuiApp {
                 // Create visual bar
                 let bar_width: usize = 25;
                 let filled_chars = ((percentage / 100.0) * bar_width as f64) as usize;
-                let bar = format!("{}{}",
+                let bar = format!(
+                    "{}{}",
                     "█".repeat(filled_chars),
                     "░".repeat(bar_width.saturating_sub(filled_chars))
                 );
@@ -1359,7 +1426,11 @@ impl TuiApp {
 
                 let content = format!(
                     "{:<12} │{}│ {:>6} ({:>4.1}%) | {} files",
-                    extension, bar, Self::format_number(*tokens, &model.session.config.token_format), percentage, count
+                    extension,
+                    bar,
+                    Self::format_number(*tokens, &model.session.config.token_format),
+                    percentage,
+                    count
                 );
 
                 ListItem::new(content).style(Style::default().fg(color))
@@ -1368,7 +1439,8 @@ impl TuiApp {
 
         // Create title with scroll indicator
         let scroll_title = if ext_vec.len() > content_height {
-            format!("{} | Showing {}-{} of {}",
+            format!(
+                "{} | Showing {}-{} of {}",
                 title,
                 scroll_start + 1,
                 scroll_end,
@@ -1385,10 +1457,13 @@ impl TuiApp {
         frame.render_widget(extensions_widget, area);
     }
 
-    fn format_number(num: usize, token_format: &code2prompt_core::tokenizer::TokenFormat) -> String {
+    fn format_number(
+        num: usize,
+        token_format: &code2prompt_core::tokenizer::TokenFormat,
+    ) -> String {
         use code2prompt_core::tokenizer::TokenFormat;
         use num_format::{SystemLocale, ToFormattedString};
-        
+
         match token_format {
             TokenFormat::Raw => {
                 if num >= 1_000_000 {
@@ -1512,12 +1587,8 @@ impl TuiApp {
 /// # Errors
 ///
 /// Returns an error if the TUI cannot be initialized or if runtime errors occur during execution.
-pub async fn run_tui_with_args(
-    path: std::path::PathBuf,
-    include_patterns: Vec<String>,
-    exclude_patterns: Vec<String>,
-) -> Result<()> {
-    let mut app = TuiApp::new_with_args(path, include_patterns, exclude_patterns)?;
+pub async fn run_tui_with_args(session: Code2PromptSession) -> Result<()> {
+    let mut app = TuiApp::new_with_args(session)?;
 
     let result = app.run().await;
 
@@ -1526,7 +1597,6 @@ pub async fn run_tui_with_args(
 
     result
 }
-
 
 fn init_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
     enable_raw_mode()?;
