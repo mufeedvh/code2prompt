@@ -1463,14 +1463,14 @@ impl TuiApp {
 
                 // Choose color based on extension
                 let color = match extension.as_str() {
-                    ".rs" => Color::Yellow,
-                    ".md" => Color::Green,
+                    ".rs" => Color::LightRed,
+                    ".md" | ".txt" | ".rst" => Color::Green,
                     ".toml" | ".json" | ".yaml" | ".yml" => Color::Magenta,
                     ".js" | ".ts" | ".jsx" | ".tsx" => Color::Cyan,
-                    ".py" => Color::Blue,
+                    ".py" => Color::LightYellow,
                     ".go" => Color::LightBlue,
                     ".java" | ".kt" => Color::Red,
-                    ".cpp" | ".c" | ".h" => Color::LightYellow,
+                    ".cpp" | ".c" | ".h" => Color::Blue,
                     _ => Color::White,
                 };
 
@@ -1515,26 +1515,10 @@ impl TuiApp {
         use num_format::{SystemLocale, ToFormattedString};
 
         match token_format {
-            TokenFormat::Raw => {
-                if num >= 1_000_000 {
-                    let millions = (num + 500_000) / 1_000_000;
-                    format!("{}M", millions)
-                } else if num >= 1_000 {
-                    let thousands = (num + 500) / 1_000;
-                    format!("{}K", thousands)
-                } else {
-                    format!("{}", num)
-                }
-            }
-            TokenFormat::Format => {
-                // Use locale-aware formatting with thousands separators
-                if let Ok(locale) = SystemLocale::default() {
-                    num.to_formatted_string(&locale)
-                } else {
-                    // Fallback to raw formatting if locale fails
-                    num.to_string()
-                }
-            }
+            TokenFormat::Format => SystemLocale::default()
+                .map(|locale| num.to_formatted_string(&locale))
+                .unwrap_or_else(|_| num.to_string()),
+            TokenFormat::Raw => num.to_string(),
         }
     }
 

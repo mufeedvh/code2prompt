@@ -58,80 +58,12 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     });
 
+    // ~~~ TUI or CLI Mode ~~~
     if args.tui {
         run_tui_with_args(session).await
     } else {
         run_cli_mode_with_args(args, &mut session).await
     }
-}
-
-/// Create a Code2PromptSession from command line arguments
-fn create_session_from_args(args: &Cli) -> Result<Code2PromptSession> {
-    let mut configuration = Code2PromptConfig::builder();
-
-    configuration.path(args.path.clone());
-
-    configuration
-        .include_patterns(args.include.clone())
-        .exclude_patterns(args.exclude.clone());
-
-    let output_format = args.output_format.clone();
-    configuration
-        .line_numbers(args.line_numbers)
-        .absolute_path(args.absolute_paths)
-        .full_directory_tree(args.full_directory_tree)
-        .output_format(output_format);
-
-    let sort_method = args
-        .sort
-        .as_deref()
-        .map(FileSortMethod::from_str)
-        .transpose()
-        .unwrap_or_else(|err| {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        })
-        .unwrap_or(FileSortMethod::NameAsc);
-
-    configuration.sort_method(sort_method);
-
-    let tokenizer_type = args
-        .encoding
-        .as_deref()
-        .unwrap_or("cl100k")
-        .parse::<TokenizerType>()
-        .unwrap_or_default();
-
-    configuration
-        .encoding(tokenizer_type)
-        .token_format(args.tokens.clone());
-
-    let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
-        error!("Failed to parse template: {}", e);
-        std::process::exit(1);
-    });
-
-    configuration
-        .template_str(template_str.clone())
-        .template_name(template_name);
-
-    let diff_branches = parse_branch_argument(&args.git_diff_branch);
-    let log_branches = parse_branch_argument(&args.git_log_branch);
-
-    configuration
-        .diff_enabled(args.diff)
-        .diff_branches(diff_branches)
-        .log_branches(log_branches);
-
-    configuration
-        .no_ignore(args.no_ignore)
-        .hidden(args.hidden)
-        .no_codeblock(args.no_codeblock)
-        .follow_symlinks(args.follow_symlinks)
-        .token_map_enabled(args.token_map);
-
-    let session = Code2PromptSession::new(configuration.build()?);
-    Ok(session)
 }
 
 /// Run the CLI mode with parsed arguments
@@ -286,7 +218,7 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
         #[cfg(target_os = "linux")]
         {
             use clipboard::spawn_clipboard_daemon;
-            spawn_clipboard_daemon(&rendered.prompt)?;
+            spawn_clipboard_daemon(&rendered.prompt, args.quiet)?;
         }
         #[cfg(not(target_os = "linux"))]
         {
@@ -424,4 +356,73 @@ pub fn handle_undefined_variables(
         }
     }
     Ok(())
+}
+
+/// Create a Code2PromptSession from command line arguments
+fn create_session_from_args(args: &Cli) -> Result<Code2PromptSession> {
+    let mut configuration = Code2PromptConfig::builder();
+
+    configuration.path(args.path.clone());
+
+    configuration
+        .include_patterns(args.include.clone())
+        .exclude_patterns(args.exclude.clone());
+
+    let output_format = args.output_format.clone();
+    configuration
+        .line_numbers(args.line_numbers)
+        .absolute_path(args.absolute_paths)
+        .full_directory_tree(args.full_directory_tree)
+        .output_format(output_format);
+
+    let sort_method = args
+        .sort
+        .as_deref()
+        .map(FileSortMethod::from_str)
+        .transpose()
+        .unwrap_or_else(|err| {
+            eprintln!("{}", err);
+            std::process::exit(1);
+        })
+        .unwrap_or(FileSortMethod::NameAsc);
+
+    configuration.sort_method(sort_method);
+
+    let tokenizer_type = args
+        .encoding
+        .as_deref()
+        .unwrap_or("cl100k")
+        .parse::<TokenizerType>()
+        .unwrap_or_default();
+
+    configuration
+        .encoding(tokenizer_type)
+        .token_format(args.tokens.clone());
+
+    let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
+        error!("Failed to parse template: {}", e);
+        std::process::exit(1);
+    });
+
+    configuration
+        .template_str(template_str.clone())
+        .template_name(template_name);
+
+    let diff_branches = parse_branch_argument(&args.git_diff_branch);
+    let log_branches = parse_branch_argument(&args.git_log_branch);
+
+    configuration
+        .diff_enabled(args.diff)
+        .diff_branches(diff_branches)
+        .log_branches(log_branches);
+
+    configuration
+        .no_ignore(args.no_ignore)
+        .hidden(args.hidden)
+        .no_codeblock(args.no_codeblock)
+        .follow_symlinks(args.follow_symlinks)
+        .token_map_enabled(args.token_map);
+
+    let session = Code2PromptSession::new(configuration.build()?);
+    Ok(session)
 }

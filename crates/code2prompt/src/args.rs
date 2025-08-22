@@ -106,7 +106,7 @@ pub struct Cli {
     pub sort: Option<String>,
 
     /// Suppress progress and success messages
-    #[clap(short, long)]
+    #[clap(short = 'q', long)]
     pub quiet: bool,
 
     /// Display a visual token map of files (similar to disk usage tools)

@@ -67,12 +67,13 @@ pub fn serve_clipboard_daemon() -> Result<()> {
 /// # Arguments
 ///
 /// * `text` - The text to be served by the daemon process.
+/// * `quiet` - If true, suppresses output messages to the console.
 ///
 /// # Returns
 ///
 /// * `Result<()>` - Returns Ok if the daemon process was spawned and the content was sent successfully,
 ///   or an error if the process could not be launched or written to.
-pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
+pub fn spawn_clipboard_daemon(content: &str, quiet: bool) -> Result<()> {
     use colored::*;
     use log::info;
     use std::process::{Command, Stdio};
@@ -100,12 +101,15 @@ pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
             .context("Failed to write content to clipboard daemon process")?;
     }
     info!("Clipboard daemon launched successfully");
-    println!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Copied to clipboard successfully.".green()
-    );
+
+    if quiet {
+        println!(
+            "{}{}{} {}",
+            "[".bold().white(),
+            "✓".bold().green(),
+            "]".bold().white(),
+            "Copied to clipboard successfully.".green()
+        );
+    }
     Ok(())
 }
