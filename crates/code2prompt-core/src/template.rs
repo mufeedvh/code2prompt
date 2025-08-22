@@ -67,13 +67,12 @@ pub fn render_template(
     Ok(rendered.trim().to_string())
 }
 
-/// Writes the rendered template to a specified output file or stdout.
+/// Writes the rendered template to a specified output file
 ///
 /// # Arguments
 ///
-/// * `output_path` - The path to the output file, or "-" for stdout.
+/// * `output_path` - The path to the output file.
 /// * `rendered` - The rendered template string.
-/// * `quiet` - If true, suppress success messages.
 ///
 /// # Returns
 ///
