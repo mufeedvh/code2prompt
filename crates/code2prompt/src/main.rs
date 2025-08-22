@@ -23,6 +23,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Text;
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
+use std::io::Write;
 use std::{path::PathBuf, str::FromStr};
 use tui::run_tui_with_args;
 
@@ -68,8 +69,10 @@ async fn main() -> Result<()> {
 
 /// Run the CLI mode with parsed arguments
 async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> Result<()> {
+    // ~~~ Handle stdout ~~~
+    let effective_output = args.output_file.clone().or(args.output.clone());
     // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
-    let no_clipboard = args.no_clipboard || args.output_file.as_ref().is_some_and(|f| f == "-");
+    let no_clipboard = args.no_clipboard || effective_output.as_ref().is_some_and(|f| f == "-");
 
     // ~~~ Create Session ~~~
     let spinner = if !args.quiet {
@@ -245,8 +248,28 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
     }
 
     // ~~~ Output File ~~~
-    if let Some(output_path) = &args.output_file {
-        write_to_file(output_path, &rendered.prompt, args.quiet)?;
+    if let Some(output_path) = effective_output {
+        if output_path == "-" {
+            println!("{}", rendered.prompt);
+            std::io::stdout().flush().unwrap_or_else(|e| {
+                error!("Failed to flush stdout: {}", e);
+                std::process::exit(1);
+            });
+        } else {
+            write_to_file(&output_path, &rendered.prompt).unwrap_or_else(|e| {
+                error!("Failed to write to file: {}", e);
+                std::process::exit(1);
+            });
+            if !args.quiet {
+                println!(
+                    "{}{}{} {}",
+                    "[".bold().white(),
+                    "✓".bold().green(),
+                    "]".bold().white(),
+                    format!("Prompt written to file: {}", output_path).green()
+                );
+            }
+        }
     }
 
     Ok(())

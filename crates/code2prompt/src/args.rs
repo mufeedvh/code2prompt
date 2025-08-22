@@ -22,6 +22,10 @@ pub struct Cli {
     #[arg()]
     pub path: PathBuf,
 
+    /// Optional output file (use "-" for stdout)
+    #[arg(conflicts_with = "output_file")]
+    pub output: Option<String>,
+
     /// Launch the Terminal User Interface
     #[clap(long)]
     pub tui: bool,

@@ -152,5 +152,5 @@ fn sort_nodes(nodes: &mut Vec<FileNode>) {
 /// Save text to file
 pub fn save_to_file(filename: &str, content: &str) -> Result<()> {
     use code2prompt_core::template::write_to_file;
-    write_to_file(filename, content, false).context("Failed to save to file")
+    write_to_file(filename, content).context("Failed to save to file")
 }
