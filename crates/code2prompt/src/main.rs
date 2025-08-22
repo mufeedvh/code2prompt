@@ -215,39 +215,31 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
 
     // ~~~ Copy to Clipboard ~~~
     if !no_clipboard {
-        #[cfg(target_os = "linux")]
-        {
-            use clipboard::spawn_clipboard_daemon;
-            spawn_clipboard_daemon(&rendered.prompt, args.quiet)?;
-        }
-        #[cfg(not(target_os = "linux"))]
-        {
-            use crate::clipboard::copy_text_to_clipboard;
-            match copy_text_to_clipboard(&rendered.prompt) {
-                Ok(_) => {
-                    if !args.quiet {
-                        println!(
-                            "{}{}{} {}",
-                            "[".bold().white(),
-                            "✓".bold().green(),
-                            "]".bold().white(),
-                            "Copied to clipboard successfully.".green()
-                        );
-                    }
+        use crate::clipboard::copy_to_clipboard;
+        match copy_to_clipboard(&rendered.prompt) {
+            Ok(_) => {
+                if !args.quiet {
+                    println!(
+                        "{}{}{} {}",
+                        "[".bold().white(),
+                        "✓".bold().green(),
+                        "]".bold().white(),
+                        "Copied to clipboard successfully.".green()
+                    );
                 }
-                Err(e) => {
-                    if !args.quiet {
-                        eprintln!(
-                            "{}{}{} {}",
-                            "[".bold().white(),
-                            "!".bold().red(),
-                            "]".bold().white(),
-                            format!("Failed to copy to clipboard: {}", e).red()
-                        );
-                    }
-                    // Always print the prompt if clipboard fails, regardless of quiet mode
-                    println!("{}", &rendered.prompt);
+            }
+            Err(e) => {
+                if !args.quiet {
+                    eprintln!(
+                        "{}{}{} {}",
+                        "[".bold().white(),
+                        "!".bold().red(),
+                        "]".bold().white(),
+                        format!("Failed to copy to clipboard: {}", e).red()
+                    );
                 }
+                // optional: fallback
+                println!("{}", &rendered.prompt);
             }
         }
     }

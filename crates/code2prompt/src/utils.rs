@@ -149,21 +149,6 @@ fn sort_nodes(nodes: &mut Vec<FileNode>) {
     }
 }
 
-/// Copy text to clipboard
-pub fn copy_to_clipboard(text: &str) -> Result<()> {
-    #[cfg(not(target_os = "linux"))]
-    {
-        use crate::clipboard::copy_text_to_clipboard;
-        copy_text_to_clipboard(text).context("Failed to copy to clipboard")
-    }
-    #[cfg(target_os = "linux")]
-    {
-        // Use the clipboard daemon system for Linux
-        use crate::clipboard::spawn_clipboard_daemon;
-        spawn_clipboard_daemon(text).context("Failed to spawn clipboard daemon")
-    }
-}
-
 /// Save text to file
 pub fn save_to_file(filename: &str, content: &str) -> Result<()> {
     use code2prompt_core::template::write_to_file;

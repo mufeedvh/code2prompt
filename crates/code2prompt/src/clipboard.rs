@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use log::info;
 
 #[cfg(not(target_os = "linux"))]
 /// Copies the provided text to the system clipboard.
@@ -39,13 +40,16 @@ pub fn copy_text_to_clipboard(rendered: &str) -> Result<()> {
 pub fn serve_clipboard_daemon() -> Result<()> {
     use arboard::{Clipboard, LinuxClipboardKind, SetExtLinux};
     use std::io::Read;
+
     // Read content from stdin
     let mut content_from_stdin = String::new();
     std::io::stdin()
         .read_to_string(&mut content_from_stdin)
         .context("Failed to read from stdin")?;
+
     // Initialize the clipboard
     let mut clipboard = Clipboard::new().context("Failed to initialize clipboard")?;
+
     // Explicitly set the clipboard selection to Clipboard (not Primary)
     clipboard
         .set()
@@ -73,9 +77,7 @@ pub fn serve_clipboard_daemon() -> Result<()> {
 ///
 /// * `Result<()>` - Returns Ok if the daemon process was spawned and the content was sent successfully,
 ///   or an error if the process could not be launched or written to.
-pub fn spawn_clipboard_daemon(content: &str, quiet: bool) -> Result<()> {
-    use colored::*;
-    use log::info;
+pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
     use std::process::{Command, Stdio};
 
     // ~~~ Setting up the command to run the daemon ~~~
@@ -102,14 +104,17 @@ pub fn spawn_clipboard_daemon(content: &str, quiet: bool) -> Result<()> {
     }
     info!("Clipboard daemon launched successfully");
 
-    if quiet {
-        println!(
-            "{}{}{} {}",
-            "[".bold().white(),
-            "✓".bold().green(),
-            "]".bold().white(),
-            "Copied to clipboard successfully.".green()
-        );
-    }
     Ok(())
+}
+
+/// Copy text to clipboard
+pub fn copy_to_clipboard(text: &str) -> Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        spawn_clipboard_daemon(text)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        copy_text_to_clipboard(text)
+    }
 }

@@ -529,7 +529,7 @@ impl TuiApp {
             }
             Message::CopyToClipboard => {
                 if let Some(prompt) = &self.model.generated_prompt {
-                    match crate::utils::copy_to_clipboard(prompt) {
+                    match crate::clipboard::copy_to_clipboard(prompt) {
                         Ok(_) => {
                             self.model.status_message = "Copied to clipboard!".to_string();
                         }
@@ -539,6 +539,7 @@ impl TuiApp {
                     }
                 }
             }
+
             Message::SaveToFile(filename) => {
                 if let Some(prompt) = &self.model.generated_prompt {
                     match crate::utils::save_to_file(&filename, prompt) {
