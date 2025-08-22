@@ -14,7 +14,6 @@ repository = "https://github.com/mufeedvh/code2prompt"
 license = "MIT"
 exclude = [".github/*", ".assets/*"]
 edition = "2021"
-build = "build.rs"
 readme = "../../README.md"
 
 
