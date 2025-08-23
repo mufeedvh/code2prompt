@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt_core"
-version = "3.3.0"
+version = "3.4.0"
 authors = [
     "Mufeed VH <mufeed@lyminal.space>",
     "Olivier D'Ancona <olivier.dancona@master.hes-so.ch>",
@@ -38,6 +38,7 @@ git2 = { workspace = true }
 once_cell = { workspace = true }
 globset = { workspace = true }
 derive_builder = { workspace = true }
+bracoxide = { workspace = true }
 
 [lib]
 name = "code2prompt_core"

@@ -593,6 +593,7 @@ mod tests {
             ));
         }
     }
+
     #[test]
     fn test_brace_expansion_first_item() {
         let base_path = TEST_DIR.path();
@@ -606,11 +607,7 @@ mod tests {
             let path = base_path.join("lowercase").join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(
-                should_include_file(
-                    &relative_path,
-                    &include_patterns,
-                    &exclude_patterns,
-                ),
+                should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
                 "Failed to include file: {}",
                 file
             );
@@ -620,11 +617,53 @@ mod tests {
             let path = base_path.join("lowercase").join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(
-                !should_include_file(
-                    &relative_path,
-                    &include_patterns,
-                    &exclude_patterns,
-                ),
+                !should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
+                "Incorrectly included non-matching file: {}",
+                file
+            );
+        }
+    }
+
+    #[test]
+    fn test_brace_expansion_multiple_patterns() {
+        let base_path = TEST_DIR.path();
+        // Test with multiple patterns, each with brace expansion
+        let include_patterns = build_globset(&vec![
+            "lowercase/{foo,bar,baz}.py".to_string(),
+            "uppercase/{FOO,BAR,BAZ}.py".to_string(),
+        ]);
+        let exclude_patterns = build_globset(&vec![]);
+        // All files in the brace expansions should be included
+        for file in [
+            "lowercase/foo.py",
+            "lowercase/bar.py",
+            "lowercase/baz.py",
+            "uppercase/FOO.py",
+            "uppercase/BAR.py",
+            "uppercase/BAZ.py",
+        ] {
+            let path = base_path.join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+            assert!(
+                should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
+                "Failed to include file: {}",
+                file
+            );
+        }
+        // Non-matching files should be excluded
+        for file in [
+            "lowercase/qux.txt",
+            "lowercase/corge.txt",
+            "lowercase/grault.txt",
+            "uppercase/QUX.txt",
+            "uppercase/CORGE.txt",
+            "uppercase/GRAULT.txt",
+            ".secret/secret.txt",
+        ] {
+            let path = base_path.join(file);
+            let relative_path = path.strip_prefix(base_path).unwrap();
+            assert!(
+                !should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
                 "Incorrectly included non-matching file: {}",
                 file
             );

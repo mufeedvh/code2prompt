@@ -29,6 +29,7 @@ tokio = { version = "1.40.0", features = ["full"] }
 tui-tree-widget = "0.23.0"
 atty = "0.2.14"
 walkdir = "2.4.0"
+bracoxide = "0.1.6"
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }
 
