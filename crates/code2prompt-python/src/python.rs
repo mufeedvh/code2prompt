@@ -184,6 +184,21 @@ impl PyCode2PromptSession {
         })
     }
 
+    fn with_extra_ignore_files(&mut self, files: Vec<String>) -> PyResult<Py<Self>> {
+        let mut config = self.inner.config.clone();
+        config.extra_ignore_files = files;
+        self.inner = Code2PromptSession::new(config);
+
+        Python::with_gil(|py| {
+            Ok(Py::new(
+                py,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )?)
+        })
+    }
+
     fn sort_by(&mut self, method: &str) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
         match method.to_lowercase().as_str() {

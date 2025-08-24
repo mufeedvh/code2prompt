@@ -29,6 +29,8 @@ Glob patterns allow you to specify rules for filtering files and directories.
 
 - **Include Patterns** (`--include`): Specify files and directories you want to include.
 - **Exclude Patterns** (`--exclude`): Specify files and directories you want to exclude.
+- **Extra Ignore Files** (`--extra-ignore-files`): Use custom ignore files (e.g., `.dockerignore`, `.npmignore`).
+- **Promptignore Control** (`--no-promptignore`): Disable .promptignore file processing.
 - **Priority** (`--include-priority`): Resolves conflicts between include and exclude patterns.
 
 ---
@@ -63,6 +65,12 @@ echo "CONTENT CORGE.txt" > "test_dir/uppercase/CORGE.TXT"
 echo "CONTENT GRAULT.txt" > "test_dir/uppercase/GRAULT.TXT"
 
 echo "top secret" > "test_dir/.secret/secret.txt"
+
+# Create sample ignore files for demonstration
+echo "*.txt" > "test_dir/.dockerignore"
+echo "uppercase/" > "test_dir/.npmignore"
+echo "*.log" > "test_dir/.promptignore"
+echo "grault*" > "test_dir/.promptignore"
 ```
 
 To clean up the structure later, run:
@@ -94,13 +102,16 @@ import { FileTree } from "@astrojs/starlight/components";
     - GRAULT.txt 
   - .secret 
     - secret.txt
+  - .dockerignore
+  - .npmignore
+  - .promptignore
 </FileTree>
 
 ---
 
 ## General Usage of `code2prompt`
 
-By default, `code2prompt` includes all files in the specified directory respecting the `.gitignore`.
+By default, `code2prompt` includes all files in the specified directory respecting the `.gitignore` and `.promptignore` files.
 
 
 
@@ -214,12 +225,159 @@ Excluded:
 
 - All files in `uppercase`
 
+---
+
+---
+
+## Using .promptignore Files
+
+Code2prompt supports `.promptignore` files that work similarly to `.gitignore` but are specifically designed for prompt generation. These files use the same syntax as `.gitignore` and allow you to exclude files from LLM prompts without affecting version control.
+
+### Case 9: Default .promptignore Behavior
+
+Code2prompt automatically respects `.promptignore` files in your project:
+
+```bash
+code2prompt test_dir
+```
+
+#### Result
+
+With our sample `.promptignore` containing `grault*`:
+
+Excluded:
+- `lowercase/grault.txt` (matches `grault*` pattern)
+- `uppercase/GRAULT.TXT` (matches `grault*` pattern)
+
+Included:
+- All other files
+
+---
+
+### Case 10: Disable .promptignore Processing
+
+You can disable `.promptignore` file processing while still respecting `.gitignore`:
+
+```bash
+code2prompt test_dir --no-promptignore
+```
+
+#### Result
+
+Included:
+- All files including those that would normally be excluded by `.promptignore`
+- `lowercase/grault.txt` and `uppercase/GRAULT.TXT` are now included
+
+---
+
+### Case 11: Global .promptignore Support
+
+Code2prompt also supports global `.promptignore` files in your home directory (`~/.promptignore`). These rules apply to all projects:
+
+```bash
+# Create a global .promptignore
+echo "*.log" >> ~/.promptignore
+echo "node_modules/" >> ~/.promptignore
+echo "build/" >> ~/.promptignore
+
+# Run code2prompt (will respect both local and global .promptignore)
+code2prompt test_dir
+```
+
+#### Result
+
+- Local `.promptignore` rules are applied first (higher precedence)
+- Global `~/.promptignore` rules are applied for patterns not covered locally
+- Both can be disabled with `--no-promptignore`
+
+---
+
+## Using Extra Ignore Files
+
+Code2prompt supports custom ignore files beyond `.gitignore`, allowing you to leverage existing project ignore patterns.
+
+### Case 12: Using Docker Ignore File
+
+Use `.dockerignore` to exclude files (which excludes `*.txt` files):
+
+```bash
+code2prompt test_dir --extra-ignore-files .dockerignore
+```
+
+#### Result
+
+Excluded:
+- All `.txt` files (`qux.txt`, `corge.txt`, `grault.txt`, `QUX.TXT`, `CORGE.TXT`, `GRAULT.TXT`, `secret.txt`)
+
+Included:
+- All `.py` files in both `lowercase` and `uppercase` directories
+
+---
+
+### Case 13: Using Multiple Extra Ignore Files
+
+Use both `.dockerignore` and `.npmignore`:
+
+```bash
+code2prompt test_dir --extra-ignore-files .dockerignore,.npmignore
+```
+
+#### Result
+
+Excluded:
+- All `.txt` files (from `.dockerignore`)
+- The entire `uppercase/` directory (from `.npmignore`)
+
+Included:
+- Only `.py` files in the `lowercase` directory
+
+---
+
+### Case 14: Combining Extra Ignore Files with Include/Exclude Patterns
+
+Use `.npmignore` but also exclude Python files:
+
+```bash
+code2prompt test_dir --extra-ignore-files .npmignore --exclude "*.py"
+```
+
+#### Result
+
+Excluded:
+- The entire `uppercase/` directory (from `.npmignore`)
+- All `.py` files (from `--exclude` pattern)
+
+Included:
+- Only `.txt` files in `lowercase` and `.secret` directories
+
+---
+
 ## Summary
 
 The glob pattern tool in `code2prompt` allows you to filter files and directories effectively using:
 
 - `--include` for specifying files to include
 - `--exclude` for files to exclude
+- `--no-promptignore` for disabling .promptignore file processing
+- `--extra-ignore-files` for using custom ignore files (e.g., `.dockerignore`, `.npmignore`)
 - `--include-priority` for resolving conflicts between patterns
+
+### Ignore File Precedence
+
+Code2prompt respects multiple types of ignore files with the following precedence (highest to lowest):
+
+1. `.ignore` files
+2. `.promptignore` files (local and global)
+3. Extra ignore files (specified with `--extra-ignore-files`)
+4. `.gitignore` files
+5. `.git/info/exclude`
+6. Global gitignore file
+
+### .promptignore Use Cases
+
+Maintain prompt-specific exclusions separate from version control:
+- Exclude static assets (images etc.) from being included in the output
+- Exclude testing code from being included in the output
+- Apply global rules across all projects via `~/.promptignore`
 
 To practice, set up the sample directory, try out the commands, and see how the tool filters files dynamically.

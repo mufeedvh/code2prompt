@@ -39,6 +39,7 @@ git2 = { workspace = true }
 once_cell = { workspace = true }
 globset = { workspace = true }
 derive_builder = { workspace = true }
+dirs = "5.0"
 
 [lib]
 name = "code2prompt_core"

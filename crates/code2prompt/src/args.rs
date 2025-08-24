@@ -94,6 +94,14 @@ pub struct Cli {
     #[clap(long)]
     pub no_ignore: bool,
 
+    /// Extra ignore files to use (e.g., .dockerignore, .npmignore)
+    #[clap(short = 'E', long = "extra-ignore-files", value_delimiter = ',')]
+    pub extra_ignore_files: Vec<String>,
+
+    /// Skip .promptignore rules (both local and global)
+    #[clap(long)]
+    pub no_promptignore: bool,
+
     /// Sort order for files: one of "name_asc", "name_desc", "date_asc", or "date_desc"
     #[clap(long)]
     pub sort: Option<String>,

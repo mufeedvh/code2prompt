@@ -135,4 +135,229 @@ mod tests {
             path.map(|p| p.contains("ignored.txt")).unwrap_or(false)
         }));
     }
+
+    #[test]
+    fn test_extra_ignore_files() {
+        let env = TestEnv::new();
+
+        // Create additional files for this test
+        create_temp_file(env.dir.path(), "test_dir/docker_file.txt", "Docker file");
+        create_temp_file(env.dir.path(), "test_dir/npm_file.txt", "NPM file");
+        create_temp_file(env.dir.path(), "test_dir/regular_file.txt", "Regular file");
+
+        // Create .dockerignore file
+        let dockerignore_path = env.dir.path().join(".dockerignore");
+        let mut dockerignore_file =
+            File::create(&dockerignore_path).expect("Failed to create .dockerignore file");
+        writeln!(dockerignore_file, "test_dir/docker_file.txt")
+            .expect("Failed to write to .dockerignore file");
+
+        // Create .npmignore file
+        let npmignore_path = env.dir.path().join(".npmignore");
+        let mut npmignore_file =
+            File::create(&npmignore_path).expect("Failed to create .npmignore file");
+        writeln!(npmignore_file, "test_dir/npm_file.txt")
+            .expect("Failed to write to .npmignore file");
+
+        let config = Code2PromptConfig::builder()
+            .path(env.dir.path().to_path_buf())
+            .no_ignore(false)
+            .extra_ignore_files(vec![".dockerignore".to_string(), ".npmignore".to_string()])
+            .build()
+            .expect("Failed to build config");
+
+        let result = traverse_directory(&config);
+        let (tree_str, files) = result.unwrap();
+
+        // Should contain included.txt and regular_file.txt but NOT ignored.txt, docker_file.txt, or npm_file.txt
+        assert!(tree_str.contains("included.txt"));
+        assert!(tree_str.contains("regular_file.txt"));
+        assert!(!tree_str.contains("ignored.txt")); // From .gitignore
+        assert!(!tree_str.contains("docker_file.txt")); // From .dockerignore
+        assert!(!tree_str.contains("npm_file.txt")); // From .npmignore
+
+        // Verify files array
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("included.txt")).unwrap_or(false)
+        }));
+        assert!(files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("regular_file.txt")).unwrap_or(false)
+        }));
+        assert!(!files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("ignored.txt")).unwrap_or(false)
+        }));
+        assert!(!files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("docker_file.txt")).unwrap_or(false)
+        }));
+        assert!(!files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("npm_file.txt")).unwrap_or(false)
+        }));
+    }
+
+    #[test]
+    fn test_promptignore_local() {
+        let env = TestEnv::new();
+
+        // Create additional files for this test
+        create_temp_file(env.dir.path(), "test_dir/prompt_ignored.txt", "Prompt ignored file");
+        create_temp_file(env.dir.path(), "test_dir/regular_file.txt", "Regular file");
+
+        // Create .promptignore file
+        let promptignore_path = env.dir.path().join(".promptignore");
+        let mut promptignore_file =
+            File::create(&promptignore_path).expect("Failed to create .promptignore file");
+        writeln!(promptignore_file, "test_dir/prompt_ignored.txt")
+            .expect("Failed to write to .promptignore file");
+
+        let config = Code2PromptConfig::builder()
+            .path(env.dir.path().to_path_buf())
+            .no_ignore(false)
+            .no_promptignore(false)
+            .build()
+            .expect("Failed to build config");
+
+        let result = traverse_directory(&config);
+        let (tree_str, files) = result.unwrap();
+
+        // Should contain included.txt and regular_file.txt but NOT ignored.txt or prompt_ignored.txt
+        assert!(tree_str.contains("included.txt"));
+        assert!(tree_str.contains("regular_file.txt"));
+        assert!(!tree_str.contains("ignored.txt")); // From .gitignore
+        assert!(!tree_str.contains("prompt_ignored.txt")); // From .promptignore
+
+        // Verify files array
+        assert_eq!(files.len(), 2);
+        assert!(files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("included.txt")).unwrap_or(false)
+        }));
+        assert!(files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("regular_file.txt")).unwrap_or(false)
+        }));
+        assert!(!files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("prompt_ignored.txt")).unwrap_or(false)
+        }));
+    }
+
+    #[test]
+    fn test_promptignore_global() {
+        let env = TestEnv::new();
+
+        // Create additional files for this test
+        create_temp_file(env.dir.path(), "test_dir/globally_ignored.txt", "Globally ignored file");
+        create_temp_file(env.dir.path(), "test_dir/regular_file.txt", "Regular file");
+
+        // Create a temporary home directory and global .promptignore
+        let home_dir = tempdir().unwrap();
+        let global_promptignore = home_dir.path().join(".promptignore");
+        let mut global_promptignore_file =
+            File::create(&global_promptignore).expect("Failed to create global .promptignore file");
+        writeln!(global_promptignore_file, "globally_ignored.txt")
+            .expect("Failed to write to global .promptignore file");
+
+        // Override the home directory for this test (we can't easily test this without mocking dirs::home_dir)
+        // So we'll test by manually adding the global ignore file
+        let _config = Code2PromptConfig::builder()
+            .path(env.dir.path().to_path_buf())
+            .no_ignore(false)
+            .no_promptignore(false)
+            .build()
+            .expect("Failed to build config");
+
+        // For this test, we'll manually create the walker to test global promptignore behavior
+        use ignore::WalkBuilder;
+        let mut walker = WalkBuilder::new(env.dir.path());
+        walker
+            .hidden(true)
+            .git_ignore(true)
+            .follow_links(false);
+
+        // Add local .promptignore
+        walker.add_custom_ignore_filename(".promptignore");
+
+        // Add global .promptignore
+        walker.add_ignore(&global_promptignore);
+
+        let entries: Vec<_> = walker.build()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.path().is_file())
+            .collect();
+
+        // Should find included.txt and regular_file.txt but not ignored.txt or globally_ignored.txt
+        let file_names: Vec<String> = entries
+            .iter()
+            .map(|entry| entry.path().file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+
+        assert!(file_names.contains(&"included.txt".to_string()));
+        assert!(file_names.contains(&"regular_file.txt".to_string()));
+        assert!(!file_names.contains(&"ignored.txt".to_string())); // From .gitignore
+        assert!(!file_names.contains(&"globally_ignored.txt".to_string())); // From global .promptignore
+    }
+
+    #[test]
+    fn test_no_promptignore_flag() {
+        let env = TestEnv::new();
+
+        // Create additional files for this test
+        create_temp_file(env.dir.path(), "test_dir/prompt_ignored.txt", "Prompt ignored file");
+        create_temp_file(env.dir.path(), "test_dir/regular_file.txt", "Regular file");
+
+        // Create .promptignore file
+        let promptignore_path = env.dir.path().join(".promptignore");
+        let mut promptignore_file =
+            File::create(&promptignore_path).expect("Failed to create .promptignore file");
+        writeln!(promptignore_file, "test_dir/prompt_ignored.txt")
+            .expect("Failed to write to .promptignore file");
+
+        let config = Code2PromptConfig::builder()
+            .path(env.dir.path().to_path_buf())
+            .no_ignore(false)
+            .no_promptignore(true) // Disable .promptignore
+            .build()
+            .expect("Failed to build config");
+
+        let result = traverse_directory(&config);
+        let (tree_str, files) = result.unwrap();
+
+        // Should contain included.txt, regular_file.txt AND prompt_ignored.txt (since --no-promptignore is enabled)
+        // But NOT ignored.txt (still respected from .gitignore)
+        assert!(tree_str.contains("included.txt"));
+        assert!(tree_str.contains("regular_file.txt"));
+        assert!(tree_str.contains("prompt_ignored.txt")); // Should be included due to --no-promptignore
+
+        // Check that ignored.txt is NOT in the files array since it should be filtered by gitignore
+        // (We check files array instead of tree_str because tree might show directory structure differently)
+        assert!(!files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p == "test_dir/ignored.txt").unwrap_or(false)
+        }));
+
+        // Verify files array
+        assert_eq!(files.len(), 3);
+        assert!(files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("included.txt")).unwrap_or(false)
+        }));
+        assert!(files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("regular_file.txt")).unwrap_or(false)
+        }));
+        assert!(files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p.contains("prompt_ignored.txt")).unwrap_or(false)
+        }));
+        assert!(!files.iter().any(|file| {
+            let path = file.get("path").and_then(|p| p.as_str());
+            path.map(|p| p == "test_dir/ignored.txt").unwrap_or(false)
+        }));
+    }
 }

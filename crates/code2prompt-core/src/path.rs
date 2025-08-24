@@ -6,7 +6,7 @@ use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
 use anyhow::Result;
 use ignore::WalkBuilder;
-use log::debug;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
@@ -51,12 +51,47 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
     let exclude_globset = build_globset(&config.exclude_patterns);
 
     // ~~~ Build the Walker ~~~
-    let walker = WalkBuilder::new(&canonical_root_path)
+    let mut walker = WalkBuilder::new(&canonical_root_path);
+    walker
         .hidden(!config.hidden)
         .git_ignore(!config.no_ignore)
-        .follow_links(config.follow_symlinks)
-        .build()
-        .filter_map(|entry| entry.ok());
+        .follow_links(config.follow_symlinks);
+
+    // Add custom ignore files
+    for ignore_file in &config.extra_ignore_files {
+        let ignore_path = canonical_root_path.join(ignore_file);
+        if ignore_path.exists() {
+            walker.add_custom_ignore_filename(ignore_file);
+            debug!("Added custom ignore file: {}", ignore_file);
+        } else {
+            warn!("Custom ignore file does not exist: {}", ignore_file);
+        }
+    }
+
+    // Add .promptignore support unless disabled
+    if !config.no_promptignore {
+        // Add local .promptignore
+        let local_promptignore = canonical_root_path.join(".promptignore");
+        if local_promptignore.exists() {
+            walker.add_custom_ignore_filename(".promptignore");
+            debug!("Added local .promptignore file");
+        } else {
+            debug!("Local .promptignore file does not exist");
+        }
+
+        // Add global ~/.promptignore
+        if let Some(home_dir) = dirs::home_dir() {
+            let global_promptignore = home_dir.join(".promptignore");
+            if global_promptignore.exists() {
+                walker.add_ignore(&global_promptignore);
+                debug!("Added global .promptignore file");
+            } else {
+                debug!("Global .promptignore file does not exist");
+            }
+        }
+    }
+
+    let walker = walker.build().filter_map(|entry| entry.ok());
 
     // ~~~ Build the Tree ~~~
     let mut tree = Tree::new(parent_directory.to_owned());
