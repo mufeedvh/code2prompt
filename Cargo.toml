@@ -22,7 +22,7 @@ termtree = "0.5"
 tiktoken-rs = "0.6.0"
 ignore = "0.4.22"
 inquire = "0.7.1"
-regex = "1.10.3"
+regex = "1.11.2"
 git2 = { version = "0.18.2", default-features = false, features = [
     "https",
     "vendored-libgit2",
