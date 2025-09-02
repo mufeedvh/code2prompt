@@ -1,5 +1,6 @@
-use lscolors::{Indicator, LsColors};
+#[cfg(windows)]
 use log::error;
+use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
