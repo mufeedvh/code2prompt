@@ -20,12 +20,17 @@ use indicatif::{ProgressBar, ProgressStyle};
 use inquire::Text;
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
-use std::{path::PathBuf, str::FromStr};
+use std::{io::IsTerminal, path::PathBuf, str::FromStr};
 
 fn main() -> Result<()> {
     env_logger::init();
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
-    let args = Cli::parse();
+    let mut args = Cli::parse();
+    if !std::io::stdout().is_terminal() {
+        info! {"Output is being piped, setting output_file to \"-\" and turning quiet mode on"};
+        args.quiet = true;
+        args.output_file = Some("-".to_string());
+    }
 
     // ~~~ Arguments Validation ~~~
     // if no_clipboard is true, output_file must be specified.
