@@ -37,7 +37,6 @@ pub enum TuiColor {
 pub struct TuiTokenMapLine {
     pub content: String,
     pub color: TuiColor,
-    pub is_directory: bool,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -664,11 +663,7 @@ pub fn format_token_map_for_tui(
             prefix, entry.name, bar, tokens_str, entry.percentage
         );
 
-        lines.push(TuiTokenMapLine {
-            content,
-            color,
-            is_directory: entry.metadata.is_dir,
-        });
+        lines.push(TuiTokenMapLine { content, color });
     }
 
     lines
