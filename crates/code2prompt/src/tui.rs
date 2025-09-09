@@ -222,16 +222,8 @@ impl TuiApp {
     }
 
     fn handle_settings_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
-            KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
-            KeyCode::Char(' ') => Some(Message::ToggleSetting(self.model.settings_cursor)),
-            KeyCode::Left | KeyCode::Right => {
-                Some(Message::CycleSetting(self.model.settings_cursor))
-            }
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            _ => None,
-        }
+        // Delegate to SettingsWidget
+        SettingsWidget::handle_key_event(key, &self.model)
     }
 
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
@@ -250,45 +242,8 @@ impl TuiApp {
     }
 
     fn handle_prompt_output_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            // Check for Ctrl+Up/Down first for faster scrolling
-            KeyCode::Up
-                if key
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
-            {
-                Some(Message::ScrollOutput(-10))
-            }
-            KeyCode::Down
-                if key
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
-            {
-                Some(Message::ScrollOutput(10))
-            }
-            KeyCode::Up => Some(Message::ScrollOutput(-1)),
-            KeyCode::Down => Some(Message::ScrollOutput(1)),
-            KeyCode::PageUp => Some(Message::ScrollOutput(-5)),
-            KeyCode::PageDown => Some(Message::ScrollOutput(5)),
-            KeyCode::Home => Some(Message::ScrollOutput(-9999)), // Scroll to top
-            KeyCode::End => Some(Message::ScrollOutput(9999)),   // Scroll to bottom
-            KeyCode::Char('c') | KeyCode::Char('C') => {
-                if self.model.generated_prompt.is_some() {
-                    Some(Message::CopyToClipboard)
-                } else {
-                    None
-                }
-            }
-            KeyCode::Char('s') | KeyCode::Char('S') => {
-                if self.model.generated_prompt.is_some() {
-                    Some(Message::SaveToFile("prompt.md".to_string()))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+        // Delegate to OutputWidget
+        OutputWidget::handle_key_event(key, &self.model)
     }
 
     fn handle_message(&mut self, message: Message) -> Result<()> {
@@ -527,21 +482,12 @@ impl TuiApp {
                 }
             }
             Message::ScrollOutput(delta) => {
-                if let Some(prompt) = &self.model.generated_prompt {
-                    // Calculate approximate total lines (rough estimate)
-                    let total_lines = prompt.lines().count() as u16;
-                    let viewport_height = 20; // Approximate viewport height
-                    let max_scroll = total_lines.saturating_sub(viewport_height);
-
-                    let new_scroll = if delta < 0 {
-                        self.model.output_scroll.saturating_sub((-delta) as u16)
-                    } else {
-                        self.model.output_scroll.saturating_add(delta as u16)
-                    };
-
-                    // Clamp scroll to valid range
-                    self.model.output_scroll = new_scroll.min(max_scroll);
-                }
+                // Delegate to OutputWidget
+                OutputWidget::handle_scroll(
+                    delta as i32,
+                    &mut self.model.output_scroll,
+                    &self.model.generated_prompt,
+                );
             }
             Message::ScrollFileTree(delta) => {
                 let visible_count = self.model.get_visible_nodes().len() as u16;

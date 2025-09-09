@@ -65,6 +65,25 @@ impl<'a> OutputWidget<'a> {
             _ => None,
         }
     }
+
+    /// Handle output scrolling logic
+    pub fn handle_scroll(delta: i32, output_scroll: &mut u16, generated_prompt: &Option<String>) {
+        if let Some(prompt) = generated_prompt {
+            // Calculate approximate total lines (rough estimate)
+            let total_lines = prompt.lines().count() as u16;
+            let viewport_height = 20; // Approximate viewport height
+            let max_scroll = total_lines.saturating_sub(viewport_height);
+
+            let new_scroll = if delta < 0 {
+                output_scroll.saturating_sub((-delta) as u16)
+            } else {
+                output_scroll.saturating_add(delta as u16)
+            };
+
+            // Clamp scroll to valid range
+            *output_scroll = new_scroll.min(max_scroll);
+        }
+    }
 }
 
 impl<'a> StatefulWidget for OutputWidget<'a> {
