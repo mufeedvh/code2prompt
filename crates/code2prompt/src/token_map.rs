@@ -664,10 +664,11 @@ pub fn format_token_map_for_tui(
         .unwrap_or(20)
         .min(terminal_width / 2);
 
-    // Calculate bar width (same as CLI)
+    // Calculate bar width (adjusted for TUI to prevent overflow)
+    // TUI needs a bit more space than CLI to prevent the percentage column from overflowing
     let bar_width = terminal_width
-        .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 5)
-        .max(20);
+        .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 7) // +2 more chars for TUI
+        .max(15); // Minimum bar width reduced slightly for TUI
 
     // Initialize parent bars array (same as CLI)
     let mut parent_bars: Vec<String> = vec![String::new(); 10];
