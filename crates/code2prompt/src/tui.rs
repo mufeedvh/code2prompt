@@ -227,17 +227,17 @@ impl TuiApp {
     }
 
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
-            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
-            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
-            KeyCode::Down => Some(Message::ScrollStatistics(1)),
-            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
-            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
-            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
-            KeyCode::End => Some(Message::ScrollStatistics(9999)),
-            _ => None,
+        // Delegate to the appropriate statistics widget based on current view
+        match self.model.statistics_view {
+            crate::model::StatisticsView::Overview => {
+                StatisticsOverviewWidget::handle_key_event(key)
+            }
+            crate::model::StatisticsView::TokenMap => {
+                StatisticsTokenMapWidget::handle_key_event(key)
+            }
+            crate::model::StatisticsView::Extensions => {
+                StatisticsByExtensionWidget::handle_key_event(key)
+            }
         }
     }
 

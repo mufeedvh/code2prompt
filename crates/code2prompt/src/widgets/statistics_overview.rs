@@ -21,6 +21,14 @@ impl<'a> StatisticsOverviewWidget<'a> {
     pub fn handle_key_event(key: KeyEvent) -> Option<Message> {
         match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
+            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
+            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
+            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
+            KeyCode::Down => Some(Message::ScrollStatistics(1)),
+            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
+            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
+            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
+            KeyCode::End => Some(Message::ScrollStatistics(9999)),
             _ => None,
         }
     }
