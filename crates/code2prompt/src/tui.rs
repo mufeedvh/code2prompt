@@ -1275,23 +1275,25 @@ impl TuiApp {
             return;
         }
 
-        // Use the shared token map formatting logic from token_map.rs
+        // Use the shared token map formatting logic from token_map.rs with adaptive layout
         let total_tokens = model.token_count.unwrap_or(0);
-        let formatted_lines = format_token_map_for_tui(&model.token_map_entries, total_tokens);
+        let terminal_width = area.width as usize;
+        let formatted_lines =
+            format_token_map_for_tui(&model.token_map_entries, total_tokens, terminal_width);
 
         // Calculate viewport for scrolling
         let content_height = area.height.saturating_sub(2) as usize; // Account for borders
         let scroll_start = model.statistics_scroll as usize;
         let scroll_end = (scroll_start + content_height).min(formatted_lines.len());
 
-        // Convert formatted lines to ListItems for the viewport
+        // Convert formatted lines to ListItems with proper column layout and filename coloring
         let items: Vec<ListItem> = formatted_lines
             .iter()
             .skip(scroll_start)
             .take(content_height)
             .map(|line| {
-                // Convert TuiColor to ratatui Color
-                let color = match line.color {
+                // Convert TuiColor to ratatui Color for filename only
+                let name_color = match line.name_color {
                     TuiColor::White => Color::White,
                     TuiColor::Gray => Color::Gray,
                     TuiColor::Red => Color::Red,
@@ -1308,7 +1310,19 @@ impl TuiApp {
                     TuiColor::LightMagenta => Color::LightMagenta,
                 };
 
-                ListItem::new(line.content.clone()).style(Style::default().fg(color))
+                // Create spans with proper coloring - only filename gets color, rest is white
+                let spans = vec![
+                    Span::styled(&line.tokens_part, Style::default().fg(Color::White)),
+                    Span::styled("   ", Style::default().fg(Color::White)), // spacing
+                    Span::styled(&line.prefix_part, Style::default().fg(Color::White)),
+                    Span::styled(&line.name_part, Style::default().fg(name_color)), // Only filename colored
+                    Span::styled(" ", Style::default().fg(Color::White)),           // spacing
+                    Span::styled(&line.bar_part, Style::default().fg(Color::White)),
+                    Span::styled(" ", Style::default().fg(Color::White)), // spacing
+                    Span::styled(&line.percentage_part, Style::default().fg(Color::White)),
+                ];
+
+                ListItem::new(Line::from(spans))
             })
             .collect();
 

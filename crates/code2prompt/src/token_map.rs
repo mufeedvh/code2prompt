@@ -4,7 +4,6 @@
 //! that show how tokens are distributed across files in a codebase. It creates
 //! hierarchical tree structures with visual bars and colors, similar to disk usage
 //! analyzers but for token consumption.
-
 use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
@@ -32,11 +31,15 @@ pub enum TuiColor {
     LightMagenta,
 }
 
-/// Formatted line for TUI token map display
+/// Formatted line for TUI token map display with separate components
 #[derive(Debug, Clone)]
 pub struct TuiTokenMapLine {
-    pub content: String,
-    pub color: TuiColor,
+    pub tokens_part: String,
+    pub prefix_part: String,
+    pub name_part: String,
+    pub name_color: TuiColor,
+    pub bar_part: String,
+    pub percentage_part: String,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -613,28 +616,62 @@ fn determine_tui_color(entry: &TokenMapEntry) -> TuiColor {
     }
 }
 
-/// Format token map entries for TUI display.
+/// Format token map entries for TUI display with adaptive layout.
 ///
 /// Creates formatted lines with tree structure and color information suitable
-/// for rendering in a TUI interface using ratatui. This function shares the
-/// core formatting logic with the CLI version but returns structured data
+/// for rendering in a TUI interface using ratatui. This function uses the same
+/// adaptive layout logic as the CLI version but returns structured data components
 /// instead of printing directly.
 ///
 /// # Arguments
 ///
 /// * `entries` - The token map entries to format
 /// * `total_tokens` - Total token count for percentage calculations
+/// * `terminal_width` - Width of the terminal/TUI area for adaptive layout
 ///
 /// # Returns
 ///
 /// * `Vec<TuiTokenMapLine>` - Formatted lines ready for TUI rendering
 pub fn format_token_map_for_tui(
     entries: &[TokenMapEntry],
-    _total_tokens: usize,
+    total_tokens: usize,
+    terminal_width: usize,
 ) -> Vec<TuiTokenMapLine> {
     if entries.is_empty() {
         return Vec::new();
     }
+
+    // Use the same adaptive layout logic as CLI
+    let terminal_width = terminal_width.max(80); // Minimum width
+
+    // Calculate max token width for alignment (same as CLI)
+    let max_token_width = entries
+        .iter()
+        .map(|e| format_tokens(e.tokens).len())
+        .max()
+        .unwrap_or(3)
+        .max(format_tokens(total_tokens).len())
+        .max(4);
+
+    // Calculate max name length including tree prefix (same as CLI)
+    let max_name_length = entries
+        .iter()
+        .map(|e| {
+            let prefix_width = if e.depth == 0 { 3 } else { (e.depth * 2) + 3 };
+            prefix_width + UnicodeWidthStr::width(e.name.as_str())
+        })
+        .max()
+        .unwrap_or(20)
+        .min(terminal_width / 2);
+
+    // Calculate bar width (same as CLI)
+    let bar_width = terminal_width
+        .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 5)
+        .max(20);
+
+    // Initialize parent bars array (same as CLI)
+    let mut parent_bars: Vec<String> = vec![String::new(); 10];
+    parent_bars[0] = "█".repeat(bar_width);
 
     let mut lines = Vec::new();
 
@@ -642,28 +679,46 @@ pub fn format_token_map_for_tui(
         // Build tree prefix using shared logic
         let prefix = build_tree_prefix(entry, entries, i);
 
-        // Create the visual bar
-        let bar_width: usize = 20;
-        let filled_chars = ((entry.percentage / 100.0) * bar_width as f64) as usize;
-        let bar = format!(
-            "{}{}",
-            "█".repeat(filled_chars),
-            "░".repeat(bar_width.saturating_sub(filled_chars))
-        );
-
-        // Format the tokens with K/M suffix
+        // Format tokens
         let tokens_str = format_tokens(entry.tokens);
 
+        // Generate hierarchical bar (same as CLI)
+        let parent_bar = if entry.depth > 0 {
+            &parent_bars[entry.depth - 1]
+        } else {
+            &parent_bars[0]
+        };
+
+        let bar = generate_hierarchical_bar(bar_width, parent_bar, entry.percentage, entry.depth);
+
+        // Update parent bars (same as CLI)
+        if entry.depth < parent_bars.len() {
+            parent_bars[entry.depth] = bar.clone();
+        }
+
+        // Format percentage
+        let percentage_str = format!("{:>4.0}%", entry.percentage);
+
+        // Calculate padding for name (same as CLI)
+        let prefix_display_width = prefix.chars().count();
+        let name_padding = max_name_length
+            .saturating_sub(prefix_display_width + UnicodeWidthStr::width(entry.name.as_str()));
+
+        // Create name with padding
+        let name_with_padding = format!("{}{}", entry.name, " ".repeat(name_padding));
+
         // Determine color based on entry type and extension
-        let color = determine_tui_color(entry);
+        let name_color = determine_tui_color(entry);
 
-        // Create the formatted content
-        let content = format!(
-            "{}{} │{}│ {:>6} ({:>4.1}%)",
-            prefix, entry.name, bar, tokens_str, entry.percentage
-        );
-
-        lines.push(TuiTokenMapLine { content, color });
+        // Create structured components for TUI rendering
+        lines.push(TuiTokenMapLine {
+            tokens_part: format!("{:>width$}", tokens_str, width = max_token_width),
+            prefix_part: prefix,
+            name_part: name_with_padding,
+            name_color,
+            bar_part: format!("│{}│", bar),
+            percentage_part: percentage_str,
+        });
     }
 
     lines
