@@ -7,6 +7,7 @@ mod model;
 mod token_map;
 mod tui;
 mod utils;
+mod widgets;
 
 use anyhow::{Context, Result};
 use args::Cli;

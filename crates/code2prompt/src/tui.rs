@@ -17,6 +17,7 @@ use std::io::{stdout, Stdout};
 use tokio::sync::mpsc;
 
 use crate::model::{Message, Model, SettingAction, Tab};
+use crate::widgets::*;
 
 use crate::token_map::{format_token_map_for_tui, generate_token_map_with_limit, TuiColor};
 
