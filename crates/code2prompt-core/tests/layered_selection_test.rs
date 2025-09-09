@@ -1,7 +1,7 @@
 //! Tests for the layered selection system (explicit overrides + glob patterns)
 
 use code2prompt_core::configuration::Code2PromptConfig;
-use code2prompt_core::filter::{build_globset, should_visit_or_include};
+use code2prompt_core::filter::{build_globset, should_include_path};
 use std::path::PathBuf;
 
 #[cfg(test)]
@@ -20,11 +20,12 @@ mod tests {
         let exclude_gs = build_globset(&config.exclude_patterns);
 
         // main.rs should be included despite exclude pattern
-        assert!(should_visit_or_include(
+        assert!(should_include_path(
             &PathBuf::from("src/main.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
     }
 
@@ -40,11 +41,12 @@ mod tests {
         let exclude_gs = build_globset(&config.exclude_patterns);
 
         // utils.rs should be excluded despite include pattern
-        assert!(!should_visit_or_include(
+        assert!(!should_include_path(
             &PathBuf::from("src/utils.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
     }
 
@@ -58,17 +60,19 @@ mod tests {
         let exclude_gs = build_globset(&config.exclude_patterns);
 
         // Child files should be included due to ancestor explicit include
-        assert!(should_visit_or_include(
+        assert!(should_include_path(
             &PathBuf::from("src/main.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
-        assert!(should_visit_or_include(
+        assert!(should_include_path(
             &PathBuf::from("src/lib/mod.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
     }
 
@@ -82,17 +86,19 @@ mod tests {
         let exclude_gs = build_globset(&config.exclude_patterns);
 
         // Child files should be excluded due to ancestor explicit exclude
-        assert!(!should_visit_or_include(
+        assert!(!should_include_path(
             &PathBuf::from("src/main.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
-        assert!(!should_visit_or_include(
+        assert!(!should_include_path(
             &PathBuf::from("src/lib/mod.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
     }
 
@@ -110,11 +116,12 @@ mod tests {
         let exclude_gs = build_globset(&config.exclude_patterns);
 
         // Explicit exclude should win over explicit include
-        assert!(!should_visit_or_include(
+        assert!(!should_include_path(
             &PathBuf::from("src/main.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
     }
 
@@ -128,17 +135,19 @@ mod tests {
         let exclude_gs = build_globset(&config.exclude_patterns);
 
         // Should follow normal pattern logic when no explicit overrides
-        assert!(should_visit_or_include(
+        assert!(should_include_path(
             &PathBuf::from("main.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
-        assert!(!should_visit_or_include(
+        assert!(!should_include_path(
             &PathBuf::from("test_main.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
     }
 
@@ -150,11 +159,12 @@ mod tests {
         let exclude_gs = build_globset(&config.exclude_patterns);
 
         // Should include everything when no patterns and no explicit overrides
-        assert!(should_visit_or_include(
+        assert!(should_include_path(
             &PathBuf::from("any/file.rs"),
-            &config,
             &include_gs,
-            &exclude_gs
+            &exclude_gs,
+            &config.explicit_includes,
+            &config.explicit_excludes,
         ));
     }
 }

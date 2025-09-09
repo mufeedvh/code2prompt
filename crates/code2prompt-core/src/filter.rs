@@ -1,6 +1,7 @@
-//! This module contains the logic for filtering files based on include and exclude patterns.
+//! This module contains pure filtering logic for files based on glob patterns.
+//!
+//! This module provides reusable, stateless functions for pattern matching and file filtering.
 
-use crate::configuration::Code2PromptConfig;
 use bracoxide::explode;
 use colored::*;
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -59,7 +60,19 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
 }
 
 /// Checks if the path or any ancestor is in the given set (for propagation).
-fn is_or_ancestor_in_set(rel_path: &Path, set: &HashSet<PathBuf>) -> bool {
+///
+/// This function is useful for implementing hierarchical inclusion/exclusion logic
+/// where a rule applied to a parent directory should propagate to its descendants.
+///
+/// # Arguments
+///
+/// * `rel_path` - A relative path to check
+/// * `set` - A set of paths to check against
+///
+/// # Returns
+///
+/// * `bool` - Returns `true` if the path or any of its ancestors is in the set
+pub fn is_or_ancestor_in_set(rel_path: &Path, set: &HashSet<PathBuf>) -> bool {
     let mut current = rel_path.to_path_buf();
     loop {
         if set.contains(&current) {
@@ -122,42 +135,46 @@ pub fn should_include_file(
 }
 
 /// Determines whether to visit/include a path (file or dir) using layered logic.
-/// - Explicit excludes (self/ancestors) → false (skip subtree for dirs).
-/// - Explicit includes (self/ancestors) → true (include/recurse for dirs).
-/// - Fallback: glob patterns (include if matches include or empty, unless excluded).
-/// Note: rel_path must be relative to root.
-pub fn should_visit_or_include(
+///
+/// This function implements a hierarchical decision process:
+/// 1. Explicit excludes (self/ancestors) → false (highest priority, skip subtree for dirs)
+/// 2. Explicit includes (self/ancestors) → true (second priority, include/recurse for dirs)
+/// 3. Fallback: glob patterns (include if matches include or empty, unless excluded)
+///
+/// # Arguments
+///
+/// * `rel_path` - A relative path to check (must be relative to the root path)
+/// * `include_globset` - A GlobSet specifying which files to include
+/// * `exclude_globset` - A GlobSet specifying which files to exclude
+/// * `explicit_includes` - A set of explicitly included paths (with ancestor propagation)
+/// * `explicit_excludes` - A set of explicitly excluded paths (with ancestor propagation)
+///
+/// # Returns
+///
+/// * `bool` - Returns `true` if the path should be included/visited; otherwise, returns `false`
+pub fn should_include_path(
     rel_path: &Path,
-    config: &Code2PromptConfig,
     include_globset: &GlobSet,
     exclude_globset: &GlobSet,
+    explicit_includes: &HashSet<PathBuf>,
+    explicit_excludes: &HashSet<PathBuf>,
 ) -> bool {
     // Step 1: Highest priority - explicit exclude on self or ancestor?
-    if is_or_ancestor_in_set(rel_path, &config.explicit_excludes) {
+    if is_or_ancestor_in_set(rel_path, explicit_excludes) {
         debug!("Explicit exclude hit for: {:?}", rel_path);
         return false;
     }
 
     // Step 2: Explicit include on self or ancestor?
-    if is_or_ancestor_in_set(rel_path, &config.explicit_includes) {
+    if is_or_ancestor_in_set(rel_path, explicit_includes) {
         debug!("Explicit include hit for: {:?}", rel_path);
         return true;
     }
 
-    // Step 3: Fallback to patterns (existing logic)
-    let included = include_globset.is_match(rel_path);
-    let excluded = exclude_globset.is_match(rel_path);
-    let result = match (included, excluded) {
-        (true, true) => false,
-        (true, false) => true,
-        (false, true) => false,
-        (false, false) => include_globset.is_empty(),
-    };
+    // Step 3: Fallback to pure pattern matching logic
+    let result = should_include_file(rel_path, include_globset, exclude_globset);
 
-    debug!(
-        "Pattern fallback: included={}, excluded={}, result={} for {:?}",
-        included, excluded, result, rel_path
-    );
+    debug!("Pattern fallback result={} for {:?}", result, rel_path);
 
     result
 }

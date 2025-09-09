@@ -1,6 +1,6 @@
 //! This module contains the functions for traversing the directory and processing the files.
 use crate::configuration::Code2PromptConfig;
-use crate::filter::{build_globset, should_visit_or_include};
+use crate::filter::{build_globset, should_include_path};
 use crate::sort::{sort_files, sort_tree, FileSortMethod};
 use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
@@ -65,8 +65,13 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
         let path = entry.path();
         if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
             // Use layered match for files and tree inclusion
-            let entry_match =
-                should_visit_or_include(relative_path, config, &include_globset, &exclude_globset);
+            let entry_match = should_include_path(
+                relative_path,
+                &include_globset,
+                &exclude_globset,
+                &config.explicit_includes,
+                &config.explicit_excludes,
+            );
 
             // ~~~ Directory Tree ~~~
             let include_in_tree = config.full_directory_tree || entry_match;

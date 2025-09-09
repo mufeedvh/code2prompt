@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 use crate::configuration::Code2PromptConfig;
-use crate::filter::{build_globset, should_visit_or_include};
+use crate::filter::{build_globset, should_include_path};
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
 use crate::template::{handlebars_setup, render_template, OutputFormat};
@@ -57,7 +57,13 @@ impl Code2PromptSession {
         let rel_path = path.strip_prefix(&self.config.path).unwrap_or(path);
         let include_gs = build_globset(&self.config.include_patterns);
         let exclude_gs = build_globset(&self.config.exclude_patterns);
-        should_visit_or_include(rel_path, &self.config, &include_gs, &exclude_gs)
+        should_include_path(
+            rel_path,
+            &include_gs,
+            &exclude_gs,
+            &self.config.explicit_includes,
+            &self.config.explicit_excludes,
+        )
     }
 
     /// Add to explicit_includes (prioritized)
