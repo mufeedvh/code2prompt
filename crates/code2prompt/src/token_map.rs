@@ -13,6 +13,33 @@ use std::fs;
 use std::path::Path;
 use unicode_width::UnicodeWidthStr;
 
+/// Color information for TUI rendering
+#[derive(Debug, Clone)]
+pub enum TuiColor {
+    White,
+    Gray,
+    Red,
+    Green,
+    Blue,
+    Yellow,
+    Cyan,
+    Magenta,
+    LightRed,
+    LightGreen,
+    LightBlue,
+    LightYellow,
+    LightCyan,
+    LightMagenta,
+}
+
+/// Formatted line for TUI token map display
+#[derive(Debug, Clone)]
+pub struct TuiTokenMapLine {
+    pub content: String,
+    pub color: TuiColor,
+    pub is_directory: bool,
+}
+
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub struct EntryMetadata {
     pub is_dir: bool,
@@ -423,53 +450,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
     parent_bars[0] = "█".repeat(bar_width);
 
     for (i, entry) in entries.iter().enumerate() {
-        // Build tree prefix
-        let mut prefix = String::new();
-
-        // Add vertical lines for parent levels
-        for d in 0..entry.depth {
-            if d < entry.depth - 1 {
-                // Check if we need a vertical line at this depth
-                let needs_line = entries
-                    .iter()
-                    .skip(i + 1)
-                    .take_while(|entry| entry.depth > d)
-                    .any(|entry| entry.depth == d + 1);
-                if needs_line {
-                    prefix.push_str("│ ");
-                } else {
-                    prefix.push_str("  ");
-                }
-            } else if entry.is_last {
-                prefix.push_str("└─");
-            } else {
-                prefix.push_str("├─");
-            }
-        }
-
-        // Special handling for root
-        if entry.depth == 0 && i == 0 && entry.name != "(other files)" {
-            prefix = "┌─".to_string();
-        }
-
-        // Check if has children
-        let has_children = entries
-            .get(i + 1)
-            .map(|next| next.depth > entry.depth)
-            .unwrap_or(false);
-
-        // Add the connecting character
-        if entry.depth > 0 || entry.name == "(other files)" {
-            if has_children {
-                prefix.push('┬');
-            } else {
-                prefix.push('─');
-            }
-        } else if i == 0 {
-            prefix.push('┴');
-        }
-
-        prefix.push(' ');
+        // Build tree prefix using shared logic
+        let prefix = build_tree_prefix(entry, entries, i);
 
         // Format tokens
         let tokens_str = format_tokens(entry.tokens);
@@ -535,6 +517,161 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
             width = max_token_width
         );
     }
+}
+
+/// Build tree prefix for an entry (shared logic for CLI and TUI)
+fn build_tree_prefix(entry: &TokenMapEntry, entries: &[TokenMapEntry], index: usize) -> String {
+    let mut prefix = String::new();
+
+    // Add vertical lines for parent levels
+    for d in 0..entry.depth {
+        if d < entry.depth - 1 {
+            // Check if we need a vertical line at this depth
+            let needs_line = entries
+                .iter()
+                .skip(index + 1)
+                .take_while(|entry| entry.depth > d)
+                .any(|entry| entry.depth == d + 1);
+            if needs_line {
+                prefix.push_str("│ ");
+            } else {
+                prefix.push_str("  ");
+            }
+        } else if entry.is_last {
+            prefix.push_str("└─");
+        } else {
+            prefix.push_str("├─");
+        }
+    }
+
+    // Special handling for root
+    if entry.depth == 0 && index == 0 && entry.name != "(other files)" {
+        prefix = "┌─".to_string();
+    }
+
+    // Check if has children
+    let has_children = entries
+        .get(index + 1)
+        .map(|next| next.depth > entry.depth)
+        .unwrap_or(false);
+
+    // Add the connecting character
+    if entry.depth > 0 || entry.name == "(other files)" {
+        if has_children {
+            prefix.push('┬');
+        } else {
+            prefix.push('─');
+        }
+    } else if index == 0 {
+        prefix.push('┴');
+    }
+
+    prefix.push(' ');
+    prefix
+}
+
+/// Determine TUI color for an entry based on file type and extension
+fn determine_tui_color(entry: &TokenMapEntry) -> TuiColor {
+    if entry.metadata.is_dir {
+        TuiColor::Cyan
+    } else {
+        match entry.name.split('.').next_back().unwrap_or("") {
+            // Systems / compiled langs
+            "rs" => TuiColor::Yellow,
+            "c" | "h" | "cpp" | "cxx" | "hpp" => TuiColor::Blue,
+            "go" => TuiColor::LightBlue,
+            "java" | "kt" | "kts" => TuiColor::Red,
+            "swift" => TuiColor::LightRed,
+            "zig" => TuiColor::LightYellow,
+
+            // Web
+            "js" | "mjs" | "cjs" => TuiColor::LightGreen,
+            "ts" | "tsx" | "jsx" => TuiColor::LightCyan,
+            "html" | "htm" => TuiColor::Magenta,
+            "css" | "scss" | "less" => TuiColor::LightMagenta,
+
+            // Scripting / automation
+            "py" => TuiColor::LightYellow,
+            "sh" | "bash" | "zsh" => TuiColor::Gray,
+            "rb" => TuiColor::LightRed,
+            "pl" => TuiColor::LightCyan,
+            "php" => TuiColor::LightMagenta,
+            "lua" => TuiColor::LightBlue,
+
+            // Data / config / markup
+            "json" | "toml" | "yaml" | "yml" => TuiColor::Magenta,
+            "xml" => TuiColor::LightGreen,
+            "csv" => TuiColor::Green,
+            "ini" => TuiColor::Gray,
+
+            // Docs
+            "md" | "txt" | "rst" | "adoc" => TuiColor::Green,
+            "pdf" => TuiColor::Red,
+
+            // Default
+            _ => TuiColor::White,
+        }
+    }
+}
+
+/// Format token map entries for TUI display.
+///
+/// Creates formatted lines with tree structure and color information suitable
+/// for rendering in a TUI interface using ratatui. This function shares the
+/// core formatting logic with the CLI version but returns structured data
+/// instead of printing directly.
+///
+/// # Arguments
+///
+/// * `entries` - The token map entries to format
+/// * `total_tokens` - Total token count for percentage calculations
+///
+/// # Returns
+///
+/// * `Vec<TuiTokenMapLine>` - Formatted lines ready for TUI rendering
+pub fn format_token_map_for_tui(
+    entries: &[TokenMapEntry],
+    _total_tokens: usize,
+) -> Vec<TuiTokenMapLine> {
+    if entries.is_empty() {
+        return Vec::new();
+    }
+
+    let mut lines = Vec::new();
+
+    for (i, entry) in entries.iter().enumerate() {
+        // Build tree prefix using shared logic
+        let prefix = build_tree_prefix(entry, entries, i);
+
+        // Create the visual bar
+        let bar_width: usize = 20;
+        let filled_chars = ((entry.percentage / 100.0) * bar_width as f64) as usize;
+        let bar = format!(
+            "{}{}",
+            "█".repeat(filled_chars),
+            "░".repeat(bar_width.saturating_sub(filled_chars))
+        );
+
+        // Format the tokens with K/M suffix
+        let tokens_str = format_tokens(entry.tokens);
+
+        // Determine color based on entry type and extension
+        let color = determine_tui_color(entry);
+
+        // Create the formatted content
+        let content = format!(
+            "{}{} │{}│ {:>6} ({:>4.1}%)",
+            prefix, entry.name, bar, tokens_str, entry.percentage
+        );
+
+        lines.push(TuiTokenMapLine {
+            content,
+            color,
+            is_directory: entry.metadata.is_dir,
+        });
+    }
+
+    lines
 }
 
 // Format token counts with K/M suffixes (dust-style)
