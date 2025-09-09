@@ -561,7 +561,7 @@ impl Model {
                 }
             }
 
-            // Tokenizer & Encoding section (7-8)
+            // Tokenizer & Encoding section
             7 => {
                 // Tokenizer Type
                 if let SettingAction::Cycle = action {
@@ -585,15 +585,14 @@ impl Model {
                     };
                 }
             }
-            8 => self.session.config.token_map_enabled = !self.session.config.token_map_enabled, // Token Map
 
             // Git Integration section (9)
-            9 => self.session.config.diff_enabled = !self.session.config.diff_enabled, // Git Diff
+            8 => self.session.config.diff_enabled = !self.session.config.diff_enabled, // Git Diff
 
             // File Selection section (10-12)
-            10 => self.session.config.follow_symlinks = !self.session.config.follow_symlinks, // Follow Symlinks
-            11 => self.session.config.hidden = !self.session.config.hidden, // Hidden Files
-            12 => self.session.config.no_ignore = !self.session.config.no_ignore, // No Ignore
+            9 => self.session.config.follow_symlinks = !self.session.config.follow_symlinks, // Follow Symlinks
+            10 => self.session.config.hidden = !self.session.config.hidden, // Hidden Files
+            11 => self.session.config.no_ignore = !self.session.config.no_ignore, // No Ignore
 
             _ => {}
         }

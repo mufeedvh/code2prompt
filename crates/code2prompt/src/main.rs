@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
     }
 
     // ~~~ Build Session ~~~
-    let mut session = create_session_from_args(&args).unwrap_or_else(|e| {
+    let mut session = create_session_from_args(&args, args.tui).unwrap_or_else(|e| {
         error!("Failed to create session: {}", e);
         std::process::exit(1);
     });
@@ -382,7 +382,7 @@ fn expand_comma_separated_patterns(patterns: &[String]) -> Vec<String> {
 }
 
 /// Create a Code2PromptSession from command line arguments
-fn create_session_from_args(args: &Cli) -> Result<Code2PromptSession> {
+fn create_session_from_args(args: &Cli, tui_mode: bool) -> Result<Code2PromptSession> {
     let mut configuration = Code2PromptConfig::builder();
 
     configuration.path(args.path.clone());
@@ -448,7 +448,7 @@ fn create_session_from_args(args: &Cli) -> Result<Code2PromptSession> {
         .hidden(args.hidden)
         .no_codeblock(args.no_codeblock)
         .follow_symlinks(args.follow_symlinks)
-        .token_map_enabled(args.token_map);
+        .token_map_enabled(args.token_map || tui_mode);
 
     let session = Code2PromptSession::new(configuration.build()?);
     Ok(session)
