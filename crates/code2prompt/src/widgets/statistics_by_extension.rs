@@ -133,7 +133,51 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let scroll_start = state.scroll_position as usize;
         let scroll_end = (scroll_start + content_height).min(ext_vec.len());
 
-        // Create list items
+        // Calculate dynamic column widths based on available space and content
+        let available_width = layout[0].width.saturating_sub(4) as usize; // Account for borders and padding
+
+        // Calculate maximum widths needed for each column
+        let max_ext_width = ext_vec
+            .iter()
+            .map(|(ext, _, _)| ext.len())
+            .max()
+            .unwrap_or(12)
+            .max(12); // Minimum 12 chars for "Extension"
+
+        let max_tokens_width = ext_vec
+            .iter()
+            .map(|(_, tokens, _)| {
+                Self::format_number(*tokens, &self.model.session.config.token_format).len()
+            })
+            .max()
+            .unwrap_or(6)
+            .max(6); // Minimum 6 chars for tokens
+
+        let max_count_width = ext_vec
+            .iter()
+            .map(|(_, _, count)| count.to_string().len())
+            .max()
+            .unwrap_or(3)
+            .max(3); // Minimum 3 chars for count
+
+        // Fixed widths for percentage and separators
+        let percentage_width = 7; // "(100.0%)"
+        let separators_width = 8; // " │ │ " + " | " + " files"
+
+        // Calculate remaining space for the progress bar
+        let fixed_content_width = max_ext_width
+            + max_tokens_width
+            + percentage_width
+            + max_count_width
+            + separators_width
+            + 5; // +5 for "files"
+        let bar_width = if available_width > fixed_content_width {
+            (available_width - fixed_content_width).max(10).min(40) // Between 10 and 40 chars
+        } else {
+            15 // Fallback minimum bar width
+        };
+
+        // Create list items with dynamic formatting
         let items: Vec<ListItem> = ext_vec
             .iter()
             .skip(scroll_start)
@@ -145,8 +189,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
                     0.0
                 };
 
-                // Create visual bar
-                let bar_width: usize = 25;
+                // Create visual bar with calculated width
                 let filled_chars = ((percentage / 100.0) * bar_width as f64) as usize;
                 let bar = format!(
                     "{}{}",
@@ -167,13 +210,19 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
                     _ => Color::White,
                 };
 
+                // Format with dynamic column widths
+                let formatted_tokens =
+                    Self::format_number(*tokens, &self.model.session.config.token_format);
                 let content = format!(
-                    "{:<12} │{}│ {:>6} ({:>4.1}%) | {} files",
+                    "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {:>width_count$} files",
                     extension,
                     bar,
-                    Self::format_number(*tokens, &self.model.session.config.token_format),
+                    formatted_tokens,
                     percentage,
-                    count
+                    count,
+                    width_ext = max_ext_width,
+                    width_tokens = max_tokens_width,
+                    width_count = max_count_width
                 );
 
                 ListItem::new(content).style(Style::default().fg(color))
@@ -193,7 +242,32 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
             title.to_string()
         };
 
-        let extensions_widget = List::new(items)
+        // Add header row for better column alignment
+        let header = format!(
+            "{:<width_ext$} │{:^width_bar$}│ {:>width_tokens$} {:>7} | {:>width_count$} Files",
+            "Extension",
+            "Usage",
+            "Tokens",
+            "Percent",
+            "Count",
+            width_ext = max_ext_width,
+            width_bar = bar_width,
+            width_tokens = max_tokens_width,
+            width_count = max_count_width
+        );
+
+        let mut all_items = vec![
+            ListItem::new(header).style(
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            ListItem::new("─".repeat(available_width.min(120)))
+                .style(Style::default().fg(Color::DarkGray)),
+        ];
+        all_items.extend(items);
+
+        let extensions_widget = List::new(all_items)
             .block(Block::default().borders(Borders::ALL).title(scroll_title))
             .style(Style::default().fg(Color::White));
 
