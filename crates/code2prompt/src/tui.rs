@@ -269,14 +269,7 @@ impl TuiApp {
 
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         match key.code {
-            KeyCode::Enter => {
-                // If no analysis has been run, switch to Selection tab
-                if self.model.generated_prompt.is_none() && !self.model.analysis_in_progress {
-                    Some(Message::SwitchTab(Tab::FileTree))
-                } else {
-                    Some(Message::RunAnalysis)
-                }
-            }
+            KeyCode::Enter => Some(Message::RunAnalysis),
             KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
             KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
             KeyCode::Up => Some(Message::ScrollStatistics(-1)),
