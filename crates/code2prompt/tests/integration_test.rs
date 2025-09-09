@@ -196,7 +196,6 @@ mod tests {
         assert!(contains("CONTENT FOO.py").not().eval(&output));
     }
 
-
     #[test]
     fn test_include_exclude_with_exclude_priority() {
         let env = TestEnv::new();
@@ -269,6 +268,10 @@ mod tests {
             .success();
 
         let output = env.read_output();
+
+        println!("=== DEBUG OUTPUT ===");
+        println!("{}", output);
+        println!("=== END DEBUG OUTPUT ===");
 
         assert!(contains("foo.py").eval(&output));
         assert!(contains("content foo.py").eval(&output));

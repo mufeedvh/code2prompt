@@ -6,7 +6,7 @@ use crate::template::OutputFormat;
 use crate::tokenizer::TokenizerType;
 use crate::{sort::FileSortMethod, tokenizer::TokenFormat};
 use derive_builder::Builder;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 /// A stateless configuration object describing all the preferences and filters
@@ -101,10 +101,52 @@ pub struct Code2PromptConfig {
     /// If true, token counting will be performed for each file (for token map display)
     #[builder(default)]
     pub token_map_enabled: bool,
+
+    /// Explicit files/folders to include (overrides patterns; propagates to descendants).
+    #[builder(default)]
+    pub explicit_includes: HashSet<PathBuf>,
+
+    /// Explicit files/folders to exclude (highest priority; skips subtrees for dirs).
+    #[builder(default)]
+    pub explicit_excludes: HashSet<PathBuf>,
 }
 
 impl Code2PromptConfig {
     pub fn builder() -> Code2PromptConfigBuilder {
         Code2PromptConfigBuilder::default()
+    }
+}
+
+impl Code2PromptConfigBuilder {
+    /// Add a relative path to explicit includes.
+    pub fn explicit_include(mut self, path: impl Into<PathBuf>) -> Self {
+        self.explicit_includes
+            .get_or_insert_with(HashSet::new)
+            .insert(path.into());
+        self
+    }
+
+    /// Add a relative path to explicit excludes.
+    pub fn explicit_exclude(mut self, path: impl Into<PathBuf>) -> Self {
+        self.explicit_excludes
+            .get_or_insert_with(HashSet::new)
+            .insert(path.into());
+        self
+    }
+
+    /// Batch-add multiple explicit includes.
+    pub fn add_explicit_includes(mut self, paths: impl IntoIterator<Item = PathBuf>) -> Self {
+        self.explicit_includes
+            .get_or_insert_with(HashSet::new)
+            .extend(paths);
+        self
+    }
+
+    /// Batch-add multiple explicit excludes.
+    pub fn add_explicit_excludes(mut self, paths: impl IntoIterator<Item = PathBuf>) -> Self {
+        self.explicit_excludes
+            .get_or_insert_with(HashSet::new)
+            .extend(paths);
+        self
     }
 }

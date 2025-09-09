@@ -3,7 +3,7 @@ name = "code2prompt_core"
 version = "3.4.0"
 authors = [
     "Mufeed VH <mufeed@lyminal.space>",
-    "Olivier D'Ancona <olivier.dancona@master.hes-so.ch>",
+    "Olivier D'Ancona <olivier_dancona@hotmail.com>",
 ]
 description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
 keywords = ["code", "ingestion", "prompt", "llm", "agent"]

@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 use crate::configuration::Code2PromptConfig;
+use crate::filter::{build_globset, should_visit_or_include};
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
 use crate::template::{handlebars_setup, render_template, OutputFormat};
@@ -51,35 +52,63 @@ impl Code2PromptSession {
         }
     }
 
-    #[allow(clippy::unused_self)]
-    // Add specific file to include patterns
+    /// Query if a path is currently included (for toggle/UI)
+    pub fn is_file_included(&self, path: &PathBuf) -> bool {
+        let rel_path = path.strip_prefix(&self.config.path).unwrap_or(path);
+        let include_gs = build_globset(&self.config.include_patterns);
+        let exclude_gs = build_globset(&self.config.exclude_patterns);
+        should_visit_or_include(rel_path, &self.config, &include_gs, &exclude_gs)
+    }
+
+    /// Add to explicit_includes (prioritized)
     pub fn include_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
+        let rel_path = path
+            .strip_prefix(&self.config.path)
+            .unwrap_or(&path)
+            .to_path_buf();
+        // Remove from excludes if present (flip)
+        self.config.explicit_excludes.remove(&rel_path);
+        self.config.explicit_includes.insert(rel_path);
+        self
+    }
+
+    /// Add to explicit_excludes
+    pub fn exclude_file(&mut self, path: PathBuf) -> &mut Self {
+        let rel_path = path
+            .strip_prefix(&self.config.path)
+            .unwrap_or(&path)
+            .to_path_buf();
+        // Remove from includes if present (flip)
+        self.config.explicit_includes.remove(&rel_path);
+        self.config.explicit_excludes.insert(rel_path);
+        self
+    }
+
+    /// Toggle via query + flip
+    pub fn toggle_file(&mut self, path: PathBuf) -> &mut Self {
+        if self.is_file_included(&path) {
+            self.exclude_file(path); // Was included → explicitly exclude
+        } else {
+            self.include_file(path); // Was excluded → explicitly include
+        }
+        self
+    }
+
+    /// Clear all explicit overrides (fallback to patterns)
+    pub fn clear_explicit_overrides(&mut self) -> &mut Self {
+        self.config.explicit_includes.clear();
+        self.config.explicit_excludes.clear();
+        self
+    }
+
+    /// Add pattern (unchanged, but now layered under explicit)
+    pub fn add_include_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.include_patterns.push(pattern);
         self
     }
 
-    #[allow(clippy::unused_self)]
-    // Add specific file to exclude patterns
-    pub fn exclude_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
+    pub fn add_exclude_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.exclude_patterns.push(pattern);
-        self
-    }
-
-    #[allow(clippy::unused_self)]
-    // Toggle inclusion of a specific file
-    pub fn toggle_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
-
-        if self.config.include_patterns.contains(&pattern) {
-            self.config.include_patterns.retain(|p| p != &pattern);
-        } else {
-            self.config.include_patterns.push(pattern);
-        }
         self
     }
 

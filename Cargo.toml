@@ -14,20 +14,20 @@ codegen-units = 1
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-colored = "2.1.0"
+colored = "3.0.0"
 indicatif = "0.18.0"
 log = "0.4"
 num-format = { version = "0.4.4", features = ["with-system-locale"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.114"
-handlebars = "4.3"
+handlebars = "6.3.2"
 jwalk = "0.8"
 termtree = "0.5"
-tiktoken-rs = "0.6.0"
+tiktoken-rs = "0.7.0"
 ignore = "0.4.22"
 inquire = "0.7.1"
 regex = "1.10.3"
-git2 = { version = "0.18.2", default-features = false, features = [
+git2 = { version = "0.20.2", default-features = false, features = [
     "https",
     "vendored-libgit2",
     "vendored-openssl",
@@ -40,6 +40,14 @@ env_logger = { version = "0.11.3" }
 arboard = { version = "3.6.0" }
 derive_builder = { version = "0.20.2" }
 winapi = { version = "0.3.9", features = ["errhandlingapi"] }
-unicode-width = "0.2"
-terminal_size = "0.3"
+terminal_size = "0.4.3"
 bracoxide = "0.1.6"
+crossterm = "0.29.0"
+lscolors = { version = "0.20.0", features = ["ansi_term"] }
+ansi_term = "0.12.1"
+ratatui = "0.29.0"
+unicode-width = "0.2.0"
+tokio = { version = "1.40.0", features = ["full"] }
+tui-tree-widget = "0.23.0"
+atty = "0.2.14"
+walkdir = "2.4.0"

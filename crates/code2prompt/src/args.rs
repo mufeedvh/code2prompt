@@ -31,11 +31,11 @@ pub struct Cli {
     pub tui: bool,
 
     /// Patterns to include
-    #[clap(short = 'i', long = "include", value_delimiter = ',')]
+    #[clap(short = 'i', long = "include")]
     pub include: Vec<String>,
 
     /// Patterns to exclude
-    #[clap(short = 'e', long = "exclude", value_delimiter = ',')]
+    #[clap(short = 'e', long = "exclude")]
     pub exclude: Vec<String>,
 
     /// Optional output file path

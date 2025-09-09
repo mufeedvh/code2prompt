@@ -7,7 +7,7 @@ license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "3.2.0" }
+code2prompt_core = { path = "../code2prompt-core", version = "3.4.0" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
@@ -19,17 +19,20 @@ num-format = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 inquire = { workspace = true }
-unicode-width = { workspace = true }
 terminal_size = { workspace = true }
-lscolors = { version = "0.20.0", features = ["ansi_term"] }
-ansi_term = "0.12.1"
-ratatui = "0.29.0"
-crossterm = "0.28.1"
-tokio = { version = "1.40.0", features = ["full"] }
-tui-tree-widget = "0.23.0"
-atty = "0.2.14"
-walkdir = "2.4.0"
-bracoxide = "0.1.6"
+lscolors = { workspace = true }
+ansi_term = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tokio = { workspace = true }
+tui-tree-widget = { workspace = true }
+atty = { workspace = true }
+walkdir = { workspace = true }
+unicode-width = { workspace = true }
+bracoxide = { workspace = true }
+git2 = { workspace = true }
+
+
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }
 
@@ -38,7 +41,6 @@ name = "code2prompt"
 path = "src/main.rs"
 
 [dev-dependencies]
-git2 = { workspace = true }
 tempfile = "3.20"
 assert_cmd = "2.0"
 predicates = "3.1"

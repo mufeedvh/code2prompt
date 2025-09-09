@@ -351,15 +351,49 @@ pub fn handle_undefined_variables(
     Ok(())
 }
 
+/// Expands comma-separated patterns while preserving brace expansion patterns
+///
+/// # Arguments
+///
+/// * `patterns` - A vector of pattern strings that may contain comma-separated values
+///
+/// # Returns
+///
+/// * `Vec<String>` - A vector of individual patterns
+fn expand_comma_separated_patterns(patterns: &[String]) -> Vec<String> {
+    let mut expanded = Vec::new();
+
+    for pattern in patterns {
+        // If the pattern contains braces, don't split on commas (preserve brace expansion)
+        if pattern.contains('{') && pattern.contains('}') {
+            expanded.push(pattern.clone());
+        } else {
+            // Split on commas for regular patterns
+            for part in pattern.split(',') {
+                let trimmed = part.trim();
+                if !trimmed.is_empty() {
+                    expanded.push(trimmed.to_string());
+                }
+            }
+        }
+    }
+
+    expanded
+}
+
 /// Create a Code2PromptSession from command line arguments
 fn create_session_from_args(args: &Cli) -> Result<Code2PromptSession> {
     let mut configuration = Code2PromptConfig::builder();
 
     configuration.path(args.path.clone());
 
+    // Handle comma-separated patterns, but preserve brace expansion patterns
+    let include_patterns = expand_comma_separated_patterns(&args.include);
+    let exclude_patterns = expand_comma_separated_patterns(&args.exclude);
+
     configuration
-        .include_patterns(args.include.clone())
-        .exclude_patterns(args.exclude.clone());
+        .include_patterns(include_patterns)
+        .exclude_patterns(exclude_patterns);
 
     let output_format = args.output_format.clone();
     configuration
