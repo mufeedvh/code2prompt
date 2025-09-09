@@ -6,6 +6,9 @@ description = "Command-line interface for code2prompt"
 license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
 
+[features]
+wayland = ["arboard/wayland-data-control"]
+
 [dependencies]
 code2prompt_core = { path = "../code2prompt-core", version = "3.2.0" }
 clap = { workspace = true }
