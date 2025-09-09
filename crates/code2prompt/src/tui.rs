@@ -213,71 +213,12 @@ impl TuiApp {
     }
 
     fn handle_file_tree_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
-        // Handle search mode input
-        if self.input_mode == InputMode::Search {
-            match key.code {
-                KeyCode::Esc => {
-                    // Exit search mode
-                    return Some(Message::ExitSearchMode);
-                }
-                KeyCode::Char(c) => {
-                    let mut query = self.model.search_query.clone();
-                    query.push(c);
-                    return Some(Message::UpdateSearchQuery(query));
-                }
-                KeyCode::Backspace => {
-                    let mut query = self.model.search_query.clone();
-                    query.pop();
-                    return Some(Message::UpdateSearchQuery(query));
-                }
-                KeyCode::Enter => {
-                    // Exit search mode and run analysis
-                    return Some(Message::ExitSearchMode);
-                }
-                _ => return None,
-            }
-        }
-
-        // Handle normal mode input
-        match key.code {
-            KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
-            KeyCode::Down => Some(Message::MoveTreeCursor(1)),
-            KeyCode::Char(' ') => Some(Message::ToggleFileSelection(self.model.tree_cursor)),
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Right => {
-                let visible_nodes = self.model.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(self.model.tree_cursor) {
-                    if node.is_directory && !node.is_expanded {
-                        Some(Message::ExpandDirectory(self.model.tree_cursor))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            KeyCode::Left => {
-                let visible_nodes = self.model.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(self.model.tree_cursor) {
-                    if node.is_directory && node.is_expanded {
-                        Some(Message::CollapseDirectory(self.model.tree_cursor))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            KeyCode::Char('s') | KeyCode::Char('S') => {
-                // Enter search mode
-                Some(Message::EnterSearchMode)
-            }
-            KeyCode::PageUp => Some(Message::ScrollFileTree(-5)),
-            KeyCode::PageDown => Some(Message::ScrollFileTree(5)),
-            KeyCode::Home => Some(Message::ScrollFileTree(-9999)), // Scroll to top
-            KeyCode::End => Some(Message::ScrollFileTree(9999)),   // Scroll to bottom
-            _ => None,
-        }
+        // Delegate to FileSelectionWidget
+        FileSelectionWidget::handle_key_event(
+            key,
+            &self.model,
+            self.input_mode == InputMode::Search,
+        )
     }
 
     fn handle_settings_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
@@ -398,8 +339,12 @@ impl TuiApp {
                     };
                     self.model.tree_cursor = new_cursor;
 
-                    // Auto-adjust scroll to keep cursor visible
-                    self.adjust_file_tree_scroll_for_cursor();
+                    // Auto-adjust scroll to keep cursor visible using widget method
+                    FileSelectionWidget::adjust_file_tree_scroll_for_cursor(
+                        self.model.tree_cursor,
+                        &mut self.model.file_tree_scroll,
+                        visible_count,
+                    );
                 }
             }
             Message::MoveSettingsCursor(delta) => {
@@ -432,11 +377,19 @@ impl TuiApp {
 
                     // Session methods handle config updates automatically
 
-                    // Update the node in the tree
+                    // Update the node in the tree using widget methods
                     if is_directory {
-                        self.toggle_directory_selection(&path, !current);
+                        FileSelectionWidget::toggle_directory_selection(
+                            &mut self.model.file_tree,
+                            &path,
+                            !current,
+                        );
                     } else {
-                        self.update_node_selection(&path, !current);
+                        FileSelectionWidget::update_node_selection(
+                            &mut self.model.file_tree,
+                            &path,
+                            !current,
+                        );
                     }
 
                     let action = if current { "Deselected" } else { "Selected" };
@@ -450,7 +403,7 @@ impl TuiApp {
                     if node.is_directory {
                         let path = node.path.to_string_lossy().to_string();
                         let name = node.name.clone();
-                        self.expand_directory(&path);
+                        FileSelectionWidget::expand_directory(&mut self.model.file_tree, &path);
                         self.model.status_message = format!("Expanded {}", name);
                     }
                 }
@@ -461,7 +414,7 @@ impl TuiApp {
                     if node.is_directory {
                         let path = node.path.to_string_lossy().to_string();
                         let name = node.name.clone();
-                        self.collapse_directory(&path);
+                        FileSelectionWidget::collapse_directory(&mut self.model.file_tree, &path);
                         self.model.status_message = format!("Collapsed {}", name);
                     }
                 }
@@ -652,146 +605,6 @@ impl TuiApp {
         }
 
         Ok(())
-    }
-
-    // Helper methods for tree manipulation
-
-    fn toggle_directory_selection(&mut self, path: &str, selected: bool) {
-        // Update the directory itself in the tree
-        Self::update_node_selection_recursive(&mut self.model.file_tree, path, selected);
-
-        // Recursively update all children
-        Self::toggle_directory_children_selection(&mut self.model.file_tree, path, selected);
-    }
-
-    fn toggle_directory_children_selection(
-        nodes: &mut [crate::model::FileNode],
-        dir_path: &str,
-        selected: bool,
-    ) {
-        for node in nodes.iter_mut() {
-            if node.path.to_string_lossy() == dir_path && node.is_directory {
-                // Found the directory, now update all its children recursively
-                Self::select_all_children(&mut node.children, selected);
-                return;
-            }
-            Self::toggle_directory_children_selection(&mut node.children, dir_path, selected);
-        }
-    }
-
-    fn select_all_children(nodes: &mut [crate::model::FileNode], selected: bool) {
-        for node in nodes.iter_mut() {
-            node.is_selected = selected;
-            // Recursively select children if this is a directory
-            if node.is_directory {
-                Self::select_all_children(&mut node.children, selected);
-            }
-        }
-    }
-
-    fn update_node_selection(&mut self, path: &str, selected: bool) {
-        Self::update_node_selection_recursive(&mut self.model.file_tree, path, selected);
-    }
-
-    fn update_node_selection_recursive(
-        nodes: &mut [crate::model::FileNode],
-        path: &str,
-        selected: bool,
-    ) -> bool {
-        for node in nodes.iter_mut() {
-            if node.path.to_string_lossy() == path {
-                node.is_selected = selected;
-                return true;
-            }
-            if Self::update_node_selection_recursive(&mut node.children, path, selected) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn expand_directory(&mut self, path: &str) {
-        let mut tree = self.model.file_tree.clone();
-        self.expand_directory_recursive(&mut tree, path);
-        self.model.file_tree = tree;
-    }
-
-    fn expand_directory_recursive(&self, nodes: &mut [crate::model::FileNode], path: &str) {
-        for node in nodes.iter_mut() {
-            if node.path.to_string_lossy() == path && node.is_directory {
-                node.is_expanded = true;
-                // Load children if not already loaded - simplified approach
-                if node.children.is_empty() {
-                    if let Ok(entries) = std::fs::read_dir(&node.path) {
-                        for entry in entries.flatten() {
-                            let child_path = entry.path();
-                            let mut child_node =
-                                crate::model::FileNode::new(child_path, node.level + 1);
-                            child_node.is_selected = false; // New directories are not selected by default
-                            node.children.push(child_node);
-                        }
-                        // Sort children
-                        node.children
-                            .sort_by(|a, b| match (a.is_directory, b.is_directory) {
-                                (true, false) => std::cmp::Ordering::Less,
-                                (false, true) => std::cmp::Ordering::Greater,
-                                _ => a.name.cmp(&b.name),
-                            });
-                    }
-                }
-                return;
-            }
-            self.expand_directory_recursive(&mut node.children, path);
-        }
-    }
-
-    fn collapse_directory(&mut self, path: &str) {
-        let mut tree = self.model.file_tree.clone();
-        self.collapse_directory_recursive(&mut tree, path);
-        self.model.file_tree = tree;
-    }
-
-    fn collapse_directory_recursive(
-        &self,
-        nodes: &mut [crate::model::FileNode],
-        target_path: &str,
-    ) {
-        for node in nodes.iter_mut() {
-            if node.path.to_string_lossy() == target_path && node.is_directory {
-                node.is_expanded = false;
-                return;
-            }
-            self.collapse_directory_recursive(&mut node.children, target_path);
-        }
-    }
-
-    /// Adjust file tree scroll to keep the cursor visible in the viewport
-    fn adjust_file_tree_scroll_for_cursor(&mut self) {
-        let visible_count = self.model.get_visible_nodes().len();
-        if visible_count == 0 {
-            return;
-        }
-
-        // Estimate viewport height (this will be more accurate in practice)
-        let viewport_height = 20; // This should match the actual content height in render
-
-        let cursor_pos = self.model.tree_cursor;
-        let scroll_pos = self.model.file_tree_scroll as usize;
-
-        // If cursor is above viewport, scroll up
-        if cursor_pos < scroll_pos {
-            self.model.file_tree_scroll = cursor_pos as u16;
-        }
-        // If cursor is below viewport, scroll down
-        else if cursor_pos >= scroll_pos + viewport_height {
-            self.model.file_tree_scroll = (cursor_pos.saturating_sub(viewport_height - 1)) as u16;
-        }
-
-        // Ensure scroll doesn't go beyond bounds
-        let max_scroll = visible_count.saturating_sub(viewport_height);
-        if self.model.file_tree_scroll as usize > max_scroll {
-            self.model.file_tree_scroll = max_scroll as u16;
-        }
     }
 
     fn render_tab_bar_static(model: &Model, frame: &mut Frame, area: Rect) {
