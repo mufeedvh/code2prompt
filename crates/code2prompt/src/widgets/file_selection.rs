@@ -1,7 +1,7 @@
 //! File selection widget for directory tree navigation and file selection.
 
-use crate::model::{FileNode, Message, Model};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crate::model::{Message, Model};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph},

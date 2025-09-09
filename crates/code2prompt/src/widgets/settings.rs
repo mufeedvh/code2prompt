@@ -1,6 +1,6 @@
 //! Settings widget for configuration management.
 
-use crate::model::{Message, Model, SettingAction};
+use crate::model::{Message, Model};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     prelude::*,
