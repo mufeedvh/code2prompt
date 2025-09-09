@@ -31,6 +31,7 @@ walkdir = { workspace = true }
 unicode-width = { workspace = true }
 bracoxide = { workspace = true }
 git2 = { workspace = true }
+chrono = { workspace = true }
 
 
 [target.'cfg(windows)'.dependencies]

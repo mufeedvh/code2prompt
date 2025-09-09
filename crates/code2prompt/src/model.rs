@@ -45,13 +45,14 @@ pub struct Model {
     pub status_message: String,
 }
 
-/// The four main tabs of the TUI
+/// The five main tabs of the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     FileTree,     // Tab 1: File selection with search
     Settings,     // Tab 2: Configuration options
     Statistics,   // Tab 3: Analysis statistics and metrics
-    PromptOutput, // Tab 4: Generated prompt and copy
+    Template,     // Tab 4: Template editor
+    PromptOutput, // Tab 5: Generated prompt and copy
 }
 
 /// Different views available in the Statistics tab

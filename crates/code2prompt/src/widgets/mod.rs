@@ -9,6 +9,7 @@ pub mod settings;
 pub mod statistics_by_extension;
 pub mod statistics_overview;
 pub mod statistics_token_map;
+pub mod template;
 
 pub use file_selection::{FileSelectionState, FileSelectionWidget};
 pub use output::{OutputState, OutputWidget};
@@ -16,3 +17,4 @@ pub use settings::{SettingsState, SettingsWidget};
 pub use statistics_by_extension::{ExtensionState, StatisticsByExtensionWidget};
 pub use statistics_overview::StatisticsOverviewWidget;
 pub use statistics_token_map::{StatisticsTokenMapWidget, TokenMapState};
+pub use template::{TemplateState, TemplateWidget};

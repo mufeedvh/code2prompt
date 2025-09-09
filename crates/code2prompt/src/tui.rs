@@ -153,6 +153,11 @@ impl TuiApp {
                     frame.render_stateful_widget(widget, main_layout[1], &mut state);
                 }
             },
+            Tab::Template => {
+                let widget = TemplateWidget::new(model);
+                let mut state = TemplateState::from_model(model);
+                frame.render_stateful_widget(widget, main_layout[1], &mut state);
+            }
             Tab::PromptOutput => {
                 let widget = OutputWidget::new(model);
                 let mut state = OutputState::from_model(model);
@@ -179,24 +184,27 @@ impl TuiApp {
             KeyCode::Char('1') => return Some(Message::SwitchTab(Tab::FileTree)),
             KeyCode::Char('2') => return Some(Message::SwitchTab(Tab::Settings)),
             KeyCode::Char('3') => return Some(Message::SwitchTab(Tab::Statistics)),
-            KeyCode::Char('4') => return Some(Message::SwitchTab(Tab::PromptOutput)),
+            KeyCode::Char('4') => return Some(Message::SwitchTab(Tab::Template)),
+            KeyCode::Char('5') => return Some(Message::SwitchTab(Tab::PromptOutput)),
             KeyCode::Tab if !key.modifiers.contains(KeyModifiers::SHIFT) => {
-                // Cycle through tabs: Selection -> Settings -> Statistics -> Output -> Selection
+                // Cycle through tabs: Selection -> Settings -> Statistics -> Template -> Output -> Selection
                 let next_tab = match self.model.current_tab {
                     Tab::FileTree => Tab::Settings,
                     Tab::Settings => Tab::Statistics,
-                    Tab::Statistics => Tab::PromptOutput,
+                    Tab::Statistics => Tab::Template,
+                    Tab::Template => Tab::PromptOutput,
                     Tab::PromptOutput => Tab::FileTree,
                 };
                 return Some(Message::SwitchTab(next_tab));
             }
             KeyCode::BackTab | KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
-                // Cycle through tabs in reverse: Selection <- Settings <- Statistics <- Output <- Selection
+                // Cycle through tabs in reverse: Selection <- Settings <- Statistics <- Template <- Output <- Selection
                 let prev_tab = match self.model.current_tab {
                     Tab::FileTree => Tab::PromptOutput,
                     Tab::Settings => Tab::FileTree,
                     Tab::Statistics => Tab::Settings,
-                    Tab::PromptOutput => Tab::Statistics,
+                    Tab::Template => Tab::Statistics,
+                    Tab::PromptOutput => Tab::Template,
                 };
                 return Some(Message::SwitchTab(prev_tab));
             }
@@ -208,6 +216,7 @@ impl TuiApp {
             Tab::FileTree => self.handle_file_tree_keys(key),
             Tab::Settings => self.handle_settings_keys(key),
             Tab::Statistics => self.handle_statistics_keys(key),
+            Tab::Template => self.handle_template_keys(key),
             Tab::PromptOutput => self.handle_prompt_output_keys(key),
         }
     }
@@ -239,6 +248,12 @@ impl TuiApp {
                 StatisticsByExtensionWidget::handle_key_event(key)
             }
         }
+    }
+
+    fn handle_template_keys(&self, _key: crossterm::event::KeyEvent) -> Option<Message> {
+        // Template key handling is done directly in the widget's render method
+        // since it needs mutable access to the template state
+        None
     }
 
     fn handle_prompt_output_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
@@ -554,12 +569,19 @@ impl TuiApp {
     }
 
     fn render_tab_bar_static(model: &Model, frame: &mut Frame, area: Rect) {
-        let tabs = vec!["1. Selection", "2. Settings", "3. Statistics", "4. Output"];
+        let tabs = vec![
+            "1. Selection",
+            "2. Settings",
+            "3. Statistics",
+            "4. Template",
+            "5. Output",
+        ];
         let selected = match model.current_tab {
             Tab::FileTree => 0,
             Tab::Settings => 1,
             Tab::Statistics => 2,
-            Tab::PromptOutput => 3,
+            Tab::Template => 3,
+            Tab::PromptOutput => 4,
         };
 
         let tabs_widget = Tabs::new(tabs)
