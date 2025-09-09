@@ -340,34 +340,27 @@ impl Model {
             },
             SettingsGroup {
                 name: "Tokenizer & Encoding".to_string(),
-                items: vec![
-                    SettingsItem {
-                        name: "Tokenizer Type".to_string(),
-                        description: "Encoding method for token counting".to_string(),
-                        setting_type: SettingType::Choice {
-                            options: vec![
-                                "cl100k (ChatGPT)".to_string(),
-                                "o200k (GPT-4o)".to_string(),
-                                "p50k (Code models)".to_string(),
-                                "p50k_edit (Edit models)".to_string(),
-                                "r50k (GPT-3)".to_string(),
-                            ],
-                            selected: match self.session.config.encoding {
-                                code2prompt_core::tokenizer::TokenizerType::Cl100kBase => 0,
-                                code2prompt_core::tokenizer::TokenizerType::O200kBase => 1,
-                                code2prompt_core::tokenizer::TokenizerType::P50kBase => 2,
-                                code2prompt_core::tokenizer::TokenizerType::P50kEdit => 3,
-                                code2prompt_core::tokenizer::TokenizerType::R50kBase
-                                | code2prompt_core::tokenizer::TokenizerType::Gpt2 => 4,
-                            },
+                items: vec![SettingsItem {
+                    name: "Tokenizer Type".to_string(),
+                    description: "Encoding method for token counting".to_string(),
+                    setting_type: SettingType::Choice {
+                        options: vec![
+                            "cl100k (ChatGPT)".to_string(),
+                            "o200k (GPT-4o)".to_string(),
+                            "p50k (Code models)".to_string(),
+                            "p50k_edit (Edit models)".to_string(),
+                            "r50k (GPT-3)".to_string(),
+                        ],
+                        selected: match self.session.config.encoding {
+                            code2prompt_core::tokenizer::TokenizerType::Cl100kBase => 0,
+                            code2prompt_core::tokenizer::TokenizerType::O200kBase => 1,
+                            code2prompt_core::tokenizer::TokenizerType::P50kBase => 2,
+                            code2prompt_core::tokenizer::TokenizerType::P50kEdit => 3,
+                            code2prompt_core::tokenizer::TokenizerType::R50kBase
+                            | code2prompt_core::tokenizer::TokenizerType::Gpt2 => 4,
                         },
                     },
-                    SettingsItem {
-                        name: "Token Map".to_string(),
-                        description: "Enable detailed token counting per file".to_string(),
-                        setting_type: SettingType::Boolean(self.session.config.token_map_enabled),
-                    },
-                ],
+                }],
             },
             SettingsGroup {
                 name: "Git Integration".to_string(),
@@ -492,11 +485,6 @@ impl Model {
                         | code2prompt_core::tokenizer::TokenizerType::Gpt2 => 4,
                     },
                 },
-            },
-            SettingsItem {
-                name: "Token Map".to_string(),
-                description: "Enable detailed token counting per file".to_string(),
-                setting_type: SettingType::Boolean(self.session.config.token_map_enabled),
             },
             // Git Integration section
             SettingsItem {

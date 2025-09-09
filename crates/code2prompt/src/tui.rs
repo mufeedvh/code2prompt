@@ -1259,7 +1259,7 @@ impl TuiApp {
     fn render_token_map_view(model: &Model, frame: &mut Frame, area: Rect, title: &str) {
         if model.token_map_entries.is_empty() {
             let placeholder_text = if model.generated_prompt.is_some() {
-                "🗂️  Token Map View\n\nNo token map data available.\nMake sure token_map is enabled in configuration.\n\nPress Enter to re-run analysis."
+                "🗂️  Token Map View\n\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
                 "🗂️  Token Map View\n\nRun analysis first to see token distribution.\n\nPress Enter to analyze selected files."
             };
@@ -1395,7 +1395,7 @@ impl TuiApp {
     fn render_extensions_view(model: &Model, frame: &mut Frame, area: Rect, title: &str) {
         if model.token_map_entries.is_empty() {
             let placeholder_text = if model.generated_prompt.is_some() {
-                "📁 Extensions View\n\nNo token map data available.\nMake sure token_map is enabled in configuration.\n\nPress Enter to re-run analysis."
+                "📁 Extensions View\n\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
                 "📁 Extensions View\n\nRun analysis first to see token breakdown by file extension.\n\nPress Enter to analyze selected files."
             };
