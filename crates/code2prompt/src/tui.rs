@@ -1387,7 +1387,35 @@ impl TuiApp {
         let scroll_start = model.statistics_scroll as usize;
         let scroll_end = (scroll_start + content_height).min(ext_vec.len());
 
-        // Create list items
+        // Adaptive layout calculation (similar to token_map.rs)
+        let terminal_width = area.width as usize;
+
+        // Calculate max token width for alignment
+        let max_token_width = ext_vec
+            .iter()
+            .map(|(_, tokens, _)| {
+                Self::format_number(*tokens, &model.session.config.token_format).len()
+            })
+            .max()
+            .unwrap_or(3)
+            .max(Self::format_number(total_tokens, &model.session.config.token_format).len())
+            .max(4);
+
+        // Calculate max extension name width
+        let max_ext_width = ext_vec
+            .iter()
+            .map(|(ext, _, _)| ext.len())
+            .max()
+            .unwrap_or(12)
+            .min(20); // Cap at reasonable width
+
+        // Calculate bar width based on available space
+        // Format: "extension │bar│ tokens (percentage%) | count files"
+        let bar_width = terminal_width
+            .saturating_sub(max_ext_width + 3 + max_token_width + 12 + 15) // 3 for " │", 12 for " (100.0%) | ", 15 for "999 files"
+            .max(15); // Minimum bar width
+
+        // Create list items with adaptive layout
         let items: Vec<ListItem> = ext_vec
             .iter()
             .skip(scroll_start)
@@ -1399,8 +1427,7 @@ impl TuiApp {
                     0.0
                 };
 
-                // Create visual bar
-                let bar_width: usize = 25;
+                // Create visual bar with adaptive width
                 let filled_chars = ((percentage / 100.0) * bar_width as f64) as usize;
                 let bar = format!(
                     "{}{}",
@@ -1421,13 +1448,16 @@ impl TuiApp {
                     _ => Color::White,
                 };
 
+                // Format with adaptive widths
                 let content = format!(
-                    "{:<12} │{}│ {:>6} ({:>4.1}%) | {} files",
+                    "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {} files",
                     extension,
                     bar,
                     Self::format_number(*tokens, &model.session.config.token_format),
                     percentage,
-                    count
+                    count,
+                    width_ext = max_ext_width,
+                    width_tokens = max_token_width
                 );
 
                 ListItem::new(content).style(Style::default().fg(color))
