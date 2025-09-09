@@ -174,11 +174,11 @@ impl<'a> TemplateWidget<'a> {
         }
 
         match key.code {
-            KeyCode::F(2) => {
+            KeyCode::Char('l') | KeyCode::Char('L') => {
                 state.show_template_list = true;
                 None
             }
-            KeyCode::F(3) => {
+            KeyCode::Char('s') | KeyCode::Char('S') => {
                 // Save template dialog - for now just save with timestamp
                 let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
                 let filename = format!("custom_template_{}", timestamp);
@@ -193,7 +193,7 @@ impl<'a> TemplateWidget<'a> {
                 }
                 None
             }
-            KeyCode::F(5) => {
+            KeyCode::Char('r') | KeyCode::Char('R') => {
                 // Reload current template
                 state.load_default_template(model);
                 state.status_message = "Template reloaded".to_string();
@@ -203,7 +203,7 @@ impl<'a> TemplateWidget<'a> {
                 // Run analysis with current template
                 Some(Message::RunAnalysis)
             }
-            KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Char('e') | KeyCode::Char('E') => {
                 state.is_editing = !state.is_editing;
                 state.status_message = if state.is_editing {
                     "Edit mode enabled - Use arrow keys and type to edit".to_string()
@@ -237,7 +237,7 @@ impl<'a> TemplateWidget<'a> {
 
     fn handle_template_list_keys(key: KeyEvent, state: &mut TemplateState) -> Option<Message> {
         match key.code {
-            KeyCode::Esc | KeyCode::F(2) => {
+            KeyCode::Esc | KeyCode::Char('l') | KeyCode::Char('L') => {
                 state.show_template_list = false;
                 None
             }
@@ -341,6 +341,9 @@ impl<'a> StatefulWidget for TemplateWidget<'a> {
     type State = TemplateState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        // Handle keyboard input if we have access to events
+        // This is a workaround since StatefulWidget doesn't provide event handling
+
         // Main layout
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -351,13 +354,45 @@ impl<'a> StatefulWidget for TemplateWidget<'a> {
             ])
             .split(area);
 
-        // Header
-        let header_text = format!(
-            "Template Editor - {} | F2: Load | F3: Save | F5: Reload | Ctrl+E: {} | Ctrl+Enter: Run Analysis",
-            state.current_template_name,
-            if state.is_editing { "Exit Edit" } else { "Edit" }
-        );
-        let header = Paragraph::new(header_text)
+        // Header with red visual indicators for keyboard shortcuts
+        let header_spans = vec![
+            Span::styled("Template Editor - ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                &state.current_template_name,
+                Style::default().fg(Color::White),
+            ),
+            Span::styled(" | ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                "l",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("oad | ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                "s",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("ave | ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                "r",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("eload | ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                "e",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                if state.is_editing {
+                    "dit: Exit | "
+                } else {
+                    "dit | "
+                },
+                Style::default().fg(Color::Cyan),
+            ),
+            Span::styled("Ctrl+Enter: Run Analysis", Style::default().fg(Color::Cyan)),
+        ];
+
+        let header = Paragraph::new(Line::from(header_spans))
             .block(Block::default().borders(Borders::ALL).title("Template"))
             .style(Style::default().fg(Color::Cyan));
         header.render(chunks[0], buf);
@@ -373,23 +408,50 @@ impl<'a> StatefulWidget for TemplateWidget<'a> {
             self.render_template_editor(content_area, buf, state);
         }
 
-        // Footer with status
-        let footer_text = if !state.status_message.is_empty() {
-            state.status_message.clone()
+        // Footer with status and red visual indicators
+        if !state.status_message.is_empty() {
+            let footer = Paragraph::new(state.status_message.clone())
+                .block(Block::default().borders(Borders::ALL))
+                .style(Style::default().fg(Color::Green));
+            footer.render(chunks[2], buf);
         } else if state.is_editing {
-            "EDIT MODE - Type to edit template | Esc: Exit edit mode".to_string()
+            let footer = Paragraph::new("EDIT MODE - Type to edit template | Esc: Exit edit mode")
+                .block(Block::default().borders(Borders::ALL))
+                .style(Style::default().fg(Color::Yellow));
+            footer.render(chunks[2], buf);
         } else {
-            "Arrow keys: Scroll | Ctrl+E: Edit | F2: Load template | F3: Save | Ctrl+Enter: Run analysis".to_string()
-        };
+            let footer_spans = vec![
+                Span::styled("Arrow keys: Scroll | ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    "e",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("dit | ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    "l",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("oad | ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    "s",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("ave | ", Style::default().fg(Color::Gray)),
+                Span::styled(
+                    "r",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "eload | Ctrl+Enter: Run analysis",
+                    Style::default().fg(Color::Gray),
+                ),
+            ];
 
-        let footer = Paragraph::new(footer_text)
-            .block(Block::default().borders(Borders::ALL))
-            .style(if state.is_editing {
-                Style::default().fg(Color::Yellow)
-            } else {
-                Style::default().fg(Color::Gray)
-            });
-        footer.render(chunks[2], buf);
+            let footer = Paragraph::new(Line::from(footer_spans))
+                .block(Block::default().borders(Borders::ALL))
+                .style(Style::default().fg(Color::Gray));
+            footer.render(chunks[2], buf);
+        }
     }
 }
 

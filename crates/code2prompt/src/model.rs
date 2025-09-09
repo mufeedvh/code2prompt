@@ -29,7 +29,14 @@ pub struct Model {
     pub statistics_view: StatisticsView,
     pub statistics_scroll: u16,
 
-    // Prompt output state (Tab 4)
+    // Template state (Tab 4)
+    pub template_content: String,
+    pub template_name: String,
+    pub template_is_editing: bool,
+    pub template_scroll_offset: u16,
+    pub template_cursor_position: usize,
+
+    // Prompt output state (Tab 5)
     pub generated_prompt: Option<String>,
     pub token_count: Option<usize>,
     pub file_count: usize,
@@ -137,6 +144,14 @@ pub enum Message {
     // Statistics
     CycleStatisticsView(i8), // +1 = next view, -1 = previous view
     ScrollStatistics(i16),   // Scroll delta for statistics
+
+    // Template
+    ToggleTemplateEdit,
+    UpdateTemplateContent(String),
+    LoadTemplateFromFile(String),
+    SaveTemplateToFile(String),
+    ResetTemplateToDefault,
+    ScrollTemplate(i16),
 }
 
 impl Default for Model {
@@ -144,6 +159,14 @@ impl Default for Model {
         let config = code2prompt_core::configuration::Code2PromptConfig::default();
         let session = Code2PromptSession::new(config);
 
+        // Load default template based on output format
+        let template_content = match session.config.output_format {
+            OutputFormat::Xml => {
+                include_str!("../../code2prompt-core/src/default_template_xml.hbs").to_string()
+            }
+            _ => include_str!("../../code2prompt-core/src/default_template_md.hbs").to_string(),
+        };
+
         Model {
             session,
             current_tab: Tab::FileTree,
@@ -163,12 +186,25 @@ impl Default for Model {
             statistics_view: StatisticsView::Overview,
             statistics_scroll: 0,
             status_message: String::new(),
+            template_content,
+            template_name: "Default Template".to_string(),
+            template_is_editing: false,
+            template_scroll_offset: 0,
+            template_cursor_position: 0,
         }
     }
 }
 
 impl Model {
     pub fn new_with_cli_args(session: Code2PromptSession) -> Self {
+        // Load default template based on output format
+        let template_content = match session.config.output_format {
+            OutputFormat::Xml => {
+                include_str!("../../code2prompt-core/src/default_template_xml.hbs").to_string()
+            }
+            _ => include_str!("../../code2prompt-core/src/default_template_md.hbs").to_string(),
+        };
+
         Model {
             session,
             current_tab: Tab::FileTree,
@@ -188,6 +224,11 @@ impl Model {
             statistics_view: StatisticsView::Overview,
             statistics_scroll: 0,
             status_message: String::new(),
+            template_content,
+            template_name: "Default Template".to_string(),
+            template_is_editing: false,
+            template_scroll_offset: 0,
+            template_cursor_position: 0,
         }
     }
 

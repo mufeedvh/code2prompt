@@ -250,10 +250,10 @@ impl TuiApp {
         }
     }
 
-    fn handle_template_keys(&self, _key: crossterm::event::KeyEvent) -> Option<Message> {
-        // Template key handling is done directly in the widget's render method
-        // since it needs mutable access to the template state
-        None
+    fn handle_template_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
+        // Create a temporary template state to handle the key event
+        let mut temp_state = TemplateState::from_model(&self.model);
+        TemplateWidget::handle_key_event(key, &self.model, &mut temp_state)
     }
 
     fn handle_prompt_output_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
@@ -414,9 +414,14 @@ impl TuiApp {
 
                     // Run analysis in background using session directly (same as CLI)
                     let mut session = self.model.session.clone();
+                    let template_content = self.model.template_content.clone();
                     let tx = self.message_tx.clone();
 
                     tokio::spawn(async move {
+                        // Set custom template content
+                        session.config.template_str = template_content;
+                        session.config.template_name = "Custom Template".to_string();
+
                         match session.generate_prompt() {
                             Ok(rendered) => {
                                 // Convert to AnalysisResults format expected by TUI
@@ -562,6 +567,77 @@ impl TuiApp {
                     self.model.statistics_scroll.saturating_add(delta as u16)
                 };
                 self.model.statistics_scroll = new_scroll;
+            }
+            Message::ToggleTemplateEdit => {
+                self.model.template_is_editing = !self.model.template_is_editing;
+                let status = if self.model.template_is_editing {
+                    "Entered template edit mode"
+                } else {
+                    "Exited template edit mode"
+                };
+                self.model.status_message = status.to_string();
+            }
+            Message::UpdateTemplateContent(content) => {
+                self.model.template_content = content;
+                self.model.status_message = "Template content updated".to_string();
+            }
+            Message::LoadTemplateFromFile(path) => match std::fs::read_to_string(&path) {
+                Ok(content) => {
+                    self.model.template_content = content;
+                    self.model.template_name = std::path::Path::new(&path)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("Loaded Template")
+                        .to_string();
+                    self.model.template_cursor_position = 0;
+                    self.model.template_scroll_offset = 0;
+                    self.model.status_message = format!("Loaded template from {}", path);
+                }
+                Err(e) => {
+                    self.model.status_message = format!("Failed to load template: {}", e);
+                }
+            },
+            Message::SaveTemplateToFile(path) => {
+                match std::fs::write(&path, &self.model.template_content) {
+                    Ok(_) => {
+                        self.model.status_message = format!("Template saved to {}", path);
+                    }
+                    Err(e) => {
+                        self.model.status_message = format!("Failed to save template: {}", e);
+                    }
+                }
+            }
+            Message::ResetTemplateToDefault => {
+                let template_content = match self.model.session.config.output_format {
+                    code2prompt_core::template::OutputFormat::Xml => {
+                        include_str!("../../code2prompt-core/src/default_template_xml.hbs")
+                            .to_string()
+                    }
+                    _ => include_str!("../../code2prompt-core/src/default_template_md.hbs")
+                        .to_string(),
+                };
+                self.model.template_content = template_content;
+                self.model.template_name = "Default Template".to_string();
+                self.model.template_cursor_position = 0;
+                self.model.template_scroll_offset = 0;
+                self.model.status_message = "Reset to default template".to_string();
+            }
+            Message::ScrollTemplate(delta) => {
+                let lines_count = self.model.template_content.lines().count() as u16;
+                let viewport_height = 20; // Approximate viewport height
+                let max_scroll = lines_count.saturating_sub(viewport_height);
+
+                let new_scroll = if delta < 0 {
+                    self.model
+                        .template_scroll_offset
+                        .saturating_sub((-delta) as u16)
+                } else {
+                    self.model
+                        .template_scroll_offset
+                        .saturating_add(delta as u16)
+                };
+
+                self.model.template_scroll_offset = new_scroll.min(max_scroll);
             }
         }
 
