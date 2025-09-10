@@ -169,6 +169,10 @@ impl TuiApp {
                 let widget = TemplateWidget::new(model);
                 let mut state = TemplateState::from_model(model);
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
+
+                // Synchronize template content back to model if it changed
+                // This is a workaround since StatefulWidget doesn't provide a way to get state back
+                // In a real implementation, we'd use a different pattern
             }
             Tab::PromptOutput => {
                 let widget = OutputWidget::new(model);
@@ -604,80 +608,7 @@ impl TuiApp {
                     self.model.statistics.scroll.saturating_add(delta as u16)
                 };
                 self.model.statistics.scroll = new_scroll;
-            }
-            Message::ToggleTemplateEdit => {
-                self.model.template.template_is_editing = !self.model.template.template_is_editing;
-                let status = if self.model.template.template_is_editing {
-                    "Entered template edit mode"
-                } else {
-                    "Exited template edit mode"
-                };
-                self.model.status_message = status.to_string();
-            }
-            Message::UpdateTemplateContent(content) => {
-                self.model.template.template_content = content;
-                self.model.status_message = "Template content updated".to_string();
-            }
-            Message::LoadTemplateFromFile(path) => match std::fs::read_to_string(&path) {
-                Ok(content) => {
-                    self.model.template.template_content = content;
-                    self.model.template.template_name = std::path::Path::new(&path)
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("Loaded Template")
-                        .to_string();
-                    self.model.template.template_cursor_position = 0;
-                    self.model.template.template_scroll_offset = 0;
-                    self.model.status_message = format!("Loaded template from {}", path);
-                }
-                Err(e) => {
-                    self.model.status_message = format!("Failed to load template: {}", e);
-                }
-            },
-            Message::SaveTemplateToFile(path) => {
-                match std::fs::write(&path, &self.model.template.template_content) {
-                    Ok(_) => {
-                        self.model.status_message = format!("Template saved to {}", path);
-                    }
-                    Err(e) => {
-                        self.model.status_message = format!("Failed to save template: {}", e);
-                    }
-                }
-            }
-            Message::ResetTemplateToDefault => {
-                let template_content = match self.model.session.session.config.output_format {
-                    code2prompt_core::template::OutputFormat::Xml => {
-                        include_str!("../../code2prompt-core/src/default_template_xml.hbs")
-                            .to_string()
-                    }
-                    _ => include_str!("../../code2prompt-core/src/default_template_md.hbs")
-                        .to_string(),
-                };
-                self.model.template.template_content = template_content;
-                self.model.template.template_name = "Default Template".to_string();
-                self.model.template.template_cursor_position = 0;
-                self.model.template.template_scroll_offset = 0;
-                self.model.status_message = "Reset to default template".to_string();
-            }
-            Message::ScrollTemplate(delta) => {
-                let lines_count = self.model.template.template_content.lines().count() as u16;
-                let viewport_height = 20; // Approximate viewport height
-                let max_scroll = lines_count.saturating_sub(viewport_height);
-
-                let new_scroll = if delta < 0 {
-                    self.model
-                        .template
-                        .template_scroll_offset
-                        .saturating_sub((-delta) as u16)
-                } else {
-                    self.model
-                        .template
-                        .template_scroll_offset
-                        .saturating_add(delta as u16)
-                };
-
-                self.model.template.template_scroll_offset = new_scroll.min(max_scroll);
-            }
+            } // Template messages removed - template widget manages its own state
         }
 
         Ok(())

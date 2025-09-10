@@ -37,7 +37,7 @@ pub struct TemplateFile {
 impl TemplateState {
     pub fn from_model(model: &Model) -> Self {
         let mut state = Self {
-            template_content: String::new(),
+            template_content: model.template.template_content.clone(),
             cursor_position: 0,
             scroll_offset: 0,
             is_editing: false,
@@ -48,8 +48,7 @@ impl TemplateState {
             current_template_name: "Default".to_string(),
         };
 
-        // Load default template based on output format
-        state.load_default_template(model);
+        // Load available templates from directory
         state.load_available_templates();
         state
     }
@@ -155,13 +154,11 @@ impl TemplateState {
 }
 
 /// Template widget for editing Handlebars templates
-pub struct TemplateWidget<'a> {
-    model: &'a Model,
-}
+pub struct TemplateWidget;
 
-impl<'a> TemplateWidget<'a> {
-    pub fn new(model: &'a Model) -> Self {
-        Self { model }
+impl TemplateWidget {
+    pub fn new(_model: &Model) -> Self {
+        Self
     }
 
     pub fn handle_key_event(
@@ -337,7 +334,7 @@ impl<'a> TemplateWidget<'a> {
     }
 }
 
-impl<'a> StatefulWidget for TemplateWidget<'a> {
+impl StatefulWidget for TemplateWidget {
     type State = TemplateState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
@@ -455,7 +452,7 @@ impl<'a> StatefulWidget for TemplateWidget<'a> {
     }
 }
 
-impl<'a> TemplateWidget<'a> {
+impl TemplateWidget {
     fn render_template_editor(&self, area: Rect, buf: &mut Buffer, state: &mut TemplateState) {
         let lines: Vec<&str> = state.template_content.lines().collect();
         let visible_lines: Vec<String> = lines

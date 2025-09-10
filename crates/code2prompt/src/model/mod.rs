@@ -70,13 +70,7 @@ pub enum Message {
     CycleStatisticsView(i8), // +1 = next view, -1 = previous view
     ScrollStatistics(i16),   // Scroll delta for statistics
 
-    // Template
-    ToggleTemplateEdit,
-    UpdateTemplateContent(String),
-    LoadTemplateFromFile(String),
-    SaveTemplateToFile(String),
-    ResetTemplateToDefault,
-    ScrollTemplate(i16),
+                             // Template - removed unused variants, template widget manages its own state
 }
 
 /// Represents the overall state of the TUI application.
@@ -134,24 +128,8 @@ impl Model {
         }
     }
 
-    /// Get flattened list of visible file nodes for display
-    pub fn get_visible_nodes(&self) -> Vec<&FileNode> {
-        self.file_tree.get_visible_nodes()
-    }
-
     /// Get grouped settings for display
     pub fn get_settings_groups(&self) -> Vec<SettingsGroup> {
         self.settings.get_settings_groups(&self.session.session)
-    }
-
-    /// Get flattened list of settings for display (keeping for backward compatibility)
-    pub fn get_settings_items(&self) -> Vec<SettingsItem> {
-        self.settings.get_settings_items(&self.session.session)
-    }
-
-    /// Update setting based on index and action (works with grouped settings)
-    pub fn update_setting(&mut self, index: usize, action: SettingAction) {
-        self.settings
-            .update_setting(&mut self.session.session, index, action);
     }
 }
