@@ -69,6 +69,7 @@ impl TuiApp {
         })
     }
 
+    // ~~~ Main Loop ~~~
     pub async fn run(&mut self) -> Result<()> {
         // Initialize file tree
         self.handle_message(Message::RefreshFileTree)?;
@@ -109,10 +110,21 @@ impl TuiApp {
         Ok(())
     }
 
+    /// Render the TUI using the provided model and frame.
+    ///
+    /// This function handles the layout and rendering of all components based on the current state.
+    /// It divides the terminal into sections for the tab bar, content area, and status bar,
+    /// and renders the appropriate widgets for the active tab.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The current application state model
+    /// * `frame` - The frame to render the UI components onto
+    ///
     fn render_with_model(model: &Model, frame: &mut Frame) {
         let area = frame.area();
 
-        // Main layout: tabs + content + status
+        // ~~~ Main layout ~~~
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -122,10 +134,10 @@ impl TuiApp {
             ])
             .split(area);
 
-        // Render tab bar
+        // Tab bar
         Self::render_tab_bar_static(model, frame, main_layout[0]);
 
-        // Render current tab content using widgets
+        // Current tab content
         match model.current_tab {
             Tab::FileTree => {
                 let widget = FileSelectionWidget::new(model);
@@ -165,10 +177,23 @@ impl TuiApp {
             }
         }
 
-        // Render status bar
+        // Status bar
         Self::render_status_bar_static(model, frame, main_layout[2]);
     }
 
+    /// Handle a key event and return an optional message.
+    ///
+    /// This function processes keyboard input, prioritizing search mode
+    /// when active. It handles global shortcuts for tab switching and quitting,
+    /// as well as delegating tab-specific key events to the appropriate handlers.
+    /// # Arguments
+    ///
+    /// * `key` - The key event to handle.
+    ///
+    /// # Returns
+    ///
+    /// * `Option<Message>` - An optional message to be processed by the main loop.
+    ///   
     fn handle_key_event(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         // Check if we're in search mode first - this takes priority over global shortcuts
         if self.input_mode == InputMode::Search && self.model.current_tab == Tab::FileTree {
@@ -525,39 +550,14 @@ impl TuiApp {
             }
             Message::CycleStatisticsView(direction) => {
                 self.model.statistics_view = if direction > 0 {
-                    // Next view (forward)
-                    match self.model.statistics_view {
-                        crate::model::StatisticsView::Overview => {
-                            crate::model::StatisticsView::TokenMap
-                        }
-                        crate::model::StatisticsView::TokenMap => {
-                            crate::model::StatisticsView::Extensions
-                        }
-                        crate::model::StatisticsView::Extensions => {
-                            crate::model::StatisticsView::Overview
-                        }
-                    }
+                    self.model.statistics_view.next()
                 } else {
-                    // Previous view (backward)
-                    match self.model.statistics_view {
-                        crate::model::StatisticsView::Overview => {
-                            crate::model::StatisticsView::Extensions
-                        }
-                        crate::model::StatisticsView::TokenMap => {
-                            crate::model::StatisticsView::Overview
-                        }
-                        crate::model::StatisticsView::Extensions => {
-                            crate::model::StatisticsView::TokenMap
-                        }
-                    }
+                    self.model.statistics_view.prev()
                 };
-                self.model.statistics_scroll = 0; // Reset scroll when changing views
-                let view_name = match self.model.statistics_view {
-                    crate::model::StatisticsView::Overview => "Overview",
-                    crate::model::StatisticsView::TokenMap => "Token Map",
-                    crate::model::StatisticsView::Extensions => "Extensions",
-                };
-                self.model.status_message = format!("Switched to {} view", view_name);
+
+                self.model.statistics_scroll = 0; // Reset scroll
+                self.model.status_message =
+                    format!("Switched to {} view", self.model.statistics_view.as_str());
             }
             Message::ScrollStatistics(delta) => {
                 // For now, simple scroll logic - will be refined per view

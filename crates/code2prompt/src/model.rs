@@ -70,6 +70,32 @@ pub enum StatisticsView {
     Extensions, // Token distribution by file extension
 }
 
+impl StatisticsView {
+    pub fn next(&self) -> Self {
+        match self {
+            StatisticsView::Overview => StatisticsView::TokenMap,
+            StatisticsView::TokenMap => StatisticsView::Extensions,
+            StatisticsView::Extensions => StatisticsView::Overview,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            StatisticsView::Overview => StatisticsView::Extensions,
+            StatisticsView::TokenMap => StatisticsView::Overview,
+            StatisticsView::Extensions => StatisticsView::TokenMap,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            StatisticsView::Overview => "Overview",
+            StatisticsView::TokenMap => "Token Map",
+            StatisticsView::Extensions => "Extensions",
+        }
+    }
+}
+
 /// File tree node with selection state
 #[derive(Debug, Clone)]
 pub struct FileNode {
