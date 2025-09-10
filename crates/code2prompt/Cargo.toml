@@ -34,6 +34,7 @@ bracoxide = { workspace = true }
 git2 = { workspace = true }
 chrono = { workspace = true }
 dirs = "5.0"
+regex = { workspace = true }
 
 
 [target.'cfg(windows)'.dependencies]
