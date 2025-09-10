@@ -715,18 +715,17 @@ impl TuiApp {
     // Template utility methods
 
     fn save_template_with_name(&self, filename: &str) -> Result<(), String> {
-        use std::fs;
-        use std::path::PathBuf;
-
-        let templates_dir = PathBuf::from("crates/code2prompt-core/templates");
-        if !templates_dir.exists() {
-            fs::create_dir_all(&templates_dir)
-                .map_err(|e| format!("Failed to create templates directory: {}", e))?;
+        match crate::utils::save_template_to_user_dir(
+            filename,
+            &self.model.template.template_content,
+        ) {
+            Ok(path) => {
+                // Update status message to show where the template was saved
+                println!("Template saved to: {}", path.display());
+                Ok(())
+            }
+            Err(e) => Err(e.to_string()),
         }
-
-        let file_path = templates_dir.join(format!("{}.hbs", filename));
-        fs::write(&file_path, &self.model.template.template_content)
-            .map_err(|e| format!("Failed to save template: {}", e))
     }
 }
 

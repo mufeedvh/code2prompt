@@ -26,12 +26,14 @@ ratatui = { workspace = true }
 crossterm = { workspace = true }
 tokio = { workspace = true }
 tui-tree-widget = { workspace = true }
+tui-textarea = "0.4"
 atty = { workspace = true }
 walkdir = { workspace = true }
 unicode-width = { workspace = true }
 bracoxide = { workspace = true }
 git2 = { workspace = true }
 chrono = { workspace = true }
+dirs = "5.0"
 
 
 [target.'cfg(windows)'.dependencies]
