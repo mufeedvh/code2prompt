@@ -608,7 +608,59 @@ impl TuiApp {
                     self.model.statistics.scroll.saturating_add(delta as u16)
                 };
                 self.model.statistics.scroll = new_scroll;
-            } // Template messages removed - template widget manages its own state
+            }
+            // Template messages - Redux/Elm style
+            Message::ToggleTemplateEdit => {
+                self.model.template.template_is_editing = !self.model.template.template_is_editing;
+                let status = if self.model.template.template_is_editing {
+                    "Edit mode enabled"
+                } else {
+                    "Edit mode disabled"
+                };
+                self.model.status_message = status.to_string();
+            }
+            Message::ScrollTemplate(delta) => {
+                let lines_count = self.model.template.template_content.lines().count() as u16;
+                let viewport_height = 20; // Approximate viewport height
+                let max_scroll = lines_count.saturating_sub(viewport_height);
+
+                let new_scroll = if delta < 0 {
+                    self.model
+                        .template
+                        .template_scroll_offset
+                        .saturating_sub((-delta) as u16)
+                } else {
+                    self.model
+                        .template
+                        .template_scroll_offset
+                        .saturating_add(delta as u16)
+                };
+
+                self.model.template.template_scroll_offset = new_scroll.min(max_scroll);
+            }
+            Message::SaveTemplate(filename) => match self.save_template_with_name(&filename) {
+                Ok(_) => {
+                    self.model.status_message = format!("Template saved as {}.hbs", filename);
+                }
+                Err(e) => {
+                    self.model.status_message = format!("Save failed: {}", e);
+                }
+            },
+            Message::ReloadTemplate => {
+                let template_content = match self.model.session.session.config.output_format {
+                    code2prompt_core::template::OutputFormat::Xml => {
+                        include_str!("../../code2prompt-core/src/default_template_xml.hbs")
+                            .to_string()
+                    }
+                    _ => include_str!("../../code2prompt-core/src/default_template_md.hbs")
+                        .to_string(),
+                };
+                self.model.template.template_content = template_content;
+                self.model.template.template_name = "Default Template".to_string();
+                self.model.template.template_cursor_position = 0;
+                self.model.template.template_scroll_offset = 0;
+                self.model.status_message = "Reloaded default template".to_string();
+            }
         }
 
         Ok(())
@@ -658,6 +710,23 @@ impl TuiApp {
             .block(Block::default().borders(Borders::ALL))
             .style(Style::default().fg(Color::Cyan));
         frame.render_widget(status_widget, area);
+    }
+
+    // Template utility methods
+
+    fn save_template_with_name(&self, filename: &str) -> Result<(), String> {
+        use std::fs;
+        use std::path::PathBuf;
+
+        let templates_dir = PathBuf::from("crates/code2prompt-core/templates");
+        if !templates_dir.exists() {
+            fs::create_dir_all(&templates_dir)
+                .map_err(|e| format!("Failed to create templates directory: {}", e))?;
+        }
+
+        let file_path = templates_dir.join(format!("{}.hbs", filename));
+        fs::write(&file_path, &self.model.template.template_content)
+            .map_err(|e| format!("Failed to save template: {}", e))
     }
 }
 

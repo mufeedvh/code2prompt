@@ -55,11 +55,6 @@ impl FileTreeState {
         &mut self.file_tree
     }
 
-    /// Get a reference to the file tree
-    pub fn get_file_tree(&self) -> &Vec<FileNode> {
-        &self.file_tree
-    }
-
     fn collect_visible_nodes<'a>(&'a self, nodes: &'a [FileNode], visible: &mut Vec<&'a FileNode>) {
         for node in nodes {
             // Apply search filter - support both simple text and glob patterns

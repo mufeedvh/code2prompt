@@ -3,9 +3,6 @@
 //! This module contains the statistics state and related functionality,
 //! including different statistics views and their management.
 
-pub mod extensions;
-pub mod overview;
-pub mod token_map;
 pub mod types;
 
 pub use types::*;
@@ -25,12 +22,5 @@ impl Default for StatisticsState {
             scroll: 0,
             token_map_entries: Vec::new(),
         }
-    }
-}
-
-impl StatisticsState {
-    /// Create a new statistics state
-    pub fn new() -> Self {
-        Self::default()
     }
 }

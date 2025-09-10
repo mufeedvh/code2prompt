@@ -53,24 +53,6 @@ impl TemplateState {
         state
     }
 
-    fn load_default_template(&mut self, model: &Model) {
-        match model.session.session.config.output_format {
-            code2prompt_core::template::OutputFormat::Markdown => {
-                self.template_content =
-                    include_str!("../../../code2prompt-core/src/default_template_md.hbs")
-                        .to_string();
-                self.current_template_name = "Default (Markdown)".to_string();
-            }
-            code2prompt_core::template::OutputFormat::Xml
-            | code2prompt_core::template::OutputFormat::Json => {
-                self.template_content =
-                    include_str!("../../../code2prompt-core/src/default_template_xml.hbs")
-                        .to_string();
-                self.current_template_name = "Default (XML)".to_string();
-            }
-        }
-    }
-
     fn load_available_templates(&mut self) {
         self.available_templates.clear();
 
@@ -136,21 +118,6 @@ impl TemplateState {
         self.scroll_offset = 0;
         Ok(())
     }
-
-    pub fn save_template_to_file(&self, filename: &str) -> Result<(), String> {
-        let templates_dir = PathBuf::from("crates/code2prompt-core/templates");
-        if !templates_dir.exists() {
-            if let Err(e) = fs::create_dir_all(&templates_dir) {
-                return Err(format!("Failed to create templates directory: {}", e));
-            }
-        }
-
-        let file_path = templates_dir.join(format!("{}.hbs", filename));
-        match fs::write(&file_path, &self.template_content) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("Failed to save template: {}", e)),
-        }
-    }
 }
 
 /// Template widget for editing Handlebars templates
@@ -163,7 +130,7 @@ impl TemplateWidget {
 
     pub fn handle_key_event(
         key: KeyEvent,
-        model: &Model,
+        _model: &Model,
         state: &mut TemplateState,
     ) -> Option<Message> {
         if state.show_template_list {
@@ -176,58 +143,28 @@ impl TemplateWidget {
                 None
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
-                // Save template dialog - for now just save with timestamp
+                // Save template with timestamp
                 let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
                 let filename = format!("custom_template_{}", timestamp);
-                match state.save_template_to_file(&filename) {
-                    Ok(_) => {
-                        state.status_message = format!("Template saved as {}.hbs", filename);
-                        state.load_available_templates();
-                    }
-                    Err(e) => {
-                        state.status_message = format!("Save failed: {}", e);
-                    }
-                }
-                None
+                Some(Message::SaveTemplate(filename))
             }
             KeyCode::Char('r') | KeyCode::Char('R') => {
-                // Reload current template
-                state.load_default_template(model);
-                state.status_message = "Template reloaded".to_string();
-                None
+                // Reload default template
+                Some(Message::ReloadTemplate)
             }
             KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 // Run analysis with current template
                 Some(Message::RunAnalysis)
             }
             KeyCode::Char('e') | KeyCode::Char('E') => {
-                state.is_editing = !state.is_editing;
-                state.status_message = if state.is_editing {
-                    "Edit mode enabled - Use arrow keys and type to edit".to_string()
-                } else {
-                    "Edit mode disabled".to_string()
-                };
-                None
+                // Toggle edit mode
+                Some(Message::ToggleTemplateEdit)
             }
             _ if state.is_editing => Self::handle_edit_keys(key, state),
-            KeyCode::Up => {
-                if state.scroll_offset > 0 {
-                    state.scroll_offset -= 1;
-                }
-                None
-            }
-            KeyCode::Down => {
-                state.scroll_offset += 1;
-                None
-            }
-            KeyCode::PageUp => {
-                state.scroll_offset = state.scroll_offset.saturating_sub(10);
-                None
-            }
-            KeyCode::PageDown => {
-                state.scroll_offset += 10;
-                None
-            }
+            KeyCode::Up => Some(Message::ScrollTemplate(-1)),
+            KeyCode::Down => Some(Message::ScrollTemplate(1)),
+            KeyCode::PageUp => Some(Message::ScrollTemplate(-10)),
+            KeyCode::PageDown => Some(Message::ScrollTemplate(10)),
             _ => None,
         }
     }

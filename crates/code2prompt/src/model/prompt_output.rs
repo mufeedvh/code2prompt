@@ -35,10 +35,3 @@ impl Default for PromptOutputState {
         }
     }
 }
-
-impl PromptOutputState {
-    /// Create a new prompt output state
-    pub fn new() -> Self {
-        Self::default()
-    }
-}

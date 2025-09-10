@@ -70,7 +70,11 @@ pub enum Message {
     CycleStatisticsView(i8), // +1 = next view, -1 = previous view
     ScrollStatistics(i16),   // Scroll delta for statistics
 
-                             // Template - removed unused variants, template widget manages its own state
+    // Template - Redux/Elm style messages
+    ToggleTemplateEdit,
+    ScrollTemplate(i16),
+    SaveTemplate(String), // Save template with name
+    ReloadTemplate,
 }
 
 /// Represents the overall state of the TUI application.
