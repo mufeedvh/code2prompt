@@ -55,7 +55,7 @@ impl TemplateState {
     }
 
     fn load_default_template(&mut self, model: &Model) {
-        match model.session.config.output_format {
+        match model.session.session.config.output_format {
             code2prompt_core::template::OutputFormat::Markdown => {
                 self.template_content =
                     include_str!("../../../code2prompt-core/src/default_template_md.hbs")

@@ -16,7 +16,7 @@ pub struct SettingsState {
 impl SettingsState {
     pub fn from_model(model: &Model) -> Self {
         Self {
-            settings_cursor: model.settings_cursor,
+            settings_cursor: model.settings.settings_cursor,
         }
     }
 }
@@ -36,8 +36,10 @@ impl<'a> SettingsWidget<'a> {
         match key.code {
             KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
             KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
-            KeyCode::Char(' ') => Some(Message::ToggleSetting(model.settings_cursor)),
-            KeyCode::Left | KeyCode::Right => Some(Message::CycleSetting(model.settings_cursor)),
+            KeyCode::Char(' ') => Some(Message::ToggleSetting(model.settings.settings_cursor)),
+            KeyCode::Left | KeyCode::Right => {
+                Some(Message::CycleSetting(model.settings.settings_cursor))
+            }
             KeyCode::Enter => Some(Message::RunAnalysis),
             _ => None,
         }

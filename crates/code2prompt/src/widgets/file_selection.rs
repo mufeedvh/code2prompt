@@ -18,9 +18,9 @@ pub struct FileSelectionState {
 impl FileSelectionState {
     pub fn from_model(model: &Model) -> Self {
         Self {
-            tree_cursor: model.tree_cursor,
-            search_query: model.search_query.clone(),
-            file_tree_scroll: model.file_tree_scroll,
+            tree_cursor: model.file_tree.tree_cursor,
+            search_query: model.file_tree.search_query.clone(),
+            file_tree_scroll: model.file_tree.file_tree_scroll,
         }
     }
 }
@@ -45,12 +45,12 @@ impl<'a> FileSelectionWidget<'a> {
                     return Some(Message::ExitSearchMode);
                 }
                 KeyCode::Char(c) => {
-                    let mut query = model.search_query.clone();
+                    let mut query = model.file_tree.search_query.clone();
                     query.push(c);
                     return Some(Message::UpdateSearchQuery(query));
                 }
                 KeyCode::Backspace => {
-                    let mut query = model.search_query.clone();
+                    let mut query = model.file_tree.search_query.clone();
                     query.pop();
                     return Some(Message::UpdateSearchQuery(query));
                 }
@@ -66,13 +66,13 @@ impl<'a> FileSelectionWidget<'a> {
         match key.code {
             KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
             KeyCode::Down => Some(Message::MoveTreeCursor(1)),
-            KeyCode::Char(' ') => Some(Message::ToggleFileSelection(model.tree_cursor)),
+            KeyCode::Char(' ') => Some(Message::ToggleFileSelection(model.file_tree.tree_cursor)),
             KeyCode::Enter => Some(Message::RunAnalysis),
             KeyCode::Right => {
-                let visible_nodes = model.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(model.tree_cursor) {
+                let visible_nodes = model.file_tree.get_visible_nodes();
+                if let Some(node) = visible_nodes.get(model.file_tree.tree_cursor) {
                     if node.is_directory && !node.is_expanded {
-                        Some(Message::ExpandDirectory(model.tree_cursor))
+                        Some(Message::ExpandDirectory(model.file_tree.tree_cursor))
                     } else {
                         None
                     }
@@ -81,10 +81,10 @@ impl<'a> FileSelectionWidget<'a> {
                 }
             }
             KeyCode::Left => {
-                let visible_nodes = model.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(model.tree_cursor) {
+                let visible_nodes = model.file_tree.get_visible_nodes();
+                if let Some(node) = visible_nodes.get(model.file_tree.tree_cursor) {
                     if node.is_directory && node.is_expanded {
-                        Some(Message::CollapseDirectory(model.tree_cursor))
+                        Some(Message::CollapseDirectory(model.file_tree.tree_cursor))
                     } else {
                         None
                     }
@@ -248,7 +248,7 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
             .split(area);
 
         // File tree with scroll support
-        let visible_nodes = self.model.get_visible_nodes();
+        let visible_nodes = self.model.file_tree.get_visible_nodes();
         let total_nodes = visible_nodes.len();
 
         // Calculate viewport dimensions
@@ -348,20 +348,44 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
         Widget::render(search_widget, layout[1], buf);
 
         // Pattern info
-        let include_text = if self.model.session.config.include_patterns.is_empty() {
+        let include_text = if self
+            .model
+            .session
+            .session
+            .config
+            .include_patterns
+            .is_empty()
+        {
             "All files".to_string()
         } else {
             format!(
                 "Include: {}",
-                self.model.session.config.include_patterns.join(", ")
+                self.model
+                    .session
+                    .session
+                    .config
+                    .include_patterns
+                    .join(", ")
             )
         };
-        let exclude_text = if self.model.session.config.exclude_patterns.is_empty() {
+        let exclude_text = if self
+            .model
+            .session
+            .session
+            .config
+            .exclude_patterns
+            .is_empty()
+        {
             "".to_string()
         } else {
             format!(
                 " | Exclude: {}",
-                self.model.session.config.exclude_patterns.join(", ")
+                self.model
+                    .session
+                    .session
+                    .config
+                    .exclude_patterns
+                    .join(", ")
             )
         };
         let pattern_info = format!("{}{}", include_text, exclude_text);

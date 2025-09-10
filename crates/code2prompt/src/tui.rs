@@ -149,7 +149,7 @@ impl TuiApp {
                 let mut state = SettingsState::from_model(model);
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
             }
-            Tab::Statistics => match model.statistics_view {
+            Tab::Statistics => match model.statistics.view {
                 crate::model::StatisticsView::Overview => {
                     let widget = StatisticsOverviewWidget::new(model);
                     frame.render_widget(widget, main_layout[1]);
@@ -262,7 +262,7 @@ impl TuiApp {
 
     fn handle_statistics_keys(&self, key: crossterm::event::KeyEvent) -> Option<Message> {
         // Delegate to the appropriate statistics widget based on current view
-        match self.model.statistics_view {
+        match self.model.statistics.view {
             crate::model::StatisticsView::Overview => {
                 StatisticsOverviewWidget::handle_key_event(key)
             }
@@ -297,9 +297,9 @@ impl TuiApp {
             }
             Message::RefreshFileTree => {
                 // Build file tree using session data
-                match build_file_tree_from_session(&mut self.model.session) {
+                match build_file_tree_from_session(&mut self.model.session.session) {
                     Ok(tree) => {
-                        self.model.file_tree = tree;
+                        self.model.file_tree.set_file_tree(tree);
 
                         // File tree will get selection state from session data
                         // No need to maintain separate HashMap
@@ -312,9 +312,9 @@ impl TuiApp {
                 }
             }
             Message::UpdateSearchQuery(query) => {
-                self.model.search_query = query;
+                self.model.file_tree.search_query = query;
                 // Reset cursor when search changes
-                self.model.tree_cursor = 0;
+                self.model.file_tree.tree_cursor = 0;
             }
             Message::EnterSearchMode => {
                 self.input_mode = InputMode::Search;
@@ -325,36 +325,47 @@ impl TuiApp {
                 self.model.status_message = "Exited search mode".to_string();
             }
             Message::MoveTreeCursor(delta) => {
-                let visible_count = self.model.get_visible_nodes().len();
+                let visible_count = self.model.file_tree.get_visible_nodes().len();
                 if visible_count > 0 {
                     let new_cursor = if delta > 0 {
-                        (self.model.tree_cursor + delta as usize).min(visible_count - 1)
+                        (self.model.file_tree.tree_cursor + delta as usize).min(visible_count - 1)
                     } else {
-                        self.model.tree_cursor.saturating_sub((-delta) as usize)
+                        self.model
+                            .file_tree
+                            .tree_cursor
+                            .saturating_sub((-delta) as usize)
                     };
-                    self.model.tree_cursor = new_cursor;
+                    self.model.file_tree.tree_cursor = new_cursor;
 
                     // Auto-adjust scroll to keep cursor visible using widget method
                     FileSelectionWidget::adjust_file_tree_scroll_for_cursor(
-                        self.model.tree_cursor,
-                        &mut self.model.file_tree_scroll,
+                        self.model.file_tree.tree_cursor,
+                        &mut self.model.file_tree.file_tree_scroll,
                         visible_count,
                     );
                 }
             }
             Message::MoveSettingsCursor(delta) => {
-                let settings_count = self.model.get_settings_items().len();
+                let settings_count = self
+                    .model
+                    .settings
+                    .get_settings_items(&self.model.session.session)
+                    .len();
                 if settings_count > 0 {
                     let new_cursor = if delta > 0 {
-                        (self.model.settings_cursor + delta as usize).min(settings_count - 1)
+                        (self.model.settings.settings_cursor + delta as usize)
+                            .min(settings_count - 1)
                     } else {
-                        self.model.settings_cursor.saturating_sub((-delta) as usize)
+                        self.model
+                            .settings
+                            .settings_cursor
+                            .saturating_sub((-delta) as usize)
                     };
-                    self.model.settings_cursor = new_cursor;
+                    self.model.settings.settings_cursor = new_cursor;
                 }
             }
             Message::ToggleFileSelection(index) => {
-                let visible_nodes = self.model.get_visible_nodes();
+                let visible_nodes = self.model.file_tree.get_visible_nodes();
                 if let Some(node) = visible_nodes.get(index) {
                     let path = node.path.to_string_lossy().to_string();
                     let name = node.name.clone();
@@ -364,10 +375,10 @@ impl TuiApp {
                     // Use session methods for file selection instead of direct config manipulation
                     if !current {
                         // Selecting file: use session include_file method
-                        self.model.session.include_file(node.path.clone());
+                        self.model.session.session.include_file(node.path.clone());
                     } else {
                         // Deselecting file: use session exclude_file method
-                        self.model.session.exclude_file(node.path.clone());
+                        self.model.session.session.exclude_file(node.path.clone());
                     }
 
                     // Session methods handle config updates automatically
@@ -375,13 +386,13 @@ impl TuiApp {
                     // Update the node in the tree using widget methods
                     if is_directory {
                         FileSelectionWidget::toggle_directory_selection(
-                            &mut self.model.file_tree,
+                            self.model.file_tree.get_file_tree_mut(),
                             &path,
                             !current,
                         );
                     } else {
                         FileSelectionWidget::update_node_selection(
-                            &mut self.model.file_tree,
+                            self.model.file_tree.get_file_tree_mut(),
                             &path,
                             !current,
                         );
@@ -393,53 +404,73 @@ impl TuiApp {
                 }
             }
             Message::ExpandDirectory(index) => {
-                let visible_nodes = self.model.get_visible_nodes();
+                let visible_nodes = self.model.file_tree.get_visible_nodes();
                 if let Some(node) = visible_nodes.get(index) {
                     if node.is_directory {
                         let path = node.path.to_string_lossy().to_string();
                         let name = node.name.clone();
-                        FileSelectionWidget::expand_directory(&mut self.model.file_tree, &path);
+                        FileSelectionWidget::expand_directory(
+                            self.model.file_tree.get_file_tree_mut(),
+                            &path,
+                        );
                         self.model.status_message = format!("Expanded {}", name);
                     }
                 }
             }
             Message::CollapseDirectory(index) => {
-                let visible_nodes = self.model.get_visible_nodes();
+                let visible_nodes = self.model.file_tree.get_visible_nodes();
                 if let Some(node) = visible_nodes.get(index) {
                     if node.is_directory {
                         let path = node.path.to_string_lossy().to_string();
                         let name = node.name.clone();
-                        FileSelectionWidget::collapse_directory(&mut self.model.file_tree, &path);
+                        FileSelectionWidget::collapse_directory(
+                            self.model.file_tree.get_file_tree_mut(),
+                            &path,
+                        );
                         self.model.status_message = format!("Collapsed {}", name);
                     }
                 }
             }
             Message::ToggleSetting(index) => {
-                self.model.update_setting(index, SettingAction::Toggle);
-                let settings = self.model.get_settings_items();
+                self.model.settings.update_setting(
+                    &mut self.model.session.session,
+                    index,
+                    SettingAction::Toggle,
+                );
+                let settings = self
+                    .model
+                    .settings
+                    .get_settings_items(&self.model.session.session);
                 if let Some(setting) = settings.get(index) {
                     self.model.status_message = format!("Toggled {}", setting.name);
                 }
             }
             Message::CycleSetting(index) => {
-                self.model.update_setting(index, SettingAction::Cycle);
-                let settings = self.model.get_settings_items();
+                self.model.settings.update_setting(
+                    &mut self.model.session.session,
+                    index,
+                    SettingAction::Cycle,
+                );
+                let settings = self
+                    .model
+                    .settings
+                    .get_settings_items(&self.model.session.session);
                 if let Some(setting) = settings.get(index) {
                     self.model.status_message = format!("Cycled {}", setting.name);
                 }
             }
             Message::RunAnalysis => {
-                if !self.model.analysis_in_progress {
-                    self.model.analysis_in_progress = true;
-                    self.model.analysis_error = None;
+                if !self.model.prompt_output.analysis_in_progress {
+                    self.model.prompt_output.analysis_in_progress = true;
+                    self.model.prompt_output.analysis_error = None;
                     self.model.status_message = "Running analysis...".to_string();
 
                     // Switch to prompt output tab
                     self.model.current_tab = Tab::PromptOutput;
 
                     // Run analysis in background using session directly (same as CLI)
-                    let mut session = self.model.session.clone();
-                    let template_content = self.model.template_content.clone();
+                    let mut session = self.model.session.session.clone();
+                    let template_content = self.model.template.template_content.clone();
                     let tx = self.message_tx.clone();
 
                     tokio::spawn(async move {
@@ -485,11 +516,11 @@ impl TuiApp {
                 }
             }
             Message::AnalysisComplete(results) => {
-                self.model.analysis_in_progress = false;
-                self.model.generated_prompt = Some(results.generated_prompt);
-                self.model.token_count = results.token_count;
-                self.model.file_count = results.file_count;
-                self.model.token_map_entries = results.token_map_entries;
+                self.model.prompt_output.analysis_in_progress = false;
+                self.model.prompt_output.generated_prompt = Some(results.generated_prompt);
+                self.model.prompt_output.token_count = results.token_count;
+                self.model.prompt_output.file_count = results.file_count;
+                self.model.statistics.token_map_entries = results.token_map_entries;
                 let tokens = results.token_count.unwrap_or(0);
                 self.model.status_message = format!(
                     "Analysis complete! {} tokens, {} files",
@@ -497,12 +528,12 @@ impl TuiApp {
                 );
             }
             Message::AnalysisError(error) => {
-                self.model.analysis_in_progress = false;
-                self.model.analysis_error = Some(error.clone());
+                self.model.prompt_output.analysis_in_progress = false;
+                self.model.prompt_output.analysis_error = Some(error.clone());
                 self.model.status_message = format!("Analysis failed: {}", error);
             }
             Message::CopyToClipboard => {
-                if let Some(prompt) = &self.model.generated_prompt {
+                if let Some(prompt) = &self.model.prompt_output.generated_prompt {
                     match crate::clipboard::copy_to_clipboard(prompt) {
                         Ok(_) => {
                             self.model.status_message = "Copied to clipboard!".to_string();
@@ -515,7 +546,7 @@ impl TuiApp {
             }
 
             Message::SaveToFile(filename) => {
-                if let Some(prompt) = &self.model.generated_prompt {
+                if let Some(prompt) = &self.model.prompt_output.generated_prompt {
                     match crate::utils::save_to_file(&filename, prompt) {
                         Ok(_) => {
                             self.model.status_message = format!("Saved to {}", filename);
@@ -530,47 +561,53 @@ impl TuiApp {
                 // Delegate to OutputWidget
                 OutputWidget::handle_scroll(
                     delta as i32,
-                    &mut self.model.output_scroll,
-                    &self.model.generated_prompt,
+                    &mut self.model.prompt_output.output_scroll,
+                    &self.model.prompt_output.generated_prompt,
                 );
             }
             Message::ScrollFileTree(delta) => {
-                let visible_count = self.model.get_visible_nodes().len() as u16;
+                let visible_count = self.model.file_tree.get_visible_nodes().len() as u16;
                 let viewport_height = 20; // Approximate viewport height for file tree
                 let max_scroll = visible_count.saturating_sub(viewport_height);
 
                 let new_scroll = if delta < 0 {
-                    self.model.file_tree_scroll.saturating_sub((-delta) as u16)
+                    self.model
+                        .file_tree
+                        .file_tree_scroll
+                        .saturating_sub((-delta) as u16)
                 } else {
-                    self.model.file_tree_scroll.saturating_add(delta as u16)
+                    self.model
+                        .file_tree
+                        .file_tree_scroll
+                        .saturating_add(delta as u16)
                 };
 
                 // Clamp scroll to valid range
-                self.model.file_tree_scroll = new_scroll.min(max_scroll);
+                self.model.file_tree.file_tree_scroll = new_scroll.min(max_scroll);
             }
             Message::CycleStatisticsView(direction) => {
-                self.model.statistics_view = if direction > 0 {
-                    self.model.statistics_view.next()
+                self.model.statistics.view = if direction > 0 {
+                    self.model.statistics.view.next()
                 } else {
-                    self.model.statistics_view.prev()
+                    self.model.statistics.view.prev()
                 };
 
-                self.model.statistics_scroll = 0; // Reset scroll
+                self.model.statistics.scroll = 0; // Reset scroll
                 self.model.status_message =
-                    format!("Switched to {} view", self.model.statistics_view.as_str());
+                    format!("Switched to {} view", self.model.statistics.view.as_str());
             }
             Message::ScrollStatistics(delta) => {
                 // For now, simple scroll logic - will be refined per view
                 let new_scroll = if delta < 0 {
-                    self.model.statistics_scroll.saturating_sub((-delta) as u16)
+                    self.model.statistics.scroll.saturating_sub((-delta) as u16)
                 } else {
-                    self.model.statistics_scroll.saturating_add(delta as u16)
+                    self.model.statistics.scroll.saturating_add(delta as u16)
                 };
-                self.model.statistics_scroll = new_scroll;
+                self.model.statistics.scroll = new_scroll;
             }
             Message::ToggleTemplateEdit => {
-                self.model.template_is_editing = !self.model.template_is_editing;
-                let status = if self.model.template_is_editing {
+                self.model.template.template_is_editing = !self.model.template.template_is_editing;
+                let status = if self.model.template.template_is_editing {
                     "Entered template edit mode"
                 } else {
                     "Exited template edit mode"
@@ -578,19 +615,19 @@ impl TuiApp {
                 self.model.status_message = status.to_string();
             }
             Message::UpdateTemplateContent(content) => {
-                self.model.template_content = content;
+                self.model.template.template_content = content;
                 self.model.status_message = "Template content updated".to_string();
             }
             Message::LoadTemplateFromFile(path) => match std::fs::read_to_string(&path) {
                 Ok(content) => {
-                    self.model.template_content = content;
-                    self.model.template_name = std::path::Path::new(&path)
+                    self.model.template.template_content = content;
+                    self.model.template.template_name = std::path::Path::new(&path)
                         .file_stem()
                         .and_then(|s| s.to_str())
                         .unwrap_or("Loaded Template")
                         .to_string();
-                    self.model.template_cursor_position = 0;
-                    self.model.template_scroll_offset = 0;
+                    self.model.template.template_cursor_position = 0;
+                    self.model.template.template_scroll_offset = 0;
                     self.model.status_message = format!("Loaded template from {}", path);
                 }
                 Err(e) => {
@@ -598,7 +635,7 @@ impl TuiApp {
                 }
             },
             Message::SaveTemplateToFile(path) => {
-                match std::fs::write(&path, &self.model.template_content) {
+                match std::fs::write(&path, &self.model.template.template_content) {
                     Ok(_) => {
                         self.model.status_message = format!("Template saved to {}", path);
                     }
@@ -608,7 +645,7 @@ impl TuiApp {
                 }
             }
             Message::ResetTemplateToDefault => {
-                let template_content = match self.model.session.config.output_format {
+                let template_content = match self.model.session.session.config.output_format {
                     code2prompt_core::template::OutputFormat::Xml => {
                         include_str!("../../code2prompt-core/src/default_template_xml.hbs")
                             .to_string()
@@ -616,28 +653,30 @@ impl TuiApp {
                     _ => include_str!("../../code2prompt-core/src/default_template_md.hbs")
                         .to_string(),
                 };
-                self.model.template_content = template_content;
-                self.model.template_name = "Default Template".to_string();
-                self.model.template_cursor_position = 0;
-                self.model.template_scroll_offset = 0;
+                self.model.template.template_content = template_content;
+                self.model.template.template_name = "Default Template".to_string();
+                self.model.template.template_cursor_position = 0;
+                self.model.template.template_scroll_offset = 0;
                 self.model.status_message = "Reset to default template".to_string();
             }
             Message::ScrollTemplate(delta) => {
-                let lines_count = self.model.template_content.lines().count() as u16;
+                let lines_count = self.model.template.template_content.lines().count() as u16;
                 let viewport_height = 20; // Approximate viewport height
                 let max_scroll = lines_count.saturating_sub(viewport_height);
 
                 let new_scroll = if delta < 0 {
                     self.model
+                        .template
                         .template_scroll_offset
                         .saturating_sub((-delta) as u16)
                 } else {
                     self.model
+                        .template
                         .template_scroll_offset
                         .saturating_add(delta as u16)
                 };
 
-                self.model.template_scroll_offset = new_scroll.min(max_scroll);
+                self.model.template.template_scroll_offset = new_scroll.min(max_scroll);
             }
         }
 

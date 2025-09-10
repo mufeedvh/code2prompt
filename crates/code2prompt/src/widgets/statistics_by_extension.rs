@@ -16,7 +16,7 @@ pub struct ExtensionState {
 impl ExtensionState {
     pub fn from_model(model: &Model) -> Self {
         Self {
-            scroll_position: model.statistics_scroll,
+            scroll_position: model.statistics.scroll,
         }
     }
 }
@@ -78,8 +78,8 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
 
         let title = "📁 By Extension";
 
-        if self.model.token_map_entries.is_empty() {
-            let placeholder_text = if self.model.generated_prompt.is_some() {
+        if self.model.statistics.token_map_entries.is_empty() {
+            let placeholder_text = if self.model.prompt_output.generated_prompt.is_some() {
                 "📁 Extensions View\n\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
                 "📁 Extensions View\n\nRun analysis first to see token breakdown by file extension.\n\nPress Enter to analyze selected files."
@@ -104,9 +104,9 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         // Aggregate tokens by file extension
         let mut extension_stats: std::collections::HashMap<String, (usize, usize)> =
             std::collections::HashMap::new();
-        let total_tokens = self.model.token_count.unwrap_or(0);
+        let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
 
-        for entry in &self.model.token_map_entries {
+        for entry in &self.model.statistics.token_map_entries {
             if !entry.metadata.is_dir {
                 let extension = entry
                     .name
@@ -147,7 +147,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let max_tokens_width = ext_vec
             .iter()
             .map(|(_, tokens, _)| {
-                Self::format_number(*tokens, &self.model.session.config.token_format).len()
+                Self::format_number(*tokens, &self.model.session.session.config.token_format).len()
             })
             .max()
             .unwrap_or(6)
@@ -212,7 +212,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
 
                 // Format with dynamic column widths
                 let formatted_tokens =
-                    Self::format_number(*tokens, &self.model.session.config.token_format);
+                    Self::format_number(*tokens, &self.model.session.session.config.token_format);
                 let content = format!(
                     "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {:>width_count$} files",
                     extension,

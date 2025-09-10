@@ -85,7 +85,9 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             .split(area);
 
         // Check if analysis has been run
-        if self.model.generated_prompt.is_none() && !self.model.analysis_in_progress {
+        if self.model.prompt_output.generated_prompt.is_none()
+            && !self.model.prompt_output.analysis_in_progress
+        {
             // Show placeholder when no analysis has been run
             let placeholder_text = "📊 Statistics & Analysis\n\nNo analysis data available yet.\n\nTo view statistics:\n1. Go to Selection tab (Tab/Shift+Tab)\n2. Select files to analyze\n3. Press Enter to run analysis\n4. Return here to view results\n\nPress Enter to go to Selection tab or run analysis.";
 
@@ -108,22 +110,25 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         let mut stats_items: Vec<ListItem> = Vec::new();
 
         // Analysis Status (most important first)
-        let status = if self.model.analysis_in_progress {
-            ("🔄 Analysis in Progress...", Color::Yellow)
-        } else if self.model.analysis_error.is_some() {
-            ("❌ Analysis Failed", Color::Red)
-        } else if self.model.generated_prompt.is_some() {
-            ("✅ Analysis Complete", Color::Green)
+        let (status_text, status_color) = if self.model.prompt_output.analysis_in_progress {
+            ("Generating prompt...".to_string(), Color::Yellow)
+        } else if self.model.prompt_output.analysis_error.is_some() {
+            ("Analysis failed".to_string(), Color::Red)
+        } else if self.model.prompt_output.generated_prompt.is_some() {
+            ("Analysis complete".to_string(), Color::Green)
         } else {
-            ("⏳ Ready to Analyze", Color::Gray)
+            ("Ready to analyze".to_string(), Color::Gray)
         };
 
         stats_items.push(
-            ListItem::new(format!("Status: {}", status.0))
-                .style(Style::default().fg(status.1).add_modifier(Modifier::BOLD)),
+            ListItem::new(format!("Status: {}", status_text)).style(
+                Style::default()
+                    .fg(status_color)
+                    .add_modifier(Modifier::BOLD),
+            ),
         );
 
-        if let Some(error) = &self.model.analysis_error {
+        if let Some(error) = &self.model.prompt_output.analysis_error {
             stats_items.push(
                 ListItem::new(format!("  Error: {}", error)).style(Style::default().fg(Color::Red)),
             );
@@ -139,9 +144,9 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ),
         );
 
-        let selected_count = Self::count_selected_files(&self.model.file_tree);
-        let eligible_count = Self::count_total_files(&self.model.file_tree);
-        let total_files = self.model.file_count;
+        let selected_count = Self::count_selected_files(&self.model.file_tree.file_tree);
+        let eligible_count = Self::count_total_files(&self.model.file_tree.file_tree);
+        let total_files = self.model.prompt_output.file_count;
         stats_items.push(ListItem::new(format!(
             "  • Selected: {} files",
             selected_count
@@ -173,16 +178,19 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ),
         );
 
-        if let Some(token_count) = self.model.token_count {
+        if let Some(token_count) = self.model.prompt_output.token_count {
             stats_items.push(ListItem::new(format!(
                 "  • Total Tokens: {}",
-                Self::format_number(token_count, &self.model.session.config.token_format)
+                Self::format_number(token_count, &self.model.session.session.config.token_format)
             )));
             if selected_count > 0 {
                 let avg_tokens = token_count / selected_count;
                 stats_items.push(ListItem::new(format!(
                     "  • Avg per File: {}",
-                    Self::format_number(avg_tokens, &self.model.session.config.token_format)
+                    Self::format_number(
+                        avg_tokens,
+                        &self.model.session.session.config.token_format
+                    )
                 )));
             }
         } else {
@@ -199,7 +207,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ),
         );
 
-        let output_format = match self.model.session.config.output_format {
+        let output_format = match self.model.session.session.config.output_format {
             code2prompt_core::template::OutputFormat::Markdown => "Markdown",
             code2prompt_core::template::OutputFormat::Json => "JSON",
             code2prompt_core::template::OutputFormat::Xml => "XML",
@@ -207,7 +215,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         stats_items.push(ListItem::new(format!("  • Output: {}", output_format)));
         stats_items.push(ListItem::new(format!(
             "  • Line Numbers: {}",
-            if self.model.session.config.line_numbers {
+            if self.model.session.session.config.line_numbers {
                 "On"
             } else {
                 "Off"
@@ -215,7 +223,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         )));
         stats_items.push(ListItem::new(format!(
             "  • Git Diff: {}",
-            if self.model.session.config.diff_enabled {
+            if self.model.session.session.config.diff_enabled {
                 "On"
             } else {
                 "Off"
@@ -224,8 +232,8 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
 
         let pattern_summary = format!(
             "  • Patterns: {} include, {} exclude",
-            self.model.session.config.include_patterns.len(),
-            self.model.session.config.exclude_patterns.len()
+            self.model.session.session.config.include_patterns.len(),
+            self.model.session.session.config.exclude_patterns.len()
         );
         stats_items.push(ListItem::new(pattern_summary));
 

@@ -16,7 +16,7 @@ pub struct OutputState {
 impl OutputState {
     pub fn from_model(model: &Model) -> Self {
         Self {
-            scroll_position: model.output_scroll,
+            scroll_position: model.prompt_output.output_scroll,
         }
     }
 }
@@ -49,14 +49,14 @@ impl<'a> OutputWidget<'a> {
             KeyCode::Home => Some(Message::ScrollOutput(-9999)), // Scroll to top
             KeyCode::End => Some(Message::ScrollOutput(9999)),   // Scroll to bottom
             KeyCode::Char('c') | KeyCode::Char('C') => {
-                if model.generated_prompt.is_some() {
+                if model.prompt_output.generated_prompt.is_some() {
                     Some(Message::CopyToClipboard)
                 } else {
                     None
                 }
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
-                if model.generated_prompt.is_some() {
+                if model.prompt_output.generated_prompt.is_some() {
                     Some(Message::SaveToFile("prompt.md".to_string()))
                 } else {
                     None
@@ -100,11 +100,11 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
             .split(area);
 
         // Simplified status bar - focus only on prompt availability
-        let info_text = if self.model.analysis_in_progress {
+        let info_text = if self.model.prompt_output.analysis_in_progress {
             "Generating prompt...".to_string()
-        } else if let Some(error) = &self.model.analysis_error {
+        } else if let Some(error) = &self.model.prompt_output.analysis_error {
             format!("Generation failed: {}", error)
-        } else if self.model.generated_prompt.is_some() {
+        } else if self.model.prompt_output.generated_prompt.is_some() {
             "✓ Prompt ready! Copy (C) or Save (S)".to_string()
         } else {
             "Press Enter to generate prompt from selected files".to_string()
@@ -116,9 +116,9 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
                     .borders(Borders::ALL)
                     .title("Generated Prompt"),
             )
-            .style(if self.model.analysis_error.is_some() {
+            .style(if self.model.prompt_output.analysis_error.is_some() {
                 Style::default().fg(Color::Red)
-            } else if self.model.analysis_in_progress {
+            } else if self.model.prompt_output.analysis_in_progress {
                 Style::default().fg(Color::Yellow)
             } else {
                 Style::default().fg(Color::Green)
@@ -126,16 +126,16 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
         Widget::render(info_widget, layout[0], buf);
 
         // Prompt content
-        let content = if let Some(prompt) = &self.model.generated_prompt {
+        let content = if let Some(prompt) = &self.model.prompt_output.generated_prompt {
             prompt.clone()
-        } else if self.model.analysis_in_progress {
+        } else if self.model.prompt_output.analysis_in_progress {
             "Generating prompt...".to_string()
         } else {
             "Press <Enter> to run analysis and generate prompt.\n\nSelected files will be processed according to your settings.".to_string()
         };
 
         // Calculate scroll position for display
-        let scroll_info = if let Some(prompt) = &self.model.generated_prompt {
+        let scroll_info = if let Some(prompt) = &self.model.prompt_output.generated_prompt {
             let total_lines = prompt.lines().count();
             let current_line = state.scroll_position as usize + 1;
             format!("Generated Prompt (Line {}/{})", current_line, total_lines)
@@ -150,7 +150,7 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
         Widget::render(prompt_widget, layout[1], buf);
 
         // Controls
-        let controls_text = if self.model.generated_prompt.is_some() {
+        let controls_text = if self.model.prompt_output.generated_prompt.is_some() {
             "↑↓/PgUp/PgDn: Scroll | C: Copy | S: Save | Enter: Re-run"
         } else {
             "Enter: Run Analysis"

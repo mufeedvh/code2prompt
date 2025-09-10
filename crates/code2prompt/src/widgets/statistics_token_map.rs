@@ -17,7 +17,7 @@ pub struct TokenMapState {
 impl TokenMapState {
     pub fn from_model(model: &Model) -> Self {
         Self {
-            scroll_position: model.statistics_scroll,
+            scroll_position: model.statistics.scroll,
         }
     }
 }
@@ -63,8 +63,8 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
 
         let title = "🗂️  Token Map";
 
-        if self.model.token_map_entries.is_empty() {
-            let placeholder_text = if self.model.generated_prompt.is_some() {
+        if self.model.statistics.token_map_entries.is_empty() {
+            let placeholder_text = if self.model.prompt_output.generated_prompt.is_some() {
                 "🗂️  Token Map View\n\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
                 "🗂️  Token Map View\n\nRun analysis first to see token distribution.\n\nPress Enter to analyze selected files."
@@ -87,10 +87,13 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
         }
 
         // Use the shared token map formatting logic from token_map.rs with adaptive layout
-        let total_tokens = self.model.token_count.unwrap_or(0);
+        let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
         let terminal_width = area.width as usize;
-        let formatted_lines =
-            format_token_map_for_tui(&self.model.token_map_entries, total_tokens, terminal_width);
+        let formatted_lines = format_token_map_for_tui(
+            &self.model.statistics.token_map_entries,
+            total_tokens,
+            terminal_width,
+        );
 
         // Calculate viewport for scrolling
         let content_height = layout[0].height.saturating_sub(2) as usize; // Account for borders
