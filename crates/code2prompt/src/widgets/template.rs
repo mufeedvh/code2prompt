@@ -31,7 +31,6 @@ pub struct TemplateState {
     pub editing_variable: Option<String>,
     pub variable_input_content: String,
     pub show_variable_input: bool,
-    pub variable_input_focus: VariableInputFocus,
 }
 
 /// Which column is currently focused
@@ -40,12 +39,6 @@ pub enum TemplateColumn {
     Editor,
     Variables,
     TemplateList,
-}
-
-/// Focus within variable input
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum VariableInputFocus {
-    Value,
 }
 
 /// Represents a template file
@@ -90,7 +83,6 @@ impl TemplateState {
             editing_variable: None,
             variable_input_content: String::new(),
             show_variable_input: false,
-            variable_input_focus: VariableInputFocus::Value,
         };
 
         // Load available templates and analyze current template
@@ -792,7 +784,7 @@ impl TemplateWidget {
         };
 
         let footer = Paragraph::new(footer_text)
-            .block(Block::default().borders(Borders::ALL))
+            .block(Block::default().borders(Borders::ALL).title("Controls"))
             .style(Style::default().fg(Color::Gray));
         footer.render(area, buf);
     }
