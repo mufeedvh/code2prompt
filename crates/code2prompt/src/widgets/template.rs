@@ -336,40 +336,20 @@ impl TemplateWidget {
             return Self::handle_variable_input_keys(key, state);
         }
 
-        // Global shortcuts - Focus system (e/v/p) - only when not editing variables
-        if !state.show_variable_input {
-            match key.code {
-                KeyCode::Char('e') | KeyCode::Char('E') => {
-                    if state.current_column == TemplateColumn::Editor && state.is_editing {
-                        // If already in editor and editing, toggle edit mode
-                        state.is_editing = false;
-                        state.template_content = state.template_editor.lines().join("\n");
-                        state.analyze_template_variables();
-                        return Some(Message::ToggleTemplateEdit);
-                    } else {
-                        // Switch to editor and enter edit mode
-                        state.current_column = TemplateColumn::Editor;
-                        state.is_editing = true;
-                        state.template_editor = TextArea::from(state.template_content.lines());
-                        return Some(Message::ToggleTemplateEdit);
-                    }
-                }
-                KeyCode::Char('v') | KeyCode::Char('V') => {
-                    state.current_column = TemplateColumn::Variables;
-                    state.is_editing = false; // Exit edit mode when switching
-                    return None;
-                }
-                KeyCode::Char('p') | KeyCode::Char('P') => {
-                    state.current_column = TemplateColumn::TemplateList;
-                    state.is_editing = false; // Exit edit mode when switching
-                    return None;
-                }
-                _ => {}
-            }
-        }
-
-        // Other global shortcuts
+        // Global shortcuts - Focus system (e/v/p) - only when NOT in TextArea
         match key.code {
+            KeyCode::Char('e') | KeyCode::Char('E') => {
+                state.current_column = TemplateColumn::Editor;
+                return None;
+            }
+            KeyCode::Char('v') | KeyCode::Char('V') => {
+                state.current_column = TemplateColumn::Variables;
+                return None;
+            }
+            KeyCode::Char('p') | KeyCode::Char('P') => {
+                state.current_column = TemplateColumn::TemplateList;
+                return None;
+            }
             KeyCode::Char('l') | KeyCode::Char('L')
                 if state.current_column == TemplateColumn::TemplateList =>
             {
@@ -389,33 +369,37 @@ impl TemplateWidget {
                         }
                     }
                 }
-                None
+                return None;
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
                 // Save template with timestamp
                 let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
                 let filename = format!("custom_template_{}", timestamp);
-                Some(Message::SaveTemplate(filename))
+                return Some(Message::SaveTemplate(filename));
             }
             KeyCode::Char('r') | KeyCode::Char('R') => {
                 // Reload default template
-                Some(Message::ReloadTemplate)
+                return Some(Message::ReloadTemplate);
             }
             KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Check for missing variables before running analysis
+                // Check for missing variables before running analysis - BLOCK if invalid
                 if state.has_missing_variables() {
-                    state.status_message = state.get_missing_variables_message();
+                    state.status_message =
+                        "Cannot run analysis: missing variables must be defined first".to_string();
                     state.current_column = TemplateColumn::Variables;
-                    None
+                    return None;
                 } else {
-                    Some(Message::RunAnalysis)
+                    return Some(Message::RunAnalysis);
                 }
             }
-            _ => match state.current_column {
-                TemplateColumn::Editor => Self::handle_editor_keys(key, state),
-                TemplateColumn::Variables => Self::handle_variables_keys(key, state),
-                TemplateColumn::TemplateList => Self::handle_template_list_keys(key, state),
-            },
+            _ => {}
+        }
+
+        // Handle input based on focused column
+        match state.current_column {
+            TemplateColumn::Editor => Self::handle_editor_keys(key, state),
+            TemplateColumn::Variables => Self::handle_variables_keys(key, state),
+            TemplateColumn::TemplateList => Self::handle_template_list_keys(key, state),
         }
     }
 
@@ -652,20 +636,41 @@ impl TemplateWidget {
 
     fn render_editor_column(&self, area: Rect, buf: &mut Buffer, state: &mut TemplateState) {
         let is_focused = state.current_column == TemplateColumn::Editor;
-        let border_style = if is_focused {
-            Style::default().fg(Color::Yellow)
+        let has_missing_vars = state.has_missing_variables();
+
+        // Validation-based styling: Red for invalid, Brown for normal, Yellow for focused
+        let border_style = if has_missing_vars {
+            Style::default().fg(Color::Red) // Invalid - missing variables
+        } else if is_focused {
+            Style::default().fg(Color::Yellow) // Focused and valid
         } else {
-            Style::default().fg(Color::Gray)
+            Style::default().fg(Color::Rgb(139, 69, 19)) // Brown for normal/valid
         };
 
-        let title_spans = vec![
-            Span::styled("Template ", Style::default().fg(Color::White)),
-            Span::styled(
-                "e",
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            ),
-            Span::styled("ditor", Style::default().fg(Color::White)),
-        ];
+        // Title with validation status
+        let title_spans = if has_missing_vars {
+            let invalid_text = format!(
+                "ditor (INVALID: {} missing variables)",
+                state.missing_variables.len()
+            );
+            vec![
+                Span::styled("Template ", Style::default().fg(Color::White)),
+                Span::styled(
+                    "e",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(invalid_text, Style::default().fg(Color::Red)),
+            ]
+        } else {
+            vec![
+                Span::styled("Template ", Style::default().fg(Color::White)),
+                Span::styled(
+                    "e",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("ditor (VALID)", Style::default().fg(Color::Green)),
+            ]
+        };
 
         // Always use TextArea - it's always editable when focused
         let mut textarea = state.template_editor.clone();
@@ -680,6 +685,13 @@ impl TemplateWidget {
         if is_focused {
             textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
             textarea.set_cursor_style(Style::default().fg(Color::Yellow));
+        }
+
+        // Set text style based on validation
+        if has_missing_vars {
+            textarea.set_style(Style::default().fg(Color::LightRed));
+        } else {
+            textarea.set_style(Style::default().fg(Color::White));
         }
 
         Widget::render(&textarea, area, buf);
@@ -883,15 +895,9 @@ impl TemplateWidget {
             let global_controls = "Focus: e(dit) v(ariables) p(icker) | s(ave) r(eload)";
 
             let specific_controls = match state.current_column {
-                TemplateColumn::Editor => {
-                    if state.is_editing {
-                        " | EDIT MODE: Type to edit, E to exit"
-                    } else {
-                        " | E: Edit template, ↑↓: Scroll"
-                    }
-                }
+                TemplateColumn::Editor => " | Type to edit template",
                 TemplateColumn::Variables => " | ↑↓: Navigate, Enter: Edit variable",
-                TemplateColumn::TemplateList => " | ↑↓: Navigate, Enter/L: Load template",
+                TemplateColumn::TemplateList => " | ↑↓: Navigate, Enter/l: Load template",
             };
 
             format!("{}{}", global_controls, specific_controls)
