@@ -3,8 +3,8 @@
 //! This widget provides a 3-column interface: template editor, variables manager, and template list.
 
 use crate::model::{Message, Model};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     prelude::*,
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
 };
@@ -12,11 +12,13 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
+use tui_textarea::TextArea;
 
 /// State for the template widget
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TemplateState {
     pub template_content: String,
+    pub template_editor: TextArea<'static>, // TextArea for template editing
     pub is_editing: bool,
     pub available_templates: Vec<TemplateFile>,
     pub template_list_cursor: usize,
@@ -35,6 +37,41 @@ pub struct TemplateState {
     pub save_filename_input: String,   // Input for save filename
     pub editor_cursor_position: usize, // Cursor position in editor
     pub editor_scroll_offset: usize,   // Scroll offset for editor
+}
+
+// Remove Clone derive since TextArea doesn't implement Clone
+impl Clone for TemplateState {
+    fn clone(&self) -> Self {
+        let mut new_editor =
+            TextArea::from(self.template_editor.lines().iter().map(|s| s.as_str()));
+        new_editor.move_cursor(tui_textarea::CursorMove::Jump(
+            self.template_editor.cursor().0.try_into().unwrap_or(0),
+            self.template_editor.cursor().1.try_into().unwrap_or(0),
+        ));
+
+        Self {
+            template_content: self.template_content.clone(),
+            template_editor: new_editor,
+            is_editing: self.is_editing,
+            available_templates: self.available_templates.clone(),
+            template_list_cursor: self.template_list_cursor,
+            status_message: self.status_message.clone(),
+            current_template_name: self.current_template_name.clone(),
+            session_variables: self.session_variables.clone(),
+            user_variables: self.user_variables.clone(),
+            template_variables: self.template_variables.clone(),
+            missing_variables: self.missing_variables.clone(),
+            current_column: self.current_column,
+            variable_list_cursor: self.variable_list_cursor,
+            editing_variable: self.editing_variable.clone(),
+            variable_input_content: self.variable_input_content.clone(),
+            show_variable_input: self.show_variable_input,
+            show_save_dialog: self.show_save_dialog,
+            save_filename_input: self.save_filename_input.clone(),
+            editor_cursor_position: self.editor_cursor_position,
+            editor_scroll_offset: self.editor_scroll_offset,
+        }
+    }
 }
 
 /// Which column is currently focused
@@ -71,8 +108,12 @@ pub enum VariableCategory {
 
 impl TemplateState {
     pub fn from_model(model: &Model) -> Self {
+        // Create TextArea from template content
+        let template_editor = TextArea::from(model.template.template_content.lines());
+
         let mut state = Self {
             template_content: model.template.template_content.clone(),
+            template_editor,
             is_editing: false,
             available_templates: Vec::new(),
             template_list_cursor: 0,
@@ -249,6 +290,10 @@ impl TemplateState {
 
         self.template_content = content.clone();
         self.current_template_name = template_file.name.clone();
+
+        // Update TextArea with new content
+        self.template_editor = TextArea::from(content.lines());
+
         self.analyze_template_variables();
         Ok(())
     }
@@ -358,26 +403,21 @@ impl TemplateWidget {
         match key.code {
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 state.is_editing = !state.is_editing;
-                if !state.is_editing {
-                    // Re-analyze template when exiting edit mode
+                if state.is_editing {
+                    // Sync TextArea with current content when entering edit mode
+                    state.template_editor = TextArea::from(state.template_content.lines());
+                } else {
+                    // Sync content from TextArea when exiting edit mode
+                    state.template_content = state.template_editor.lines().join("\n");
                     state.analyze_template_variables();
                 }
                 Some(Message::ToggleTemplateEdit)
             }
             _ if state.is_editing => {
-                // Handle basic text editing for template content
-                match key.code {
-                    KeyCode::Char(c) => {
-                        state.template_content.push(c);
-                    }
-                    KeyCode::Backspace => {
-                        state.template_content.pop();
-                    }
-                    KeyCode::Enter => {
-                        state.template_content.push('\n');
-                    }
-                    _ => {}
-                }
+                // Use TextArea's input handling when in edit mode
+                state.template_editor.input(key);
+                // Keep template_content in sync
+                state.template_content = state.template_editor.lines().join("\n");
                 None
             }
             KeyCode::Up => Some(Message::ScrollTemplate(-1)),
@@ -543,10 +583,7 @@ impl TemplateWidget {
                 "R",
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
-            Span::styled(
-                "eload | Ctrl+Enter: Run Analysis",
-                Style::default().fg(Color::Cyan),
-            ),
+            Span::styled("eload", Style::default().fg(Color::Cyan)),
         ];
 
         let header = Paragraph::new(Line::from(header_spans))
@@ -620,12 +657,6 @@ impl TemplateWidget {
             Style::default().fg(Color::Gray)
         };
 
-        let content = if state.is_editing {
-            format!("EDITING MODE\n\n{}", state.template_content)
-        } else {
-            state.template_content.clone()
-        };
-
         let title_spans = if state.is_editing {
             vec![
                 Span::styled("Template ", Style::default().fg(Color::White)),
@@ -642,20 +673,39 @@ impl TemplateWidget {
                     "E",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 ),
-                Span::styled("ditor (E: edit)", Style::default().fg(Color::White)),
+                Span::styled("ditor", Style::default().fg(Color::White)),
             ]
         };
 
-        let paragraph = Paragraph::new(content)
-            .block(
+        if state.is_editing {
+            // Use TextArea for editing mode
+            let mut textarea = state.template_editor.clone();
+            textarea.set_block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title(Line::from(title_spans))
                     .border_style(border_style),
-            )
-            .wrap(ratatui::widgets::Wrap { trim: true });
+            );
 
-        Widget::render(paragraph, area, buf);
+            // Set cursor line style if focused
+            if is_focused {
+                textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
+            }
+
+            Widget::render(&textarea, area, buf);
+        } else {
+            // Use Paragraph for read-only mode
+            let paragraph = Paragraph::new(state.template_content.clone())
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(Line::from(title_spans))
+                        .border_style(border_style),
+                )
+                .wrap(ratatui::widgets::Wrap { trim: true });
+
+            Widget::render(paragraph, area, buf);
+        }
     }
 
     fn render_variables_column(&self, area: Rect, buf: &mut Buffer, state: &mut TemplateState) {
@@ -756,12 +806,11 @@ impl TemplateWidget {
         }
 
         let title_spans = vec![
-            Span::styled("Variables (", Style::default().fg(Color::White)),
             Span::styled(
                 "V",
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
-            Span::styled(": focus, Enter: edit)", Style::default().fg(Color::White)),
+            Span::styled("ariables", Style::default().fg(Color::White)),
         ];
 
         let paragraph = Paragraph::new(lines)
@@ -854,8 +903,7 @@ impl TemplateWidget {
             state.status_message.clone()
         } else {
             // Global controls with focus system
-            let global_controls =
-                "Focus: E(dit) V(ariables) P(icker) | S(ave) R(eload) | Ctrl+Enter: Run";
+            let global_controls = "Focus: E(dit) V(ariables) P(icker) | S(ave) R(eload)";
 
             let specific_controls = match state.current_column {
                 TemplateColumn::Editor => {
