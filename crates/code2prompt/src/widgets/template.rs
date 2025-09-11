@@ -31,6 +31,10 @@ pub struct TemplateState {
     pub editing_variable: Option<String>,
     pub variable_input_content: String,
     pub show_variable_input: bool,
+    pub show_save_dialog: bool,        // Show save template dialog
+    pub save_filename_input: String,   // Input for save filename
+    pub editor_cursor_position: usize, // Cursor position in editor
+    pub editor_scroll_offset: usize,   // Scroll offset for editor
 }
 
 /// Which column is currently focused
@@ -83,6 +87,10 @@ impl TemplateState {
             editing_variable: None,
             variable_input_content: String::new(),
             show_variable_input: false,
+            show_save_dialog: false,
+            save_filename_input: String::new(),
+            editor_cursor_position: 0,
+            editor_scroll_offset: 0,
         };
 
         // Load available templates and analyze current template
@@ -207,33 +215,11 @@ impl TemplateState {
             is_default: true,
         });
 
-        // Load built-in templates from the templates directory
-        let templates_dir = PathBuf::from("crates/code2prompt-core/templates");
-        if templates_dir.exists() {
-            if let Ok(entries) = fs::read_dir(&templates_dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.extension().and_then(|s| s.to_str()) == Some("hbs") {
-                        if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                            self.available_templates.push(TemplateFile {
-                                name: format!(
-                                    "Built-in: {}",
-                                    name.replace('-', " ").replace('_', " ")
-                                ),
-                                path: path.clone(),
-                                is_default: false,
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        // Load user templates from the user data directory
-        if let Ok(user_templates) = crate::utils::load_user_templates() {
-            for (name, path) in user_templates {
+        // Load all templates using the new utility function
+        if let Ok(all_templates) = crate::utils::load_all_templates() {
+            for (name, path, _is_builtin) in all_templates {
                 self.available_templates.push(TemplateFile {
-                    name: format!("User: {}", name.replace('-', " ").replace('_', " ")),
+                    name,
                     path,
                     is_default: false,
                 });
@@ -305,10 +291,39 @@ impl TemplateWidget {
             return Self::handle_variable_input_keys(key, state);
         }
 
-        // Global shortcuts
+        // Global shortcuts - Focus system (e/v/p)
         match key.code {
-            KeyCode::Char('l') | KeyCode::Char('L') => {
+            KeyCode::Char('e') | KeyCode::Char('E') if !state.is_editing => {
+                state.current_column = TemplateColumn::Editor;
+                None
+            }
+            KeyCode::Char('v') | KeyCode::Char('V') => {
+                state.current_column = TemplateColumn::Variables;
+                None
+            }
+            KeyCode::Char('p') | KeyCode::Char('P') => {
                 state.current_column = TemplateColumn::TemplateList;
+                None
+            }
+            KeyCode::Char('l') | KeyCode::Char('L')
+                if state.current_column == TemplateColumn::TemplateList =>
+            {
+                // Load template only when in template list column
+                if let Some(template) = state
+                    .available_templates
+                    .get(state.template_list_cursor)
+                    .cloned()
+                {
+                    match state.load_template_from_file(&template) {
+                        Ok(_) => {
+                            state.status_message = format!("Loaded template: {}", template.name);
+                            state.current_column = TemplateColumn::Editor;
+                        }
+                        Err(e) => {
+                            state.status_message = e;
+                        }
+                    }
+                }
                 None
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
@@ -320,15 +335,6 @@ impl TemplateWidget {
             KeyCode::Char('r') | KeyCode::Char('R') => {
                 // Reload default template
                 Some(Message::ReloadTemplate)
-            }
-            KeyCode::Tab => {
-                // Cycle through columns
-                state.current_column = match state.current_column {
-                    TemplateColumn::Editor => TemplateColumn::Variables,
-                    TemplateColumn::Variables => TemplateColumn::TemplateList,
-                    TemplateColumn::TemplateList => TemplateColumn::Editor,
-                };
-                None
             }
             KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 // Check for missing variables before running analysis
@@ -492,24 +498,20 @@ impl StatefulWidget for TemplateWidget {
     type State = TemplateState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        // Main layout
+        // Main layout - Remove header, keep only content and footer
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3), // Header with Controls
                 Constraint::Min(0),    // Content (3 columns)
                 Constraint::Length(3), // Footer
             ])
             .split(area);
 
-        // Header with Controls
-        self.render_header(chunks[0], buf, state);
-
         // 3-column layout for content
-        self.render_content(chunks[1], buf, state);
+        self.render_content(chunks[0], buf, state);
 
         // Footer
-        self.render_footer(chunks[2], buf, state);
+        self.render_footer(chunks[1], buf, state);
 
         // Variable input popup if active
         if state.show_variable_input {
@@ -624,17 +626,31 @@ impl TemplateWidget {
             state.template_content.clone()
         };
 
-        let title = if state.is_editing {
-            "Template Editor (EDITING)"
+        let title_spans = if state.is_editing {
+            vec![
+                Span::styled("Template ", Style::default().fg(Color::White)),
+                Span::styled(
+                    "E",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("ditor (EDITING)", Style::default().fg(Color::White)),
+            ]
         } else {
-            "Template Editor (e: edit)"
+            vec![
+                Span::styled("Template ", Style::default().fg(Color::White)),
+                Span::styled(
+                    "E",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("ditor (E: edit)", Style::default().fg(Color::White)),
+            ]
         };
 
         let paragraph = Paragraph::new(content)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(title)
+                    .title(Line::from(title_spans))
                     .border_style(border_style),
             )
             .wrap(ratatui::widgets::Wrap { trim: true });
@@ -651,51 +667,113 @@ impl TemplateWidget {
         };
 
         let variables = state.get_organized_variables();
-        let items: Vec<ListItem> = variables
-            .iter()
-            .enumerate()
-            .map(|(i, var_info)| {
-                let style = if i == state.variable_list_cursor && is_focused {
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD)
-                } else {
-                    match var_info.category {
-                        VariableCategory::System => Style::default().fg(Color::Green),
-                        VariableCategory::User => Style::default().fg(Color::Cyan),
-                        VariableCategory::Missing => Style::default().fg(Color::Red),
-                    }
-                };
 
-                let display_value = match &var_info.value {
-                    Some(val) => val.clone(),
-                    None => "❌ undefined".to_string(),
-                };
+        // Create table-like display with 2 columns
+        let mut lines = Vec::new();
 
-                let text = format!(
-                    "{{{{ {} }}}}\n  {}",
-                    var_info.name,
-                    var_info.description.as_ref().unwrap_or(&display_value)
-                );
+        // Header
+        lines.push(Line::from(vec![
+            Span::styled(
+                "Name",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("                    "), // Spacing
+            Span::styled(
+                "Description/Value",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]));
 
-                ListItem::new(text).style(style)
-            })
-            .collect();
+        lines.push(Line::from(vec![Span::raw(
+            "────────────────────────────────────────────────────────────────────────────────",
+        )]));
 
-        let list = List::new(items)
+        // Variable rows
+        for (i, var_info) in variables.iter().enumerate() {
+            let is_selected = i == state.variable_list_cursor && is_focused;
+
+            let name_style = if is_selected {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                match var_info.category {
+                    VariableCategory::System => Style::default().fg(Color::Green),
+                    VariableCategory::User => Style::default().fg(Color::Cyan),
+                    VariableCategory::Missing => Style::default().fg(Color::Red),
+                }
+            };
+
+            let value_style = if is_selected {
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            };
+
+            let prefix = match var_info.category {
+                VariableCategory::System => "🔧 ",
+                VariableCategory::User => "👤 ",
+                VariableCategory::Missing => "❌ ",
+            };
+
+            let name_part = format!("{}{{{{{}}}}}", prefix, var_info.name);
+            let name_padded = format!("{:<20}", name_part);
+
+            let value_part = match var_info.category {
+                VariableCategory::System => var_info
+                    .description
+                    .as_ref()
+                    .unwrap_or(&"System variable".to_string())
+                    .clone(),
+                VariableCategory::User => var_info
+                    .value
+                    .as_ref()
+                    .unwrap_or(&"(empty)".to_string())
+                    .clone(),
+                VariableCategory::Missing => "⚠️ Not defined - Press Enter to set".to_string(),
+            };
+
+            let line = if is_selected {
+                // Highlight entire row for selected item
+                Line::from(vec![Span::styled(
+                    format!("► {}{}", name_padded, value_part),
+                    name_style,
+                )])
+            } else {
+                Line::from(vec![
+                    Span::styled(format!("  {}", name_padded), name_style),
+                    Span::styled(value_part, value_style),
+                ])
+            };
+
+            lines.push(line);
+        }
+
+        let title_spans = vec![
+            Span::styled("Variables (", Style::default().fg(Color::White)),
+            Span::styled(
+                "V",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(": focus, Enter: edit)", Style::default().fg(Color::White)),
+        ];
+
+        let paragraph = Paragraph::new(lines)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title("Variables (Enter: edit)")
+                    .title(Line::from(title_spans))
                     .border_style(border_style),
             )
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            );
+            .wrap(ratatui::widgets::Wrap { trim: false });
 
-        Widget::render(list, area, buf);
+        Widget::render(paragraph, area, buf);
     }
 
     fn render_template_list_column(&self, area: Rect, buf: &mut Buffer, state: &mut TemplateState) {
@@ -728,11 +806,20 @@ impl TemplateWidget {
             })
             .collect();
 
+        let title_spans = vec![
+            Span::styled("Template ", Style::default().fg(Color::White)),
+            Span::styled(
+                "P",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("icker (Enter/L: load)", Style::default().fg(Color::White)),
+        ];
+
         let list = List::new(items)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title("Templates (Enter: load)")
+                    .title(Line::from(title_spans))
                     .border_style(border_style),
             )
             .highlight_style(
@@ -766,21 +853,23 @@ impl TemplateWidget {
         let footer_text = if !state.status_message.is_empty() {
             state.status_message.clone()
         } else {
-            match state.current_column {
+            // Global controls with focus system
+            let global_controls =
+                "Focus: E(dit) V(ariables) P(icker) | S(ave) R(eload) | Ctrl+Enter: Run";
+
+            let specific_controls = match state.current_column {
                 TemplateColumn::Editor => {
                     if state.is_editing {
-                        "EDIT MODE - Type to edit | e: Exit edit | Tab: Switch column".to_string()
+                        " | EDIT MODE: Type to edit, E to exit"
                     } else {
-                        "e: Edit | Tab: Switch column | Ctrl+Enter: Run Analysis".to_string()
+                        " | E: Edit template, ↑↓: Scroll"
                     }
                 }
-                TemplateColumn::Variables => {
-                    "↑↓: Navigate | Enter: Edit variable | Tab: Switch column".to_string()
-                }
-                TemplateColumn::TemplateList => {
-                    "↑↓: Navigate | Enter: Load template | Tab: Switch column".to_string()
-                }
-            }
+                TemplateColumn::Variables => " | ↑↓: Navigate, Enter: Edit variable",
+                TemplateColumn::TemplateList => " | ↑↓: Navigate, Enter/L: Load template",
+            };
+
+            format!("{}{}", global_controls, specific_controls)
         };
 
         let footer = Paragraph::new(footer_text)

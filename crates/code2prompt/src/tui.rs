@@ -639,8 +639,8 @@ impl TuiApp {
                 self.model.template.template_scroll_offset = new_scroll.min(max_scroll);
             }
             Message::SaveTemplate(filename) => match self.save_template_with_name(&filename) {
-                Ok(_) => {
-                    self.model.status_message = format!("Template saved as {}.hbs", filename);
+                Ok(path) => {
+                    self.model.status_message = format!("Template saved to {}", path.display());
                 }
                 Err(e) => {
                     self.model.status_message = format!("Save failed: {}", e);
@@ -714,16 +714,12 @@ impl TuiApp {
 
     // Template utility methods
 
-    fn save_template_with_name(&self, filename: &str) -> Result<(), String> {
-        match crate::utils::save_template_to_user_dir(
+    fn save_template_with_name(&self, filename: &str) -> Result<std::path::PathBuf, String> {
+        match crate::utils::save_template_to_custom_dir(
             filename,
             &self.model.template.template_content,
         ) {
-            Ok(path) => {
-                // Update status message to show where the template was saved
-                println!("Template saved to: {}", path.display());
-                Ok(())
-            }
+            Ok(path) => Ok(path),
             Err(e) => Err(e.to_string()),
         }
     }

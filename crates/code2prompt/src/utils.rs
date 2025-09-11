@@ -155,11 +155,29 @@ pub fn save_to_file(filename: &str, content: &str) -> Result<()> {
     write_to_file(filename, content).context("Failed to save to file")
 }
 
-/// Get the user's code2prompt data directory
+/// Get the user's code2prompt data directory following platform conventions
 pub fn get_code2prompt_data_dir() -> Result<std::path::PathBuf> {
-    let data_dir = dirs::data_dir()
-        .context("Failed to get user data directory")?
-        .join("code2prompt");
+    let data_dir = if cfg!(target_os = "linux") {
+        // Linux: ~/.local/share/code2prompt
+        dirs::data_local_dir()
+            .context("Failed to get user data directory")?
+            .join("code2prompt")
+    } else if cfg!(target_os = "windows") {
+        // Windows: %APPDATA%/code2prompt
+        dirs::data_dir()
+            .context("Failed to get user data directory")?
+            .join("code2prompt")
+    } else if cfg!(target_os = "macos") {
+        // macOS: ~/Library/Application Support/code2prompt
+        dirs::data_dir()
+            .context("Failed to get user data directory")?
+            .join("code2prompt")
+    } else {
+        // Fallback for other platforms
+        dirs::data_dir()
+            .context("Failed to get user data directory")?
+            .join("code2prompt")
+    };
 
     // Create the directory if it doesn't exist
     if !data_dir.exists() {
@@ -169,7 +187,33 @@ pub fn get_code2prompt_data_dir() -> Result<std::path::PathBuf> {
     Ok(data_dir)
 }
 
-/// Get the user's code2prompt templates directory
+/// Get the default templates directory
+pub fn get_code2prompt_default_templates_dir() -> Result<std::path::PathBuf> {
+    let default_dir = get_code2prompt_data_dir()?.join("default");
+
+    // Create the directory if it doesn't exist
+    if !default_dir.exists() {
+        fs::create_dir_all(&default_dir)
+            .context("Failed to create code2prompt default templates directory")?;
+    }
+
+    Ok(default_dir)
+}
+
+/// Get the custom templates directory
+pub fn get_code2prompt_custom_templates_dir() -> Result<std::path::PathBuf> {
+    let custom_dir = get_code2prompt_data_dir()?.join("custom");
+
+    // Create the directory if it doesn't exist
+    if !custom_dir.exists() {
+        fs::create_dir_all(&custom_dir)
+            .context("Failed to create code2prompt custom templates directory")?;
+    }
+
+    Ok(custom_dir)
+}
+
+/// Get the user's code2prompt templates directory (legacy)
 pub fn get_code2prompt_templates_dir() -> Result<std::path::PathBuf> {
     let templates_dir = get_code2prompt_data_dir()?.join("templates");
 
@@ -182,7 +226,18 @@ pub fn get_code2prompt_templates_dir() -> Result<std::path::PathBuf> {
     Ok(templates_dir)
 }
 
-/// Save a template to the user's templates directory
+/// Save a template to the user's custom templates directory
+pub fn save_template_to_custom_dir(filename: &str, content: &str) -> Result<std::path::PathBuf> {
+    let custom_dir = get_code2prompt_custom_templates_dir()?;
+    let file_path = custom_dir.join(format!("{}.hbs", filename));
+
+    fs::write(&file_path, content)
+        .with_context(|| format!("Failed to save template to {}", file_path.display()))?;
+
+    Ok(file_path)
+}
+
+/// Save a template to the user's templates directory (legacy)
 pub fn save_template_to_user_dir(filename: &str, content: &str) -> Result<std::path::PathBuf> {
     let templates_dir = get_code2prompt_templates_dir()?;
     let file_path = templates_dir.join(format!("{}.hbs", filename));
@@ -193,7 +248,76 @@ pub fn save_template_to_user_dir(filename: &str, content: &str) -> Result<std::p
     Ok(file_path)
 }
 
-/// Load available user templates from the templates directory
+/// Load templates from a specific directory
+fn load_templates_from_dir(
+    dir: &std::path::Path,
+    prefix: &str,
+) -> Vec<(String, std::path::PathBuf)> {
+    let mut templates = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("hbs") {
+                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                    let display_name = if prefix.is_empty() {
+                        name.to_string()
+                    } else {
+                        format!("{}: {}", prefix, name.replace('-', " ").replace('_', " "))
+                    };
+                    templates.push((display_name, path));
+                }
+            }
+        }
+    }
+
+    templates
+}
+
+/// Load all available templates from default, custom, and built-in locations
+pub fn load_all_templates() -> Result<Vec<(String, std::path::PathBuf, bool)>> {
+    let mut all_templates = Vec::new();
+
+    // Load default templates
+    if let Ok(default_dir) = get_code2prompt_default_templates_dir() {
+        let default_templates = load_templates_from_dir(&default_dir, "Default");
+        for (name, path) in default_templates {
+            all_templates.push((name, path, false));
+        }
+    }
+
+    // Load custom templates
+    if let Ok(custom_dir) = get_code2prompt_custom_templates_dir() {
+        let custom_templates = load_templates_from_dir(&custom_dir, "Custom");
+        for (name, path) in custom_templates {
+            all_templates.push((name, path, false));
+        }
+    }
+
+    // Load built-in templates from the templates directory in the project
+    let builtin_templates_dir = std::path::PathBuf::from("crates/code2prompt-core/templates");
+    if builtin_templates_dir.exists() {
+        let builtin_templates = load_templates_from_dir(&builtin_templates_dir, "Built-in");
+        for (name, path) in builtin_templates {
+            all_templates.push((name, path, false));
+        }
+    }
+
+    // Load legacy user templates
+    if let Ok(legacy_templates) = load_user_templates() {
+        for (name, path) in legacy_templates {
+            let display_name = format!("User: {}", name.replace('-', " ").replace('_', " "));
+            all_templates.push((display_name, path, false));
+        }
+    }
+
+    // Sort templates by name
+    all_templates.sort_by(|a, b| a.0.cmp(&b.0));
+
+    Ok(all_templates)
+}
+
+/// Load available user templates from the templates directory (legacy)
 pub fn load_user_templates() -> Result<Vec<(String, std::path::PathBuf)>> {
     let templates_dir = get_code2prompt_templates_dir()?;
     let mut templates = Vec::new();
