@@ -58,6 +58,14 @@ pub struct Code2PromptConfig {
     #[builder(default)]
     pub no_ignore: bool,
 
+    /// List of extra ignore files to use (e.g., .dockerignore, .npmignore).
+    #[builder(default)]
+    pub extra_ignore_files: Vec<String>,
+
+    /// If true, .promptignore rules will be ignored.
+    #[builder(default)]
+    pub no_promptignore: bool,
+
     /// Defines the sorting method for files.
     #[builder(default)]
     pub sort_method: Option<FileSortMethod>,

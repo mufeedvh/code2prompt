@@ -119,10 +119,12 @@ fn main() -> Result<()> {
     // Boolean arguments
     configuration
         .no_ignore(args.no_ignore)
+        .no_promptignore(args.no_promptignore)
         .hidden(args.hidden)
         .no_codeblock(args.no_codeblock)
         .follow_symlinks(args.follow_symlinks)
-        .token_map_enabled(args.token_map);
+        .token_map_enabled(args.token_map)
+        .extra_ignore_files(args.extra_ignore_files);
 
     // ~~~ Code2Prompt ~~~
     let mut session = Code2PromptSession::new(configuration.build()?);
