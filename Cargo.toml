@@ -52,3 +52,5 @@ tui-tree-widget = "0.23.0"
 atty = "0.2.14"
 walkdir = "2.4.0"
 chrono = { version = "0.4", features = ["serde"] }
+dirs = "6.0.0"
+tui-textarea = "0.7"
