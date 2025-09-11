@@ -114,7 +114,7 @@ impl TemplateState {
         let mut state = Self {
             template_content: model.template.template_content.clone(),
             template_editor,
-            is_editing: false,
+            is_editing: true, // Start in editing mode by default
             available_templates: Vec::new(),
             template_list_cursor: 0,
             status_message: String::new(),
@@ -336,20 +336,40 @@ impl TemplateWidget {
             return Self::handle_variable_input_keys(key, state);
         }
 
-        // Global shortcuts - Focus system (e/v/p)
+        // Global shortcuts - Focus system (e/v/p) - only when not editing variables
+        if !state.show_variable_input {
+            match key.code {
+                KeyCode::Char('e') | KeyCode::Char('E') => {
+                    if state.current_column == TemplateColumn::Editor && state.is_editing {
+                        // If already in editor and editing, toggle edit mode
+                        state.is_editing = false;
+                        state.template_content = state.template_editor.lines().join("\n");
+                        state.analyze_template_variables();
+                        return Some(Message::ToggleTemplateEdit);
+                    } else {
+                        // Switch to editor and enter edit mode
+                        state.current_column = TemplateColumn::Editor;
+                        state.is_editing = true;
+                        state.template_editor = TextArea::from(state.template_content.lines());
+                        return Some(Message::ToggleTemplateEdit);
+                    }
+                }
+                KeyCode::Char('v') | KeyCode::Char('V') => {
+                    state.current_column = TemplateColumn::Variables;
+                    state.is_editing = false; // Exit edit mode when switching
+                    return None;
+                }
+                KeyCode::Char('p') | KeyCode::Char('P') => {
+                    state.current_column = TemplateColumn::TemplateList;
+                    state.is_editing = false; // Exit edit mode when switching
+                    return None;
+                }
+                _ => {}
+            }
+        }
+
+        // Other global shortcuts
         match key.code {
-            KeyCode::Char('e') | KeyCode::Char('E') if !state.is_editing => {
-                state.current_column = TemplateColumn::Editor;
-                None
-            }
-            KeyCode::Char('v') | KeyCode::Char('V') => {
-                state.current_column = TemplateColumn::Variables;
-                None
-            }
-            KeyCode::Char('p') | KeyCode::Char('P') => {
-                state.current_column = TemplateColumn::TemplateList;
-                None
-            }
             KeyCode::Char('l') | KeyCode::Char('L')
                 if state.current_column == TemplateColumn::TemplateList =>
             {
@@ -400,32 +420,13 @@ impl TemplateWidget {
     }
 
     fn handle_editor_keys(key: KeyEvent, state: &mut TemplateState) -> Option<Message> {
-        match key.code {
-            KeyCode::Char('e') | KeyCode::Char('E') => {
-                state.is_editing = !state.is_editing;
-                if state.is_editing {
-                    // Sync TextArea with current content when entering edit mode
-                    state.template_editor = TextArea::from(state.template_content.lines());
-                } else {
-                    // Sync content from TextArea when exiting edit mode
-                    state.template_content = state.template_editor.lines().join("\n");
-                    state.analyze_template_variables();
-                }
-                Some(Message::ToggleTemplateEdit)
-            }
-            _ if state.is_editing => {
-                // Use TextArea's input handling when in edit mode
-                state.template_editor.input(key);
-                // Keep template_content in sync
-                state.template_content = state.template_editor.lines().join("\n");
-                None
-            }
-            KeyCode::Up => Some(Message::ScrollTemplate(-1)),
-            KeyCode::Down => Some(Message::ScrollTemplate(1)),
-            KeyCode::PageUp => Some(Message::ScrollTemplate(-10)),
-            KeyCode::PageDown => Some(Message::ScrollTemplate(10)),
-            _ => None,
-        }
+        // Always handle input with TextArea when in editor column
+        state.template_editor.input(key);
+        // Keep template_content in sync
+        state.template_content = state.template_editor.lines().join("\n");
+        // Re-analyze variables when content changes
+        state.analyze_template_variables();
+        None
     }
 
     fn handle_variables_keys(key: KeyEvent, state: &mut TemplateState) -> Option<Message> {
@@ -657,55 +658,31 @@ impl TemplateWidget {
             Style::default().fg(Color::Gray)
         };
 
-        let title_spans = if state.is_editing {
-            vec![
-                Span::styled("Template ", Style::default().fg(Color::White)),
-                Span::styled(
-                    "E",
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-                ),
-                Span::styled("ditor (EDITING)", Style::default().fg(Color::White)),
-            ]
-        } else {
-            vec![
-                Span::styled("Template ", Style::default().fg(Color::White)),
-                Span::styled(
-                    "E",
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-                ),
-                Span::styled("ditor", Style::default().fg(Color::White)),
-            ]
-        };
+        let title_spans = vec![
+            Span::styled("Template ", Style::default().fg(Color::White)),
+            Span::styled(
+                "e",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("ditor", Style::default().fg(Color::White)),
+        ];
 
-        if state.is_editing {
-            // Use TextArea for editing mode
-            let mut textarea = state.template_editor.clone();
-            textarea.set_block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(Line::from(title_spans))
-                    .border_style(border_style),
-            );
+        // Always use TextArea - it's always editable when focused
+        let mut textarea = state.template_editor.clone();
+        textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(Line::from(title_spans))
+                .border_style(border_style),
+        );
 
-            // Set cursor line style if focused
-            if is_focused {
-                textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
-            }
-
-            Widget::render(&textarea, area, buf);
-        } else {
-            // Use Paragraph for read-only mode
-            let paragraph = Paragraph::new(state.template_content.clone())
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(Line::from(title_spans))
-                        .border_style(border_style),
-                )
-                .wrap(ratatui::widgets::Wrap { trim: true });
-
-            Widget::render(paragraph, area, buf);
+        // Set cursor line style if focused
+        if is_focused {
+            textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
+            textarea.set_cursor_style(Style::default().fg(Color::Yellow));
         }
+
+        Widget::render(&textarea, area, buf);
     }
 
     fn render_variables_column(&self, area: Rect, buf: &mut Buffer, state: &mut TemplateState) {
@@ -807,7 +784,7 @@ impl TemplateWidget {
 
         let title_spans = vec![
             Span::styled(
-                "V",
+                "v",
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
             Span::styled("ariables", Style::default().fg(Color::White)),
@@ -858,7 +835,7 @@ impl TemplateWidget {
         let title_spans = vec![
             Span::styled("Template ", Style::default().fg(Color::White)),
             Span::styled(
-                "P",
+                "p",
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
             Span::styled("icker (Enter/L: load)", Style::default().fg(Color::White)),
@@ -903,7 +880,7 @@ impl TemplateWidget {
             state.status_message.clone()
         } else {
             // Global controls with focus system
-            let global_controls = "Focus: E(dit) V(ariables) P(icker) | S(ave) R(eload)";
+            let global_controls = "Focus: e(dit) v(ariables) p(icker) | s(ave) r(eload)";
 
             let specific_controls = match state.current_column {
                 TemplateColumn::Editor => {
