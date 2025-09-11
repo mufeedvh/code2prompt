@@ -15,7 +15,7 @@ indicatif = "0.18.0"
 log = "0.4"
 num-format = { version = "0.4.4", features = ["with-system-locale"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.114"
+serde_json = "1.0.143"
 handlebars = "4.3"
 jwalk = "0.8"
 termtree = "0.5"
