@@ -95,7 +95,7 @@ pub fn is_or_ancestor_in_set(rel_path: &Path, set: &HashSet<PathBuf>) -> bool {
 ///
 /// * `path` - A relative path to the file that will be checked against the patterns.
 /// * `include_globset` - A GlobSet specifying which files to include.
-///                       If empty, all files are considered included unless excluded.
+///   If empty, all files are considered included unless excluded.
 /// * `exclude_globset` - A GlobSet specifying which files to exclude.
 ///
 /// # Returns

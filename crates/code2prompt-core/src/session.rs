@@ -166,7 +166,7 @@ impl Code2PromptSession {
         });
 
         // Add user-defined variables to the template data
-        if self.config.user_variables.len() > 0 {
+        if !self.config.user_variables.is_empty() {
             if let Some(obj) = data.as_object_mut() {
                 for (key, value) in &self.config.user_variables {
                     obj.insert(key.clone(), serde_json::Value::String(value.clone()));
@@ -240,10 +240,10 @@ impl Code2PromptSession {
 
         Ok(RenderedPrompt {
             prompt: final_output,
-            directory_name: directory_name,
+            directory_name,
             token_count,
             model_info,
-            files: files,
+            files,
         })
     }
 

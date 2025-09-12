@@ -85,8 +85,9 @@ pub fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
 }
 
 /// Enum to represent the output format.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum OutputFormat {
+    #[default]
     Markdown,
     Json,
     Xml,
@@ -105,11 +106,5 @@ impl FromStr for OutputFormat {
                 s
             )),
         }
-    }
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Markdown
     }
 }

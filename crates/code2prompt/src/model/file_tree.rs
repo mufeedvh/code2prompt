@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 
 /// File tree state containing all file tree related data
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct FileTreeState {
     pub file_tree: Vec<FileNode>,
     pub search_query: String,
@@ -24,17 +24,6 @@ pub struct FileNode {
     pub is_selected: bool,
     pub children: Vec<FileNode>,
     pub level: usize,
-}
-
-impl Default for FileTreeState {
-    fn default() -> Self {
-        FileTreeState {
-            file_tree: Vec::new(),
-            search_query: String::new(),
-            tree_cursor: 0,
-            file_tree_scroll: 0,
-        }
-    }
 }
 
 impl FileTreeState {

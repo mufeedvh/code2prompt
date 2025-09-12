@@ -8,7 +8,7 @@ use code2prompt_core::template::OutputFormat;
 use code2prompt_core::tokenizer::TokenFormat;
 
 /// Settings state containing cursor position and related data
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct SettingsState {
     pub settings_cursor: usize,
 }
@@ -41,12 +41,6 @@ pub enum SettingType {
 pub enum SettingAction {
     Toggle,
     Cycle,
-}
-
-impl Default for SettingsState {
-    fn default() -> Self {
-        SettingsState { settings_cursor: 0 }
-    }
 }
 
 impl SettingsState {

@@ -99,7 +99,7 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
                 if let Ok(metadata) = entry.metadata() {
                     if let Ok(code_bytes) = fs::read(path) {
                         let clean_bytes = strip_utf8_bom(&code_bytes);
-                        let code = String::from_utf8_lossy(&clean_bytes);
+                        let code = String::from_utf8_lossy(clean_bytes);
 
                         let code_block = wrap_code_block(
                             &code,

@@ -252,7 +252,7 @@ fn load_templates_from_dir(
                     let display_name = if prefix.is_empty() {
                         name.to_string()
                     } else {
-                        format!("{}: {}", prefix, name.replace('-', " ").replace('_', " "))
+                        format!("{}: {}", prefix, name.replace(['-', '_'], " "))
                     };
                     templates.push((display_name, path));
                 }
@@ -295,7 +295,7 @@ pub fn load_all_templates() -> Result<Vec<(String, std::path::PathBuf, bool)>> {
     // Load legacy user templates
     if let Ok(legacy_templates) = load_user_templates() {
         for (name, path) in legacy_templates {
-            let display_name = format!("User: {}", name.replace('-', " ").replace('_', " "));
+            let display_name = format!("User: {}", name.replace(['-', '_'], " "));
             all_templates.push((display_name, path, false));
         }
     }
