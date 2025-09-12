@@ -83,44 +83,4 @@ impl StatisticsState {
             TokenFormat::Raw => num.to_string(),
         }
     }
-
-    /// Cycle to next/previous statistics view
-    pub fn cycle_view(&mut self, direction: i8) {
-        use StatisticsView::*;
-        self.view = match (self.view, direction) {
-            (Overview, 1) => TokenMap,
-            (TokenMap, 1) => Extensions,
-            (Extensions, 1) => Overview,
-            (Overview, -1) => Extensions,
-            (TokenMap, -1) => Overview,
-            (Extensions, -1) => TokenMap,
-            _ => self.view, // No change for other directions
-        };
-        // Reset scroll when changing views
-        self.scroll = 0;
-    }
-
-    /// Scroll statistics content
-    pub fn scroll(&mut self, delta: i16) {
-        if delta < 0 {
-            self.scroll = self.scroll.saturating_sub((-delta) as u16);
-        } else {
-            self.scroll = self.scroll.saturating_add(delta as u16);
-        }
-    }
-
-    /// Handle statistics-related messages
-    pub fn handle_message(&mut self, message: &Message) -> Option<Message> {
-        match message {
-            Message::CycleStatisticsView(direction) => {
-                self.cycle_view(*direction);
-                None
-            }
-            Message::ScrollStatistics(delta) => {
-                self.scroll(*delta);
-                None
-            }
-            _ => None,
-        }
-    }
 }

@@ -14,9 +14,8 @@ pub use picker::TemplatePickerWidget;
 pub use variable::TemplateVariableWidget;
 
 use crate::model::template::{TemplateFocus, TemplateState};
-use crate::model::{Message, Model};
+use crate::model::Model;
 use ratatui::{
-    crossterm::event::KeyEvent,
     prelude::*,
     widgets::{Block, Borders, Paragraph},
 };
@@ -35,16 +34,6 @@ impl TemplateWidget {
             variables: TemplateVariableWidget::new(),
             picker: TemplatePickerWidget::new(),
         }
-    }
-
-    /// Handle key events for the template widget (delegated to model)
-    pub fn handle_key_event(
-        key: KeyEvent,
-        _model: &Model,
-        state: &mut TemplateState,
-    ) -> Option<Message> {
-        // All business logic moved to TemplateState::handle_key_event
-        state.handle_key_event(key)
     }
 
     /// Render the template widget with 3 columns
