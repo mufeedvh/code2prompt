@@ -29,7 +29,7 @@ impl TemplateEditorWidget {
         }
 
         // Handle TextArea input when focused
-        state.template_editor.input(key);
+        state.editor.input(key);
         state.sync_content_from_textarea();
         state.validate_template();
 
@@ -90,7 +90,7 @@ impl TemplateEditorWidget {
         };
 
         // Configure TextArea
-        let mut textarea = state.template_editor.clone();
+        let mut textarea = state.editor.clone();
         textarea.set_block(
             Block::default()
                 .borders(Borders::ALL)

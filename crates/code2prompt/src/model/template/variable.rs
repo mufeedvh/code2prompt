@@ -49,11 +49,6 @@ impl Default for VariableState {
 }
 
 impl VariableState {
-    /// Create new variable state
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Get default system variables that are available from build_template_data
     fn get_default_system_variables() -> HashMap<String, String> {
         let mut vars = HashMap::new();
@@ -143,16 +138,6 @@ impl VariableState {
     /// Set a user variable
     pub fn set_user_variable(&mut self, key: String, value: String) {
         self.user_variables.insert(key, value);
-    }
-
-    /// Get user variable value
-    pub fn get_user_variable(&self, key: &str) -> Option<&String> {
-        self.user_variables.get(key)
-    }
-
-    /// Remove a user variable
-    pub fn remove_user_variable(&mut self, key: &str) {
-        self.user_variables.remove(key);
     }
 
     /// Check if there are missing variables

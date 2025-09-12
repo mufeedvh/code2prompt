@@ -50,11 +50,6 @@ impl Default for TemplateState {
 }
 
 impl TemplateState {
-    /// Create new template state
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Create template state from model (for TUI integration)
     pub fn from_model(model: &crate::model::Model) -> Self {
         // Create a new state based on the model's template state
@@ -109,19 +104,6 @@ impl TemplateState {
         }
     }
 
-    /// Update template content from editor and sync variables
-    pub fn update_template_content(&mut self) {
-        self.editor.sync_content_from_textarea();
-        self.sync_variables_with_template();
-    }
-
-    /// Set a user variable and update missing variables
-    pub fn set_user_variable(&mut self, key: String, value: String) {
-        self.variables.set_user_variable(key.clone(), value.clone());
-        self.sync_variables_with_template();
-        self.status_message = format!("Set variable: {} = {}", key, value);
-    }
-
     /// Get organized variables for display
     pub fn get_organized_variables(&self) -> Vec<VariableInfo> {
         self.variables
@@ -144,16 +126,6 @@ impl TemplateState {
     /// Get current template content for analysis
     pub fn get_template_content(&self) -> &str {
         self.editor.get_content()
-    }
-
-    /// Get current template name
-    pub fn get_template_name(&self) -> &str {
-        self.editor.get_name()
-    }
-
-    /// Clear status message
-    pub fn clear_status(&mut self) {
-        self.status_message.clear();
     }
 
     /// Set status message

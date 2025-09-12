@@ -47,11 +47,6 @@ impl Default for PickerState {
 }
 
 impl PickerState {
-    /// Create new picker state
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Load all templates from default and custom directories
     pub fn load_all_templates(&mut self) {
         self.load_default_templates();
@@ -174,11 +169,6 @@ impl PickerState {
         };
     }
 
-    /// Set active list explicitly
-    pub fn set_active_list(&mut self, list: ActiveList) {
-        self.active_list = list;
-    }
-
     /// Load template content from file
     pub fn load_template_content(&self, template: &TemplateFile) -> Result<String, String> {
         if template.is_default && template.path.as_os_str().is_empty() {
@@ -203,26 +193,6 @@ impl PickerState {
         }
     }
 
-    /// Get total number of templates across both lists
-    pub fn get_total_template_count(&self) -> usize {
-        self.default_templates.len() + self.custom_templates.len()
-    }
-
-    /// Get number of default templates
-    pub fn get_default_count(&self) -> usize {
-        self.default_templates.len()
-    }
-
-    /// Get number of custom templates
-    pub fn get_custom_count(&self) -> usize {
-        self.custom_templates.len()
-    }
-
-    /// Check if there are any templates available
-    pub fn has_templates(&self) -> bool {
-        !self.default_templates.is_empty() || !self.custom_templates.is_empty()
-    }
-
     /// Refresh templates by reloading from directories
     pub fn refresh(&mut self) {
         self.load_all_templates();
@@ -233,14 +203,6 @@ impl PickerState {
         }
         if self.custom_cursor >= self.custom_templates.len() {
             self.custom_cursor = self.custom_templates.len().saturating_sub(1);
-        }
-    }
-
-    /// Get display name for active list
-    pub fn get_active_list_name(&self) -> &'static str {
-        match self.active_list {
-            ActiveList::Default => "Default",
-            ActiveList::Custom => "Custom",
         }
     }
 }
