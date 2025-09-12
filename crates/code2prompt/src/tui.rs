@@ -688,7 +688,7 @@ impl TuiApp {
 
                     // Run analysis in background using session directly (same as CLI)
                     let mut session = self.model.session.session.clone();
-                    let template_content = self.model.template.template_content.clone();
+                    let template_content = self.model.template.get_template_content().to_string();
                     let tx = self.message_tx.clone();
 
                     tokio::spawn(async move {
@@ -823,57 +823,39 @@ impl TuiApp {
                 };
                 self.model.statistics.scroll = new_scroll;
             }
-            // Template messages - Redux/Elm style
+            // Template messages - delegate to template state
             Message::ToggleTemplateEdit => {
-                self.model.template.template_is_editing = !self.model.template.template_is_editing;
-                let status = if self.model.template.template_is_editing {
-                    "Edit mode enabled"
-                } else {
-                    "Edit mode disabled"
-                };
-                self.model.status_message = status.to_string();
+                // This message is deprecated in the new architecture
+                self.model.status_message = "Template editing is now always enabled".to_string();
             }
-            Message::ScrollTemplate(delta) => {
-                let lines_count = self.model.template.template_content.lines().count() as u16;
-                let viewport_height = 20; // Approximate viewport height
-                let max_scroll = lines_count.saturating_sub(viewport_height);
-
-                let new_scroll = if delta < 0 {
-                    self.model
-                        .template
-                        .template_scroll_offset
-                        .saturating_sub((-delta) as u16)
-                } else {
-                    self.model
-                        .template
-                        .template_scroll_offset
-                        .saturating_add(delta as u16)
-                };
-
-                self.model.template.template_scroll_offset = new_scroll.min(max_scroll);
+            Message::ScrollTemplate(_delta) => {
+                // This message is deprecated in the new architecture
+                self.model.status_message =
+                    "Template scrolling is handled by the widget".to_string();
             }
-            Message::SaveTemplate(filename) => match self.save_template_with_name(&filename) {
-                Ok(path) => {
-                    self.model.status_message = format!("Template saved to {}", path.display());
+            Message::SaveTemplate(ref _filename) => {
+                // Delegate to template state
+                if let Some(result_msg) = self.model.template.handle_message(&message) {
+                    self.handle_message(result_msg)?;
                 }
-                Err(e) => {
-                    self.model.status_message = format!("Save failed: {}", e);
-                }
-            },
+            }
             Message::ReloadTemplate => {
-                let template_content = match self.model.session.session.config.output_format {
-                    code2prompt_core::template::OutputFormat::Xml => {
-                        include_str!("../../code2prompt-core/src/default_template_xml.hbs")
-                            .to_string()
-                    }
-                    _ => include_str!("../../code2prompt-core/src/default_template_md.hbs")
-                        .to_string(),
-                };
-                self.model.template.template_content = template_content;
-                self.model.template.template_name = "Default Template".to_string();
-                self.model.template.template_cursor_position = 0;
-                self.model.template.template_scroll_offset = 0;
-                self.model.status_message = "Reloaded default template".to_string();
+                // Delegate to template state
+                if let Some(result_msg) = self.model.template.handle_message(&message) {
+                    self.handle_message(result_msg)?;
+                }
+            }
+            Message::LoadTemplate => {
+                // Delegate to template state
+                if let Some(result_msg) = self.model.template.handle_message(&message) {
+                    self.handle_message(result_msg)?;
+                }
+            }
+            Message::RefreshTemplates => {
+                // Delegate to template state
+                if let Some(result_msg) = self.model.template.handle_message(&message) {
+                    self.handle_message(result_msg)?;
+                }
             }
         }
 
@@ -931,7 +913,7 @@ impl TuiApp {
     fn save_template_with_name(&self, filename: &str) -> Result<std::path::PathBuf, String> {
         match crate::utils::save_template_to_custom_dir(
             filename,
-            &self.model.template.template_content,
+            self.model.template.get_template_content(),
         ) {
             Ok(path) => Ok(path),
             Err(e) => Err(e.to_string()),

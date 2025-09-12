@@ -75,6 +75,8 @@ pub enum Message {
     ScrollTemplate(i16),
     SaveTemplate(String), // Save template with name
     ReloadTemplate,
+    LoadTemplate,     // Load selected template from picker
+    RefreshTemplates, // Refresh template list
 }
 
 /// Represents the overall state of the TUI application.
@@ -95,10 +97,6 @@ impl Default for Model {
     fn default() -> Self {
         let session_state = SessionState::default();
 
-        // Load default template based on output format
-        let output_format = session_state.session.config.output_format.clone();
-        let template = TemplateState::new_with_format(output_format);
-
         Model {
             session: session_state,
             current_tab: Tab::FileTree,
@@ -106,7 +104,7 @@ impl Default for Model {
             file_tree: FileTreeState::default(),
             settings: SettingsState::default(),
             statistics: StatisticsState::default(),
-            template,
+            template: TemplateState::default(),
             prompt_output: PromptOutputState::default(),
             status_message: String::new(),
         }
@@ -115,10 +113,6 @@ impl Default for Model {
 
 impl Model {
     pub fn new_with_cli_args(session: Code2PromptSession) -> Self {
-        // Load default template based on output format
-        let output_format = session.config.output_format.clone();
-        let template = TemplateState::new_with_format(output_format);
-
         Model {
             session: SessionState::new(session),
             current_tab: Tab::FileTree,
@@ -126,7 +120,7 @@ impl Model {
             file_tree: FileTreeState::default(),
             settings: SettingsState::default(),
             statistics: StatisticsState::default(),
-            template,
+            template: TemplateState::default(),
             prompt_output: PromptOutputState::default(),
             status_message: String::new(),
         }

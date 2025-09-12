@@ -17,4 +17,6 @@ pub use settings::{SettingsState, SettingsWidget};
 pub use statistics_by_extension::{ExtensionState, StatisticsByExtensionWidget};
 pub use statistics_overview::StatisticsOverviewWidget;
 pub use statistics_token_map::{StatisticsTokenMapWidget, TokenMapState};
-pub use template::{TemplateState, TemplateWidget};
+pub use template::TemplateWidget;
+// Re-export TemplateState from model
+pub use crate::model::template::TemplateState;
