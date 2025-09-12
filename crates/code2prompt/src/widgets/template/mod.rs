@@ -16,7 +16,7 @@ pub use variable::TemplateVariableWidget;
 use crate::model::template::{TemplateFocus, TemplateState};
 use crate::model::{Message, Model};
 use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
+    crossterm::event::KeyEvent,
     prelude::*,
     widgets::{Block, Borders, Paragraph},
 };
@@ -37,123 +37,14 @@ impl TemplateWidget {
         }
     }
 
-    /// Handle key events for the template widget
+    /// Handle key events for the template widget (delegated to model)
     pub fn handle_key_event(
         key: KeyEvent,
         _model: &Model,
         state: &mut TemplateState,
     ) -> Option<Message> {
-        // Handle variable input dialog first (highest priority)
-        if state.variables.is_editing() {
-            let variables = state.get_organized_variables();
-            let result = TemplateVariableWidget::handle_key_event(
-                key,
-                &mut state.variables,
-                &variables,
-                true, // Always focused when editing
-            );
-
-            // Update missing variables after variable changes
-            if result.is_some() {
-                state.sync_variables_with_template();
-            }
-
-            return result;
-        }
-
-        // Global shortcuts - Focus system (e/v/p)
-        match key.code {
-            KeyCode::Char('e') | KeyCode::Char('E') => {
-                state.set_focus(TemplateFocus::Editor);
-                return None;
-            }
-            KeyCode::Char('v') | KeyCode::Char('V') => {
-                state.set_focus(TemplateFocus::Variables);
-                return None;
-            }
-            KeyCode::Char('p') | KeyCode::Char('P') => {
-                state.set_focus(TemplateFocus::Picker);
-                return None;
-            }
-            KeyCode::Char('s') | KeyCode::Char('S') => {
-                // Save template with timestamp
-                let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-                let filename = format!("custom_template_{}", timestamp);
-                return Some(Message::SaveTemplate(filename));
-            }
-            KeyCode::Char('r') | KeyCode::Char('R') => {
-                // Reload default template
-                return Some(Message::ReloadTemplate);
-            }
-            KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Check for missing variables before running analysis - BLOCK if invalid
-                if !state.is_valid_for_analysis() {
-                    state.set_status(state.get_analysis_validation_message());
-                    // Focus on the problematic component
-                    if !state.editor.is_template_valid() {
-                        state.set_focus(TemplateFocus::Editor);
-                    } else if state.variables.has_missing_variables() {
-                        state.set_focus(TemplateFocus::Variables);
-                    }
-                    return None;
-                } else {
-                    return Some(Message::RunAnalysis);
-                }
-            }
-            _ => {}
-        }
-
-        // Handle input based on focused component
-        match state.get_focus() {
-            TemplateFocus::Editor => {
-                let result = TemplateEditorWidget::handle_key_event(key, &mut state.editor, true);
-
-                // Update variables when template content changes
-                if result.is_some() {
-                    state.sync_variables_with_template();
-                }
-
-                result
-            }
-            TemplateFocus::Variables => {
-                let variables = state.get_organized_variables();
-                let result = TemplateVariableWidget::handle_key_event(
-                    key,
-                    &mut state.variables,
-                    &variables,
-                    true,
-                );
-
-                // Update missing variables after variable changes
-                if result.is_some() {
-                    state.sync_variables_with_template();
-                }
-
-                result
-            }
-            TemplateFocus::Picker => {
-                let result = TemplatePickerWidget::handle_key_event(key, &mut state.picker, true);
-
-                // Handle template loading
-                if let Some(Message::LoadTemplate) = result {
-                    match state.load_selected_template() {
-                        Ok(_) => {
-                            state.set_focus(TemplateFocus::Editor);
-                            None
-                        }
-                        Err(e) => {
-                            state.set_status(e);
-                            None
-                        }
-                    }
-                } else if let Some(Message::RefreshTemplates) = result {
-                    state.refresh_templates();
-                    None
-                } else {
-                    result
-                }
-            }
-        }
+        // All business logic moved to TemplateState::handle_key_event
+        state.handle_key_event(key)
     }
 
     /// Render the template widget with 3 columns

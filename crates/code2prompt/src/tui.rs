@@ -475,26 +475,28 @@ impl TuiApp {
     }
 
     fn handle_statistics_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Convert to crossterm KeyEvent for compatibility
-        let crossterm_key = self.convert_to_crossterm_key(key);
         // Delegate to the appropriate statistics widget based on current view
         match self.model.statistics.view {
             crate::model::StatisticsView::Overview => {
-                StatisticsOverviewWidget::handle_key_event(crossterm_key)
+                StatisticsOverviewWidget::handle_key_event(key)
             }
             crate::model::StatisticsView::TokenMap => {
+                // Convert to crossterm KeyEvent for compatibility with other widgets
+                let crossterm_key = self.convert_to_crossterm_key(key);
                 StatisticsTokenMapWidget::handle_key_event(crossterm_key)
             }
             crate::model::StatisticsView::Extensions => {
+                // Convert to crossterm KeyEvent for compatibility with other widgets
+                let crossterm_key = self.convert_to_crossterm_key(key);
                 StatisticsByExtensionWidget::handle_key_event(crossterm_key)
             }
         }
     }
 
     fn handle_template_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Template widget uses ratatui KeyEvent, so no conversion needed
+        // Use the new state-based key handling
         let mut temp_state = TemplateState::from_model(&self.model);
-        TemplateWidget::handle_key_event(key, &self.model, &mut temp_state)
+        temp_state.handle_key_event(key)
     }
 
     fn handle_prompt_output_keys(&self, key: KeyEvent) -> Option<Message> {

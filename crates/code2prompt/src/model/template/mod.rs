@@ -14,6 +14,7 @@ pub use picker::{ActiveList, PickerState, TemplateFile};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
 
 use crate::model::Message;
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /// Which component is currently focused
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -136,6 +137,129 @@ impl TemplateState {
     /// Get status message
     pub fn get_status(&self) -> &str {
         &self.status_message
+    }
+
+    /// Handle key events for the template system (moved from widget)
+    pub fn handle_key_event(&mut self, key: KeyEvent) -> Option<Message> {
+        // Handle variable input dialog first (highest priority)
+        if self.variables.is_editing() {
+            let variables = self.get_organized_variables();
+            let result = crate::widgets::template::TemplateVariableWidget::handle_key_event(
+                key,
+                &mut self.variables,
+                &variables,
+                true, // Always focused when editing
+            );
+
+            // Update missing variables after variable changes
+            if result.is_some() {
+                self.sync_variables_with_template();
+            }
+
+            return result;
+        }
+
+        // Global shortcuts - Focus system (e/v/p)
+        match key.code {
+            KeyCode::Char('e') | KeyCode::Char('E') => {
+                self.set_focus(TemplateFocus::Editor);
+                return None;
+            }
+            KeyCode::Char('v') | KeyCode::Char('V') => {
+                self.set_focus(TemplateFocus::Variables);
+                return None;
+            }
+            KeyCode::Char('p') | KeyCode::Char('P') => {
+                self.set_focus(TemplateFocus::Picker);
+                return None;
+            }
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                // Save template with timestamp
+                let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                let filename = format!("custom_template_{}", timestamp);
+                return Some(Message::SaveTemplate(filename));
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                // Reload default template
+                return Some(Message::ReloadTemplate);
+            }
+            KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                // Check for missing variables before running analysis - BLOCK if invalid
+                if !self.is_valid_for_analysis() {
+                    self.set_status(self.get_analysis_validation_message());
+                    // Focus on the problematic component
+                    if !self.editor.is_template_valid() {
+                        self.set_focus(TemplateFocus::Editor);
+                    } else if self.variables.has_missing_variables() {
+                        self.set_focus(TemplateFocus::Variables);
+                    }
+                    return None;
+                } else {
+                    return Some(Message::RunAnalysis);
+                }
+            }
+            _ => {}
+        }
+
+        // Handle input based on focused component
+        match self.get_focus() {
+            TemplateFocus::Editor => {
+                let result = crate::widgets::template::TemplateEditorWidget::handle_key_event(
+                    key,
+                    &mut self.editor,
+                    true,
+                );
+
+                // Update variables when template content changes
+                if result.is_some() {
+                    self.sync_variables_with_template();
+                }
+
+                result
+            }
+            TemplateFocus::Variables => {
+                let variables = self.get_organized_variables();
+                let result = crate::widgets::template::TemplateVariableWidget::handle_key_event(
+                    key,
+                    &mut self.variables,
+                    &variables,
+                    true,
+                );
+
+                // Update missing variables after variable changes
+                if result.is_some() {
+                    self.sync_variables_with_template();
+                }
+
+                result
+            }
+            TemplateFocus::Picker => {
+                let result = crate::widgets::template::TemplatePickerWidget::handle_key_event(
+                    key,
+                    &mut self.picker,
+                    true,
+                );
+
+                // Handle template loading
+                if let Some(Message::LoadTemplate) = result {
+                    match self.load_selected_template() {
+                        Ok(_) => {
+                            self.set_focus(TemplateFocus::Editor);
+                            None
+                        }
+                        Err(e) => {
+                            self.set_status(e);
+                            None
+                        }
+                    }
+                } else if let Some(Message::RefreshTemplates) = result {
+                    self.refresh_templates();
+                    None
+                } else {
+                    result
+                }
+            }
+        }
     }
 
     /// Handle template-related messages

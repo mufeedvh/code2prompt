@@ -1,7 +1,7 @@
 //! Statistics overview widget for displaying analysis summary.
 
 use crate::model::{Message, Model};
-use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -17,60 +17,12 @@ impl<'a> StatisticsOverviewWidget<'a> {
         Self { model }
     }
 
-    /// Handle key events for statistics overview
+    /// Handle key events for statistics overview (delegated to model)
     pub fn handle_key_event(key: KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
-            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
-            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
-            KeyCode::Down => Some(Message::ScrollStatistics(1)),
-            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
-            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
-            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
-            KeyCode::End => Some(Message::ScrollStatistics(9999)),
-            _ => None,
-        }
-    }
-
-    /// Count selected files in the tree
-    fn count_selected_files(nodes: &[crate::model::FileNode]) -> usize {
-        let mut count = 0;
-        for node in nodes {
-            if node.is_selected && !node.is_directory {
-                count += 1;
-            }
-            count += Self::count_selected_files(&node.children);
-        }
-        count
-    }
-
-    /// Count total files in the tree
-    fn count_total_files(nodes: &[crate::model::FileNode]) -> usize {
-        let mut count = 0;
-        for node in nodes {
-            if !node.is_directory {
-                count += 1;
-            }
-            count += Self::count_total_files(&node.children);
-        }
-        count
-    }
-
-    /// Format number according to token format setting
-    fn format_number(
-        num: usize,
-        token_format: &code2prompt_core::tokenizer::TokenFormat,
-    ) -> String {
-        use code2prompt_core::tokenizer::TokenFormat;
-        use num_format::{SystemLocale, ToFormattedString};
-
-        match token_format {
-            TokenFormat::Format => SystemLocale::default()
-                .map(|locale| num.to_formatted_string(&locale))
-                .unwrap_or_else(|_| num.to_string()),
-            TokenFormat::Raw => num.to_string(),
-        }
+        // All business logic moved to StatisticsState::handle_key_event
+        // This is a static method, so we create a temporary state to handle the event
+        let mut temp_state = crate::model::StatisticsState::default();
+        temp_state.handle_key_event(key)
     }
 }
 
@@ -144,8 +96,10 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ),
         );
 
-        let selected_count = Self::count_selected_files(&self.model.file_tree.file_tree);
-        let eligible_count = Self::count_total_files(&self.model.file_tree.file_tree);
+        let selected_count =
+            crate::model::StatisticsState::count_selected_files(&self.model.file_tree.file_tree);
+        let eligible_count =
+            crate::model::StatisticsState::count_total_files(&self.model.file_tree.file_tree);
         let total_files = self.model.prompt_output.file_count;
         stats_items.push(ListItem::new(format!(
             "  • Selected: {} files",
@@ -181,13 +135,16 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         if let Some(token_count) = self.model.prompt_output.token_count {
             stats_items.push(ListItem::new(format!(
                 "  • Total Tokens: {}",
-                Self::format_number(token_count, &self.model.session.session.config.token_format)
+                crate::model::StatisticsState::format_number(
+                    token_count,
+                    &self.model.session.session.config.token_format
+                )
             )));
             if selected_count > 0 {
                 let avg_tokens = token_count / selected_count;
                 stats_items.push(ListItem::new(format!(
                     "  • Avg per File: {}",
-                    Self::format_number(
+                    crate::model::StatisticsState::format_number(
                         avg_tokens,
                         &self.model.session.session.config.token_format
                     )
