@@ -266,17 +266,6 @@ impl TemplateVariableWidget {
             ])
             .split(popup_layout[1])[1]
     }
-
-    /// Get help text for the variable widget
-    pub fn get_help_text(is_focused: bool, is_editing: bool) -> &'static str {
-        if is_editing {
-            "Type value | Enter: Save | ESC: Cancel"
-        } else if is_focused {
-            "↑↓: Navigate | Enter: Edit variable"
-        } else {
-            "Press 'v' to focus variables"
-        }
-    }
 }
 
 impl Default for TemplateVariableWidget {

@@ -10,7 +10,7 @@ pub mod picker;
 pub mod variable;
 
 pub use editor::EditorState;
-pub use picker::{ActiveList, PickerState, TemplateFile};
+pub use picker::{ActiveList, PickerState};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
 
 use crate::model::Message;

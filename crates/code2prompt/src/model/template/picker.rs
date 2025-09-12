@@ -234,12 +234,4 @@ impl PickerState {
 
         position
     }
-
-    /// Get currently selected template from unified list
-    pub fn get_selected_template_from_global_position(&self) -> Option<&TemplateFile> {
-        match self.active_list {
-            ActiveList::Default => self.default_templates.get(self.default_cursor),
-            ActiveList::Custom => self.custom_templates.get(self.custom_cursor),
-        }
-    }
 }

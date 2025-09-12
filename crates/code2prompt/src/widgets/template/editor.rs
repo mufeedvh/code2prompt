@@ -112,15 +112,6 @@ impl TemplateEditorWidget {
         // Render the TextArea
         Widget::render(&textarea, area, buf);
     }
-
-    /// Get help text for the editor
-    pub fn get_help_text(is_focused: bool) -> &'static str {
-        if is_focused {
-            "Type to edit template | ESC: Exit edit mode"
-        } else {
-            "Press 'e' to focus editor"
-        }
-    }
 }
 
 impl Default for TemplateEditorWidget {
