@@ -4,8 +4,6 @@ use serde_json::Value;
 use std::str::FromStr;
 use termtree::Tree;
 
-///! Sorting methods for files.
-
 // Define the available sort methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileSortMethod {
@@ -39,9 +37,9 @@ impl FromStr for FileSortMethod {
 /// # Arguments
 ///
 /// * `files` - A mutable slice of JSON values representing files. Each file is expected
-///             to have a `"path"` key (as a string) and a `"mod_time"` key (as a u64).
+///   to have a `"path"` key (as a string) and a `"mod_time"` key (as a u64).
 /// * `sort_method` - An optional `FileSortMethod` indicating how to sort the files.
-pub fn sort_files(files: &mut Vec<Value>, sort_method: Option<FileSortMethod>) {
+pub fn sort_files(files: &mut [Value], sort_method: Option<FileSortMethod>) {
     if let Some(method) = sort_method {
         files.sort_by(|a, b| match method {
             FileSortMethod::NameAsc => {

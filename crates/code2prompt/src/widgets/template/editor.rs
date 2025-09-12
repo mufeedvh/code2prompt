@@ -46,10 +46,8 @@ impl TemplateEditorWidget {
         has_missing_vars: bool,
     ) {
         // Determine border style based on validation and focus
-        let border_style = if !state.is_valid {
-            Style::default().fg(Color::Red) // Invalid template syntax
-        } else if has_missing_vars {
-            Style::default().fg(Color::Red) // Missing variables
+        let border_style = if !state.is_valid || has_missing_vars {
+            Style::default().fg(Color::Red) // Invalid template syntax or missing variables
         } else if is_focused {
             Style::default().fg(Color::Yellow) // Focused and valid
         } else {

@@ -10,6 +10,16 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem},
 };
 
+/// Parameters for rendering a template list
+struct TemplateListParams<'a> {
+    templates: &'a [TemplateFile],
+    cursor: usize,
+    is_active_list: bool,
+    is_widget_focused: bool,
+    title: &'a str,
+    icon: &'a str,
+}
+
 /// Template Picker sub-widget
 pub struct TemplatePickerWidget;
 
@@ -72,58 +82,53 @@ impl TemplatePickerWidget {
         self.render_template_list(
             sections[0],
             buf,
-            &state.default_templates,
-            state.default_cursor,
-            state.active_list == ActiveList::Default,
-            is_focused,
-            "Default Templates",
-            "📄",
+            TemplateListParams {
+                templates: &state.default_templates,
+                cursor: state.default_cursor,
+                is_active_list: state.active_list == ActiveList::Default,
+                is_widget_focused: is_focused,
+                title: "Default Templates",
+                icon: "📄",
+            },
         );
 
         // Render custom templates section
         self.render_template_list(
             sections[1],
             buf,
-            &state.custom_templates,
-            state.custom_cursor,
-            state.active_list == ActiveList::Custom,
-            is_focused,
-            "Custom Templates",
-            "📝",
+            TemplateListParams {
+                templates: &state.custom_templates,
+                cursor: state.custom_cursor,
+                is_active_list: state.active_list == ActiveList::Custom,
+                is_widget_focused: is_focused,
+                title: "Custom Templates",
+                icon: "📝",
+            },
         );
     }
 
     /// Render a single template list
-    fn render_template_list(
-        &self,
-        area: Rect,
-        buf: &mut Buffer,
-        templates: &[TemplateFile],
-        cursor: usize,
-        is_active_list: bool,
-        is_widget_focused: bool,
-        title: &str,
-        icon: &str,
-    ) {
-        let is_focused = is_widget_focused && is_active_list;
+    fn render_template_list(&self, area: Rect, buf: &mut Buffer, params: TemplateListParams) {
+        let is_focused = params.is_widget_focused && params.is_active_list;
 
         let border_style = if is_focused {
             Style::default().fg(Color::Yellow)
-        } else if is_active_list && is_widget_focused {
+        } else if params.is_active_list && params.is_widget_focused {
             Style::default().fg(Color::Cyan) // Indicate this is the active list
         } else {
             Style::default().fg(Color::Gray)
         };
 
-        let items: Vec<ListItem> = templates
+        let items: Vec<ListItem> = params
+            .templates
             .iter()
             .enumerate()
             .map(|(i, template)| {
-                let style = if i == cursor && is_focused {
+                let style = if i == params.cursor && is_focused {
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD)
-                } else if i == cursor && is_active_list {
+                } else if i == params.cursor && params.is_active_list {
                     Style::default()
                         .fg(Color::Cyan)
                         .add_modifier(Modifier::BOLD)
@@ -131,12 +136,12 @@ impl TemplatePickerWidget {
                     Style::default().fg(Color::White)
                 };
 
-                ListItem::new(format!("{} {}", icon, template.name)).style(style)
+                ListItem::new(format!("{} {}", params.icon, template.name)).style(style)
             })
             .collect();
 
         // Create title with focus indicators
-        let title_spans = if title.contains("Default") {
+        let title_spans = if params.title.contains("Default") {
             vec![
                 Span::styled("Template ", Style::default().fg(Color::White)),
                 Span::styled(
@@ -144,8 +149,8 @@ impl TemplatePickerWidget {
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 ),
                 Span::styled("icker - ", Style::default().fg(Color::White)),
-                Span::styled(title, Style::default().fg(Color::White)),
-                if is_active_list {
+                Span::styled(params.title, Style::default().fg(Color::White)),
+                if params.is_active_list {
                     Span::styled(" (ACTIVE)", Style::default().fg(Color::Cyan))
                 } else {
                     Span::styled("", Style::default())
@@ -153,8 +158,8 @@ impl TemplatePickerWidget {
             ]
         } else {
             vec![
-                Span::styled(title, Style::default().fg(Color::White)),
-                if is_active_list {
+                Span::styled(params.title, Style::default().fg(Color::White)),
+                if params.is_active_list {
                     Span::styled(" (ACTIVE)", Style::default().fg(Color::Cyan))
                 } else {
                     Span::styled("", Style::default())

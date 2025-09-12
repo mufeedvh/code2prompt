@@ -2,7 +2,7 @@
 //! It allows you to load codebase data, Git info, and render prompts using a template.
 
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::configuration::Code2PromptConfig;
 use crate::filter::{build_globset, should_include_path};
@@ -53,7 +53,7 @@ impl Code2PromptSession {
     }
 
     /// Query if a path is currently included (for toggle/UI)
-    pub fn is_file_included(&self, path: &PathBuf) -> bool {
+    pub fn is_file_included(&self, path: &Path) -> bool {
         let rel_path = path.strip_prefix(&self.config.path).unwrap_or(path);
         let include_gs = build_globset(&self.config.include_patterns);
         let exclude_gs = build_globset(&self.config.exclude_patterns);

@@ -172,7 +172,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
             + separators_width
             + 5; // +5 for "files"
         let bar_width = if available_width > fixed_content_width {
-            (available_width - fixed_content_width).max(10).min(40) // Between 10 and 40 chars
+            (available_width - fixed_content_width).clamp(10, 40) // Between 10 and 40 chars
         } else {
             15 // Fallback minimum bar width
         };
