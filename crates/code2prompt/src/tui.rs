@@ -59,10 +59,10 @@ impl TuiApp {
     /// # Errors
     ///
     /// Returns an error if the terminal cannot be initialized or the file tree cannot be built.
-    pub fn new_with_args(session: Code2PromptSession) -> Result<Self> {
+    pub fn new(session: Code2PromptSession) -> Result<Self> {
         let terminal = init_terminal()?;
         let (message_tx, message_rx) = mpsc::unbounded_channel();
-        let model = Model::new_with_cli_args(session);
+        let model = Model::new(session);
 
         Ok(Self {
             model,
@@ -915,7 +915,7 @@ impl TuiApp {
 ///
 /// Returns an error if the TUI cannot be initialized or if runtime errors occur during execution.
 pub async fn run_tui_with_args(session: Code2PromptSession) -> Result<()> {
-    let mut app = TuiApp::new_with_args(session)?;
+    let mut app = TuiApp::new(session)?;
 
     let result = app.run().await;
 

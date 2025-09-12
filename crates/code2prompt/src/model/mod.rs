@@ -110,7 +110,7 @@ impl Default for Model {
 }
 
 impl Model {
-    pub fn new_with_cli_args(session: Code2PromptSession) -> Self {
+    pub fn new(session: Code2PromptSession) -> Self {
         Model {
             session: SessionState::new(session),
             current_tab: Tab::FileTree,
