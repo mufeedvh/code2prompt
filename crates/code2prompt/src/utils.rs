@@ -237,17 +237,6 @@ pub fn save_template_to_custom_dir(filename: &str, content: &str) -> Result<std:
     Ok(file_path)
 }
 
-/// Save a template to the user's templates directory (legacy)
-pub fn save_template_to_user_dir(filename: &str, content: &str) -> Result<std::path::PathBuf> {
-    let templates_dir = get_code2prompt_templates_dir()?;
-    let file_path = templates_dir.join(format!("{}.hbs", filename));
-
-    fs::write(&file_path, content)
-        .with_context(|| format!("Failed to save template to {}", file_path.display()))?;
-
-    Ok(file_path)
-}
-
 /// Load templates from a specific directory
 fn load_templates_from_dir(
     dir: &std::path::Path,

@@ -824,15 +824,6 @@ impl TuiApp {
                 self.model.statistics.scroll = new_scroll;
             }
             // Template messages - delegate to template state
-            Message::ToggleTemplateEdit => {
-                // This message is deprecated in the new architecture
-                self.model.status_message = "Template editing is now always enabled".to_string();
-            }
-            Message::ScrollTemplate(_delta) => {
-                // This message is deprecated in the new architecture
-                self.model.status_message =
-                    "Template scrolling is handled by the widget".to_string();
-            }
             Message::SaveTemplate(ref _filename) => {
                 // Delegate to template state
                 if let Some(result_msg) = self.model.template.handle_message(&message) {
@@ -906,18 +897,6 @@ impl TuiApp {
             .block(Block::default().borders(Borders::ALL))
             .style(Style::default().fg(Color::Cyan));
         frame.render_widget(status_widget, area);
-    }
-
-    // Template utility methods
-
-    fn save_template_with_name(&self, filename: &str) -> Result<std::path::PathBuf, String> {
-        match crate::utils::save_template_to_custom_dir(
-            filename,
-            self.model.template.get_template_content(),
-        ) {
-            Ok(path) => Ok(path),
-            Err(e) => Err(e.to_string()),
-        }
     }
 }
 

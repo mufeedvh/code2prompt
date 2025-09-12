@@ -192,23 +192,6 @@ impl TemplatePickerWidget {
             "Press 'p' to focus picker".to_string()
         }
     }
-
-    /// Get currently selected template for display
-    pub fn get_selected_template_info(state: &PickerState) -> String {
-        if let Some(template) = state.get_selected_template() {
-            format!(
-                "Selected: {} ({})",
-                template.name,
-                if template.is_default {
-                    "Default"
-                } else {
-                    "Custom"
-                }
-            )
-        } else {
-            "No template selected".to_string()
-        }
-    }
 }
 
 impl Default for TemplatePickerWidget {

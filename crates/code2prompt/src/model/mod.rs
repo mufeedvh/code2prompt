@@ -71,8 +71,6 @@ pub enum Message {
     ScrollStatistics(i16),   // Scroll delta for statistics
 
     // Template - Redux/Elm style messages
-    ToggleTemplateEdit,
-    ScrollTemplate(i16),
     SaveTemplate(String), // Save template with name
     ReloadTemplate,
     LoadTemplate,     // Load selected template from picker
