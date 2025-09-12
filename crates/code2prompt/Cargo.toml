@@ -35,6 +35,7 @@ git2 = { workspace = true }
 chrono = { workspace = true }
 dirs = { workspace = true }
 regex = { workspace = true }
+handlebars = { workspace = true }
 
 
 [target.'cfg(windows)'.dependencies]

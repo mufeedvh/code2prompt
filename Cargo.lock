@@ -425,6 +425,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "git2",
+ "handlebars",
  "indicatif",
  "inquire",
  "log",

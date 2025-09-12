@@ -224,4 +224,63 @@ impl VariableState {
     pub fn get_editing_variable(&self) -> Option<&String> {
         self.editing_variable.as_ref()
     }
+
+    /// Move cursor to first missing/user-defined variable
+    pub fn move_to_first_missing_variable(&mut self) {
+        // This will be called when entering variable editing mode
+        // For now, just reset cursor to 0, but we could enhance this
+        // to find the first missing variable in the organized list
+        self.cursor = 0;
+    }
+
+    /// Move to next editable (missing or user-defined) variable
+    pub fn move_to_next_editable_variable(&mut self, variables: &[VariableInfo]) {
+        if variables.is_empty() {
+            return;
+        }
+
+        let start_pos = (self.cursor + 1) % variables.len();
+        for i in 0..variables.len() {
+            let pos = (start_pos + i) % variables.len();
+            if let Some(var) = variables.get(pos) {
+                if matches!(
+                    var.category,
+                    VariableCategory::Missing | VariableCategory::User
+                ) {
+                    self.cursor = pos;
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Move to previous editable (missing or user-defined) variable
+    pub fn move_to_previous_editable_variable(&mut self, variables: &[VariableInfo]) {
+        if variables.is_empty() {
+            return;
+        }
+
+        let start_pos = if self.cursor == 0 {
+            variables.len() - 1
+        } else {
+            self.cursor - 1
+        };
+
+        for i in 0..variables.len() {
+            let pos = if start_pos >= i {
+                start_pos - i
+            } else {
+                variables.len() - (i - start_pos)
+            };
+            if let Some(var) = variables.get(pos) {
+                if matches!(
+                    var.category,
+                    VariableCategory::Missing | VariableCategory::User
+                ) {
+                    self.cursor = pos;
+                    return;
+                }
+            }
+        }
+    }
 }

@@ -89,9 +89,9 @@ impl EditorState {
         &self.template_variables
     }
 
-    /// Validate template syntax (basic validation)
+    /// Validate template syntax with enhanced Handlebars checking
     pub fn validate_template(&mut self) {
-        // Basic validation - check for balanced braces
+        // First check for balanced braces
         let open_count = self.content.matches("{{").count();
         let close_count = self.content.matches("}}").count();
 
@@ -101,9 +101,32 @@ impl EditorState {
                 "Unbalanced braces: {} opening, {} closing",
                 open_count, close_count
             );
-        } else {
-            self.is_valid = true;
-            self.validation_message = String::new();
+            return;
+        }
+
+        // Try to compile the template with Handlebars
+        match self.compile_template() {
+            Ok(_) => {
+                self.is_valid = true;
+                self.validation_message = String::new();
+            }
+            Err(e) => {
+                self.is_valid = false;
+                self.validation_message = format!("Template syntax error: {}", e);
+            }
+        }
+    }
+
+    /// Attempt to compile the template to check for syntax errors
+    fn compile_template(&self) -> Result<(), String> {
+        let mut handlebars = handlebars::Handlebars::new();
+
+        // Set strict mode to catch undefined variables
+        handlebars.set_strict_mode(false); // Allow undefined variables for now
+
+        match handlebars.register_template_string("test", &self.content) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!("{}", e)),
         }
     }
 

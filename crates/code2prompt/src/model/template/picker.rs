@@ -205,4 +205,41 @@ impl PickerState {
             self.custom_cursor = self.custom_templates.len().saturating_sub(1);
         }
     }
+
+    /// Get global cursor position for unified list display
+    pub fn get_global_cursor_position(&self) -> usize {
+        let mut position = 0;
+
+        // Count default templates section
+        if !self.default_templates.is_empty() {
+            position += 1; // Section header
+            if self.active_list == ActiveList::Default {
+                position += self.default_cursor;
+                return position;
+            }
+            position += self.default_templates.len();
+        }
+
+        // Count custom templates section
+        if !self.custom_templates.is_empty() {
+            if !self.default_templates.is_empty() {
+                position += 1; // Separator
+            }
+            position += 1; // Section header
+            if self.active_list == ActiveList::Custom {
+                position += self.custom_cursor;
+                return position;
+            }
+        }
+
+        position
+    }
+
+    /// Get currently selected template from unified list
+    pub fn get_selected_template_from_global_position(&self) -> Option<&TemplateFile> {
+        match self.active_list {
+            ActiveList::Default => self.default_templates.get(self.default_cursor),
+            ActiveList::Custom => self.custom_templates.get(self.custom_cursor),
+        }
+    }
 }

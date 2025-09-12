@@ -14,7 +14,7 @@ pub use picker::{ActiveList, PickerState, TemplateFile};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
 
 use crate::model::Message;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 /// Which component is currently focused
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -24,6 +24,14 @@ pub enum TemplateFocus {
     Picker,
 }
 
+/// Focus mode determines interaction behavior
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FocusMode {
+    Normal,          // Can switch between panels with e/v/p
+    EditingTemplate, // Locked to editor, ESC to exit
+    EditingVariable, // Locked to variables, ESC to exit
+}
+
 /// Coordinated template state containing all sub-components
 #[derive(Debug, Clone)]
 pub struct TemplateState {
@@ -31,6 +39,7 @@ pub struct TemplateState {
     pub variables: VariableState,
     pub picker: PickerState,
     pub focus: TemplateFocus,
+    pub focus_mode: FocusMode,
     pub status_message: String,
 }
 
@@ -41,6 +50,7 @@ impl Default for TemplateState {
             variables: VariableState::default(),
             picker: PickerState::default(),
             focus: TemplateFocus::Editor,
+            focus_mode: FocusMode::Normal,
             status_message: String::new(),
         };
 
@@ -84,6 +94,24 @@ impl TemplateState {
     /// Get current focus
     pub fn get_focus(&self) -> TemplateFocus {
         self.focus
+    }
+
+    /// Set focus mode
+    pub fn set_focus_mode(&mut self, mode: FocusMode) {
+        self.focus_mode = mode;
+    }
+
+    /// Get current focus mode
+    pub fn get_focus_mode(&self) -> FocusMode {
+        self.focus_mode
+    }
+
+    /// Check if currently in an editing mode
+    pub fn is_in_editing_mode(&self) -> bool {
+        matches!(
+            self.focus_mode,
+            FocusMode::EditingTemplate | FocusMode::EditingVariable
+        )
     }
 
     /// Check if template is valid for analysis
@@ -159,18 +187,34 @@ impl TemplateState {
             return result;
         }
 
-        // Global shortcuts - Focus system (e/v/p)
+        // Handle ESC key to exit editing modes
+        if key.code == KeyCode::Esc && self.is_in_editing_mode() {
+            self.set_focus_mode(FocusMode::Normal);
+            return None;
+        }
+
+        // In editing modes, block focus switching and pass keys to focused component
+        if self.is_in_editing_mode() {
+            return self.handle_editing_mode_keys(key);
+        }
+
+        // Normal mode: Handle global shortcuts and focus switching
         match key.code {
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 self.set_focus(TemplateFocus::Editor);
+                self.set_focus_mode(FocusMode::EditingTemplate);
                 return None;
             }
             KeyCode::Char('v') | KeyCode::Char('V') => {
                 self.set_focus(TemplateFocus::Variables);
+                self.set_focus_mode(FocusMode::EditingVariable);
+                // Move cursor to first missing variable
+                self.variables.move_to_first_missing_variable();
                 return None;
             }
             KeyCode::Char('p') | KeyCode::Char('P') => {
                 self.set_focus(TemplateFocus::Picker);
+                self.set_focus_mode(FocusMode::Normal); // Picker stays in normal mode
                 return None;
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
@@ -183,15 +227,18 @@ impl TemplateState {
                 // Reload default template
                 return Some(Message::ReloadTemplate);
             }
-            KeyCode::Enter if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Check for missing variables before running analysis - BLOCK if invalid
+            KeyCode::Enter => {
+                // Change from CTRL+Enter to just Enter for analysis
                 if !self.is_valid_for_analysis() {
                     self.set_status(self.get_analysis_validation_message());
                     // Focus on the problematic component
                     if !self.editor.is_template_valid() {
                         self.set_focus(TemplateFocus::Editor);
+                        self.set_focus_mode(FocusMode::EditingTemplate);
                     } else if self.variables.has_missing_variables() {
                         self.set_focus(TemplateFocus::Variables);
+                        self.set_focus_mode(FocusMode::EditingVariable);
+                        self.variables.move_to_first_missing_variable();
                     }
                     return None;
                 } else {
@@ -201,7 +248,12 @@ impl TemplateState {
             _ => {}
         }
 
-        // Handle input based on focused component
+        // Handle input for focused component in normal mode
+        self.handle_normal_mode_keys(key)
+    }
+
+    /// Handle keys when in editing modes (template or variable)
+    fn handle_editing_mode_keys(&mut self, key: KeyEvent) -> Option<Message> {
         match self.get_focus() {
             TemplateFocus::Editor => {
                 let result = crate::widgets::template::TemplateEditorWidget::handle_key_event(
@@ -233,6 +285,13 @@ impl TemplateState {
 
                 result
             }
+            TemplateFocus::Picker => None, // Picker doesn't have editing mode
+        }
+    }
+
+    /// Handle keys when in normal mode (can switch focus)
+    fn handle_normal_mode_keys(&mut self, key: KeyEvent) -> Option<Message> {
+        match self.get_focus() {
             TemplateFocus::Picker => {
                 let result = crate::widgets::template::TemplatePickerWidget::handle_key_event(
                     key,
@@ -240,13 +299,10 @@ impl TemplateState {
                     true,
                 );
 
-                // Handle template loading
+                // Handle template loading - don't switch to editor mode, just load
                 if let Some(Message::LoadTemplate) = result {
                     match self.load_selected_template() {
-                        Ok(_) => {
-                            self.set_focus(TemplateFocus::Editor);
-                            None
-                        }
+                        Ok(_) => None, // Stay in picker mode
                         Err(e) => {
                             self.set_status(e);
                             None
@@ -259,6 +315,7 @@ impl TemplateState {
                     result
                 }
             }
+            _ => None, // Editor and Variables only respond in editing mode
         }
     }
 

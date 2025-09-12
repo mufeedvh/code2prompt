@@ -44,6 +44,16 @@ impl TemplateVariableWidget {
                 state.move_cursor_down(variables.len());
                 None
             }
+            KeyCode::Tab => {
+                // Move to next missing/user-defined variable
+                state.move_to_next_editable_variable(variables);
+                None
+            }
+            KeyCode::BackTab => {
+                // Move to previous missing/user-defined variable
+                state.move_to_previous_editable_variable(variables);
+                None
+            }
             KeyCode::Enter => {
                 // Start editing variable if it's user-defined or missing
                 if let Some(var_info) = variables.get(state.cursor) {

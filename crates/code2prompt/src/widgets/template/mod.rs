@@ -103,24 +103,29 @@ impl TemplateWidget {
         // Render each column if it has space
         if columns[0].width > 0 {
             let is_editor_focused = state.get_focus() == TemplateFocus::Editor;
+            let is_editing_template =
+                state.get_focus_mode() == crate::model::template::FocusMode::EditingTemplate;
             let has_missing_vars = state.variables.has_missing_variables();
             self.editor.render(
                 columns[0],
                 buf,
                 &mut state.editor,
-                is_editor_focused,
+                is_editor_focused || is_editing_template,
                 has_missing_vars,
             );
         }
 
         if columns[1].width > 0 {
             let variables = state.get_organized_variables();
+            let is_variables_focused = state.get_focus() == TemplateFocus::Variables;
+            let is_editing_variable =
+                state.get_focus_mode() == crate::model::template::FocusMode::EditingVariable;
             self.variables.render(
                 columns[1],
                 buf,
                 &state.variables,
                 &variables,
-                state.get_focus() == TemplateFocus::Variables,
+                is_variables_focused || is_editing_variable,
             );
         }
 
@@ -139,21 +144,36 @@ impl TemplateWidget {
         let footer_text = if !state.get_status().is_empty() {
             state.get_status().to_string()
         } else {
-            // Global controls with focus system
-            let global_controls =
-                "Focus: e(dit) v(ariables) p(icker) | s(ave) r(eload) | Ctrl+Enter: Analyze";
+            // Show different controls based on focus mode
+            match state.get_focus_mode() {
+                crate::model::template::FocusMode::Normal => {
+                    // Normal mode: can switch focus
+                    let global_controls =
+                        "Focus: e(dit) v(ariables) p(icker) | s(ave) r(eload) | Enter: Analyze";
 
-            let specific_controls = match state.get_focus() {
-                TemplateFocus::Editor => TemplateEditorWidget::get_help_text(true),
-                TemplateFocus::Variables => {
-                    TemplateVariableWidget::get_help_text(true, state.variables.is_editing())
-                }
-                TemplateFocus::Picker => {
-                    &TemplatePickerWidget::get_help_text(true, state.picker.active_list)
-                }
-            };
+                    let specific_controls = match state.get_focus() {
+                        TemplateFocus::Editor => "Press 'e' to enter edit mode",
+                        TemplateFocus::Variables => "Press 'v' to enter variable mode",
+                        TemplateFocus::Picker => {
+                            &TemplatePickerWidget::get_help_text(true, state.picker.active_list)
+                        }
+                    };
 
-            format!("{} | {}", global_controls, specific_controls)
+                    format!("{} | {}", global_controls, specific_controls)
+                }
+                crate::model::template::FocusMode::EditingTemplate => {
+                    "EDIT MODE: Type to edit template | ESC: Exit edit mode".to_string()
+                }
+                crate::model::template::FocusMode::EditingVariable => {
+                    if state.variables.is_editing() {
+                        "VARIABLE INPUT: Type value | Enter: Save | ESC: Cancel".to_string()
+                    } else {
+                        "VARIABLE MODE: ↑↓: Navigate | Enter: Edit variable | Tab: Next | ESC: Exit"
+                            .to_string()
+                    }
+                }
+            }
+            .to_string()
         };
 
         let footer = Paragraph::new(footer_text)
