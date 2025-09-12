@@ -65,9 +65,9 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
 
         if self.model.statistics.token_map_entries.is_empty() {
             let placeholder_text = if self.model.prompt_output.generated_prompt.is_some() {
-                "🗂️  Token Map View\n\nNo token map data available.\n\nPress Enter to re-run analysis."
+                "\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
-                "🗂️  Token Map View\n\nRun analysis first to see token distribution.\n\nPress Enter to analyze selected files."
+                "\nRun analysis first to see token distribution.\n\nPress Enter to analyze selected files."
             };
 
             let placeholder_widget = Paragraph::new(placeholder_text)
