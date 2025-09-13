@@ -102,40 +102,34 @@ impl PickerState {
         }
     }
 
-    /// Move cursor up in active list
+    /// Move cursor up in unified list
     pub fn move_cursor_up(&mut self) {
-        match self.active_list {
-            ActiveList::Default => {
-                if self.default_cursor > 0 {
-                    self.default_cursor -= 1;
-                } else if !self.default_templates.is_empty() {
-                    self.default_cursor = self.default_templates.len() - 1; // Wrap to bottom
-                }
-            }
-            ActiveList::Custom => {
-                if self.custom_cursor > 0 {
-                    self.custom_cursor -= 1;
-                } else if !self.custom_templates.is_empty() {
-                    self.custom_cursor = self.custom_templates.len() - 1; // Wrap to bottom
-                }
-            }
+        let total_items = self.get_total_selectable_items();
+        if total_items == 0 {
+            return;
         }
+
+        let current_global = self.get_global_template_index();
+        let new_global = if current_global == 0 {
+            total_items - 1 // Wrap to bottom
+        } else {
+            current_global - 1
+        };
+
+        self.set_cursor_from_global_position(new_global);
     }
 
-    /// Move cursor down in active list
+    /// Move cursor down in unified list
     pub fn move_cursor_down(&mut self) {
-        match self.active_list {
-            ActiveList::Default => {
-                if !self.default_templates.is_empty() {
-                    self.default_cursor = (self.default_cursor + 1) % self.default_templates.len();
-                }
-            }
-            ActiveList::Custom => {
-                if !self.custom_templates.is_empty() {
-                    self.custom_cursor = (self.custom_cursor + 1) % self.custom_templates.len();
-                }
-            }
+        let total_items = self.get_total_selectable_items();
+        if total_items == 0 {
+            return;
         }
+
+        let current_global = self.get_global_template_index();
+        let new_global = (current_global + 1) % total_items;
+
+        self.set_cursor_from_global_position(new_global);
     }
 
     /// Switch between default and custom lists
@@ -159,7 +153,7 @@ impl PickerState {
         }
     }
 
-    /// Get global cursor position for unified list display
+    /// Get global cursor position for unified list display (for rendering)
     pub fn get_global_cursor_position(&self) -> usize {
         let mut position = 0;
 
@@ -186,5 +180,46 @@ impl PickerState {
         }
 
         position
+    }
+
+    /// Get global template index (for navigation logic)
+    fn get_global_template_index(&self) -> usize {
+        match self.active_list {
+            ActiveList::Default => self.default_cursor,
+            ActiveList::Custom => self.default_templates.len() + self.custom_cursor,
+        }
+    }
+
+    /// Get total number of selectable items (templates only, not headers)
+    fn get_total_selectable_items(&self) -> usize {
+        self.default_templates.len() + self.custom_templates.len()
+    }
+
+    /// Set cursor position from global position in unified list
+    fn set_cursor_from_global_position(&mut self, global_pos: usize) {
+        let mut template_index = 0;
+
+        // Check if position is in default templates
+        if global_pos < self.default_templates.len() {
+            self.active_list = ActiveList::Default;
+            self.default_cursor = global_pos;
+            return;
+        }
+        template_index += self.default_templates.len();
+
+        // Check if position is in custom templates
+        if global_pos < template_index + self.custom_templates.len() {
+            self.active_list = ActiveList::Custom;
+            self.custom_cursor = global_pos - template_index;
+            return;
+        }
+    }
+
+    /// Get currently selected template
+    pub fn get_selected_template(&self) -> Option<&TemplateFile> {
+        match self.active_list {
+            ActiveList::Default => self.default_templates.get(self.default_cursor),
+            ActiveList::Custom => self.custom_templates.get(self.custom_cursor),
+        }
     }
 }

@@ -26,12 +26,10 @@ impl TemplateEditorWidget {
         has_missing_vars: bool,
     ) {
         // Determine border style based on validation and focus
-        let border_style = if !state.is_valid || has_missing_vars {
-            Style::default().fg(Color::Red) // Invalid template syntax or missing variables
-        } else if is_focused {
-            Style::default().fg(Color::Yellow) // Focused and valid
+        let border_style = if is_focused {
+            Style::default().fg(Color::Yellow) // Focused
         } else {
-            Style::default().fg(Color::Rgb(139, 69, 19)) // Brown for normal/valid
+            Style::default().fg(Color::Rgb(139, 69, 19)) // Brown for normal
         };
 
         // Create title with validation status
@@ -42,8 +40,9 @@ impl TemplateEditorWidget {
                     "e",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 ),
+                Span::styled("ditor ", Style::default().fg(Color::White)),
                 Span::styled(
-                    format!("ditor (SYNTAX ERROR: {})", state.validation_message),
+                    format!("(SYNTAX ERROR: {})", state.validation_message),
                     Style::default().fg(Color::Red),
                 ),
             ]
@@ -54,7 +53,8 @@ impl TemplateEditorWidget {
                     "e",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 ),
-                Span::styled("ditor (MISSING VARIABLES)", Style::default().fg(Color::Red)),
+                Span::styled("ditor ", Style::default().fg(Color::White)),
+                Span::styled(" (MISSING VARIABLES)", Style::default().fg(Color::Red)),
             ]
         } else {
             vec![
@@ -63,7 +63,8 @@ impl TemplateEditorWidget {
                     "e",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 ),
-                Span::styled("ditor (VALID)", Style::default().fg(Color::Green)),
+                Span::styled("ditor ", Style::default().fg(Color::White)),
+                Span::styled(" (VALID)", Style::default().fg(Color::Green)),
             ]
         };
 
@@ -82,9 +83,9 @@ impl TemplateEditorWidget {
             textarea.set_cursor_style(Style::default().fg(Color::Yellow));
         }
 
-        // Set text color based on validation
+        // Set text color - always use brown highlight for invalid, white for valid
         if !state.is_valid || has_missing_vars {
-            textarea.set_style(Style::default().fg(Color::LightRed));
+            textarea.set_style(Style::default().fg(Color::Rgb(139, 69, 19))); // Brown highlight
         } else {
             textarea.set_style(Style::default().fg(Color::White));
         }

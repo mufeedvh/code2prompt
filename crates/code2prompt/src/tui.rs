@@ -277,7 +277,18 @@ impl TuiApp {
             return self.handle_file_tree_keys(key);
         }
 
-        // Global shortcuts (only when not in search mode)
+        // Check if we're in template editing mode - ESC should exit editing mode, not quit app
+        if self.model.current_tab == Tab::Template && self.model.template.is_in_editing_mode() {
+            if key.code == KeyCode::Esc {
+                return Some(Message::SetTemplateFocusMode(
+                    crate::model::template::FocusMode::Normal,
+                ));
+            }
+            // In editing modes, delegate to template handler
+            return self.handle_template_keys(key);
+        }
+
+        // Global shortcuts (only when not in search mode or template editing mode)
         match key.code {
             KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 return Some(Message::Quit);
@@ -563,11 +574,10 @@ impl TuiApp {
 
         // Handle input for focused component in normal mode
         if current_focus == crate::model::template::TemplateFocus::Picker {
-            // Handle picker navigation
+            // Handle picker navigation - Tab should navigate within picker, not change tabs
             match key.code {
                 KeyCode::Up => return Some(Message::TemplatePickerMove(-1)),
                 KeyCode::Down => return Some(Message::TemplatePickerMove(1)),
-                KeyCode::Tab => return Some(Message::TemplatePickerSwitchList),
                 KeyCode::Enter | KeyCode::Char('l') | KeyCode::Char('L') => {
                     return Some(Message::LoadTemplate);
                 }

@@ -54,8 +54,8 @@ impl TemplateVariableWidget {
                 state.move_to_previous_editable_variable(variables);
                 None
             }
-            KeyCode::Enter => {
-                // Start editing variable if it's user-defined or missing
+            KeyCode::Char(' ') => {
+                // Start editing variable if it's user-defined or missing (Space instead of Enter)
                 if let Some(var_info) = variables.get(state.cursor) {
                     match var_info.category {
                         VariableCategory::User | VariableCategory::Missing => {
