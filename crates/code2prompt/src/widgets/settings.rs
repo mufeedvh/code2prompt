@@ -134,7 +134,7 @@ impl<'a> StatefulWidget for SettingsWidget<'a> {
 
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Toggle | ←→: Cycle Options | Enter: Run Analysis",
+            "Enter: Run Analysis | ↑↓: Navigate | Space: Toggle | ←→: Cycle Options",
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));

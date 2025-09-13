@@ -401,7 +401,7 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
 
         // Instructions
         let instructions = Paragraph::new(
-            "↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | PgUp/PgDn: Scroll | Enter: Run Analysis | S: Search Mode | Esc: Exit"
+            "Enter: Run Analysis | ↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | PgUp/PgDn: Scroll | S: Search Mode | Esc: Exit"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
