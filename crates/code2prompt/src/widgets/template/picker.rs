@@ -3,9 +3,7 @@
 //! This widget provides template selection with separate default and custom lists.
 
 use crate::model::template::{ActiveList, PickerState};
-use crate::model::Message;
 use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent},
     prelude::*,
     widgets::{Block, Borders, List, ListItem},
 };
@@ -16,42 +14,6 @@ pub struct TemplatePickerWidget;
 impl TemplatePickerWidget {
     pub fn new() -> Self {
         Self
-    }
-
-    /// Handle key events for the picker
-    pub fn handle_key_event(
-        key: KeyEvent,
-        state: &mut PickerState,
-        is_focused: bool,
-    ) -> Option<Message> {
-        if !is_focused {
-            return None;
-        }
-
-        match key.code {
-            KeyCode::Up => {
-                state.move_cursor_up();
-                None
-            }
-            KeyCode::Down => {
-                state.move_cursor_down();
-                None
-            }
-            KeyCode::Tab => {
-                // Switch between default and custom lists
-                state.switch_list();
-                None
-            }
-            KeyCode::Enter | KeyCode::Char('l') | KeyCode::Char('L') => {
-                // Load selected template
-                Some(Message::LoadTemplate)
-            }
-            KeyCode::Char('r') | KeyCode::Char('R') => {
-                // Refresh templates
-                Some(Message::RefreshTemplates)
-            }
-            _ => None,
-        }
     }
 
     /// Render the template picker as a single unified list with groups

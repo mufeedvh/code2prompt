@@ -3,11 +3,11 @@
 //! This module contains the state and logic for the template picker component,
 //! including loading templates from default and custom directories.
 
-use std::fs;
 use std::path::PathBuf;
 
 /// Represents a template file
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct TemplateFile {
     pub name: String,
     pub path: PathBuf,
@@ -102,29 +102,6 @@ impl PickerState {
         }
     }
 
-    /// Get currently active templates list
-    pub fn get_active_templates(&self) -> &[TemplateFile] {
-        match self.active_list {
-            ActiveList::Default => &self.default_templates,
-            ActiveList::Custom => &self.custom_templates,
-        }
-    }
-
-    /// Get current cursor position for active list
-    pub fn get_active_cursor(&self) -> usize {
-        match self.active_list {
-            ActiveList::Default => self.default_cursor,
-            ActiveList::Custom => self.custom_cursor,
-        }
-    }
-
-    /// Get currently selected template
-    pub fn get_selected_template(&self) -> Option<&TemplateFile> {
-        let templates = self.get_active_templates();
-        let cursor = self.get_active_cursor();
-        templates.get(cursor)
-    }
-
     /// Move cursor up in active list
     pub fn move_cursor_up(&mut self) {
         match self.active_list {
@@ -167,30 +144,6 @@ impl PickerState {
             ActiveList::Default => ActiveList::Custom,
             ActiveList::Custom => ActiveList::Default,
         };
-    }
-
-    /// Load template content from file
-    pub fn load_template_content(&self, template: &TemplateFile) -> Result<String, String> {
-        if template.is_default && template.path.as_os_str().is_empty() {
-            // Built-in templates
-            match template.name.as_str() {
-                "Default (Markdown)" => Ok(include_str!(
-                    "../../../../code2prompt-core/src/default_template_md.hbs"
-                )
-                .to_string()),
-                "Default (XML)" => Ok(include_str!(
-                    "../../../../code2prompt-core/src/default_template_xml.hbs"
-                )
-                .to_string()),
-                _ => Err("Unknown default template".to_string()),
-            }
-        } else {
-            // File-based templates
-            match fs::read_to_string(&template.path) {
-                Ok(content) => Ok(content),
-                Err(e) => Err(format!("Failed to load template: {}", e)),
-            }
-        }
     }
 
     /// Refresh templates by reloading from directories

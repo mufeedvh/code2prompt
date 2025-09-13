@@ -3,9 +3,7 @@
 //! This widget provides an editable text area for template content with validation.
 
 use crate::model::template::EditorState;
-use crate::model::Message;
 use ratatui::{
-    crossterm::event::KeyEvent,
     prelude::*,
     widgets::{Block, Borders},
 };
@@ -16,24 +14,6 @@ pub struct TemplateEditorWidget;
 impl TemplateEditorWidget {
     pub fn new() -> Self {
         Self
-    }
-
-    /// Handle key events for the editor
-    pub fn handle_key_event(
-        key: KeyEvent,
-        state: &mut EditorState,
-        is_focused: bool,
-    ) -> Option<Message> {
-        if !is_focused {
-            return None;
-        }
-
-        // Handle TextArea input when focused
-        state.editor.input(key);
-        state.sync_content_from_textarea();
-        state.validate_template();
-
-        None
     }
 
     /// Render the template editor

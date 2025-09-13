@@ -75,6 +75,14 @@ pub enum Message {
     ReloadTemplate,
     LoadTemplate,     // Load selected template from picker
     RefreshTemplates, // Refresh template list
+
+    // Template focus and input handling
+    SetTemplateFocus(TemplateFocus, FocusMode), // Set focus and mode
+    SetTemplateFocusMode(FocusMode),            // Set focus mode only
+    TemplateEditorInput(ratatui::crossterm::event::KeyEvent), // Direct textarea input
+    TemplateVariableInput(ratatui::crossterm::event::KeyEvent), // Variable input
+    TemplatePickerMove(i32),                    // Move picker cursor
+    TemplatePickerSwitchList,                   // Switch between default/custom lists
 }
 
 /// Represents the overall state of the TUI application.

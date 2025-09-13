@@ -14,7 +14,6 @@ pub use picker::{ActiveList, PickerState};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
 
 use crate::model::Message;
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 /// Which component is currently focused
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -71,19 +70,6 @@ impl TemplateState {
     pub fn sync_variables_with_template(&mut self) {
         let template_vars = self.editor.get_template_variables();
         self.variables.update_missing_variables(template_vars);
-    }
-
-    /// Load a template from the picker
-    pub fn load_selected_template(&mut self) -> Result<(), String> {
-        if let Some(template) = self.picker.get_selected_template().cloned() {
-            let content = self.picker.load_template_content(&template)?;
-            self.editor.load_template(content, template.name.clone());
-            self.sync_variables_with_template();
-            self.status_message = format!("Loaded template: {}", template.name);
-            Ok(())
-        } else {
-            Err("No template selected".to_string())
-        }
     }
 
     /// Set focus to a specific component
@@ -157,166 +143,9 @@ impl TemplateState {
         self.editor.get_content()
     }
 
-    /// Set status message
-    pub fn set_status(&mut self, message: String) {
-        self.status_message = message;
-    }
-
     /// Get status message
     pub fn get_status(&self) -> &str {
         &self.status_message
-    }
-
-    /// Handle key events for the template system (moved from widget)
-    pub fn handle_key_event(&mut self, key: KeyEvent) -> Option<Message> {
-        // Handle variable input dialog first (highest priority)
-        if self.variables.is_editing() {
-            let variables = self.get_organized_variables();
-            let result = crate::widgets::template::TemplateVariableWidget::handle_key_event(
-                key,
-                &mut self.variables,
-                &variables,
-                true, // Always focused when editing
-            );
-
-            // Update missing variables after variable changes
-            if result.is_some() {
-                self.sync_variables_with_template();
-            }
-
-            return result;
-        }
-
-        // Handle ESC key to exit editing modes
-        if key.code == KeyCode::Esc && self.is_in_editing_mode() {
-            self.set_focus_mode(FocusMode::Normal);
-            return None;
-        }
-
-        // In editing modes, block focus switching and pass keys to focused component
-        if self.is_in_editing_mode() {
-            return self.handle_editing_mode_keys(key);
-        }
-
-        // Normal mode: Handle global shortcuts and focus switching
-        match key.code {
-            KeyCode::Char('e') | KeyCode::Char('E') => {
-                self.set_focus(TemplateFocus::Editor);
-                self.set_focus_mode(FocusMode::EditingTemplate);
-                return None;
-            }
-            KeyCode::Char('v') | KeyCode::Char('V') => {
-                self.set_focus(TemplateFocus::Variables);
-                self.set_focus_mode(FocusMode::EditingVariable);
-                // Move cursor to first missing variable
-                self.variables.move_to_first_missing_variable();
-                return None;
-            }
-            KeyCode::Char('p') | KeyCode::Char('P') => {
-                self.set_focus(TemplateFocus::Picker);
-                self.set_focus_mode(FocusMode::Normal); // Picker stays in normal mode
-                return None;
-            }
-            KeyCode::Char('s') | KeyCode::Char('S') => {
-                // Save template with timestamp
-                let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-                let filename = format!("custom_template_{}", timestamp);
-                return Some(Message::SaveTemplate(filename));
-            }
-            KeyCode::Char('r') | KeyCode::Char('R') => {
-                // Reload default template
-                return Some(Message::ReloadTemplate);
-            }
-            KeyCode::Enter => {
-                // Change from CTRL+Enter to just Enter for analysis
-                if !self.is_valid_for_analysis() {
-                    self.set_status(self.get_analysis_validation_message());
-                    // Focus on the problematic component
-                    if !self.editor.is_template_valid() {
-                        self.set_focus(TemplateFocus::Editor);
-                        self.set_focus_mode(FocusMode::EditingTemplate);
-                    } else if self.variables.has_missing_variables() {
-                        self.set_focus(TemplateFocus::Variables);
-                        self.set_focus_mode(FocusMode::EditingVariable);
-                        self.variables.move_to_first_missing_variable();
-                    }
-                    return None;
-                } else {
-                    return Some(Message::RunAnalysis);
-                }
-            }
-            _ => {}
-        }
-
-        // Handle input for focused component in normal mode
-        self.handle_normal_mode_keys(key)
-    }
-
-    /// Handle keys when in editing modes (template or variable)
-    fn handle_editing_mode_keys(&mut self, key: KeyEvent) -> Option<Message> {
-        match self.get_focus() {
-            TemplateFocus::Editor => {
-                let result = crate::widgets::template::TemplateEditorWidget::handle_key_event(
-                    key,
-                    &mut self.editor,
-                    true,
-                );
-
-                // Update variables when template content changes
-                if result.is_some() {
-                    self.sync_variables_with_template();
-                }
-
-                result
-            }
-            TemplateFocus::Variables => {
-                let variables = self.get_organized_variables();
-                let result = crate::widgets::template::TemplateVariableWidget::handle_key_event(
-                    key,
-                    &mut self.variables,
-                    &variables,
-                    true,
-                );
-
-                // Update missing variables after variable changes
-                if result.is_some() {
-                    self.sync_variables_with_template();
-                }
-
-                result
-            }
-            TemplateFocus::Picker => None, // Picker doesn't have editing mode
-        }
-    }
-
-    /// Handle keys when in normal mode (can switch focus)
-    fn handle_normal_mode_keys(&mut self, key: KeyEvent) -> Option<Message> {
-        match self.get_focus() {
-            TemplateFocus::Picker => {
-                let result = crate::widgets::template::TemplatePickerWidget::handle_key_event(
-                    key,
-                    &mut self.picker,
-                    true,
-                );
-
-                // Handle template loading - don't switch to editor mode, just load
-                if let Some(Message::LoadTemplate) = result {
-                    match self.load_selected_template() {
-                        Ok(_) => None, // Stay in picker mode
-                        Err(e) => {
-                            self.set_status(e);
-                            None
-                        }
-                    }
-                } else if let Some(Message::RefreshTemplates) = result {
-                    self.refresh_templates();
-                    None
-                } else {
-                    result
-                }
-            }
-            _ => None, // Editor and Variables only respond in editing mode
-        }
     }
 
     /// Handle template-related messages

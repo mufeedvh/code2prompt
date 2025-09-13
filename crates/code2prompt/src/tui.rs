@@ -494,9 +494,91 @@ impl TuiApp {
     }
 
     fn handle_template_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Use the new state-based key handling
-        let mut temp_state = TemplateState::from_model(&self.model);
-        temp_state.handle_key_event(key)
+        // This is a temporary workaround - in a proper implementation,
+        // we'd need to pass the state back to the model
+        // For now, we'll handle template keys directly here
+
+        // Check if we're in editing mode by looking at the model's template state
+        let is_in_editing_mode = self.model.template.is_in_editing_mode();
+        let current_focus = self.model.template.get_focus();
+
+        // Handle ESC key to exit editing modes
+        if key.code == KeyCode::Esc && is_in_editing_mode {
+            return Some(Message::SetTemplateFocusMode(
+                crate::model::template::FocusMode::Normal,
+            ));
+        }
+
+        // In editing modes, handle keys directly
+        if is_in_editing_mode {
+            match current_focus {
+                crate::model::template::TemplateFocus::Editor => {
+                    // For editor, we need to pass the key to the textarea
+                    return Some(Message::TemplateEditorInput(key));
+                }
+                crate::model::template::TemplateFocus::Variables => {
+                    // Handle variable navigation and editing
+                    return Some(Message::TemplateVariableInput(key));
+                }
+                _ => {}
+            }
+        }
+
+        // Normal mode: Handle global shortcuts and focus switching
+        match key.code {
+            KeyCode::Char('e') | KeyCode::Char('E') => {
+                return Some(Message::SetTemplateFocus(
+                    crate::model::template::TemplateFocus::Editor,
+                    crate::model::template::FocusMode::EditingTemplate,
+                ));
+            }
+            KeyCode::Char('v') | KeyCode::Char('V') => {
+                return Some(Message::SetTemplateFocus(
+                    crate::model::template::TemplateFocus::Variables,
+                    crate::model::template::FocusMode::EditingVariable,
+                ));
+            }
+            KeyCode::Char('p') | KeyCode::Char('P') => {
+                return Some(Message::SetTemplateFocus(
+                    crate::model::template::TemplateFocus::Picker,
+                    crate::model::template::FocusMode::Normal,
+                ));
+            }
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                // Save template with timestamp
+                let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                let filename = format!("custom_template_{}", timestamp);
+                return Some(Message::SaveTemplate(filename));
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                // Reload default template
+                return Some(Message::ReloadTemplate);
+            }
+            KeyCode::Enter => {
+                // Run analysis
+                return Some(Message::RunAnalysis);
+            }
+            _ => {}
+        }
+
+        // Handle input for focused component in normal mode
+        if current_focus == crate::model::template::TemplateFocus::Picker {
+            // Handle picker navigation
+            match key.code {
+                KeyCode::Up => return Some(Message::TemplatePickerMove(-1)),
+                KeyCode::Down => return Some(Message::TemplatePickerMove(1)),
+                KeyCode::Tab => return Some(Message::TemplatePickerSwitchList),
+                KeyCode::Enter | KeyCode::Char('l') | KeyCode::Char('L') => {
+                    return Some(Message::LoadTemplate);
+                }
+                KeyCode::Char('r') | KeyCode::Char('R') => {
+                    return Some(Message::RefreshTemplates);
+                }
+                _ => {}
+            }
+        }
+
+        None
     }
 
     fn handle_prompt_output_keys(&self, key: KeyEvent) -> Option<Message> {
@@ -849,6 +931,50 @@ impl TuiApp {
                 if let Some(result_msg) = self.model.template.handle_message(&message) {
                     self.handle_message(result_msg)?;
                 }
+            }
+            // Template focus and input handling
+            Message::SetTemplateFocus(focus, mode) => {
+                self.model.template.set_focus(focus);
+                self.model.template.set_focus_mode(mode);
+                if mode == crate::model::template::FocusMode::EditingVariable {
+                    self.model
+                        .template
+                        .variables
+                        .move_to_first_missing_variable();
+                }
+                self.model.status_message = format!("Template focus: {:?} ({:?})", focus, mode);
+            }
+            Message::SetTemplateFocusMode(mode) => {
+                self.model.template.set_focus_mode(mode);
+                self.model.status_message = format!("Template mode: {:?}", mode);
+            }
+            Message::TemplateEditorInput(key) => {
+                // Pass key directly to the textarea
+                self.model.template.editor.editor.input(key);
+                self.model.template.editor.sync_content_from_textarea();
+                self.model.template.editor.validate_template();
+                self.model.template.sync_variables_with_template();
+            }
+            Message::TemplateVariableInput(key) => {
+                // Handle variable input
+                let variables = self.model.template.get_organized_variables();
+                crate::widgets::template::TemplateVariableWidget::handle_key_event(
+                    key,
+                    &mut self.model.template.variables,
+                    &variables,
+                    true,
+                );
+                self.model.template.sync_variables_with_template();
+            }
+            Message::TemplatePickerMove(delta) => {
+                if delta > 0 {
+                    self.model.template.picker.move_cursor_down();
+                } else {
+                    self.model.template.picker.move_cursor_up();
+                }
+            }
+            Message::TemplatePickerSwitchList => {
+                self.model.template.picker.switch_list();
             }
         }
 

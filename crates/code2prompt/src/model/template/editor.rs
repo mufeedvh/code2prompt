@@ -64,11 +64,6 @@ impl EditorState {
         self.analyze_template_variables();
     }
 
-    /// Update TextArea from content string
-    pub fn sync_textarea_from_content(&mut self) {
-        self.editor = TextArea::from(self.content.lines());
-    }
-
     /// Parse template content to extract all {{variable}} references
     pub fn analyze_template_variables(&mut self) {
         let re = Regex::new(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}").unwrap();
@@ -128,15 +123,6 @@ impl EditorState {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("{}", e)),
         }
-    }
-
-    /// Load template content from string
-    pub fn load_template(&mut self, content: String, name: String) {
-        self.content = content;
-        self.current_template_name = name;
-        self.sync_textarea_from_content();
-        self.analyze_template_variables();
-        self.validate_template();
     }
 
     /// Get current template content
