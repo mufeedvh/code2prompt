@@ -53,6 +53,7 @@ impl VariableState {
     fn get_default_system_variables() -> HashMap<String, String> {
         let mut vars = HashMap::new();
 
+        // Main template variables from build_template_data()
         vars.insert(
             "absolute_code_path".to_string(),
             "Path to the codebase directory".to_string(),
@@ -76,6 +77,32 @@ impl VariableState {
         vars.insert(
             "git_log_branch".to_string(),
             "Git log between branches".to_string(),
+        );
+
+        // File object properties (used within {{#each files}} loops)
+        vars.insert(
+            "path".to_string(),
+            "File path (available in {{#each files}} context)".to_string(),
+        );
+        vars.insert(
+            "code".to_string(),
+            "File content (available in {{#each files}} context)".to_string(),
+        );
+        vars.insert(
+            "extension".to_string(),
+            "File extension (available in {{#each files}} context)".to_string(),
+        );
+        vars.insert(
+            "token_count".to_string(),
+            "Token count for file (available in {{#each files}} context)".to_string(),
+        );
+        vars.insert(
+            "metadata".to_string(),
+            "File metadata (available in {{#each files}} context)".to_string(),
+        );
+        vars.insert(
+            "mod_time".to_string(),
+            "File modification time (available in {{#each files}} context)".to_string(),
         );
 
         vars
