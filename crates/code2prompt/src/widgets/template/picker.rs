@@ -128,7 +128,7 @@ impl TemplatePickerWidget {
     /// Get help text for the picker
     pub fn get_help_text(is_focused: bool, _active_list: ActiveList) -> String {
         if is_focused {
-            "↑↓: Navigate | Enter/l: Load | r: Refresh".to_string()
+            "↑↓: Navigate | Enter/l/Space: Load | r: Refresh".to_string()
         } else {
             "Press 'p' to focus picker".to_string()
         }

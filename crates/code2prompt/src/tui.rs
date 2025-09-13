@@ -578,7 +578,7 @@ impl TuiApp {
             match key.code {
                 KeyCode::Up => return Some(Message::TemplatePickerMove(-1)),
                 KeyCode::Down => return Some(Message::TemplatePickerMove(1)),
-                KeyCode::Enter | KeyCode::Char('l') | KeyCode::Char('L') => {
+                KeyCode::Enter | KeyCode::Char('l') | KeyCode::Char('L') | KeyCode::Char(' ') => {
                     return Some(Message::LoadTemplate);
                 }
                 KeyCode::Char('r') | KeyCode::Char('R') => {

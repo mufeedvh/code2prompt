@@ -9,6 +9,9 @@ pub mod editor;
 pub mod picker;
 pub mod variable;
 
+#[cfg(test)]
+mod test;
+
 pub use editor::EditorState;
 pub use picker::{ActiveList, PickerState};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
@@ -148,6 +151,56 @@ impl TemplateState {
         &self.status_message
     }
 
+    /// Load the currently selected template from the picker
+    pub fn load_selected_template(&mut self) -> Result<String, String> {
+        let selected_template = self.get_selected_template()?;
+
+        // Load template content based on type
+        let (content, template_name) = if selected_template.name == "Default (Markdown)" {
+            // Load built-in markdown template
+            let content = include_str!("../../../../code2prompt-core/src/default_template_md.hbs");
+            (content.to_string(), "Default (Markdown)".to_string())
+        } else if selected_template.name == "Default (XML)" {
+            // Load built-in XML template
+            let content = include_str!("../../../../code2prompt-core/src/default_template_xml.hbs");
+            (content.to_string(), "Default (XML)".to_string())
+        } else {
+            // Load template from file
+            let content = std::fs::read_to_string(&selected_template.path)
+                .map_err(|e| format!("Failed to read template file: {}", e))?;
+            (content, selected_template.name.clone())
+        };
+
+        // Update editor with new content
+        self.editor.content = content.clone();
+        self.editor.current_template_name = template_name.clone();
+
+        // Create new TextArea with the content
+        self.editor.editor = tui_textarea::TextArea::from(content.lines());
+
+        // Sync and validate
+        self.editor.sync_content_from_textarea();
+        self.editor.validate_template();
+
+        Ok(template_name)
+    }
+
+    /// Get the currently selected template from the picker
+    fn get_selected_template(&self) -> Result<&picker::TemplateFile, String> {
+        match self.picker.active_list {
+            ActiveList::Default => self
+                .picker
+                .default_templates
+                .get(self.picker.default_cursor)
+                .ok_or_else(|| "No default template selected".to_string()),
+            ActiveList::Custom => self
+                .picker
+                .custom_templates
+                .get(self.picker.custom_cursor)
+                .ok_or_else(|| "No custom template selected".to_string()),
+        }
+    }
+
     /// Handle template-related messages
     pub fn handle_message(&mut self, message: &Message) -> Option<Message> {
         match message {
@@ -168,6 +221,22 @@ impl TemplateState {
                 self.editor = EditorState::default();
                 self.sync_variables_with_template();
                 self.status_message = "Template reloaded".to_string();
+                None
+            }
+            Message::LoadTemplate => {
+                match self.load_selected_template() {
+                    Ok(template_name) => {
+                        self.sync_variables_with_template();
+                        self.status_message = format!("Loaded template: {}", template_name);
+                    }
+                    Err(e) => {
+                        self.status_message = format!("Failed to load template: {}", e);
+                    }
+                }
+                None
+            }
+            Message::RefreshTemplates => {
+                self.refresh_templates();
                 None
             }
             Message::RunAnalysis => {
