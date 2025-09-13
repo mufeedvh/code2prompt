@@ -45,6 +45,7 @@ pub enum SettingAction {
 
 impl SettingsState {
     /// Get grouped settings for display
+    #[allow(dead_code)] // Will be used when widgets are refactored
     pub fn get_settings_groups(&self, session: &Code2PromptSession) -> Vec<SettingsGroup> {
         vec![
             SettingsGroup {

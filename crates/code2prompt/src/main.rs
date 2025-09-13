@@ -7,6 +7,7 @@ mod model;
 mod token_map;
 mod tui;
 mod utils;
+mod view;
 mod widgets;
 
 use anyhow::{Context, Result};

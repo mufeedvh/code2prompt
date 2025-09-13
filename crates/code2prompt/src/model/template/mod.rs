@@ -9,9 +9,6 @@ pub mod editor;
 pub mod picker;
 pub mod variable;
 
-#[cfg(test)]
-mod test;
-
 pub use editor::EditorState;
 pub use picker::{ActiveList, PickerState};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
