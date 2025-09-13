@@ -214,7 +214,7 @@ impl TuiApp {
         match model.current_tab {
             Tab::FileTree => {
                 let widget = FileSelectionWidget::new(model);
-                let mut state = FileSelectionState::from_model(model);
+                let mut state = ();
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
             }
             Tab::Settings => {
@@ -249,7 +249,7 @@ impl TuiApp {
             }
             Tab::PromptOutput => {
                 let widget = OutputWidget::new(model);
-                let mut state = OutputState::from_model(model);
+                let mut state = ();
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
             }
         }
@@ -648,7 +648,7 @@ impl TuiApp {
                 template_content,
             } => {
                 // Run analysis in background
-                let mut session = session;
+                let mut session = *session;
                 let tx = self.message_tx.clone();
 
                 tokio::spawn(async move {

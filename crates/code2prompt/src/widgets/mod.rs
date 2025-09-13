@@ -11,8 +11,8 @@ pub mod statistics_overview;
 pub mod statistics_token_map;
 pub mod template;
 
-pub use file_selection::{FileSelectionState, FileSelectionWidget};
-pub use output::{OutputState, OutputWidget};
+pub use file_selection::FileSelectionWidget;
+pub use output::OutputWidget;
 pub use settings::{SettingsState, SettingsWidget};
 pub use statistics_by_extension::{ExtensionState, StatisticsByExtensionWidget};
 pub use statistics_overview::StatisticsOverviewWidget;

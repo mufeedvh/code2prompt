@@ -3,9 +3,7 @@
 //! This widget provides a 2-column display for template variables with direct editing.
 
 use crate::model::template::{VariableCategory, VariableInfo, VariableState};
-use crate::model::Message;
 use ratatui::{
-    crossterm::event::{KeyCode, KeyEvent},
     prelude::*,
     widgets::{Block, Borders, Clear, Paragraph},
 };
@@ -16,86 +14,6 @@ pub struct TemplateVariableWidget;
 impl TemplateVariableWidget {
     pub fn new() -> Self {
         Self
-    }
-
-    /// Handle key events for the variable widget
-    pub fn handle_key_event(
-        key: KeyEvent,
-        state: &mut VariableState,
-        variables: &[VariableInfo],
-        is_focused: bool,
-    ) -> Option<Message> {
-        if !is_focused {
-            return None;
-        }
-
-        // Handle variable input dialog if active
-        if state.is_editing() {
-            return Self::handle_variable_input_keys(key, state);
-        }
-
-        // Handle navigation and selection
-        match key.code {
-            KeyCode::Up => {
-                state.move_cursor_up(variables.len());
-                None
-            }
-            KeyCode::Down => {
-                state.move_cursor_down(variables.len());
-                None
-            }
-            KeyCode::Tab => {
-                // Move to next missing/user-defined variable
-                state.move_to_next_editable_variable(variables);
-                None
-            }
-            KeyCode::BackTab => {
-                // Move to previous missing/user-defined variable
-                state.move_to_previous_editable_variable(variables);
-                None
-            }
-            KeyCode::Char(' ') => {
-                // Start editing variable if it's user-defined or missing (Space instead of Enter)
-                if let Some(var_info) = variables.get(state.cursor) {
-                    match var_info.category {
-                        VariableCategory::User | VariableCategory::Missing => {
-                            state.start_editing_variable(
-                                var_info.name.clone(),
-                                var_info.value.clone(),
-                            );
-                        }
-                        VariableCategory::System => {
-                            // System variables cannot be edited - no action
-                        }
-                    }
-                }
-                None
-            }
-            _ => None,
-        }
-    }
-
-    /// Handle variable input dialog keys
-    fn handle_variable_input_keys(key: KeyEvent, state: &mut VariableState) -> Option<Message> {
-        match key.code {
-            KeyCode::Esc => {
-                state.cancel_editing();
-                None
-            }
-            KeyCode::Enter => {
-                state.finish_editing();
-                None
-            }
-            KeyCode::Char(c) => {
-                state.add_char_to_input(c);
-                None
-            }
-            KeyCode::Backspace => {
-                state.remove_char_from_input();
-                None
-            }
-            _ => None,
-        }
     }
 
     /// Render the variable widget

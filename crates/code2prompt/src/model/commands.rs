@@ -16,7 +16,7 @@ pub enum Cmd {
 
     /// Run analysis in background
     RunAnalysis {
-        session: Code2PromptSession,
+        session: Box<Code2PromptSession>,
         template_content: String,
     },
 

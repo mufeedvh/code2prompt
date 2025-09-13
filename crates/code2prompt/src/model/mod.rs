@@ -193,12 +193,19 @@ impl Model {
                     };
                     new_model.file_tree.tree_cursor = new_cursor;
 
-                    // Auto-adjust scroll to keep cursor visible
-                    crate::widgets::FileSelectionWidget::adjust_file_tree_scroll_for_cursor(
-                        new_model.file_tree.tree_cursor,
-                        &mut new_model.file_tree.file_tree_scroll,
-                        visible_count,
-                    );
+                    // Auto-adjust scroll to keep cursor visible - pure logic in Model
+                    let viewport_height = 20; // Approximate viewport height
+                    let cursor_pos = new_model.file_tree.tree_cursor as u16;
+                    let current_scroll = new_model.file_tree.file_tree_scroll;
+
+                    if cursor_pos < current_scroll {
+                        // Cursor is above visible area, scroll up
+                        new_model.file_tree.file_tree_scroll = cursor_pos;
+                    } else if cursor_pos >= current_scroll + viewport_height {
+                        // Cursor is below visible area, scroll down
+                        new_model.file_tree.file_tree_scroll =
+                            cursor_pos.saturating_sub(viewport_height - 1);
+                    }
                 }
                 (new_model, Cmd::None)
             }
@@ -238,20 +245,10 @@ impl Model {
                         new_model.session.session.exclude_file(node.path.clone());
                     }
 
-                    // Update the node in the tree
-                    if is_directory {
-                        crate::widgets::FileSelectionWidget::toggle_directory_selection(
-                            new_model.file_tree.get_file_tree_mut(),
-                            &path,
-                            !current,
-                        );
-                    } else {
-                        crate::widgets::FileSelectionWidget::update_node_selection(
-                            new_model.file_tree.get_file_tree_mut(),
-                            &path,
-                            !current,
-                        );
-                    }
+                    // Update the node in the tree - pure logic in Model
+                    new_model
+                        .file_tree
+                        .update_node_selection(&path, !current, is_directory);
 
                     let action = if current { "Deselected" } else { "Selected" };
                     let extra = if is_directory { " (and contents)" } else { "" };
@@ -266,10 +263,7 @@ impl Model {
                     if node.is_directory {
                         let path = node.path.to_string_lossy().to_string();
                         let name = node.name.clone();
-                        crate::widgets::FileSelectionWidget::expand_directory(
-                            new_model.file_tree.get_file_tree_mut(),
-                            &path,
-                        );
+                        new_model.file_tree.expand_directory(&path);
                         new_model.status_message = format!("Expanded {}", name);
                     }
                 }
@@ -282,10 +276,7 @@ impl Model {
                     if node.is_directory {
                         let path = node.path.to_string_lossy().to_string();
                         let name = node.name.clone();
-                        crate::widgets::FileSelectionWidget::collapse_directory(
-                            new_model.file_tree.get_file_tree_mut(),
-                            &path,
-                        );
+                        new_model.file_tree.collapse_directory(&path);
                         new_model.status_message = format!("Collapsed {}", name);
                     }
                 }
@@ -330,7 +321,7 @@ impl Model {
                     new_model.current_tab = Tab::PromptOutput; // Switch to output tab
 
                     let cmd = Cmd::RunAnalysis {
-                        session: new_model.session.session.clone(),
+                        session: Box::new(new_model.session.session.clone()),
                         template_content: new_model.template.get_template_content().to_string(),
                     };
                     (new_model, cmd)
@@ -385,12 +376,26 @@ impl Model {
             }
 
             Message::ScrollOutput(delta) => {
-                // Delegate to OutputWidget for scroll logic
-                crate::widgets::OutputWidget::handle_scroll(
-                    delta as i32,
-                    &mut new_model.prompt_output.output_scroll,
-                    &new_model.prompt_output.generated_prompt,
-                );
+                // Pure scroll logic in Model
+                if let Some(prompt) = &new_model.prompt_output.generated_prompt {
+                    let lines = prompt.lines().count() as u16;
+                    let viewport_height = 20; // Approximate viewport height
+                    let max_scroll = lines.saturating_sub(viewport_height);
+
+                    let new_scroll = if delta < 0 {
+                        new_model
+                            .prompt_output
+                            .output_scroll
+                            .saturating_sub((-delta) as u16)
+                    } else {
+                        new_model
+                            .prompt_output
+                            .output_scroll
+                            .saturating_add(delta as u16)
+                    };
+
+                    new_model.prompt_output.output_scroll = new_scroll.min(max_scroll);
+                }
                 (new_model, Cmd::None)
             }
 
@@ -507,13 +512,8 @@ impl Model {
             }
 
             Message::TemplateVariableInput(key) => {
-                let variables = new_model.template.get_organized_variables();
-                crate::widgets::template::TemplateVariableWidget::handle_key_event(
-                    key,
-                    &mut new_model.template.variables,
-                    &variables,
-                    true,
-                );
+                // Handle variable input directly in Model - pure logic
+                new_model.template.variables.handle_key_input(key);
                 new_model.template.sync_variables_with_template();
                 (new_model, Cmd::None)
             }

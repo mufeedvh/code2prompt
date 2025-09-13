@@ -39,9 +39,70 @@ impl FileTreeState {
         self.file_tree = tree;
     }
 
-    /// Get a mutable reference to the file tree
-    pub fn get_file_tree_mut(&mut self) -> &mut Vec<FileNode> {
-        &mut self.file_tree
+    /// Update node selection state - pure logic in Model
+    pub fn update_node_selection(&mut self, path: &str, selected: bool, is_directory: bool) {
+        if is_directory {
+            Self::toggle_directory_selection_recursive(&mut self.file_tree, path, selected);
+        } else {
+            Self::update_single_node_selection(&mut self.file_tree, path, selected);
+        }
+    }
+
+    /// Expand directory at given path
+    pub fn expand_directory(&mut self, path: &str) {
+        Self::set_directory_expanded(&mut self.file_tree, path, true);
+    }
+
+    /// Collapse directory at given path
+    pub fn collapse_directory(&mut self, path: &str) {
+        Self::set_directory_expanded(&mut self.file_tree, path, false);
+    }
+
+    fn toggle_directory_selection_recursive(nodes: &mut [FileNode], path: &str, selected: bool) {
+        for node in nodes {
+            if node.path.to_string_lossy() == path {
+                node.is_selected = selected;
+                // Also update all children
+                Self::set_children_selection(&mut node.children, selected);
+                return;
+            }
+            if !node.children.is_empty() {
+                Self::toggle_directory_selection_recursive(&mut node.children, path, selected);
+            }
+        }
+    }
+
+    fn update_single_node_selection(nodes: &mut [FileNode], path: &str, selected: bool) {
+        for node in nodes {
+            if node.path.to_string_lossy() == path {
+                node.is_selected = selected;
+                return;
+            }
+            if !node.children.is_empty() {
+                Self::update_single_node_selection(&mut node.children, path, selected);
+            }
+        }
+    }
+
+    fn set_directory_expanded(nodes: &mut [FileNode], path: &str, expanded: bool) {
+        for node in nodes {
+            if node.path.to_string_lossy() == path && node.is_directory {
+                node.is_expanded = expanded;
+                return;
+            }
+            if !node.children.is_empty() {
+                Self::set_directory_expanded(&mut node.children, path, expanded);
+            }
+        }
+    }
+
+    fn set_children_selection(nodes: &mut [FileNode], selected: bool) {
+        for node in nodes {
+            node.is_selected = selected;
+            if !node.children.is_empty() {
+                Self::set_children_selection(&mut node.children, selected);
+            }
+        }
     }
 
     fn collect_visible_nodes<'a>(&'a self, nodes: &'a [FileNode], visible: &mut Vec<&'a FileNode>) {

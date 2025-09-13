@@ -7,19 +7,8 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-/// State for the output widget
-#[derive(Debug, Clone)]
-pub struct OutputState {
-    pub scroll_position: u16,
-}
-
-impl OutputState {
-    pub fn from_model(model: &Model) -> Self {
-        Self {
-            scroll_position: model.prompt_output.output_scroll,
-        }
-    }
-}
+/// State for the output widget - no longer needed, read directly from Model
+pub type OutputState = ();
 
 /// Widget for output display with scrolling
 pub struct OutputWidget<'a> {
@@ -65,31 +54,12 @@ impl<'a> OutputWidget<'a> {
             _ => None,
         }
     }
-
-    /// Handle output scrolling logic
-    pub fn handle_scroll(delta: i32, output_scroll: &mut u16, generated_prompt: &Option<String>) {
-        if let Some(prompt) = generated_prompt {
-            // Calculate approximate total lines (rough estimate)
-            let total_lines = prompt.lines().count() as u16;
-            let viewport_height = 20; // Approximate viewport height
-            let max_scroll = total_lines.saturating_sub(viewport_height);
-
-            let new_scroll = if delta < 0 {
-                output_scroll.saturating_sub((-delta) as u16)
-            } else {
-                output_scroll.saturating_add(delta as u16)
-            };
-
-            // Clamp scroll to valid range
-            *output_scroll = new_scroll.min(max_scroll);
-        }
-    }
 }
 
 impl<'a> StatefulWidget for OutputWidget<'a> {
     type State = OutputState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -134,10 +104,10 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
             "Press <Enter> to run analysis and generate prompt.\n\nSelected files will be processed according to your settings.".to_string()
         };
 
-        // Calculate scroll position for display
+        // Calculate scroll position for display - read directly from Model
         let scroll_info = if let Some(prompt) = &self.model.prompt_output.generated_prompt {
             let total_lines = prompt.lines().count();
-            let current_line = state.scroll_position as usize + 1;
+            let current_line = self.model.prompt_output.output_scroll as usize + 1;
             format!("Generated Prompt (Line {}/{})", current_line, total_lines)
         } else {
             "Generated Prompt".to_string()
@@ -146,7 +116,7 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
         let prompt_widget = Paragraph::new(content)
             .block(Block::default().borders(Borders::ALL).title(scroll_info))
             .wrap(Wrap { trim: false })
-            .scroll((state.scroll_position, 0));
+            .scroll((self.model.prompt_output.output_scroll, 0));
         Widget::render(prompt_widget, layout[1], buf);
 
         // Controls
