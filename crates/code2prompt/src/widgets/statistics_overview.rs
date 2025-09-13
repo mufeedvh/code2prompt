@@ -41,7 +41,8 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             && !self.model.prompt_output.analysis_in_progress
         {
             // Show placeholder when no analysis has been run
-            let placeholder_text = "📊 Statistics & Analysis\n\nNo analysis data available yet.\n\nTo view statistics:\n1. Go to Selection tab (Tab/Shift+Tab)\n2. Select files to analyze\n3. Press Enter to run analysis\n4. Return here to view results\n\nPress Enter to run analysis.";
+            let placeholder_text =
+                "\nNo analysis data available yet.\n\nPress Enter to run analysis.";
 
             let placeholder_widget = Paragraph::new(placeholder_text)
                 .block(Block::default().borders(Borders::ALL).title("📊 Overview"))

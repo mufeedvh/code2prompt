@@ -67,13 +67,14 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
             let placeholder_text = if self.model.prompt_output.generated_prompt.is_some() {
                 "\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
-                "\nRun analysis first to see token distribution.\n\nPress Enter to analyze selected files."
+                "\nRun analysis first to see token distribution.\n\nPress Enter to run analysis."
             };
 
             let placeholder_widget = Paragraph::new(placeholder_text)
                 .block(Block::default().borders(Borders::ALL).title(title))
                 .wrap(Wrap { trim: true })
-                .style(Style::default().fg(Color::Gray));
+                .style(Style::default().fg(Color::Gray))
+                .alignment(Alignment::Center);
 
             Widget::render(placeholder_widget, layout[0], buf);
 
