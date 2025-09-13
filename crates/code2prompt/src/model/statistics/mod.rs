@@ -5,8 +5,7 @@
 
 pub mod types;
 
-use crate::model::{FileNode, Message};
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use crate::model::FileNode;
 pub use types::*;
 
 /// Statistics state containing all statistics-related data
@@ -28,22 +27,6 @@ impl Default for StatisticsState {
 }
 
 impl StatisticsState {
-    /// Handle key events for statistics (moved from widget)
-    pub fn handle_key_event(&mut self, key: KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
-            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
-            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
-            KeyCode::Down => Some(Message::ScrollStatistics(1)),
-            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
-            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
-            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
-            KeyCode::End => Some(Message::ScrollStatistics(9999)),
-            _ => None,
-        }
-    }
-
     /// Count selected files in the tree (moved from widget)
     pub fn count_selected_files(nodes: &[FileNode]) -> usize {
         let mut count = 0;

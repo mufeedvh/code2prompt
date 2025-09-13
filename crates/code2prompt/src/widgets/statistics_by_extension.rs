@@ -1,7 +1,6 @@
 //! Statistics by extension widget for displaying extension-based histogram.
 
-use crate::model::{Message, Model};
-use crossterm::event::{KeyCode, KeyEvent};
+use crate::model::Model;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -29,22 +28,6 @@ pub struct StatisticsByExtensionWidget<'a> {
 impl<'a> StatisticsByExtensionWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
-    }
-
-    /// Handle key events for extension statistics
-    pub fn handle_key_event(key: KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
-            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
-            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
-            KeyCode::Down => Some(Message::ScrollStatistics(1)),
-            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
-            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
-            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
-            KeyCode::End => Some(Message::ScrollStatistics(9999)),
-            _ => None,
-        }
     }
 
     /// Format number according to token format setting

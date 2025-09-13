@@ -7,19 +7,8 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
-/// State for the settings widget
-#[derive(Debug, Clone)]
-pub struct SettingsState {
-    pub settings_cursor: usize,
-}
-
-impl SettingsState {
-    pub fn from_model(model: &Model) -> Self {
-        Self {
-            settings_cursor: model.settings.settings_cursor,
-        }
-    }
-}
+/// State for the settings widget - no longer needed, read directly from Model
+pub type SettingsState = ();
 
 /// Widget for settings configuration
 pub struct SettingsWidget<'a> {
@@ -49,7 +38,7 @@ impl<'a> SettingsWidget<'a> {
 impl<'a> StatefulWidget for SettingsWidget<'a> {
     type State = SettingsState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
         let settings_groups = self.model.get_settings_groups();
 
         let layout = Layout::default()
@@ -98,7 +87,8 @@ impl<'a> StatefulWidget for SettingsWidget<'a> {
                 );
                 let mut style = Style::default();
 
-                if item_index == state.settings_cursor {
+                // Read cursor directly from Model
+                if item_index == self.model.settings.settings_cursor {
                     style = style
                         .bg(Color::Blue)
                         .fg(Color::White)

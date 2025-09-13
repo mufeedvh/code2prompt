@@ -1,26 +1,14 @@
 //! Statistics token map widget for displaying token distribution.
 
-use crate::model::{Message, Model};
+use crate::model::Model;
 use crate::token_map::{format_token_map_for_tui, TuiColor};
-use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
 };
 
-/// State for the token map widget
-#[derive(Debug, Clone)]
-pub struct TokenMapState {
-    pub scroll_position: u16,
-}
-
-impl TokenMapState {
-    pub fn from_model(model: &Model) -> Self {
-        Self {
-            scroll_position: model.statistics.scroll,
-        }
-    }
-}
+/// State for the token map widget - no longer needed, read directly from Model
+pub type TokenMapState = ();
 
 /// Widget for token map display
 pub struct StatisticsTokenMapWidget<'a> {
@@ -31,28 +19,12 @@ impl<'a> StatisticsTokenMapWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
     }
-
-    /// Handle key events for token map
-    pub fn handle_key_event(key: KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
-            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
-            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
-            KeyCode::Down => Some(Message::ScrollStatistics(1)),
-            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
-            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
-            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
-            KeyCode::End => Some(Message::ScrollStatistics(9999)),
-            _ => None,
-        }
-    }
 }
 
 impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
     type State = TokenMapState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -96,9 +68,9 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
             terminal_width,
         );
 
-        // Calculate viewport for scrolling
+        // Calculate viewport for scrolling - read directly from Model
         let content_height = layout[0].height.saturating_sub(2) as usize; // Account for borders
-        let scroll_start = state.scroll_position as usize;
+        let scroll_start = self.model.statistics.scroll as usize;
         let scroll_end = (scroll_start + content_height).min(formatted_lines.len());
 
         // Convert formatted lines to ListItems with proper column layout and filename coloring

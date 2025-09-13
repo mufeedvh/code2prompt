@@ -219,7 +219,7 @@ impl TuiApp {
             }
             Tab::Settings => {
                 let widget = SettingsWidget::new(model);
-                let mut state = SettingsState::from_model(model);
+                let mut state = ();
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
             }
             Tab::Statistics => match model.statistics.view {
@@ -229,7 +229,7 @@ impl TuiApp {
                 }
                 crate::model::StatisticsView::TokenMap => {
                     let widget = StatisticsTokenMapWidget::new(model);
-                    let mut state = TokenMapState::from_model(model);
+                    let mut state = ();
                     frame.render_stateful_widget(widget, main_layout[1], &mut state);
                 }
                 crate::model::StatisticsView::Extensions => {
@@ -486,21 +486,18 @@ impl TuiApp {
     }
 
     fn handle_statistics_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Delegate to the appropriate statistics widget based on current view
-        match self.model.statistics.view {
-            crate::model::StatisticsView::Overview => {
-                StatisticsOverviewWidget::handle_key_event(key)
-            }
-            crate::model::StatisticsView::TokenMap => {
-                // Convert to crossterm KeyEvent for compatibility with other widgets
-                let crossterm_key = self.convert_to_crossterm_key(key);
-                StatisticsTokenMapWidget::handle_key_event(crossterm_key)
-            }
-            crate::model::StatisticsView::Extensions => {
-                // Convert to crossterm KeyEvent for compatibility with other widgets
-                let crossterm_key = self.convert_to_crossterm_key(key);
-                StatisticsByExtensionWidget::handle_key_event(crossterm_key)
-            }
+        // Pure logic in Model - no direct widget calls
+        match key.code {
+            KeyCode::Enter => Some(Message::RunAnalysis),
+            KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
+            KeyCode::Right => Some(Message::CycleStatisticsView(1)), // Next view
+            KeyCode::Up => Some(Message::ScrollStatistics(-1)),
+            KeyCode::Down => Some(Message::ScrollStatistics(1)),
+            KeyCode::PageUp => Some(Message::ScrollStatistics(-5)),
+            KeyCode::PageDown => Some(Message::ScrollStatistics(5)),
+            KeyCode::Home => Some(Message::ScrollStatistics(-9999)),
+            KeyCode::End => Some(Message::ScrollStatistics(9999)),
+            _ => None,
         }
     }
 

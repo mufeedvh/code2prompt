@@ -1,7 +1,6 @@
 //! Statistics overview widget for displaying analysis summary.
 
-use crate::model::{Message, Model};
-use ratatui::crossterm::event::KeyEvent;
+use crate::model::Model;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -15,14 +14,6 @@ pub struct StatisticsOverviewWidget<'a> {
 impl<'a> StatisticsOverviewWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
-    }
-
-    /// Handle key events for statistics overview (delegated to model)
-    pub fn handle_key_event(key: KeyEvent) -> Option<Message> {
-        // All business logic moved to StatisticsState::handle_key_event
-        // This is a static method, so we create a temporary state to handle the event
-        let mut temp_state = crate::model::StatisticsState::default();
-        temp_state.handle_key_event(key)
     }
 }
 
