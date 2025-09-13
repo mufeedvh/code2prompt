@@ -132,14 +132,6 @@ impl PickerState {
         self.set_cursor_from_global_position(new_global);
     }
 
-    /// Switch between default and custom lists
-    pub fn switch_list(&mut self) {
-        self.active_list = match self.active_list {
-            ActiveList::Default => ActiveList::Custom,
-            ActiveList::Custom => ActiveList::Default,
-        };
-    }
-
     /// Refresh templates by reloading from directories
     pub fn refresh(&mut self) {
         self.load_all_templates();
@@ -211,15 +203,6 @@ impl PickerState {
         if global_pos < template_index + self.custom_templates.len() {
             self.active_list = ActiveList::Custom;
             self.custom_cursor = global_pos - template_index;
-            return;
-        }
-    }
-
-    /// Get currently selected template
-    pub fn get_selected_template(&self) -> Option<&TemplateFile> {
-        match self.active_list {
-            ActiveList::Default => self.default_templates.get(self.default_cursor),
-            ActiveList::Custom => self.custom_templates.get(self.custom_cursor),
         }
     }
 }

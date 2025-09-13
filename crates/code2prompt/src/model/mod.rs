@@ -82,7 +82,6 @@ pub enum Message {
     TemplateEditorInput(ratatui::crossterm::event::KeyEvent), // Direct textarea input
     TemplateVariableInput(ratatui::crossterm::event::KeyEvent), // Variable input
     TemplatePickerMove(i32),                    // Move picker cursor
-    TemplatePickerSwitchList,                   // Switch between default/custom lists
 }
 
 /// Represents the overall state of the TUI application.

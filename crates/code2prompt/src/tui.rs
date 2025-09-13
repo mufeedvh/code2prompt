@@ -983,9 +983,6 @@ impl TuiApp {
                     self.model.template.picker.move_cursor_up();
                 }
             }
-            Message::TemplatePickerSwitchList => {
-                self.model.template.picker.switch_list();
-            }
         }
 
         Ok(())
