@@ -66,4 +66,33 @@ impl StatisticsState {
             TokenFormat::Raw => num.to_string(),
         }
     }
+
+    /// Aggregate tokens by file extension (moved from widget - business logic belongs in Model)
+    pub fn aggregate_by_extension(&self) -> Vec<(String, usize, usize)> {
+        let mut extension_stats: std::collections::HashMap<String, (usize, usize)> =
+            std::collections::HashMap::new();
+
+        for entry in &self.token_map_entries {
+            if !entry.metadata.is_dir {
+                let extension = entry
+                    .name
+                    .split('.')
+                    .next_back()
+                    .map(|ext| format!(".{}", ext))
+                    .unwrap_or_else(|| "(no extension)".to_string());
+
+                let (tokens, count) = extension_stats.entry(extension).or_insert((0, 0));
+                *tokens += entry.tokens;
+                *count += 1;
+            }
+        }
+
+        // Convert to sorted vec (by tokens desc)
+        let mut ext_vec: Vec<(String, usize, usize)> = extension_stats
+            .into_iter()
+            .map(|(ext, (tokens, count))| (ext, tokens, count))
+            .collect();
+        ext_vec.sort_by(|a, b| b.1.cmp(&a.1));
+        ext_vec
+    }
 }

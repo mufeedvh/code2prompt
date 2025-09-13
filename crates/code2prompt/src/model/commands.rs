@@ -26,6 +26,9 @@ pub enum Cmd {
     /// Save text to file
     SaveToFile { filename: String, content: String },
 
+    /// Save template to custom directory
+    SaveTemplate { filename: String, content: String },
+
     /// Refresh file tree from session
     RefreshFileTree,
 }

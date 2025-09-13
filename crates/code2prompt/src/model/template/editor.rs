@@ -129,14 +129,4 @@ impl EditorState {
     pub fn get_content(&self) -> &str {
         &self.content
     }
-
-    /// Check if template is valid
-    pub fn is_template_valid(&self) -> bool {
-        self.is_valid
-    }
-
-    /// Get validation message
-    pub fn get_validation_message(&self) -> &str {
-        &self.validation_message
-    }
 }

@@ -14,7 +14,7 @@ pub mod template;
 pub use file_selection::FileSelectionWidget;
 pub use output::OutputWidget;
 pub use settings::SettingsWidget;
-pub use statistics_by_extension::{ExtensionState, StatisticsByExtensionWidget};
+pub use statistics_by_extension::StatisticsByExtensionWidget;
 pub use statistics_overview::StatisticsOverviewWidget;
 pub use statistics_token_map::StatisticsTokenMapWidget;
 pub use template::TemplateWidget;

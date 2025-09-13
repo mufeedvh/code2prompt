@@ -6,19 +6,8 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
 };
 
-/// State for the extension statistics widget
-#[derive(Debug, Clone)]
-pub struct ExtensionState {
-    pub scroll_position: u16,
-}
-
-impl ExtensionState {
-    pub fn from_model(model: &Model) -> Self {
-        Self {
-            scroll_position: model.statistics.scroll,
-        }
-    }
-}
+/// State for the extension statistics widget - eliminated redundant state
+pub type ExtensionState = ();
 
 /// Widget for extension-based statistics display
 pub struct StatisticsByExtensionWidget<'a> {
@@ -50,7 +39,7 @@ impl<'a> StatisticsByExtensionWidget<'a> {
 impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
     type State = ExtensionState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -85,36 +74,13 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
             return;
         }
 
-        // Aggregate tokens by file extension
-        let mut extension_stats: std::collections::HashMap<String, (usize, usize)> =
-            std::collections::HashMap::new();
+        // Use business logic from Model - pure Elm/Redux pattern
+        let ext_vec = self.model.statistics.aggregate_by_extension();
         let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
 
-        for entry in &self.model.statistics.token_map_entries {
-            if !entry.metadata.is_dir {
-                let extension = entry
-                    .name
-                    .split('.')
-                    .next_back()
-                    .map(|ext| format!(".{}", ext))
-                    .unwrap_or_else(|| "(no extension)".to_string());
-
-                let (tokens, count) = extension_stats.entry(extension).or_insert((0, 0));
-                *tokens += entry.tokens;
-                *count += 1;
-            }
-        }
-
-        // Convert to sorted vec
-        let mut ext_vec: Vec<(String, usize, usize)> = extension_stats
-            .into_iter()
-            .map(|(ext, (tokens, count))| (ext, tokens, count))
-            .collect();
-        ext_vec.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by tokens desc
-
-        // Calculate viewport for scrolling
+        // Calculate viewport for scrolling - read directly from Model
         let content_height = layout[0].height.saturating_sub(2) as usize;
-        let scroll_start = state.scroll_position as usize;
+        let scroll_start = self.model.statistics.scroll as usize;
         let scroll_end = (scroll_start + content_height).min(ext_vec.len());
 
         // Calculate dynamic column widths based on available space and content

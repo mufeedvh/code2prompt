@@ -1,7 +1,6 @@
 //! Output widget for displaying generated prompt with scrolling capability.
 
-use crate::model::{Message, Model};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crate::model::Model;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph, Wrap},
@@ -18,41 +17,6 @@ pub struct OutputWidget<'a> {
 impl<'a> OutputWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
-    }
-
-    /// Handle key events for output
-    pub fn handle_key_event(key: KeyEvent, model: &Model) -> Option<Message> {
-        match key.code {
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            // Check for Ctrl+Up/Down first for faster scrolling
-            KeyCode::Up if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                Some(Message::ScrollOutput(-10))
-            }
-            KeyCode::Down if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                Some(Message::ScrollOutput(10))
-            }
-            KeyCode::Up => Some(Message::ScrollOutput(-1)),
-            KeyCode::Down => Some(Message::ScrollOutput(1)),
-            KeyCode::PageUp => Some(Message::ScrollOutput(-5)),
-            KeyCode::PageDown => Some(Message::ScrollOutput(5)),
-            KeyCode::Home => Some(Message::ScrollOutput(-9999)), // Scroll to top
-            KeyCode::End => Some(Message::ScrollOutput(9999)),   // Scroll to bottom
-            KeyCode::Char('c') | KeyCode::Char('C') => {
-                if model.prompt_output.generated_prompt.is_some() {
-                    Some(Message::CopyToClipboard)
-                } else {
-                    None
-                }
-            }
-            KeyCode::Char('s') | KeyCode::Char('S') => {
-                if model.prompt_output.generated_prompt.is_some() {
-                    Some(Message::SaveToFile("prompt.md".to_string()))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
     }
 }
 

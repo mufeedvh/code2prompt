@@ -13,8 +13,6 @@ pub use editor::EditorState;
 pub use picker::{ActiveList, PickerState};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
 
-use crate::model::Message;
-
 /// Which component is currently focused
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TemplateFocus {
@@ -100,42 +98,10 @@ impl TemplateState {
         )
     }
 
-    /// Check if template is valid for analysis
-    pub fn is_valid_for_analysis(&self) -> bool {
-        self.editor.is_template_valid() && !self.variables.has_missing_variables()
-    }
-
-    /// Get validation message for analysis
-    pub fn get_analysis_validation_message(&self) -> String {
-        if !self.editor.is_template_valid() {
-            format!(
-                "Template syntax error: {}",
-                self.editor.get_validation_message()
-            )
-        } else if self.variables.has_missing_variables() {
-            self.variables.get_missing_variables_message()
-        } else {
-            String::new()
-        }
-    }
-
     /// Get organized variables for display
     pub fn get_organized_variables(&self) -> Vec<VariableInfo> {
         self.variables
             .get_organized_variables(self.editor.get_template_variables())
-    }
-
-    /// Refresh templates in picker
-    pub fn refresh_templates(&mut self) {
-        self.picker.refresh();
-        self.status_message = "Templates refreshed".to_string();
-    }
-
-    /// Save current template to custom directory
-    pub fn save_template(&self, filename: String) -> Result<(), String> {
-        crate::utils::save_template_to_custom_dir(&filename, self.editor.get_content())
-            .map(|_| ()) // Ignore the PathBuf return value
-            .map_err(|e| format!("Failed to save template: {}", e))
     }
 
     /// Get current template content for analysis
@@ -195,56 +161,6 @@ impl TemplateState {
                 .custom_templates
                 .get(self.picker.custom_cursor)
                 .ok_or_else(|| "No custom template selected".to_string()),
-        }
-    }
-
-    /// Handle template-related messages
-    pub fn handle_message(&mut self, message: &Message) -> Option<Message> {
-        match message {
-            Message::SaveTemplate(filename) => {
-                match self.save_template(filename.clone()) {
-                    Ok(_) => {
-                        self.status_message = format!("Template saved as: {}", filename);
-                        self.refresh_templates(); // Refresh to show new template
-                    }
-                    Err(e) => {
-                        self.status_message = e;
-                    }
-                }
-                None
-            }
-            Message::ReloadTemplate => {
-                // Reload default template
-                self.editor = EditorState::default();
-                self.sync_variables_with_template();
-                self.status_message = "Template reloaded".to_string();
-                None
-            }
-            Message::LoadTemplate => {
-                match self.load_selected_template() {
-                    Ok(template_name) => {
-                        self.sync_variables_with_template();
-                        self.status_message = format!("Loaded template: {}", template_name);
-                    }
-                    Err(e) => {
-                        self.status_message = format!("Failed to load template: {}", e);
-                    }
-                }
-                None
-            }
-            Message::RefreshTemplates => {
-                self.refresh_templates();
-                None
-            }
-            Message::RunAnalysis => {
-                if self.is_valid_for_analysis() {
-                    Some(Message::RunAnalysis)
-                } else {
-                    self.status_message = self.get_analysis_validation_message();
-                    None
-                }
-            }
-            _ => None,
         }
     }
 }

@@ -1,7 +1,6 @@
 //! File selection widget for directory tree navigation and file selection.
 
-use crate::model::{Message, Model};
-use crossterm::event::{KeyCode, KeyEvent};
+use crate::model::Model;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph},
@@ -18,75 +17,6 @@ pub struct FileSelectionWidget<'a> {
 impl<'a> FileSelectionWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
-    }
-
-    /// Handle key events for file selection
-    pub fn handle_key_event(key: KeyEvent, model: &Model, search_mode: bool) -> Option<Message> {
-        // Handle search mode input
-        if search_mode {
-            match key.code {
-                KeyCode::Esc => {
-                    // Exit search mode
-                    return Some(Message::ExitSearchMode);
-                }
-                KeyCode::Char(c) => {
-                    let mut query = model.file_tree.search_query.clone();
-                    query.push(c);
-                    return Some(Message::UpdateSearchQuery(query));
-                }
-                KeyCode::Backspace => {
-                    let mut query = model.file_tree.search_query.clone();
-                    query.pop();
-                    return Some(Message::UpdateSearchQuery(query));
-                }
-                KeyCode::Enter => {
-                    // Exit search mode and run analysis
-                    return Some(Message::ExitSearchMode);
-                }
-                _ => return None,
-            }
-        }
-
-        // Handle normal mode input
-        match key.code {
-            KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
-            KeyCode::Down => Some(Message::MoveTreeCursor(1)),
-            KeyCode::Char(' ') => Some(Message::ToggleFileSelection(model.file_tree.tree_cursor)),
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            KeyCode::Right => {
-                let visible_nodes = model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(model.file_tree.tree_cursor) {
-                    if node.is_directory && !node.is_expanded {
-                        Some(Message::ExpandDirectory(model.file_tree.tree_cursor))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            KeyCode::Left => {
-                let visible_nodes = model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(model.file_tree.tree_cursor) {
-                    if node.is_directory && node.is_expanded {
-                        Some(Message::CollapseDirectory(model.file_tree.tree_cursor))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            KeyCode::Char('s') | KeyCode::Char('S') => {
-                // Enter search mode
-                Some(Message::EnterSearchMode)
-            }
-            KeyCode::PageUp => Some(Message::ScrollFileTree(-5)),
-            KeyCode::PageDown => Some(Message::ScrollFileTree(5)),
-            KeyCode::Home => Some(Message::ScrollFileTree(-9999)), // Scroll to top
-            KeyCode::End => Some(Message::ScrollFileTree(9999)),   // Scroll to bottom
-            _ => None,
-        }
     }
 }
 

@@ -33,9 +33,9 @@ pub enum Tab {
     PromptOutput, // Tab 5: Generated prompt and copy
 }
 
-/// Messages for updating the model (legacy enum for pattern matching)
+/// Messages for updating the model
 #[derive(Debug, Clone)]
-pub enum LegacyMessage {
+pub enum Message {
     // Navigation
     SwitchTab(Tab),
     Quit,
@@ -65,8 +65,7 @@ pub enum LegacyMessage {
     // Prompt output
     CopyToClipboard,
     SaveToFile(String),
-    ScrollOutput(i16),   // Scroll delta (positive = down, negative = up)
-    ScrollFileTree(i16), // Scroll delta for file tree
+    ScrollOutput(i16), // Scroll delta (positive = down, negative = up)
 
     // Statistics
     CycleStatisticsView(i8), // +1 = next view, -1 = previous view
@@ -82,12 +81,17 @@ pub enum LegacyMessage {
     SetTemplateFocus(TemplateFocus, FocusMode), // Set focus and mode
     SetTemplateFocusMode(FocusMode),            // Set focus mode only
     TemplateEditorInput(ratatui::crossterm::event::KeyEvent), // Direct textarea input
-    TemplateVariableInput(ratatui::crossterm::event::KeyEvent), // Variable input
     TemplatePickerMove(i32),                    // Move picker cursor
-}
 
-// Type alias for backward compatibility
-pub type Message = LegacyMessage;
+    // Template variable editing messages (pure Elm/Redux)
+    VariableStartEditing(String), // Start editing a variable
+    VariableInputChar(char),      // Add character to variable input
+    VariableInputBackspace,       // Remove character from variable input
+    VariableInputEnter,           // Finish editing variable
+    VariableInputCancel,          // Cancel editing variable
+    VariableNavigateUp,           // Navigate up in variable list
+    VariableNavigateDown,         // Navigate down in variable list
+}
 
 /// Represents the overall state of the TUI application.
 #[derive(Debug, Clone)]
@@ -399,27 +403,6 @@ impl Model {
                 (new_model, Cmd::None)
             }
 
-            Message::ScrollFileTree(delta) => {
-                let visible_count = new_model.file_tree.get_visible_nodes().len() as u16;
-                let viewport_height = 20; // Approximate viewport height for file tree
-                let max_scroll = visible_count.saturating_sub(viewport_height);
-
-                let new_scroll = if delta < 0 {
-                    new_model
-                        .file_tree
-                        .file_tree_scroll
-                        .saturating_sub((-delta) as u16)
-                } else {
-                    new_model
-                        .file_tree
-                        .file_tree_scroll
-                        .saturating_add(delta as u16)
-                };
-
-                new_model.file_tree.file_tree_scroll = new_scroll.min(max_scroll);
-                (new_model, Cmd::None)
-            }
-
             Message::CycleStatisticsView(direction) => {
                 new_model.statistics.view = if direction > 0 {
                     new_model.statistics.view.next()
@@ -442,46 +425,46 @@ impl Model {
                 (new_model, Cmd::None)
             }
 
-            // Template messages - delegate to template state
-            Message::SaveTemplate(ref filename) => {
-                if let Some(result_msg) = new_model.template.handle_message(&message) {
-                    // Recursively handle the result message
-                    let (updated_model, cmd) = new_model.update(result_msg);
-                    (updated_model, cmd)
-                } else {
-                    new_model.status_message = format!("Saved template as {}", filename);
-                    (new_model, Cmd::None)
-                }
+            // Template messages - pure Elm/Redux pattern, no widget method calls
+            Message::SaveTemplate(filename) => {
+                // Save template logic moved to Model - pure function
+                let content = new_model.template.get_template_content().to_string();
+                let cmd = Cmd::SaveTemplate {
+                    filename: filename.clone(),
+                    content,
+                };
+                new_model.status_message = "Saving template...".to_string();
+                (new_model, cmd)
             }
 
             Message::ReloadTemplate => {
-                if let Some(result_msg) = new_model.template.handle_message(&message) {
-                    let (updated_model, cmd) = new_model.update(result_msg);
-                    (updated_model, cmd)
-                } else {
-                    new_model.status_message = "Reloaded template".to_string();
-                    (new_model, Cmd::None)
-                }
+                // Reload default template - pure logic in Model
+                new_model.template.editor = crate::model::template::EditorState::default();
+                new_model.template.sync_variables_with_template();
+                new_model.status_message = "Reloaded template".to_string();
+                (new_model, Cmd::None)
             }
 
             Message::LoadTemplate => {
-                if let Some(result_msg) = new_model.template.handle_message(&message) {
-                    let (updated_model, cmd) = new_model.update(result_msg);
-                    (updated_model, cmd)
-                } else {
-                    new_model.status_message = "Loaded template".to_string();
-                    (new_model, Cmd::None)
+                // Load selected template - pure logic in Model
+                let result = new_model.template.load_selected_template();
+                match result {
+                    Ok(template_name) => {
+                        new_model.template.sync_variables_with_template();
+                        new_model.status_message = format!("Loaded template: {}", template_name);
+                    }
+                    Err(e) => {
+                        new_model.status_message = format!("Failed to load template: {}", e);
+                    }
                 }
+                (new_model, Cmd::None)
             }
 
             Message::RefreshTemplates => {
-                if let Some(result_msg) = new_model.template.handle_message(&message) {
-                    let (updated_model, cmd) = new_model.update(result_msg);
-                    (updated_model, cmd)
-                } else {
-                    new_model.status_message = "Refreshed templates".to_string();
-                    (new_model, Cmd::None)
-                }
+                // Refresh templates - pure logic in Model
+                new_model.template.picker.refresh();
+                new_model.status_message = "Templates refreshed".to_string();
+                (new_model, Cmd::None)
             }
 
             Message::SetTemplateFocus(focus, mode) => {
@@ -511,18 +494,59 @@ impl Model {
                 (new_model, Cmd::None)
             }
 
-            Message::TemplateVariableInput(key) => {
-                // Handle variable input directly in Model - pure logic
-                new_model.template.variables.handle_key_input(key);
-                new_model.template.sync_variables_with_template();
-                (new_model, Cmd::None)
-            }
-
             Message::TemplatePickerMove(delta) => {
                 if delta > 0 {
                     new_model.template.picker.move_cursor_down();
                 } else {
                     new_model.template.picker.move_cursor_up();
+                }
+                (new_model, Cmd::None)
+            }
+
+            // Template variable editing messages - pure Elm/Redux pattern
+            Message::VariableStartEditing(var_name) => {
+                new_model.template.variables.editing_variable = Some(var_name.clone());
+                new_model.template.variables.show_variable_input = true;
+                new_model.template.variables.variable_input_content.clear();
+                new_model.status_message = format!("Editing variable: {}", var_name);
+                (new_model, Cmd::None)
+            }
+
+            Message::VariableInputChar(c) => {
+                new_model.template.variables.add_char_to_input(c);
+                (new_model, Cmd::None)
+            }
+
+            Message::VariableInputBackspace => {
+                new_model.template.variables.remove_char_from_input();
+                (new_model, Cmd::None)
+            }
+
+            Message::VariableInputEnter => {
+                if let Some((var_name, value)) = new_model.template.variables.finish_editing() {
+                    new_model.status_message = format!("Set {} = {}", var_name, value);
+                    new_model.template.sync_variables_with_template();
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::VariableInputCancel => {
+                new_model.template.variables.cancel_editing();
+                new_model.status_message = "Cancelled variable editing".to_string();
+                (new_model, Cmd::None)
+            }
+
+            Message::VariableNavigateUp => {
+                if new_model.template.variables.cursor > 0 {
+                    new_model.template.variables.cursor -= 1;
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::VariableNavigateDown => {
+                let variables = new_model.template.get_organized_variables();
+                if new_model.template.variables.cursor < variables.len().saturating_sub(1) {
+                    new_model.template.variables.cursor += 1;
                 }
                 (new_model, Cmd::None)
             }

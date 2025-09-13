@@ -234,7 +234,7 @@ impl TuiApp {
                 }
                 crate::model::StatisticsView::Extensions => {
                     let widget = StatisticsByExtensionWidget::new(model);
-                    let mut state = ExtensionState::from_model(model);
+                    let mut state = ();
                     frame.render_stateful_widget(widget, main_layout[1], &mut state);
                 }
             },
@@ -334,155 +334,60 @@ impl TuiApp {
         }
     }
 
-    /// Convert ratatui KeyEvent to crossterm KeyEvent for compatibility with other widgets
-    fn convert_to_crossterm_key(&self, key: KeyEvent) -> crossterm::event::KeyEvent {
-        crossterm::event::KeyEvent {
-            code: match key.code {
-                KeyCode::Backspace => crossterm::event::KeyCode::Backspace,
-                KeyCode::Enter => crossterm::event::KeyCode::Enter,
-                KeyCode::Left => crossterm::event::KeyCode::Left,
-                KeyCode::Right => crossterm::event::KeyCode::Right,
-                KeyCode::Up => crossterm::event::KeyCode::Up,
-                KeyCode::Down => crossterm::event::KeyCode::Down,
-                KeyCode::Home => crossterm::event::KeyCode::Home,
-                KeyCode::End => crossterm::event::KeyCode::End,
-                KeyCode::PageUp => crossterm::event::KeyCode::PageUp,
-                KeyCode::PageDown => crossterm::event::KeyCode::PageDown,
-                KeyCode::Tab => crossterm::event::KeyCode::Tab,
-                KeyCode::BackTab => crossterm::event::KeyCode::BackTab,
-                KeyCode::Delete => crossterm::event::KeyCode::Delete,
-                KeyCode::Insert => crossterm::event::KeyCode::Insert,
-                KeyCode::F(n) => crossterm::event::KeyCode::F(n),
-                KeyCode::Char(c) => crossterm::event::KeyCode::Char(c),
-                KeyCode::Null => crossterm::event::KeyCode::Null,
-                KeyCode::Esc => crossterm::event::KeyCode::Esc,
-                KeyCode::CapsLock => crossterm::event::KeyCode::CapsLock,
-                KeyCode::ScrollLock => crossterm::event::KeyCode::ScrollLock,
-                KeyCode::NumLock => crossterm::event::KeyCode::NumLock,
-                KeyCode::PrintScreen => crossterm::event::KeyCode::PrintScreen,
-                KeyCode::Pause => crossterm::event::KeyCode::Pause,
-                KeyCode::Menu => crossterm::event::KeyCode::Menu,
-                KeyCode::KeypadBegin => crossterm::event::KeyCode::KeypadBegin,
-                KeyCode::Media(media) => crossterm::event::KeyCode::Media(match media {
-                    ratatui::crossterm::event::MediaKeyCode::Play => {
-                        crossterm::event::MediaKeyCode::Play
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::Pause => {
-                        crossterm::event::MediaKeyCode::Pause
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::PlayPause => {
-                        crossterm::event::MediaKeyCode::PlayPause
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::Reverse => {
-                        crossterm::event::MediaKeyCode::Reverse
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::Stop => {
-                        crossterm::event::MediaKeyCode::Stop
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::FastForward => {
-                        crossterm::event::MediaKeyCode::FastForward
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::Rewind => {
-                        crossterm::event::MediaKeyCode::Rewind
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::TrackNext => {
-                        crossterm::event::MediaKeyCode::TrackNext
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::TrackPrevious => {
-                        crossterm::event::MediaKeyCode::TrackPrevious
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::Record => {
-                        crossterm::event::MediaKeyCode::Record
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::LowerVolume => {
-                        crossterm::event::MediaKeyCode::LowerVolume
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::RaiseVolume => {
-                        crossterm::event::MediaKeyCode::RaiseVolume
-                    }
-                    ratatui::crossterm::event::MediaKeyCode::MuteVolume => {
-                        crossterm::event::MediaKeyCode::MuteVolume
-                    }
-                }),
-                KeyCode::Modifier(modifier) => {
-                    crossterm::event::KeyCode::Modifier(match modifier {
-                        ratatui::crossterm::event::ModifierKeyCode::LeftShift => {
-                            crossterm::event::ModifierKeyCode::LeftShift
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::LeftControl => {
-                            crossterm::event::ModifierKeyCode::LeftControl
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::LeftAlt => {
-                            crossterm::event::ModifierKeyCode::LeftAlt
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::LeftSuper => {
-                            crossterm::event::ModifierKeyCode::LeftSuper
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::LeftHyper => {
-                            crossterm::event::ModifierKeyCode::LeftHyper
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::LeftMeta => {
-                            crossterm::event::ModifierKeyCode::LeftMeta
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::RightShift => {
-                            crossterm::event::ModifierKeyCode::RightShift
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::RightControl => {
-                            crossterm::event::ModifierKeyCode::RightControl
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::RightAlt => {
-                            crossterm::event::ModifierKeyCode::RightAlt
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::RightSuper => {
-                            crossterm::event::ModifierKeyCode::RightSuper
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::RightHyper => {
-                            crossterm::event::ModifierKeyCode::RightHyper
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::RightMeta => {
-                            crossterm::event::ModifierKeyCode::RightMeta
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::IsoLevel3Shift => {
-                            crossterm::event::ModifierKeyCode::IsoLevel3Shift
-                        }
-                        ratatui::crossterm::event::ModifierKeyCode::IsoLevel5Shift => {
-                            crossterm::event::ModifierKeyCode::IsoLevel5Shift
-                        }
-                    })
+    fn handle_file_tree_keys(&self, key: KeyEvent) -> Option<Message> {
+        // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
+        if self.input_mode == InputMode::Search {
+            match key.code {
+                KeyCode::Esc => Some(Message::ExitSearchMode),
+                KeyCode::Enter => {
+                    // Apply search and exit search mode
+                    Some(Message::ExitSearchMode)
                 }
-            },
-            modifiers: crossterm::event::KeyModifiers::from_bits_truncate(key.modifiers.bits()),
-            kind: match key.kind {
-                ratatui::crossterm::event::KeyEventKind::Press => {
-                    crossterm::event::KeyEventKind::Press
+                KeyCode::Backspace => {
+                    let mut query = self.model.file_tree.search_query.clone();
+                    query.pop();
+                    Some(Message::UpdateSearchQuery(query))
                 }
-                ratatui::crossterm::event::KeyEventKind::Repeat => {
-                    crossterm::event::KeyEventKind::Repeat
+                KeyCode::Char(c) => {
+                    let mut query = self.model.file_tree.search_query.clone();
+                    query.push(c);
+                    Some(Message::UpdateSearchQuery(query))
                 }
-                ratatui::crossterm::event::KeyEventKind::Release => {
-                    crossterm::event::KeyEventKind::Release
-                }
-            },
-            state: crossterm::event::KeyEventState::from_bits_truncate(key.state.bits()),
+                _ => None,
+            }
+        } else {
+            // Normal navigation mode
+            match key.code {
+                KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
+                KeyCode::Down => Some(Message::MoveTreeCursor(1)),
+                KeyCode::PageUp => Some(Message::MoveTreeCursor(-10)),
+                KeyCode::PageDown => Some(Message::MoveTreeCursor(10)),
+                KeyCode::Home => Some(Message::MoveTreeCursor(-9999)),
+                KeyCode::End => Some(Message::MoveTreeCursor(9999)),
+                KeyCode::Enter | KeyCode::Char(' ') => Some(Message::ToggleFileSelection(
+                    self.model.file_tree.tree_cursor,
+                )),
+                KeyCode::Right => Some(Message::ExpandDirectory(self.model.file_tree.tree_cursor)),
+                KeyCode::Left => Some(Message::CollapseDirectory(self.model.file_tree.tree_cursor)),
+                KeyCode::Char('/') => Some(Message::EnterSearchMode),
+                KeyCode::Char('r') | KeyCode::Char('R') => Some(Message::RefreshFileTree),
+                _ => None,
+            }
         }
     }
 
-    fn handle_file_tree_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Convert to crossterm KeyEvent for compatibility
-        let crossterm_key = self.convert_to_crossterm_key(key);
-        // Delegate to FileSelectionWidget
-        FileSelectionWidget::handle_key_event(
-            crossterm_key,
-            &self.model,
-            self.input_mode == InputMode::Search,
-        )
-    }
-
     fn handle_settings_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Convert to crossterm KeyEvent for compatibility
-        let crossterm_key = self.convert_to_crossterm_key(key);
-        // Delegate to SettingsWidget
-        SettingsWidget::handle_key_event(crossterm_key, &self.model)
+        // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
+        match key.code {
+            KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
+            KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
+            KeyCode::Char(' ') => Some(Message::ToggleSetting(self.model.settings.settings_cursor)),
+            KeyCode::Left | KeyCode::Right => {
+                Some(Message::CycleSetting(self.model.settings.settings_cursor))
+            }
+            KeyCode::Enter => Some(Message::RunAnalysis),
+            _ => None,
+        }
     }
 
     fn handle_statistics_keys(&self, key: KeyEvent) -> Option<Message> {
@@ -502,11 +407,7 @@ impl TuiApp {
     }
 
     fn handle_template_keys(&self, key: KeyEvent) -> Option<Message> {
-        // This is a temporary workaround - in a proper implementation,
-        // we'd need to pass the state back to the model
-        // For now, we'll handle template keys directly here
-
-        // Check if we're in editing mode by looking at the model's template state
+        // Pure Elm/Redux pattern - no direct widget calls, only message generation
         let is_in_editing_mode = self.model.template.is_in_editing_mode();
         let current_focus = self.model.template.get_focus();
 
@@ -517,16 +418,48 @@ impl TuiApp {
             ));
         }
 
-        // In editing modes, handle keys directly
+        // In editing modes, handle keys with pure messages
         if is_in_editing_mode {
             match current_focus {
                 crate::model::template::TemplateFocus::Editor => {
-                    // For editor, we need to pass the key to the textarea
+                    // For editor, pass the key to the textarea via message
                     return Some(Message::TemplateEditorInput(key));
                 }
                 crate::model::template::TemplateFocus::Variables => {
-                    // Handle variable navigation and editing
-                    return Some(Message::TemplateVariableInput(key));
+                    // Handle variable editing with pure messages
+                    if self.model.template.variables.is_editing() {
+                        // Currently editing a variable value
+                        match key.code {
+                            KeyCode::Char(c) => return Some(Message::VariableInputChar(c)),
+                            KeyCode::Backspace => return Some(Message::VariableInputBackspace),
+                            KeyCode::Enter => return Some(Message::VariableInputEnter),
+                            KeyCode::Esc => return Some(Message::VariableInputCancel),
+                            _ => return None,
+                        }
+                    } else {
+                        // Navigating variables list
+                        match key.code {
+                            KeyCode::Up => return Some(Message::VariableNavigateUp),
+                            KeyCode::Down => return Some(Message::VariableNavigateDown),
+                            KeyCode::Enter | KeyCode::Char(' ') => {
+                                // Start editing the current variable
+                                let variables = self.model.template.get_organized_variables();
+                                if let Some(var) =
+                                    variables.get(self.model.template.variables.cursor)
+                                {
+                                    if var.category
+                                        == crate::model::template::VariableCategory::Missing
+                                    {
+                                        return Some(Message::VariableStartEditing(
+                                            var.name.clone(),
+                                        ));
+                                    }
+                                }
+                                return None;
+                            }
+                            _ => return None,
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -571,7 +504,7 @@ impl TuiApp {
 
         // Handle input for focused component in normal mode
         if current_focus == crate::model::template::TemplateFocus::Picker {
-            // Handle picker navigation - Tab should navigate within picker, not change tabs
+            // Handle picker navigation - pure messages only
             match key.code {
                 KeyCode::Up => return Some(Message::TemplatePickerMove(-1)),
                 KeyCode::Down => return Some(Message::TemplatePickerMove(1)),
@@ -589,10 +522,23 @@ impl TuiApp {
     }
 
     fn handle_prompt_output_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Convert to crossterm KeyEvent for compatibility
-        let crossterm_key = self.convert_to_crossterm_key(key);
-        // Delegate to OutputWidget
-        OutputWidget::handle_key_event(crossterm_key, &self.model)
+        // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
+        match key.code {
+            KeyCode::Up => Some(Message::ScrollOutput(-1)),
+            KeyCode::Down => Some(Message::ScrollOutput(1)),
+            KeyCode::PageUp => Some(Message::ScrollOutput(-10)),
+            KeyCode::PageDown => Some(Message::ScrollOutput(10)),
+            KeyCode::Home => Some(Message::ScrollOutput(-9999)),
+            KeyCode::End => Some(Message::ScrollOutput(9999)),
+            KeyCode::Char('c') | KeyCode::Char('C') => Some(Message::CopyToClipboard),
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                let filename = format!("prompt_{}.md", timestamp);
+                Some(Message::SaveToFile(filename))
+            }
+            KeyCode::Enter => Some(Message::RunAnalysis),
+            _ => None,
+        }
     }
 
     /// Handle a message using the Elm/Redux pattern.
@@ -708,6 +654,19 @@ impl TuiApp {
                     }
                     Err(e) => {
                         self.model.status_message = format!("Save failed: {}", e);
+                    }
+                }
+            }
+
+            crate::model::Cmd::SaveTemplate { filename, content } => {
+                match crate::utils::save_template_to_custom_dir(&filename, &content) {
+                    Ok(_) => {
+                        self.model.status_message = format!("Template saved as {}", filename);
+                        // Refresh templates to show the new one
+                        self.model.template.picker.refresh();
+                    }
+                    Err(e) => {
+                        self.model.status_message = format!("Template save failed: {}", e);
                     }
                 }
             }

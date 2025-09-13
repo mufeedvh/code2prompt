@@ -172,18 +172,6 @@ impl VariableState {
         !self.missing_variables.is_empty()
     }
 
-    /// Get missing variables message
-    pub fn get_missing_variables_message(&self) -> String {
-        if self.missing_variables.is_empty() {
-            String::new()
-        } else {
-            format!(
-                "Missing variables: {}. Please define them in the Variables column.",
-                self.missing_variables.join(", ")
-            )
-        }
-    }
-
     /// Cancel variable editing
     pub fn cancel_editing(&mut self) {
         self.editing_variable = None;
@@ -235,46 +223,5 @@ impl VariableState {
         // For now, just reset cursor to 0, but we could enhance this
         // to find the first missing variable in the organized list
         self.cursor = 0;
-    }
-
-    /// Handle key input for variable editing - pure logic in Model
-    pub fn handle_key_input(&mut self, key: ratatui::crossterm::event::KeyEvent) {
-        use ratatui::crossterm::event::KeyCode;
-
-        if self.is_editing() {
-            // Handle input when editing a variable
-            match key.code {
-                KeyCode::Char(c) => {
-                    self.add_char_to_input(c);
-                }
-                KeyCode::Backspace => {
-                    self.remove_char_from_input();
-                }
-                KeyCode::Enter => {
-                    self.finish_editing();
-                }
-                KeyCode::Esc => {
-                    self.cancel_editing();
-                }
-                _ => {}
-            }
-        } else {
-            // Handle navigation when not editing
-            match key.code {
-                KeyCode::Up => {
-                    if self.cursor > 0 {
-                        self.cursor -= 1;
-                    }
-                }
-                KeyCode::Down => {
-                    self.cursor += 1; // Will be clamped by the widget
-                }
-                KeyCode::Enter => {
-                    // Start editing the current variable if it's editable
-                    // This would need the variables list, so we'll keep it simple for now
-                }
-                _ => {}
-            }
-        }
     }
 }

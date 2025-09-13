@@ -1,7 +1,6 @@
 //! Settings widget for configuration management.
 
-use crate::model::{Message, Model};
-use crossterm::event::{KeyCode, KeyEvent};
+use crate::model::Model;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph},
@@ -18,20 +17,6 @@ pub struct SettingsWidget<'a> {
 impl<'a> SettingsWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
-    }
-
-    /// Handle key events for settings
-    pub fn handle_key_event(key: KeyEvent, model: &Model) -> Option<Message> {
-        match key.code {
-            KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
-            KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
-            KeyCode::Char(' ') => Some(Message::ToggleSetting(model.settings.settings_cursor)),
-            KeyCode::Left | KeyCode::Right => {
-                Some(Message::CycleSetting(model.settings.settings_cursor))
-            }
-            KeyCode::Enter => Some(Message::RunAnalysis),
-            _ => None,
-        }
     }
 }
 
