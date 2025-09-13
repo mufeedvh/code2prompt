@@ -119,7 +119,7 @@ impl TemplateVariableWidget {
         // Header
         lines.push(Line::from(vec![
             Span::styled(
-                "Variable Name",
+                "Name",
                 Style::default()
                     .fg(Color::White)
                     .add_modifier(Modifier::BOLD),

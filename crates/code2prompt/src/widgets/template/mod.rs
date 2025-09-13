@@ -141,44 +141,72 @@ impl TemplateWidget {
 
     /// Render the footer with controls and status
     fn render_footer(&self, area: Rect, buf: &mut Buffer, state: &TemplateState) {
-        let footer_text = if !state.get_status().is_empty() {
-            state.get_status().to_string()
+        let footer_content = if !state.get_status().is_empty() {
+            // Simple text for status messages
+            vec![Span::styled(
+                state.get_status(),
+                Style::default().fg(Color::Gray),
+            )]
         } else {
             // Show different controls based on focus mode
             match state.get_focus_mode() {
                 crate::model::template::FocusMode::Normal => {
-                    // Normal mode: can switch focus
-                    let global_controls =
-                        "Focus: e(dit) v(ariables) p(icker) | s(ave) r(eload) | Enter: Analyze";
+                    // Normal mode: can switch focus with colored letters
+                    let mut spans = vec![
+                        Span::styled(
+                            "Enter: Run Analysis | Focus: ",
+                            Style::default().fg(Color::Gray),
+                        ),
+                        Span::styled(
+                            "e",
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled("(dit) ", Style::default().fg(Color::Gray)),
+                        Span::styled(
+                            "v",
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled("(ariables) ", Style::default().fg(Color::Gray)),
+                        Span::styled(
+                            "p",
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled("(icker) | ", Style::default().fg(Color::Gray)),
+                    ];
 
                     let specific_controls = match state.get_focus() {
-                        TemplateFocus::Editor => "Press 'e' to enter edit mode",
-                        TemplateFocus::Variables => "Press 'v' to enter variable mode",
+                        TemplateFocus::Editor => "Press 'e' to enter edit mode".to_string(),
+                        TemplateFocus::Variables => "Press 'v' to enter variable mode".to_string(),
                         TemplateFocus::Picker => {
-                            &TemplatePickerWidget::get_help_text(true, state.picker.active_list)
+                            TemplatePickerWidget::get_help_text(true, state.picker.active_list)
                         }
                     };
 
-                    format!("{} | {}", global_controls, specific_controls)
+                    spans.push(Span::styled(
+                        specific_controls,
+                        Style::default().fg(Color::Gray),
+                    ));
+                    spans
                 }
                 crate::model::template::FocusMode::EditingTemplate => {
-                    "EDIT MODE: Type to edit template | ESC: Exit edit mode".to_string()
+                    vec![Span::styled(
+                        "EDIT MODE: Type to edit template | ESC: Exit edit mode",
+                        Style::default().fg(Color::Gray),
+                    )]
                 }
                 crate::model::template::FocusMode::EditingVariable => {
-                    if state.variables.is_editing() {
-                        "VARIABLE INPUT: Type value | Enter: Save | ESC: Cancel".to_string()
+                    let text = if state.variables.is_editing() {
+                        "VARIABLE INPUT: Type value | Enter: Save | ESC: Cancel"
                     } else {
-                        "VARIABLE MODE: ↑↓: Navigate | Enter: Edit variable | Tab: Next | ESC: Exit"
-                            .to_string()
-                    }
+                        "VARIABLE MODE: ↑↓: Navigate | Space: Edit variable | Tab: Next | ESC: Exit"
+                    };
+                    vec![Span::styled(text, Style::default().fg(Color::Gray))]
                 }
             }
-            .to_string()
         };
 
-        let footer = Paragraph::new(footer_text)
-            .block(Block::default().borders(Borders::ALL).title("Controls"))
-            .style(Style::default().fg(Color::Gray));
+        let footer = Paragraph::new(Line::from(footer_content))
+            .block(Block::default().borders(Borders::ALL).title("Controls"));
         footer.render(area, buf);
     }
 }
