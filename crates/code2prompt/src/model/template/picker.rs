@@ -7,11 +7,9 @@ use std::path::PathBuf;
 
 /// Represents a template file
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct TemplateFile {
     pub name: String,
     pub path: PathBuf,
-    pub is_default: bool,
 }
 
 /// Which list is currently active in the picker
@@ -61,24 +59,18 @@ impl PickerState {
         self.default_templates.push(TemplateFile {
             name: "Default (Markdown)".to_string(),
             path: PathBuf::new(),
-            is_default: true,
         });
 
         self.default_templates.push(TemplateFile {
             name: "Default (XML)".to_string(),
             path: PathBuf::new(),
-            is_default: true,
         });
 
         // Load templates from default directory using utility function
         if let Ok(all_templates) = crate::utils::load_all_templates() {
             for (name, path, is_builtin) in all_templates {
                 if is_builtin {
-                    self.default_templates.push(TemplateFile {
-                        name,
-                        path,
-                        is_default: true,
-                    });
+                    self.default_templates.push(TemplateFile { name, path });
                 }
             }
         }
@@ -92,11 +84,7 @@ impl PickerState {
         if let Ok(all_templates) = crate::utils::load_all_templates() {
             for (name, path, is_builtin) in all_templates {
                 if !is_builtin {
-                    self.custom_templates.push(TemplateFile {
-                        name,
-                        path,
-                        is_default: false,
-                    });
+                    self.custom_templates.push(TemplateFile { name, path });
                 }
             }
         }

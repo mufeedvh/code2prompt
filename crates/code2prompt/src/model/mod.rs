@@ -5,6 +5,7 @@
 //! and all state management submodules. It serves as the central state container
 //! for the terminal user interface.
 
+pub mod commands;
 pub mod file_tree;
 pub mod prompt_output;
 pub mod session;
@@ -12,6 +13,7 @@ pub mod settings;
 pub mod statistics;
 pub mod template;
 
+pub use commands::*;
 pub use file_tree::*;
 pub use prompt_output::*;
 pub use session::*;
@@ -137,5 +139,393 @@ impl Model {
     /// Get grouped settings for display
     pub fn get_settings_groups(&self) -> Vec<SettingsGroup> {
         crate::view::format_settings_groups(&self.session.session)
+    }
+
+    /// Pure update function following Elm/Redux pattern.
+    /// Takes a message and returns a new model state plus any side effects as commands.
+    pub fn update(&self, message: Message) -> (Self, Cmd) {
+        let mut new_model = self.clone();
+
+        match message {
+            Message::Quit => {
+                new_model.should_quit = true;
+                new_model.status_message = "Goodbye!".to_string();
+                (new_model, Cmd::None)
+            }
+
+            Message::SwitchTab(tab) => {
+                new_model.current_tab = tab;
+                new_model.status_message = format!("Switched to {:?} tab", tab);
+                (new_model, Cmd::None)
+            }
+
+            Message::RefreshFileTree => {
+                new_model.status_message = "Refreshing file tree...".to_string();
+                (new_model, Cmd::RefreshFileTree)
+            }
+
+            Message::UpdateSearchQuery(query) => {
+                new_model.file_tree.search_query = query;
+                new_model.file_tree.tree_cursor = 0; // Reset cursor when search changes
+                (new_model, Cmd::None)
+            }
+
+            Message::EnterSearchMode => {
+                new_model.status_message = "Search mode - Type to search, Esc to exit".to_string();
+                (new_model, Cmd::None)
+            }
+
+            Message::ExitSearchMode => {
+                new_model.status_message = "Exited search mode".to_string();
+                (new_model, Cmd::None)
+            }
+
+            Message::MoveTreeCursor(delta) => {
+                let visible_count = new_model.file_tree.get_visible_nodes().len();
+                if visible_count > 0 {
+                    let new_cursor = if delta > 0 {
+                        (new_model.file_tree.tree_cursor + delta as usize).min(visible_count - 1)
+                    } else {
+                        new_model
+                            .file_tree
+                            .tree_cursor
+                            .saturating_sub((-delta) as usize)
+                    };
+                    new_model.file_tree.tree_cursor = new_cursor;
+
+                    // Auto-adjust scroll to keep cursor visible
+                    crate::widgets::FileSelectionWidget::adjust_file_tree_scroll_for_cursor(
+                        new_model.file_tree.tree_cursor,
+                        &mut new_model.file_tree.file_tree_scroll,
+                        visible_count,
+                    );
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::MoveSettingsCursor(delta) => {
+                let settings_count = new_model
+                    .settings
+                    .get_settings_items(&new_model.session.session)
+                    .len();
+                if settings_count > 0 {
+                    let new_cursor = if delta > 0 {
+                        (new_model.settings.settings_cursor + delta as usize)
+                            .min(settings_count - 1)
+                    } else {
+                        new_model
+                            .settings
+                            .settings_cursor
+                            .saturating_sub((-delta) as usize)
+                    };
+                    new_model.settings.settings_cursor = new_cursor;
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::ToggleFileSelection(index) => {
+                let visible_nodes = new_model.file_tree.get_visible_nodes();
+                if let Some(node) = visible_nodes.get(index) {
+                    let path = node.path.to_string_lossy().to_string();
+                    let name = node.name.clone();
+                    let is_directory = node.is_directory;
+                    let current = node.is_selected;
+
+                    // Update session selection
+                    if !current {
+                        new_model.session.session.include_file(node.path.clone());
+                    } else {
+                        new_model.session.session.exclude_file(node.path.clone());
+                    }
+
+                    // Update the node in the tree
+                    if is_directory {
+                        crate::widgets::FileSelectionWidget::toggle_directory_selection(
+                            new_model.file_tree.get_file_tree_mut(),
+                            &path,
+                            !current,
+                        );
+                    } else {
+                        crate::widgets::FileSelectionWidget::update_node_selection(
+                            new_model.file_tree.get_file_tree_mut(),
+                            &path,
+                            !current,
+                        );
+                    }
+
+                    let action = if current { "Deselected" } else { "Selected" };
+                    let extra = if is_directory { " (and contents)" } else { "" };
+                    new_model.status_message = format!("{} {}{}", action, name, extra);
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::ExpandDirectory(index) => {
+                let visible_nodes = new_model.file_tree.get_visible_nodes();
+                if let Some(node) = visible_nodes.get(index) {
+                    if node.is_directory {
+                        let path = node.path.to_string_lossy().to_string();
+                        let name = node.name.clone();
+                        crate::widgets::FileSelectionWidget::expand_directory(
+                            new_model.file_tree.get_file_tree_mut(),
+                            &path,
+                        );
+                        new_model.status_message = format!("Expanded {}", name);
+                    }
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::CollapseDirectory(index) => {
+                let visible_nodes = new_model.file_tree.get_visible_nodes();
+                if let Some(node) = visible_nodes.get(index) {
+                    if node.is_directory {
+                        let path = node.path.to_string_lossy().to_string();
+                        let name = node.name.clone();
+                        crate::widgets::FileSelectionWidget::collapse_directory(
+                            new_model.file_tree.get_file_tree_mut(),
+                            &path,
+                        );
+                        new_model.status_message = format!("Collapsed {}", name);
+                    }
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::ToggleSetting(index) => {
+                new_model.settings.update_setting(
+                    &mut new_model.session.session,
+                    index,
+                    SettingAction::Toggle,
+                );
+                let settings = new_model
+                    .settings
+                    .get_settings_items(&new_model.session.session);
+                if let Some(setting) = settings.get(index) {
+                    new_model.status_message = format!("Toggled {}", setting.name);
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::CycleSetting(index) => {
+                new_model.settings.update_setting(
+                    &mut new_model.session.session,
+                    index,
+                    SettingAction::Cycle,
+                );
+                let settings = new_model
+                    .settings
+                    .get_settings_items(&new_model.session.session);
+                if let Some(setting) = settings.get(index) {
+                    new_model.status_message = format!("Cycled {}", setting.name);
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::RunAnalysis => {
+                if !new_model.prompt_output.analysis_in_progress {
+                    new_model.prompt_output.analysis_in_progress = true;
+                    new_model.prompt_output.analysis_error = None;
+                    new_model.status_message = "Running analysis...".to_string();
+                    new_model.current_tab = Tab::PromptOutput; // Switch to output tab
+
+                    let cmd = Cmd::RunAnalysis {
+                        session: new_model.session.session.clone(),
+                        template_content: new_model.template.get_template_content().to_string(),
+                    };
+                    (new_model, cmd)
+                } else {
+                    new_model.status_message = "Analysis already in progress...".to_string();
+                    (new_model, Cmd::None)
+                }
+            }
+
+            Message::AnalysisComplete(results) => {
+                new_model.prompt_output.analysis_in_progress = false;
+                new_model.prompt_output.generated_prompt = Some(results.generated_prompt);
+                new_model.prompt_output.token_count = results.token_count;
+                new_model.prompt_output.file_count = results.file_count;
+                new_model.statistics.token_map_entries = results.token_map_entries;
+                let tokens = results.token_count.unwrap_or(0);
+                new_model.status_message = format!(
+                    "Analysis complete! {} tokens, {} files",
+                    tokens, results.file_count
+                );
+                (new_model, Cmd::None)
+            }
+
+            Message::AnalysisError(error) => {
+                new_model.prompt_output.analysis_in_progress = false;
+                new_model.prompt_output.analysis_error = Some(error.clone());
+                new_model.status_message = format!("Analysis failed: {}", error);
+                (new_model, Cmd::None)
+            }
+
+            Message::CopyToClipboard => {
+                if let Some(prompt) = &new_model.prompt_output.generated_prompt {
+                    let cmd = Cmd::CopyToClipboard(prompt.clone());
+                    (new_model, cmd)
+                } else {
+                    new_model.status_message = "No prompt to copy".to_string();
+                    (new_model, Cmd::None)
+                }
+            }
+
+            Message::SaveToFile(filename) => {
+                if let Some(prompt) = &new_model.prompt_output.generated_prompt {
+                    let cmd = Cmd::SaveToFile {
+                        filename,
+                        content: prompt.clone(),
+                    };
+                    (new_model, cmd)
+                } else {
+                    new_model.status_message = "No prompt to save".to_string();
+                    (new_model, Cmd::None)
+                }
+            }
+
+            Message::ScrollOutput(delta) => {
+                // Delegate to OutputWidget for scroll logic
+                crate::widgets::OutputWidget::handle_scroll(
+                    delta as i32,
+                    &mut new_model.prompt_output.output_scroll,
+                    &new_model.prompt_output.generated_prompt,
+                );
+                (new_model, Cmd::None)
+            }
+
+            Message::ScrollFileTree(delta) => {
+                let visible_count = new_model.file_tree.get_visible_nodes().len() as u16;
+                let viewport_height = 20; // Approximate viewport height for file tree
+                let max_scroll = visible_count.saturating_sub(viewport_height);
+
+                let new_scroll = if delta < 0 {
+                    new_model
+                        .file_tree
+                        .file_tree_scroll
+                        .saturating_sub((-delta) as u16)
+                } else {
+                    new_model
+                        .file_tree
+                        .file_tree_scroll
+                        .saturating_add(delta as u16)
+                };
+
+                new_model.file_tree.file_tree_scroll = new_scroll.min(max_scroll);
+                (new_model, Cmd::None)
+            }
+
+            Message::CycleStatisticsView(direction) => {
+                new_model.statistics.view = if direction > 0 {
+                    new_model.statistics.view.next()
+                } else {
+                    new_model.statistics.view.prev()
+                };
+                new_model.statistics.scroll = 0; // Reset scroll
+                new_model.status_message =
+                    format!("Switched to {} view", new_model.statistics.view.as_str());
+                (new_model, Cmd::None)
+            }
+
+            Message::ScrollStatistics(delta) => {
+                let new_scroll = if delta < 0 {
+                    new_model.statistics.scroll.saturating_sub((-delta) as u16)
+                } else {
+                    new_model.statistics.scroll.saturating_add(delta as u16)
+                };
+                new_model.statistics.scroll = new_scroll;
+                (new_model, Cmd::None)
+            }
+
+            // Template messages - delegate to template state
+            Message::SaveTemplate(ref filename) => {
+                if let Some(result_msg) = new_model.template.handle_message(&message) {
+                    // Recursively handle the result message
+                    let (updated_model, cmd) = new_model.update(result_msg);
+                    (updated_model, cmd)
+                } else {
+                    new_model.status_message = format!("Saved template as {}", filename);
+                    (new_model, Cmd::None)
+                }
+            }
+
+            Message::ReloadTemplate => {
+                if let Some(result_msg) = new_model.template.handle_message(&message) {
+                    let (updated_model, cmd) = new_model.update(result_msg);
+                    (updated_model, cmd)
+                } else {
+                    new_model.status_message = "Reloaded template".to_string();
+                    (new_model, Cmd::None)
+                }
+            }
+
+            Message::LoadTemplate => {
+                if let Some(result_msg) = new_model.template.handle_message(&message) {
+                    let (updated_model, cmd) = new_model.update(result_msg);
+                    (updated_model, cmd)
+                } else {
+                    new_model.status_message = "Loaded template".to_string();
+                    (new_model, Cmd::None)
+                }
+            }
+
+            Message::RefreshTemplates => {
+                if let Some(result_msg) = new_model.template.handle_message(&message) {
+                    let (updated_model, cmd) = new_model.update(result_msg);
+                    (updated_model, cmd)
+                } else {
+                    new_model.status_message = "Refreshed templates".to_string();
+                    (new_model, Cmd::None)
+                }
+            }
+
+            Message::SetTemplateFocus(focus, mode) => {
+                new_model.template.set_focus(focus);
+                new_model.template.set_focus_mode(mode);
+                if mode == crate::model::template::FocusMode::EditingVariable {
+                    new_model
+                        .template
+                        .variables
+                        .move_to_first_missing_variable();
+                }
+                new_model.status_message = format!("Template focus: {:?} ({:?})", focus, mode);
+                (new_model, Cmd::None)
+            }
+
+            Message::SetTemplateFocusMode(mode) => {
+                new_model.template.set_focus_mode(mode);
+                new_model.status_message = format!("Template mode: {:?}", mode);
+                (new_model, Cmd::None)
+            }
+
+            Message::TemplateEditorInput(key) => {
+                new_model.template.editor.editor.input(key);
+                new_model.template.editor.sync_content_from_textarea();
+                new_model.template.editor.validate_template();
+                new_model.template.sync_variables_with_template();
+                (new_model, Cmd::None)
+            }
+
+            Message::TemplateVariableInput(key) => {
+                let variables = new_model.template.get_organized_variables();
+                crate::widgets::template::TemplateVariableWidget::handle_key_event(
+                    key,
+                    &mut new_model.template.variables,
+                    &variables,
+                    true,
+                );
+                new_model.template.sync_variables_with_template();
+                (new_model, Cmd::None)
+            }
+
+            Message::TemplatePickerMove(delta) => {
+                if delta > 0 {
+                    new_model.template.picker.move_cursor_down();
+                } else {
+                    new_model.template.picker.move_cursor_up();
+                }
+                (new_model, Cmd::None)
+            }
+        }
     }
 }

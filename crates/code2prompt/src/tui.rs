@@ -20,7 +20,7 @@ use ratatui::{
 use std::io::{stdout, Stdout};
 use tokio::sync::mpsc;
 
-use crate::model::{Message, Model, SettingAction, Tab};
+use crate::model::{Message, Model, Tab};
 use crate::widgets::*;
 
 use crate::token_map::generate_token_map_with_limit;
@@ -598,24 +598,43 @@ impl TuiApp {
         OutputWidget::handle_key_event(crossterm_key, &self.model)
     }
 
+    /// Handle a message using the Elm/Redux pattern.
+    /// This uses the pure Model::update() function and executes any side effects.
     fn handle_message(&mut self, message: Message) -> Result<()> {
-        match message {
-            Message::Quit => {
-                self.model.should_quit = true;
+        // Handle special TUI-specific state that's not in Model
+        match &message {
+            Message::EnterSearchMode => {
+                self.input_mode = InputMode::Search;
             }
-            Message::SwitchTab(tab) => {
-                self.model.current_tab = tab;
-                self.model.status_message = format!("Switched to {:?} tab", tab);
+            Message::ExitSearchMode => {
+                self.input_mode = InputMode::Normal;
             }
-            Message::RefreshFileTree => {
+            _ => {}
+        }
+
+        // Use the pure Model::update() function - this is the key to Elm/Redux pattern
+        let (new_model, cmd) = self.model.update(message);
+        self.model = new_model;
+
+        // Execute any side effects
+        self.execute_cmd(cmd)?;
+
+        Ok(())
+    }
+
+    /// Execute a command (side effect) from the Model::update() function.
+    /// This is where all the impure operations happen.
+    fn execute_cmd(&mut self, cmd: crate::model::Cmd) -> Result<()> {
+        match cmd {
+            crate::model::Cmd::None => {
+                // No side effect
+            }
+
+            crate::model::Cmd::RefreshFileTree => {
                 // Build file tree using session data
                 match build_file_tree_from_session(&mut self.model.session.session) {
                     Ok(tree) => {
                         self.model.file_tree.set_file_tree(tree);
-
-                        // File tree will get selection state from session data
-                        // No need to maintain separate HashMap
-
                         self.model.status_message = "File tree refreshed".to_string();
                     }
                     Err(e) => {
@@ -623,364 +642,76 @@ impl TuiApp {
                     }
                 }
             }
-            Message::UpdateSearchQuery(query) => {
-                self.model.file_tree.search_query = query;
-                // Reset cursor when search changes
-                self.model.file_tree.tree_cursor = 0;
-            }
-            Message::EnterSearchMode => {
-                self.input_mode = InputMode::Search;
-                self.model.status_message = "Search mode - Type to search, Esc to exit".to_string();
-            }
-            Message::ExitSearchMode => {
-                self.input_mode = InputMode::Normal;
-                self.model.status_message = "Exited search mode".to_string();
-            }
-            Message::MoveTreeCursor(delta) => {
-                let visible_count = self.model.file_tree.get_visible_nodes().len();
-                if visible_count > 0 {
-                    let new_cursor = if delta > 0 {
-                        (self.model.file_tree.tree_cursor + delta as usize).min(visible_count - 1)
-                    } else {
-                        self.model
-                            .file_tree
-                            .tree_cursor
-                            .saturating_sub((-delta) as usize)
-                    };
-                    self.model.file_tree.tree_cursor = new_cursor;
 
-                    // Auto-adjust scroll to keep cursor visible using widget method
-                    FileSelectionWidget::adjust_file_tree_scroll_for_cursor(
-                        self.model.file_tree.tree_cursor,
-                        &mut self.model.file_tree.file_tree_scroll,
-                        visible_count,
-                    );
-                }
-            }
-            Message::MoveSettingsCursor(delta) => {
-                let settings_count = self
-                    .model
-                    .settings
-                    .get_settings_items(&self.model.session.session)
-                    .len();
-                if settings_count > 0 {
-                    let new_cursor = if delta > 0 {
-                        (self.model.settings.settings_cursor + delta as usize)
-                            .min(settings_count - 1)
-                    } else {
-                        self.model
-                            .settings
-                            .settings_cursor
-                            .saturating_sub((-delta) as usize)
-                    };
-                    self.model.settings.settings_cursor = new_cursor;
-                }
-            }
-            Message::ToggleFileSelection(index) => {
-                let visible_nodes = self.model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index) {
-                    let path = node.path.to_string_lossy().to_string();
-                    let name = node.name.clone();
-                    let is_directory = node.is_directory;
-                    let current = node.is_selected;
+            crate::model::Cmd::RunAnalysis {
+                session,
+                template_content,
+            } => {
+                // Run analysis in background
+                let mut session = session;
+                let tx = self.message_tx.clone();
 
-                    // Use session methods for file selection instead of direct config manipulation
-                    if !current {
-                        // Selecting file: use session include_file method
-                        self.model.session.session.include_file(node.path.clone());
-                    } else {
-                        // Deselecting file: use session exclude_file method
-                        self.model.session.session.exclude_file(node.path.clone());
-                    }
+                tokio::spawn(async move {
+                    // Set custom template content
+                    session.config.template_str = template_content;
+                    session.config.template_name = "Custom Template".to_string();
 
-                    // Session methods handle config updates automatically
-
-                    // Update the node in the tree using widget methods
-                    if is_directory {
-                        FileSelectionWidget::toggle_directory_selection(
-                            self.model.file_tree.get_file_tree_mut(),
-                            &path,
-                            !current,
-                        );
-                    } else {
-                        FileSelectionWidget::update_node_selection(
-                            self.model.file_tree.get_file_tree_mut(),
-                            &path,
-                            !current,
-                        );
-                    }
-
-                    let action = if current { "Deselected" } else { "Selected" };
-                    let extra = if is_directory { " (and contents)" } else { "" };
-                    self.model.status_message = format!("{} {}{}", action, name, extra);
-                }
-            }
-            Message::ExpandDirectory(index) => {
-                let visible_nodes = self.model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index) {
-                    if node.is_directory {
-                        let path = node.path.to_string_lossy().to_string();
-                        let name = node.name.clone();
-                        FileSelectionWidget::expand_directory(
-                            self.model.file_tree.get_file_tree_mut(),
-                            &path,
-                        );
-                        self.model.status_message = format!("Expanded {}", name);
-                    }
-                }
-            }
-            Message::CollapseDirectory(index) => {
-                let visible_nodes = self.model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index) {
-                    if node.is_directory {
-                        let path = node.path.to_string_lossy().to_string();
-                        let name = node.name.clone();
-                        FileSelectionWidget::collapse_directory(
-                            self.model.file_tree.get_file_tree_mut(),
-                            &path,
-                        );
-                        self.model.status_message = format!("Collapsed {}", name);
-                    }
-                }
-            }
-            Message::ToggleSetting(index) => {
-                self.model.settings.update_setting(
-                    &mut self.model.session.session,
-                    index,
-                    SettingAction::Toggle,
-                );
-                let settings = self
-                    .model
-                    .settings
-                    .get_settings_items(&self.model.session.session);
-                if let Some(setting) = settings.get(index) {
-                    self.model.status_message = format!("Toggled {}", setting.name);
-                }
-            }
-            Message::CycleSetting(index) => {
-                self.model.settings.update_setting(
-                    &mut self.model.session.session,
-                    index,
-                    SettingAction::Cycle,
-                );
-                let settings = self
-                    .model
-                    .settings
-                    .get_settings_items(&self.model.session.session);
-                if let Some(setting) = settings.get(index) {
-                    self.model.status_message = format!("Cycled {}", setting.name);
-                }
-            }
-            Message::RunAnalysis => {
-                if !self.model.prompt_output.analysis_in_progress {
-                    self.model.prompt_output.analysis_in_progress = true;
-                    self.model.prompt_output.analysis_error = None;
-                    self.model.status_message = "Running analysis...".to_string();
-
-                    // Switch to prompt output tab
-                    self.model.current_tab = Tab::PromptOutput;
-
-                    // Run analysis in background using session directly (same as CLI)
-                    let mut session = self.model.session.session.clone();
-                    let template_content = self.model.template.get_template_content().to_string();
-                    let tx = self.message_tx.clone();
-
-                    tokio::spawn(async move {
-                        // Set custom template content
-                        session.config.template_str = template_content;
-                        session.config.template_name = "Custom Template".to_string();
-
-                        match session.generate_prompt() {
-                            Ok(rendered) => {
-                                // Convert to AnalysisResults format expected by TUI
-                                let token_map_entries = if rendered.token_count > 0 {
-                                    if let Some(files_value) = session.data.files.as_ref() {
-                                        if let Some(files_array) = files_value.as_array() {
-                                            generate_token_map_with_limit(
-                                                files_array,
-                                                rendered.token_count,
-                                                Some(50),
-                                                Some(0.5),
-                                            )
-                                        } else {
-                                            Vec::new()
-                                        }
+                    match session.generate_prompt() {
+                        Ok(rendered) => {
+                            // Convert to AnalysisResults format expected by TUI
+                            let token_map_entries = if rendered.token_count > 0 {
+                                if let Some(files_value) = session.data.files.as_ref() {
+                                    if let Some(files_array) = files_value.as_array() {
+                                        generate_token_map_with_limit(
+                                            files_array,
+                                            rendered.token_count,
+                                            Some(50),
+                                            Some(0.5),
+                                        )
                                     } else {
                                         Vec::new()
                                     }
                                 } else {
                                     Vec::new()
-                                };
+                                }
+                            } else {
+                                Vec::new()
+                            };
 
-                                let result = crate::model::AnalysisResults {
-                                    file_count: rendered.files.len(),
-                                    token_count: Some(rendered.token_count),
-                                    generated_prompt: rendered.prompt,
-                                    token_map_entries,
-                                };
-                                let _ = tx.send(Message::AnalysisComplete(result));
-                            }
-                            Err(e) => {
-                                let _ = tx.send(Message::AnalysisError(e.to_string()));
-                            }
-                        }
-                    });
-                }
-            }
-            Message::AnalysisComplete(results) => {
-                self.model.prompt_output.analysis_in_progress = false;
-                self.model.prompt_output.generated_prompt = Some(results.generated_prompt);
-                self.model.prompt_output.token_count = results.token_count;
-                self.model.prompt_output.file_count = results.file_count;
-                self.model.statistics.token_map_entries = results.token_map_entries;
-                let tokens = results.token_count.unwrap_or(0);
-                self.model.status_message = format!(
-                    "Analysis complete! {} tokens, {} files",
-                    tokens, results.file_count
-                );
-            }
-            Message::AnalysisError(error) => {
-                self.model.prompt_output.analysis_in_progress = false;
-                self.model.prompt_output.analysis_error = Some(error.clone());
-                self.model.status_message = format!("Analysis failed: {}", error);
-            }
-            Message::CopyToClipboard => {
-                if let Some(prompt) = &self.model.prompt_output.generated_prompt {
-                    match crate::clipboard::copy_to_clipboard(prompt) {
-                        Ok(_) => {
-                            self.model.status_message = "Copied to clipboard!".to_string();
+                            let result = crate::model::AnalysisResults {
+                                file_count: rendered.files.len(),
+                                token_count: Some(rendered.token_count),
+                                generated_prompt: rendered.prompt,
+                                token_map_entries,
+                            };
+                            let _ = tx.send(Message::AnalysisComplete(result));
                         }
                         Err(e) => {
-                            self.model.status_message = format!("Copy failed: {}", e);
+                            let _ = tx.send(Message::AnalysisError(e.to_string()));
                         }
+                    }
+                });
+            }
+
+            crate::model::Cmd::CopyToClipboard(content) => {
+                match crate::clipboard::copy_to_clipboard(&content) {
+                    Ok(_) => {
+                        self.model.status_message = "Copied to clipboard!".to_string();
+                    }
+                    Err(e) => {
+                        self.model.status_message = format!("Copy failed: {}", e);
                     }
                 }
             }
 
-            Message::SaveToFile(filename) => {
-                if let Some(prompt) = &self.model.prompt_output.generated_prompt {
-                    match crate::utils::save_to_file(&filename, prompt) {
-                        Ok(_) => {
-                            self.model.status_message = format!("Saved to {}", filename);
-                        }
-                        Err(e) => {
-                            self.model.status_message = format!("Save failed: {}", e);
-                        }
+            crate::model::Cmd::SaveToFile { filename, content } => {
+                match crate::utils::save_to_file(&filename, &content) {
+                    Ok(_) => {
+                        self.model.status_message = format!("Saved to {}", filename);
                     }
-                }
-            }
-            Message::ScrollOutput(delta) => {
-                // Delegate to OutputWidget
-                OutputWidget::handle_scroll(
-                    delta as i32,
-                    &mut self.model.prompt_output.output_scroll,
-                    &self.model.prompt_output.generated_prompt,
-                );
-            }
-            Message::ScrollFileTree(delta) => {
-                let visible_count = self.model.file_tree.get_visible_nodes().len() as u16;
-                let viewport_height = 20; // Approximate viewport height for file tree
-                let max_scroll = visible_count.saturating_sub(viewport_height);
-
-                let new_scroll = if delta < 0 {
-                    self.model
-                        .file_tree
-                        .file_tree_scroll
-                        .saturating_sub((-delta) as u16)
-                } else {
-                    self.model
-                        .file_tree
-                        .file_tree_scroll
-                        .saturating_add(delta as u16)
-                };
-
-                // Clamp scroll to valid range
-                self.model.file_tree.file_tree_scroll = new_scroll.min(max_scroll);
-            }
-            Message::CycleStatisticsView(direction) => {
-                self.model.statistics.view = if direction > 0 {
-                    self.model.statistics.view.next()
-                } else {
-                    self.model.statistics.view.prev()
-                };
-
-                self.model.statistics.scroll = 0; // Reset scroll
-                self.model.status_message =
-                    format!("Switched to {} view", self.model.statistics.view.as_str());
-            }
-            Message::ScrollStatistics(delta) => {
-                // For now, simple scroll logic - will be refined per view
-                let new_scroll = if delta < 0 {
-                    self.model.statistics.scroll.saturating_sub((-delta) as u16)
-                } else {
-                    self.model.statistics.scroll.saturating_add(delta as u16)
-                };
-                self.model.statistics.scroll = new_scroll;
-            }
-            // Template messages - delegate to template state
-            Message::SaveTemplate(ref _filename) => {
-                // Delegate to template state
-                if let Some(result_msg) = self.model.template.handle_message(&message) {
-                    self.handle_message(result_msg)?;
-                }
-            }
-            Message::ReloadTemplate => {
-                // Delegate to template state
-                if let Some(result_msg) = self.model.template.handle_message(&message) {
-                    self.handle_message(result_msg)?;
-                }
-            }
-            Message::LoadTemplate => {
-                // Delegate to template state
-                if let Some(result_msg) = self.model.template.handle_message(&message) {
-                    self.handle_message(result_msg)?;
-                }
-            }
-            Message::RefreshTemplates => {
-                // Delegate to template state
-                if let Some(result_msg) = self.model.template.handle_message(&message) {
-                    self.handle_message(result_msg)?;
-                }
-            }
-            // Template focus and input handling
-            Message::SetTemplateFocus(focus, mode) => {
-                self.model.template.set_focus(focus);
-                self.model.template.set_focus_mode(mode);
-                if mode == crate::model::template::FocusMode::EditingVariable {
-                    self.model
-                        .template
-                        .variables
-                        .move_to_first_missing_variable();
-                }
-                self.model.status_message = format!("Template focus: {:?} ({:?})", focus, mode);
-            }
-            Message::SetTemplateFocusMode(mode) => {
-                self.model.template.set_focus_mode(mode);
-                self.model.status_message = format!("Template mode: {:?}", mode);
-            }
-            Message::TemplateEditorInput(key) => {
-                // Pass key directly to the textarea
-                self.model.template.editor.editor.input(key);
-                self.model.template.editor.sync_content_from_textarea();
-                self.model.template.editor.validate_template();
-                self.model.template.sync_variables_with_template();
-            }
-            Message::TemplateVariableInput(key) => {
-                // Handle variable input
-                let variables = self.model.template.get_organized_variables();
-                crate::widgets::template::TemplateVariableWidget::handle_key_event(
-                    key,
-                    &mut self.model.template.variables,
-                    &variables,
-                    true,
-                );
-                self.model.template.sync_variables_with_template();
-            }
-            Message::TemplatePickerMove(delta) => {
-                if delta > 0 {
-                    self.model.template.picker.move_cursor_down();
-                } else {
-                    self.model.template.picker.move_cursor_up();
+                    Err(e) => {
+                        self.model.status_message = format!("Save failed: {}", e);
+                    }
                 }
             }
         }
