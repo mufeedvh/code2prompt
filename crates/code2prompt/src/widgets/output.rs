@@ -145,7 +145,7 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
 
         let prompt_widget = Paragraph::new(content)
             .block(Block::default().borders(Borders::ALL).title(scroll_info))
-            .wrap(Wrap { trim: true })
+            .wrap(Wrap { trim: false })
             .scroll((state.scroll_position, 0));
         Widget::render(prompt_widget, layout[1], buf);
 
