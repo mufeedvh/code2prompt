@@ -213,19 +213,6 @@ pub fn get_code2prompt_custom_templates_dir() -> Result<std::path::PathBuf> {
     Ok(custom_dir)
 }
 
-/// Get the user's code2prompt templates directory (legacy)
-pub fn get_code2prompt_templates_dir() -> Result<std::path::PathBuf> {
-    let templates_dir = get_code2prompt_data_dir()?.join("templates");
-
-    // Create the templates directory if it doesn't exist
-    if !templates_dir.exists() {
-        fs::create_dir_all(&templates_dir)
-            .context("Failed to create code2prompt templates directory")?;
-    }
-
-    Ok(templates_dir)
-}
-
 /// Save a template to the user's custom templates directory
 pub fn save_template_to_custom_dir(filename: &str, content: &str) -> Result<std::path::PathBuf> {
     let custom_dir = get_code2prompt_custom_templates_dir()?;
@@ -292,38 +279,8 @@ pub fn load_all_templates() -> Result<Vec<(String, std::path::PathBuf, bool)>> {
         }
     }
 
-    // Load legacy user templates
-    if let Ok(legacy_templates) = load_user_templates() {
-        for (name, path) in legacy_templates {
-            let display_name = format!("User: {}", name.replace(['-', '_'], " "));
-            all_templates.push((display_name, path, false));
-        }
-    }
-
     // Sort templates by name
     all_templates.sort_by(|a, b| a.0.cmp(&b.0));
 
     Ok(all_templates)
-}
-
-/// Load available user templates from the templates directory (legacy)
-pub fn load_user_templates() -> Result<Vec<(String, std::path::PathBuf)>> {
-    let templates_dir = get_code2prompt_templates_dir()?;
-    let mut templates = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(&templates_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("hbs") {
-                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                    templates.push((name.to_string(), path));
-                }
-            }
-        }
-    }
-
-    // Sort templates by name
-    templates.sort_by(|a, b| a.0.cmp(&b.0));
-
-    Ok(templates)
 }
