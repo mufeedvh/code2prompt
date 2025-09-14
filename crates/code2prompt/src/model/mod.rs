@@ -26,21 +26,19 @@ use code2prompt_core::session::Code2PromptSession;
 /// The five main tabs of the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
-    FileTree,     // Tab 1: File selection with search
-    Settings,     // Tab 2: Configuration options
-    Statistics,   // Tab 3: Analysis statistics and metrics
-    Template,     // Tab 4: Template editor
-    PromptOutput, // Tab 5: Generated prompt and copy
+    FileTree,
+    Settings,
+    Statistics,
+    Template,
+    PromptOutput,
 }
 
 /// Messages for updating the model
 #[derive(Debug, Clone)]
 pub enum Message {
-    // Navigation
     SwitchTab(Tab),
     Quit,
 
-    // File tree
     UpdateSearchQuery(String),
     ToggleFileSelection(usize),
     ExpandDirectory(usize),
@@ -48,49 +46,41 @@ pub enum Message {
     MoveTreeCursor(i32),
     RefreshFileTree,
 
-    // Search mode
     EnterSearchMode,
     ExitSearchMode,
 
-    // Settings
     MoveSettingsCursor(i32),
     ToggleSetting(usize),
     CycleSetting(usize),
 
-    // Analysis
     RunAnalysis,
-    AnalysisComplete(AnalysisResults), // Complete analysis results
+    AnalysisComplete(AnalysisResults),
     AnalysisError(String),
 
-    // Prompt output
     CopyToClipboard,
     SaveToFile(String),
-    ScrollOutput(i16), // Scroll delta (positive = down, negative = up)
+    ScrollOutput(i16),
 
-    // Statistics
-    CycleStatisticsView(i8), // +1 = next view, -1 = previous view
-    ScrollStatistics(i16),   // Scroll delta for statistics
+    CycleStatisticsView(i8),
+    ScrollStatistics(i16),
 
-    // Template - Redux/Elm style messages
-    SaveTemplate(String), // Save template with name
+    SaveTemplate(String),
     ReloadTemplate,
-    LoadTemplate,     // Load selected template from picker
-    RefreshTemplates, // Refresh template list
+    LoadTemplate,
+    RefreshTemplates,
 
-    // Template focus and input handling
-    SetTemplateFocus(TemplateFocus, FocusMode), // Set focus and mode
-    SetTemplateFocusMode(FocusMode),            // Set focus mode only
-    TemplateEditorInput(ratatui::crossterm::event::KeyEvent), // Direct textarea input
-    TemplatePickerMove(i32),                    // Move picker cursor
+    SetTemplateFocus(TemplateFocus, FocusMode),
+    SetTemplateFocusMode(FocusMode),
+    TemplateEditorInput(ratatui::crossterm::event::KeyEvent),
+    TemplatePickerMove(i32),
 
-    // Template variable editing messages (pure Elm/Redux)
-    VariableStartEditing(String), // Start editing a variable
-    VariableInputChar(char),      // Add character to variable input
-    VariableInputBackspace,       // Remove character from variable input
-    VariableInputEnter,           // Finish editing variable
-    VariableInputCancel,          // Cancel editing variable
-    VariableNavigateUp,           // Navigate up in variable list
-    VariableNavigateDown,         // Navigate down in variable list
+    VariableStartEditing(String),
+    VariableInputChar(char),
+    VariableInputBackspace,
+    VariableInputEnter,
+    VariableInputCancel,
+    VariableNavigateUp,
+    VariableNavigateDown,
 }
 
 /// Represents the overall state of the TUI application.
@@ -145,8 +135,6 @@ impl Model {
         crate::view::format_settings_groups(&self.session.session)
     }
 
-    /// Pure update function following Elm/Redux pattern.
-    /// Takes a message and returns a new model state plus any side effects as commands.
     pub fn update(&self, message: Message) -> (Self, Cmd) {
         let mut new_model = self.clone();
 
@@ -197,8 +185,7 @@ impl Model {
                     };
                     new_model.file_tree.tree_cursor = new_cursor;
 
-                    // Auto-adjust scroll to keep cursor visible - pure logic in Model
-                    let viewport_height = 20; // Approximate viewport height
+                    let viewport_height = 20;
                     let cursor_pos = new_model.file_tree.tree_cursor as u16;
                     let current_scroll = new_model.file_tree.file_tree_scroll;
 
@@ -249,7 +236,6 @@ impl Model {
                         new_model.session.session.exclude_file(node.path.clone());
                     }
 
-                    // Update the node in the tree - pure logic in Model
                     new_model
                         .file_tree
                         .update_node_selection(&path, !current, is_directory);
@@ -380,7 +366,6 @@ impl Model {
             }
 
             Message::ScrollOutput(delta) => {
-                // Pure scroll logic in Model
                 if let Some(prompt) = &new_model.prompt_output.generated_prompt {
                     let lines = prompt.lines().count() as u16;
                     let viewport_height = 20; // Approximate viewport height
@@ -409,7 +394,7 @@ impl Model {
                 } else {
                     new_model.statistics.view.prev()
                 };
-                new_model.statistics.scroll = 0; // Reset scroll
+                new_model.statistics.scroll = 0;
                 new_model.status_message =
                     format!("Switched to {} view", new_model.statistics.view.as_str());
                 (new_model, Cmd::None)
@@ -425,9 +410,7 @@ impl Model {
                 (new_model, Cmd::None)
             }
 
-            // Template messages - pure Elm/Redux pattern, no widget method calls
             Message::SaveTemplate(filename) => {
-                // Save template logic moved to Model - pure function
                 let content = new_model.template.get_template_content().to_string();
                 let cmd = Cmd::SaveTemplate {
                     filename: filename.clone(),
@@ -438,7 +421,6 @@ impl Model {
             }
 
             Message::ReloadTemplate => {
-                // Reload default template - pure logic in Model
                 new_model.template.editor = crate::model::template::EditorState::default();
                 new_model.template.sync_variables_with_template();
                 new_model.status_message = "Reloaded template".to_string();
@@ -446,7 +428,6 @@ impl Model {
             }
 
             Message::LoadTemplate => {
-                // Load selected template - pure logic in Model
                 let result = new_model.template.load_selected_template();
                 match result {
                     Ok(template_name) => {
@@ -461,7 +442,6 @@ impl Model {
             }
 
             Message::RefreshTemplates => {
-                // Refresh templates - pure logic in Model
                 new_model.template.picker.refresh();
                 new_model.status_message = "Templates refreshed".to_string();
                 (new_model, Cmd::None)
@@ -503,7 +483,6 @@ impl Model {
                 (new_model, Cmd::None)
             }
 
-            // Template variable editing messages - pure Elm/Redux pattern
             Message::VariableStartEditing(var_name) => {
                 new_model.template.variables.editing_variable = Some(var_name.clone());
                 new_model.template.variables.show_variable_input = true;
