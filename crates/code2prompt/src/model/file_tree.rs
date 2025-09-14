@@ -107,15 +107,14 @@ impl FileTreeState {
 
     fn collect_visible_nodes<'a>(&'a self, nodes: &'a [FileNode], visible: &mut Vec<&'a FileNode>) {
         for node in nodes {
-            // Apply search filter - support both simple text and glob patterns
             let matches_search = if self.search_query.is_empty() {
                 true
             } else if self.search_query.contains('*') || self.search_query.contains("**") {
-                // Treat as glob pattern
+                // Glob pattern search
                 self.glob_match_search(&self.search_query, &node.name)
                     || self.glob_match_search(&self.search_query, &node.path.to_string_lossy())
             } else {
-                // Simple text search (case insensitive)
+                // Simple text search
                 node.name
                     .to_lowercase()
                     .contains(&self.search_query.to_lowercase())

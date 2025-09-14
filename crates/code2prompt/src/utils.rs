@@ -47,8 +47,6 @@ fn build_directory_hierarchy(
     root: &std::path::Path,
     file_paths: &[String],
 ) -> Result<Vec<FileNode>> {
-    // For now, fall back to a simple filesystem scan but use session data for selection state
-    // This is more reliable than complex hierarchy building
     let entries = fs::read_dir(root).context("Failed to read root directory")?;
     let mut root_children = Vec::new();
 
