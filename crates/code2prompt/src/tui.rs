@@ -364,9 +364,10 @@ impl TuiApp {
                 KeyCode::PageDown => Some(Message::MoveTreeCursor(10)),
                 KeyCode::Home => Some(Message::MoveTreeCursor(-9999)),
                 KeyCode::End => Some(Message::MoveTreeCursor(9999)),
-                KeyCode::Enter | KeyCode::Char(' ') => Some(Message::ToggleFileSelection(
+                KeyCode::Char(' ') => Some(Message::ToggleFileSelection(
                     self.model.file_tree.tree_cursor,
                 )),
+                KeyCode::Enter => Some(Message::RunAnalysis),
                 KeyCode::Right => Some(Message::ExpandDirectory(self.model.file_tree.tree_cursor)),
                 KeyCode::Left => Some(Message::CollapseDirectory(self.model.file_tree.tree_cursor)),
                 KeyCode::Char('/') => Some(Message::EnterSearchMode),
