@@ -43,214 +43,145 @@ pub enum SettingAction {
     Cycle,
 }
 
+/// Unique identifier for each setting
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SettingKey {
+    LineNumbers,
+    AbsolutePaths,
+    NoCodeblock,
+    OutputFormat,
+    TokenFormat,
+    FullDirectoryTree,
+    SortMethod,
+    TokenizerType,
+    GitDiff,
+    FollowSymlinks,
+    HiddenFiles,
+    NoIgnore,
+}
+
 impl SettingsState {
-    /// Get flattened list of settings for display (keeping for backward compatibility)
-    pub fn get_settings_items(&self, session: &Code2PromptSession) -> Vec<SettingsItem> {
-        vec![
-            // Output Format section
-            SettingsItem {
-                name: "Line Numbers".to_string(),
-                description: "Show line numbers in output".to_string(),
-                setting_type: SettingType::Boolean(session.config.line_numbers),
-            },
-            SettingsItem {
-                name: "Absolute Paths".to_string(),
-                description: "Use absolute instead of relative paths".to_string(),
-                setting_type: SettingType::Boolean(session.config.absolute_path),
-            },
-            SettingsItem {
-                name: "No Codeblock".to_string(),
-                description: "Don't wrap code in markdown blocks".to_string(),
-                setting_type: SettingType::Boolean(session.config.no_codeblock),
-            },
-            SettingsItem {
-                name: "Output Format".to_string(),
-                description: "Format for generated output".to_string(),
-                setting_type: SettingType::Choice {
-                    options: vec![
-                        "Markdown".to_string(),
-                        "JSON".to_string(),
-                        "XML".to_string(),
-                    ],
-                    selected: match session.config.output_format {
-                        OutputFormat::Markdown => 0,
-                        OutputFormat::Json => 1,
-                        OutputFormat::Xml => 2,
-                    },
-                },
-            },
-            SettingsItem {
-                name: "Token Format".to_string(),
-                description: "How to display token counts".to_string(),
-                setting_type: SettingType::Choice {
-                    options: vec!["Raw".to_string(), "Formatted".to_string()],
-                    selected: match session.config.token_format {
-                        TokenFormat::Raw => 0,
-                        TokenFormat::Format => 1,
-                    },
-                },
-            },
-            SettingsItem {
-                name: "Full Directory Tree".to_string(),
-                description: "Show complete directory structure".to_string(),
-                setting_type: SettingType::Boolean(session.config.full_directory_tree),
-            },
-            // Sorting & Organization section
-            SettingsItem {
-                name: "Sort Method".to_string(),
-                description: "How to sort files in output".to_string(),
-                setting_type: SettingType::Choice {
-                    options: vec![
-                        "Name (A→Z)".to_string(),
-                        "Name (Z→A)".to_string(),
-                        "Date (Old→New)".to_string(),
-                        "Date (New→Old)".to_string(),
-                    ],
-                    selected: match session.config.sort_method {
-                        Some(code2prompt_core::sort::FileSortMethod::NameAsc) => 0,
-                        Some(code2prompt_core::sort::FileSortMethod::NameDesc) => 1,
-                        Some(code2prompt_core::sort::FileSortMethod::DateAsc) => 2,
-                        Some(code2prompt_core::sort::FileSortMethod::DateDesc) => 3,
-                        None => 0,
-                    },
-                },
-            },
-            // Tokenizer & Encoding section
-            SettingsItem {
-                name: "Tokenizer Type".to_string(),
-                description: "Encoding method for token counting".to_string(),
-                setting_type: SettingType::Choice {
-                    options: vec![
-                        "cl100k (ChatGPT)".to_string(),
-                        "o200k (GPT-4o)".to_string(),
-                        "p50k (Code models)".to_string(),
-                        "p50k_edit (Edit models)".to_string(),
-                        "r50k (GPT-3)".to_string(),
-                    ],
-                    selected: match session.config.encoding {
-                        code2prompt_core::tokenizer::TokenizerType::Cl100kBase => 0,
-                        code2prompt_core::tokenizer::TokenizerType::O200kBase => 1,
-                        code2prompt_core::tokenizer::TokenizerType::P50kBase => 2,
-                        code2prompt_core::tokenizer::TokenizerType::P50kEdit => 3,
-                        code2prompt_core::tokenizer::TokenizerType::R50kBase
-                        | code2prompt_core::tokenizer::TokenizerType::Gpt2 => 4,
-                    },
-                },
-            },
-            // Git Integration section
-            SettingsItem {
-                name: "Git Diff".to_string(),
-                description: "Include git diff in output".to_string(),
-                setting_type: SettingType::Boolean(session.config.diff_enabled),
-            },
-            // File Selection section
-            SettingsItem {
-                name: "Follow Symlinks".to_string(),
-                description: "Follow symbolic links".to_string(),
-                setting_type: SettingType::Boolean(session.config.follow_symlinks),
-            },
-            SettingsItem {
-                name: "Hidden Files".to_string(),
-                description: "Include hidden files and directories".to_string(),
-                setting_type: SettingType::Boolean(session.config.hidden),
-            },
-            SettingsItem {
-                name: "No Ignore".to_string(),
-                description: "Ignore .gitignore rules".to_string(),
-                setting_type: SettingType::Boolean(session.config.no_ignore),
-            },
-        ]
+    /// Map flat index to SettingKey for backward compatibility
+    pub fn map_index_to_setting_key(&self, index: usize) -> Option<SettingKey> {
+        match index {
+            0 => Some(SettingKey::LineNumbers),
+            1 => Some(SettingKey::AbsolutePaths),
+            2 => Some(SettingKey::NoCodeblock),
+            3 => Some(SettingKey::OutputFormat),
+            4 => Some(SettingKey::TokenFormat),
+            5 => Some(SettingKey::FullDirectoryTree),
+            6 => Some(SettingKey::SortMethod),
+            7 => Some(SettingKey::TokenizerType),
+            8 => Some(SettingKey::GitDiff),
+            9 => Some(SettingKey::FollowSymlinks),
+            10 => Some(SettingKey::HiddenFiles),
+            11 => Some(SettingKey::NoIgnore),
+            _ => None,
+        }
     }
 
-    /// Update setting based on index and action (works with grouped settings)
-    pub fn update_setting(
+    /// Get flattened list of settings for display (uses format_settings_groups)
+    pub fn get_settings_items(&self, session: &Code2PromptSession) -> Vec<SettingsItem> {
+        crate::view::format_settings_groups(session)
+            .into_iter()
+            .flat_map(|group| group.items)
+            .collect()
+    }
+
+    /// Update setting based on SettingKey and action
+    pub fn update_setting_by_key(
         &self,
         session: &mut Code2PromptSession,
-        index: usize,
+        key: SettingKey,
         action: SettingAction,
-    ) {
-        // Map flat index to actual setting based on grouped structure
-        match index {
-            // Output Format section (0-5)
-            0 => session.config.line_numbers = !session.config.line_numbers, // Line Numbers
-            1 => session.config.absolute_path = !session.config.absolute_path, // Absolute Paths
-            2 => session.config.no_codeblock = !session.config.no_codeblock, // No Codeblock
-            3 => {
-                // Output Format
-                if let SettingAction::Cycle = action {
-                    session.config.output_format = match session.config.output_format {
-                        OutputFormat::Markdown => OutputFormat::Json,
-                        OutputFormat::Json => OutputFormat::Xml,
-                        OutputFormat::Xml => OutputFormat::Markdown,
-                    };
-                }
+    ) -> &'static str {
+        match (key, action) {
+            (SettingKey::LineNumbers, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.line_numbers = !session.config.line_numbers;
+                "Line Numbers"
             }
-            4 => {
-                // Token Format
-                if let SettingAction::Cycle = action {
-                    session.config.token_format = match session.config.token_format {
-                        TokenFormat::Raw => TokenFormat::Format,
-                        TokenFormat::Format => TokenFormat::Raw,
-                    };
-                }
+            (SettingKey::AbsolutePaths, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.absolute_path = !session.config.absolute_path;
+                "Absolute Paths"
             }
-            5 => session.config.full_directory_tree = !session.config.full_directory_tree, // Full Directory Tree
-
-            // Sorting & Organization section (6)
-            6 => {
-                // Sort Method
-                if let SettingAction::Cycle = action {
-                    session.config.sort_method = Some(match session.config.sort_method {
-                        Some(code2prompt_core::sort::FileSortMethod::NameAsc) => {
-                            code2prompt_core::sort::FileSortMethod::NameDesc
-                        }
-                        Some(code2prompt_core::sort::FileSortMethod::NameDesc) => {
-                            code2prompt_core::sort::FileSortMethod::DateAsc
-                        }
-                        Some(code2prompt_core::sort::FileSortMethod::DateAsc) => {
-                            code2prompt_core::sort::FileSortMethod::DateDesc
-                        }
-                        Some(code2prompt_core::sort::FileSortMethod::DateDesc) | None => {
-                            code2prompt_core::sort::FileSortMethod::NameAsc
-                        }
-                    });
-                }
+            (SettingKey::NoCodeblock, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.no_codeblock = !session.config.no_codeblock;
+                "No Codeblock"
             }
-
-            // Tokenizer & Encoding section
-            7 => {
-                // Tokenizer Type
-                if let SettingAction::Cycle = action {
-                    session.config.encoding = match session.config.encoding {
-                        code2prompt_core::tokenizer::TokenizerType::Cl100kBase => {
-                            code2prompt_core::tokenizer::TokenizerType::O200kBase
-                        }
-                        code2prompt_core::tokenizer::TokenizerType::O200kBase => {
-                            code2prompt_core::tokenizer::TokenizerType::P50kBase
-                        }
-                        code2prompt_core::tokenizer::TokenizerType::P50kBase => {
-                            code2prompt_core::tokenizer::TokenizerType::P50kEdit
-                        }
-                        code2prompt_core::tokenizer::TokenizerType::P50kEdit => {
-                            code2prompt_core::tokenizer::TokenizerType::R50kBase
-                        }
+            (SettingKey::OutputFormat, SettingAction::Cycle) => {
+                session.config.output_format = match session.config.output_format {
+                    OutputFormat::Markdown => OutputFormat::Json,
+                    OutputFormat::Json => OutputFormat::Xml,
+                    OutputFormat::Xml => OutputFormat::Markdown,
+                };
+                "Output Format"
+            }
+            (SettingKey::TokenFormat, SettingAction::Cycle) => {
+                session.config.token_format = match session.config.token_format {
+                    TokenFormat::Raw => TokenFormat::Format,
+                    TokenFormat::Format => TokenFormat::Raw,
+                };
+                "Token Format"
+            }
+            (SettingKey::FullDirectoryTree, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.full_directory_tree = !session.config.full_directory_tree;
+                "Full Directory Tree"
+            }
+            (SettingKey::SortMethod, SettingAction::Cycle) => {
+                session.config.sort_method = Some(match session.config.sort_method {
+                    Some(code2prompt_core::sort::FileSortMethod::NameAsc) => {
+                        code2prompt_core::sort::FileSortMethod::NameDesc
+                    }
+                    Some(code2prompt_core::sort::FileSortMethod::NameDesc) => {
+                        code2prompt_core::sort::FileSortMethod::DateAsc
+                    }
+                    Some(code2prompt_core::sort::FileSortMethod::DateAsc) => {
+                        code2prompt_core::sort::FileSortMethod::DateDesc
+                    }
+                    Some(code2prompt_core::sort::FileSortMethod::DateDesc) | None => {
+                        code2prompt_core::sort::FileSortMethod::NameAsc
+                    }
+                });
+                "Sort Method"
+            }
+            (SettingKey::TokenizerType, SettingAction::Cycle) => {
+                session.config.encoding = match session.config.encoding {
+                    code2prompt_core::tokenizer::TokenizerType::Cl100kBase => {
+                        code2prompt_core::tokenizer::TokenizerType::O200kBase
+                    }
+                    code2prompt_core::tokenizer::TokenizerType::O200kBase => {
+                        code2prompt_core::tokenizer::TokenizerType::P50kBase
+                    }
+                    code2prompt_core::tokenizer::TokenizerType::P50kBase => {
+                        code2prompt_core::tokenizer::TokenizerType::P50kEdit
+                    }
+                    code2prompt_core::tokenizer::TokenizerType::P50kEdit => {
                         code2prompt_core::tokenizer::TokenizerType::R50kBase
-                        | code2prompt_core::tokenizer::TokenizerType::Gpt2 => {
-                            code2prompt_core::tokenizer::TokenizerType::Cl100kBase
-                        }
-                    };
-                }
+                    }
+                    code2prompt_core::tokenizer::TokenizerType::R50kBase
+                    | code2prompt_core::tokenizer::TokenizerType::Gpt2 => {
+                        code2prompt_core::tokenizer::TokenizerType::Cl100kBase
+                    }
+                };
+                "Tokenizer Type"
             }
-
-            // Git Integration section (8)
-            8 => session.config.diff_enabled = !session.config.diff_enabled, // Git Diff
-
-            // File Selection section (9-11)
-            9 => session.config.follow_symlinks = !session.config.follow_symlinks, // Follow Symlinks
-            10 => session.config.hidden = !session.config.hidden,                  // Hidden Files
-            11 => session.config.no_ignore = !session.config.no_ignore,            // No Ignore
-
-            _ => {}
+            (SettingKey::GitDiff, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.diff_enabled = !session.config.diff_enabled;
+                "Git Diff"
+            }
+            (SettingKey::FollowSymlinks, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.follow_symlinks = !session.config.follow_symlinks;
+                "Follow Symlinks"
+            }
+            (SettingKey::HiddenFiles, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.hidden = !session.config.hidden;
+                "Hidden Files"
+            }
+            (SettingKey::NoIgnore, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.config.no_ignore = !session.config.no_ignore;
+                "No Ignore"
+            }
+            _ => "Unknown Setting",
         }
     }
 }

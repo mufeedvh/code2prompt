@@ -274,31 +274,29 @@ impl Model {
             }
 
             Message::ToggleSetting(index) => {
-                new_model.settings.update_setting(
-                    &mut new_model.session.session,
-                    index,
-                    SettingAction::Toggle,
-                );
-                let settings = new_model
-                    .settings
-                    .get_settings_items(&new_model.session.session);
-                if let Some(setting) = settings.get(index) {
-                    new_model.status_message = format!("Toggled {}", setting.name);
+                if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
+                    let setting_name = new_model.settings.update_setting_by_key(
+                        &mut new_model.session.session,
+                        key,
+                        SettingAction::Toggle,
+                    );
+                    new_model.status_message = format!("Toggled {}", setting_name);
+                } else {
+                    new_model.status_message = format!("Invalid setting index: {}", index);
                 }
                 (new_model, Cmd::None)
             }
 
             Message::CycleSetting(index) => {
-                new_model.settings.update_setting(
-                    &mut new_model.session.session,
-                    index,
-                    SettingAction::Cycle,
-                );
-                let settings = new_model
-                    .settings
-                    .get_settings_items(&new_model.session.session);
-                if let Some(setting) = settings.get(index) {
-                    new_model.status_message = format!("Cycled {}", setting.name);
+                if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
+                    let setting_name = new_model.settings.update_setting_by_key(
+                        &mut new_model.session.session,
+                        key,
+                        SettingAction::Cycle,
+                    );
+                    new_model.status_message = format!("Cycled {}", setting_name);
+                } else {
+                    new_model.status_message = format!("Invalid setting index: {}", index);
                 }
                 (new_model, Cmd::None)
             }
