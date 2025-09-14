@@ -224,21 +224,24 @@ impl Model {
             Message::ToggleFileSelection(index) => {
                 let visible_nodes = new_model.file_tree.get_visible_nodes();
                 if let Some(node) = visible_nodes.get(index) {
-                    let path = node.path.to_string_lossy().to_string();
+                    let node_path = node.path.clone();
                     let name = node.name.clone();
                     let is_directory = node.is_directory;
                     let current = node.is_selected;
 
+                    // Drop the immutable borrow before making mutable changes
+                    drop(visible_nodes);
+
                     // Update session selection
                     if !current {
-                        new_model.session.session.include_file(node.path.clone());
+                        new_model.session.session.include_file(node_path.clone());
                     } else {
-                        new_model.session.session.exclude_file(node.path.clone());
+                        new_model.session.session.exclude_file(node_path.clone());
                     }
 
                     new_model
                         .file_tree
-                        .update_node_selection(&path, !current, is_directory);
+                        .update_node_selection(&node_path, !current, is_directory);
 
                     let action = if current { "Deselected" } else { "Selected" };
                     let extra = if is_directory { " (and contents)" } else { "" };
@@ -251,9 +254,13 @@ impl Model {
                 let visible_nodes = new_model.file_tree.get_visible_nodes();
                 if let Some(node) = visible_nodes.get(index) {
                     if node.is_directory {
-                        let path = node.path.to_string_lossy().to_string();
+                        let node_path = node.path.clone();
                         let name = node.name.clone();
-                        new_model.file_tree.expand_directory(&path);
+
+                        // Drop the immutable borrow before making mutable changes
+                        drop(visible_nodes);
+
+                        new_model.file_tree.expand_directory(&node_path);
                         new_model.status_message = format!("Expanded {}", name);
                     }
                 }
@@ -264,9 +271,13 @@ impl Model {
                 let visible_nodes = new_model.file_tree.get_visible_nodes();
                 if let Some(node) = visible_nodes.get(index) {
                     if node.is_directory {
-                        let path = node.path.to_string_lossy().to_string();
+                        let node_path = node.path.clone();
                         let name = node.name.clone();
-                        new_model.file_tree.collapse_directory(&path);
+
+                        // Drop the immutable borrow before making mutable changes
+                        drop(visible_nodes);
+
+                        new_model.file_tree.collapse_directory(&node_path);
                         new_model.status_message = format!("Collapsed {}", name);
                     }
                 }

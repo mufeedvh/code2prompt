@@ -148,9 +148,10 @@ fn sort_nodes(nodes: &mut Vec<FileNode>) {
 }
 
 /// Save text to file
-pub fn save_to_file(filename: &str, content: &str) -> Result<()> {
+pub fn save_to_file(filename: &std::path::Path, content: &str) -> Result<()> {
     use code2prompt_core::template::write_to_file;
-    write_to_file(filename, content).context("Failed to save to file")
+    let filename_str = filename.to_string_lossy();
+    write_to_file(&filename_str, content).context("Failed to save to file")
 }
 
 /// Get the user's code2prompt data directory following platform conventions
@@ -212,9 +213,13 @@ pub fn get_code2prompt_custom_templates_dir() -> Result<std::path::PathBuf> {
 }
 
 /// Save a template to the user's custom templates directory
-pub fn save_template_to_custom_dir(filename: &str, content: &str) -> Result<std::path::PathBuf> {
+pub fn save_template_to_custom_dir(
+    filename: &std::path::Path,
+    content: &str,
+) -> Result<std::path::PathBuf> {
     let custom_dir = get_code2prompt_custom_templates_dir()?;
-    let file_path = custom_dir.join(format!("{}.hbs", filename));
+    let filename_str = filename.to_string_lossy();
+    let file_path = custom_dir.join(format!("{}.hbs", filename_str));
 
     fs::write(&file_path, content)
         .with_context(|| format!("Failed to save template to {}", file_path.display()))?;

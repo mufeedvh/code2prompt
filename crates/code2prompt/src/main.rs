@@ -250,7 +250,11 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
     }
 
     // ~~~ Output File ~~~
-    output_prompt(effective_output.as_deref(), &rendered.prompt, !args.quiet)?;
+    output_prompt(
+        effective_output.as_deref().map(std::path::Path::new),
+        &rendered.prompt,
+        !args.quiet,
+    )?;
 
     Ok(())
 }
@@ -457,13 +461,18 @@ fn create_session_from_args(args: &Cli, tui_mode: bool) -> Result<Code2PromptSes
 }
 
 // ~~~ Output to file or stdout ~~~
-fn output_prompt(effective_output: Option<&str>, rendered: &str, quiet: bool) -> Result<()> {
+fn output_prompt(
+    effective_output: Option<&std::path::Path>,
+    rendered: &str,
+    quiet: bool,
+) -> Result<()> {
     let output_path = match effective_output {
         Some(path) => path,
         None => return Ok(()), // nothing to do
     };
 
-    if output_path == "-" {
+    let path_str = output_path.to_string_lossy();
+    if path_str == "-" {
         // stdout
         print!("{}", rendered);
         std::io::stdout()
@@ -471,8 +480,8 @@ fn output_prompt(effective_output: Option<&str>, rendered: &str, quiet: bool) ->
             .context("Failed to flush stdout")?;
     } else {
         // file
-        write_to_file(output_path, rendered)
-            .context(format!("Failed to write to file: {}", output_path))?;
+        write_to_file(&path_str, rendered)
+            .context(format!("Failed to write to file: {}", path_str))?;
 
         if !quiet {
             println!(
@@ -480,7 +489,7 @@ fn output_prompt(effective_output: Option<&str>, rendered: &str, quiet: bool) ->
                 "[".bold().white(),
                 "✓".bold().green(),
                 "]".bold().white(),
-                format!("Prompt written to file: {}", output_path).green()
+                format!("Prompt written to file: {}", path_str).green()
             );
         }
     }

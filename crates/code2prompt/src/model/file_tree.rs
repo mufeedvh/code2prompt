@@ -40,22 +40,30 @@ impl FileTreeState {
     }
 
     /// Update node selection state - pure logic in Model
-    pub fn update_node_selection(&mut self, path: &str, selected: bool, is_directory: bool) {
+    pub fn update_node_selection(
+        &mut self,
+        path: &std::path::Path,
+        selected: bool,
+        is_directory: bool,
+    ) {
+        let path_str = path.to_string_lossy();
         if is_directory {
-            Self::toggle_directory_selection_recursive(&mut self.file_tree, path, selected);
+            Self::toggle_directory_selection_recursive(&mut self.file_tree, &path_str, selected);
         } else {
-            Self::update_single_node_selection(&mut self.file_tree, path, selected);
+            Self::update_single_node_selection(&mut self.file_tree, &path_str, selected);
         }
     }
 
     /// Expand directory at given path
-    pub fn expand_directory(&mut self, path: &str) {
-        Self::set_directory_expanded(&mut self.file_tree, path, true);
+    pub fn expand_directory(&mut self, path: &std::path::Path) {
+        let path_str = path.to_string_lossy();
+        Self::set_directory_expanded(&mut self.file_tree, &path_str, true);
     }
 
     /// Collapse directory at given path
-    pub fn collapse_directory(&mut self, path: &str) {
-        Self::set_directory_expanded(&mut self.file_tree, path, false);
+    pub fn collapse_directory(&mut self, path: &std::path::Path) {
+        let path_str = path.to_string_lossy();
+        Self::set_directory_expanded(&mut self.file_tree, &path_str, false);
     }
 
     fn toggle_directory_selection_recursive(nodes: &mut [FileNode], path: &str, selected: bool) {

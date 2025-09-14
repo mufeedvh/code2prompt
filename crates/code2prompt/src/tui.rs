@@ -649,7 +649,7 @@ impl TuiApp {
             }
 
             crate::model::Cmd::SaveToFile { filename, content } => {
-                match crate::utils::save_to_file(&filename, &content) {
+                match crate::utils::save_to_file(std::path::Path::new(&filename), &content) {
                     Ok(_) => {
                         self.model.status_message = format!("Saved to {}", filename);
                     }
@@ -660,7 +660,10 @@ impl TuiApp {
             }
 
             crate::model::Cmd::SaveTemplate { filename, content } => {
-                match crate::utils::save_template_to_custom_dir(&filename, &content) {
+                match crate::utils::save_template_to_custom_dir(
+                    std::path::Path::new(&filename),
+                    &content,
+                ) {
                     Ok(_) => {
                         self.model.status_message = format!("Template saved as {}", filename);
                         // Refresh templates to show the new one
