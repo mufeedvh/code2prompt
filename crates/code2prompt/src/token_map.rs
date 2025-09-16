@@ -4,6 +4,8 @@
 //! that show how tokens are distributed across files in a codebase. It creates
 //! hierarchical tree structures with visual bars and colors, similar to disk usage
 //! analyzers but for token consumption.
+#[cfg(windows)]
+use log::error;
 use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
