@@ -137,9 +137,10 @@ pub fn should_include_file(
 /// Determines whether to visit/include a path (file or dir) using layered logic.
 ///
 /// This function implements a hierarchical decision process:
-/// 1. Explicit excludes (self/ancestors) → false (highest priority, skip subtree for dirs)
-/// 2. Explicit includes (self/ancestors) → true (second priority, include/recurse for dirs)
-/// 3. Fallback: glob patterns (include if matches include or empty, unless excluded)
+/// 1. Explicit exclude on exact path → false (highest priority, same file exclusion wins)
+/// 2. Explicit include on self/ancestors → true (explicit include overrides ancestor excludes)
+/// 3. Explicit exclude on ancestors → false (ancestor exclusion applies when no explicit include)
+/// 4. Fallback: glob patterns (include if matches include or empty, unless excluded)
 ///
 /// # Arguments
 ///
@@ -159,19 +160,25 @@ pub fn should_include_path(
     explicit_includes: &HashSet<PathBuf>,
     explicit_excludes: &HashSet<PathBuf>,
 ) -> bool {
-    // Step 1: Highest priority - explicit exclude on self or ancestor?
-    if is_or_ancestor_in_set(rel_path, explicit_excludes) {
-        debug!("Explicit exclude hit for: {:?}", rel_path);
+    // Step 1: Highest priority - explicit exclude on exact path (not ancestors)
+    if explicit_excludes.contains(&rel_path.to_path_buf()) {
+        debug!("Explicit exclude hit for exact path: {:?}", rel_path);
         return false;
     }
 
-    // Step 2: Explicit include on self or ancestor?
+    // Step 2: Explicit include on self or ancestor (overrides ancestor excludes)
     if is_or_ancestor_in_set(rel_path, explicit_includes) {
         debug!("Explicit include hit for: {:?}", rel_path);
         return true;
     }
 
-    // Step 3: Fallback to pure pattern matching logic
+    // Step 3: Check for ancestor excludes (only applies if no explicit include)
+    if is_or_ancestor_in_set(rel_path, explicit_excludes) {
+        debug!("Ancestor exclude hit for: {:?}", rel_path);
+        return false;
+    }
+
+    // Step 4: Fallback to pure pattern matching logic
     let result = should_include_file(rel_path, include_globset, exclude_globset);
 
     debug!("Pattern fallback result={} for {:?}", result, rel_path);
