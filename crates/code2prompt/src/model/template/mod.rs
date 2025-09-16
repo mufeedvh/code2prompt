@@ -120,13 +120,25 @@ impl TemplateState {
 
         // Load template content based on type
         let (content, template_name) = if selected_template.name == "Default (Markdown)" {
-            // Load built-in markdown template
-            let content = include_str!("../../../../code2prompt-core/src/default_template_md.hbs");
-            (content.to_string(), "Default (Markdown)".to_string())
+            // Load built-in markdown template from API
+            if let Some(builtin_template) =
+                code2prompt_core::builtin_templates::BuiltinTemplates::get_template(
+                    "default-markdown",
+                )
+            {
+                (builtin_template.content, builtin_template.name)
+            } else {
+                return Err("Default markdown template not found".to_string());
+            }
         } else if selected_template.name == "Default (XML)" {
-            // Load built-in XML template
-            let content = include_str!("../../../../code2prompt-core/src/default_template_xml.hbs");
-            (content.to_string(), "Default (XML)".to_string())
+            // Load built-in XML template from API
+            if let Some(builtin_template) =
+                code2prompt_core::builtin_templates::BuiltinTemplates::get_template("default-xml")
+            {
+                (builtin_template.content, builtin_template.name)
+            } else {
+                return Err("Default XML template not found".to_string());
+            }
         } else if selected_template
             .path
             .to_string_lossy()

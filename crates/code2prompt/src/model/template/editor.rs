@@ -39,8 +39,16 @@ impl Clone for EditorState {
 
 impl Default for EditorState {
     fn default() -> Self {
-        let content =
-            include_str!("../../../../code2prompt-core/src/default_template_md.hbs").to_string();
+        // Load default markdown template from API
+        let content = if let Some(builtin_template) =
+            code2prompt_core::builtin_templates::BuiltinTemplates::get_template("default-markdown")
+        {
+            builtin_template.content
+        } else {
+            // Fallback content if template not found
+            "# {{project_name}}\n\n{{#if files}}\n{{#each files}}\n## {{path}}\n\n```{{extension}}\n{{content}}\n```\n\n{{/each}}\n{{/if}}".to_string()
+        };
+
         let editor = TextArea::from(content.lines());
 
         let mut state = Self {

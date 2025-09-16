@@ -22,6 +22,26 @@ impl BuiltinTemplates {
     pub fn get_all() -> HashMap<String, BuiltinTemplate> {
         let mut templates = HashMap::new();
 
+        // Default Markdown Template
+        templates.insert(
+            "default-markdown".to_string(),
+            BuiltinTemplate {
+                name: "Default (Markdown)".to_string(),
+                content: include_str!("default_template_md.hbs").to_string(),
+                description: "Default markdown template for code analysis".to_string(),
+            },
+        );
+
+        // Default XML Template
+        templates.insert(
+            "default-xml".to_string(),
+            BuiltinTemplate {
+                name: "Default (XML)".to_string(),
+                content: include_str!("default_template_xml.hbs").to_string(),
+                description: "Default XML template for code analysis".to_string(),
+            },
+        );
+
         // Binary Exploitation CTF Solver
         templates.insert(
             "binary-exploitation-ctf-solver".to_string(),
