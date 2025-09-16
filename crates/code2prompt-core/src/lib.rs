@@ -1,4 +1,5 @@
 //! Core library for code2prompt.
+pub mod builtin_templates;
 pub mod configuration;
 pub mod filter;
 pub mod git;

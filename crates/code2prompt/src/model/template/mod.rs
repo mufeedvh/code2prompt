@@ -127,6 +127,22 @@ impl TemplateState {
             // Load built-in XML template
             let content = include_str!("../../../../code2prompt-core/src/default_template_xml.hbs");
             (content.to_string(), "Default (XML)".to_string())
+        } else if selected_template
+            .path
+            .to_string_lossy()
+            .starts_with("builtin://")
+        {
+            // Load built-in template from embedded resources
+            let path_str = selected_template.path.to_string_lossy();
+            let template_key = path_str.strip_prefix("builtin://").unwrap_or("");
+
+            if let Some(builtin_template) =
+                code2prompt_core::builtin_templates::BuiltinTemplates::get_template(template_key)
+            {
+                (builtin_template.content, builtin_template.name)
+            } else {
+                return Err(format!("Built-in template '{}' not found", template_key));
+            }
         } else {
             // Load template from file
             let content = std::fs::read_to_string(&selected_template.path)

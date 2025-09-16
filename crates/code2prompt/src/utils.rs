@@ -250,13 +250,13 @@ pub fn load_all_templates() -> Result<Vec<(String, std::path::PathBuf, bool)>> {
         }
     }
 
-    // Load built-in templates from the templates directory in the project
-    let builtin_templates_dir = std::path::PathBuf::from("crates/code2prompt-core/templates");
-    if builtin_templates_dir.exists() {
-        let builtin_templates = load_templates_from_dir(&builtin_templates_dir, "Built-in");
-        for (name, path) in builtin_templates {
-            all_templates.push((name, path, false));
-        }
+    // Load built-in templates from code2prompt_core (embedded as static resources)
+    let builtin_templates = code2prompt_core::builtin_templates::BuiltinTemplates::get_all();
+    for (key, template) in builtin_templates {
+        // Create a virtual path for built-in templates (they don't exist as files)
+        let virtual_path = std::path::PathBuf::from(format!("builtin://{}", key));
+        let display_name = format!("Built-in: {}", template.name);
+        all_templates.push((display_name, virtual_path, true));
     }
 
     // Sort templates by name
