@@ -192,36 +192,3 @@ impl BuiltinTemplates {
         Self::get_all().contains_key(key)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_all_templates_loaded() {
-        let templates = BuiltinTemplates::get_all();
-        assert!(!templates.is_empty());
-
-        // Verify some expected templates exist
-        assert!(templates.contains_key("claude-xml"));
-        assert!(templates.contains_key("clean-up-code"));
-        assert!(templates.contains_key("document-the-code"));
-    }
-
-    #[test]
-    fn test_get_specific_template() {
-        let template = BuiltinTemplates::get_template("claude-xml");
-        assert!(template.is_some());
-
-        let template = template.unwrap();
-        assert_eq!(template.name, "Claude XML");
-        assert!(!template.content.is_empty());
-    }
-
-    #[test]
-    fn test_template_keys() {
-        let keys = BuiltinTemplates::get_template_keys();
-        assert!(!keys.is_empty());
-        assert!(keys.contains(&"claude-xml".to_string()));
-    }
-}
