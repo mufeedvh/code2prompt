@@ -13,7 +13,7 @@ documentation = "https://code2prompt.dev/docs/welcome"
 repository = "https://github.com/mufeedvh/code2prompt"
 license = "MIT"
 exclude = [".github/*", ".assets/*"]
-edition = "2021"
+edition = "2024"
 readme = "../../README.md"
 
 
