@@ -197,26 +197,6 @@ mod tests {
     }
 
     #[test]
-    fn test_include_exclude_with_include_priority() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--include=*.py,**/lowercase/**")
-            .arg("--exclude=**/foo.py,**/uppercase/**")
-            .arg("--include-priority")
-            .assert()
-            .success();
-
-        let output = env.read_output();
-        debug!("Test include and exclude combinations output:\n{}", output);
-        assert!(contains("lowercase/baz.py").eval(&output));
-        assert!(contains("content baz.py").eval(&output));
-        assert!(contains("lowercase/foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("uppercase/FOO.py").eval(&output));
-        assert!(contains("CONTENT FOO.PY").eval(&output));
-    }
-
-    #[test]
     fn test_include_exclude_with_exclude_priority() {
         let env = TestEnv::new();
         let mut cmd = env.command();
@@ -288,6 +268,10 @@ mod tests {
             .success();
 
         let output = env.read_output();
+
+        println!("=== DEBUG OUTPUT ===");
+        println!("{}", output);
+        println!("=== END DEBUG OUTPUT ===");
 
         assert!(contains("foo.py").eval(&output));
         assert!(contains("content foo.py").eval(&output));

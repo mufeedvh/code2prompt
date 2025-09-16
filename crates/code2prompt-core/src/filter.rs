@@ -1,9 +1,13 @@
-//! This module contains the logic for filtering files based on include and exclude patterns.
+//! This module contains pure filtering logic for files based on glob patterns.
+//!
+//! This module provides reusable, stateless functions for pattern matching and file filtering.
 
+use bracoxide::explode;
 use colored::*;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use log::{debug, warn};
-use std::path::Path;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 /// Constructs a `GlobSet` from a list of glob patterns.
 ///
@@ -21,20 +25,25 @@ use std::path::Path;
 pub fn build_globset(patterns: &[String]) -> GlobSet {
     let mut builder = GlobSetBuilder::new();
 
-    let expanded_patterns = if !patterns.is_empty() && patterns[0].contains("/{") {
-        expand_brace_patterns(patterns)
-    } else {
-        patterns.to_vec()
-    };
+    let mut expanded_patterns = Vec::new();
+    for pattern in patterns {
+        if pattern.contains('{') {
+            match explode(pattern) {
+                Ok(exp) => expanded_patterns.extend(exp),
+                Err(e) => warn!("⚠️ Invalid brace pattern '{}': {:?}", pattern, e),
+            }
+        } else {
+            expanded_patterns.push(pattern.clone());
+        }
+    }
 
     for pattern in expanded_patterns {
-        // If the pattern does not contain a '/' or the platform’s separator, prepend "**/"
-        let normalized_pattern =
-            if !pattern.contains('/') && !pattern.contains(std::path::MAIN_SEPARATOR) {
-                format!("**/{}", pattern)
-            } else {
-                pattern.clone()
-            };
+        // If the pattern does not contain a '/' or the platform's separator, prepend "**/"
+        let normalized_pattern = if pattern.contains('/') {
+            pattern.trim_start_matches("./").to_string()
+        } else {
+            format!("**/{}", pattern.trim_start_matches("./"))
+        };
 
         match Glob::new(&normalized_pattern) {
             Ok(glob) => {
@@ -50,6 +59,33 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
     builder.build().expect("❌ Impossible to build GlobSet")
 }
 
+/// Checks if the path or any ancestor is in the given set (for propagation).
+///
+/// This function is useful for implementing hierarchical inclusion/exclusion logic
+/// where a rule applied to a parent directory should propagate to its descendants.
+///
+/// # Arguments
+///
+/// * `rel_path` - A relative path to check
+/// * `set` - A set of paths to check against
+///
+/// # Returns
+///
+/// * `bool` - Returns `true` if the path or any of its ancestors is in the set
+pub fn is_or_ancestor_in_set(rel_path: &Path, set: &HashSet<PathBuf>) -> bool {
+    let mut current = rel_path.to_path_buf();
+    loop {
+        if set.contains(&current) {
+            return true;
+        }
+        if !current.pop() {
+            // pop() returns false if now empty
+            break;
+        }
+    }
+    false
+}
+
 /// Determines whether a file should be included based on the provided glob patterns.
 ///
 /// Note: The `path` argument must be a relative path (i.e. relative to the base directory)
@@ -58,20 +94,21 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
 /// # Arguments
 ///
 /// * `path` - A relative path to the file that will be checked against the patterns.
-/// * `include_patterns` - A slice of glob pattern strings specifying which files to include.
-///                        If empty, all files are considered included unless excluded.
-/// * `exclude_patterns` - A slice of glob pattern strings specifying which files to exclude.
-/// * `include_priority` - A boolean flag that, when set to `true`, gives include patterns
-///                        precedence over exclude patterns in cases where both match.
+/// * `include_globset` - A GlobSet specifying which files to include.
+///   If empty, all files are considered included unless excluded.
+/// * `exclude_globset` - A GlobSet specifying which files to exclude.
 ///
 /// # Returns
 ///
 /// * `bool` - Returns `true` if the file should be included; otherwise, returns `false`.
+///
+/// # Behavior
+///
+/// When both include and exclude patterns match, exclude patterns take precedence.
 pub fn should_include_file(
     path: &Path,
     include_globset: &GlobSet,
     exclude_globset: &GlobSet,
-    include_priority: bool,
 ) -> bool {
     // ~~~ Matching ~~~
     let included = include_globset.is_match(path);
@@ -79,10 +116,10 @@ pub fn should_include_file(
 
     // ~~~ Decision ~~~
     let result = match (included, excluded) {
-        (true, true) => include_priority, // If both include and exclude patterns match, use the include_priority flag
-        (true, false) => true,            // If the path is included and not excluded, include it
-        (false, true) => false,           // If the path is excluded, exclude it
-        (false, false) => include_globset.is_empty(), // If no include patterns are provided, include everything
+        (true, true) => false,  // If both match, exclude takes precedence
+        (true, false) => true,  // If only included, include it
+        (false, true) => false, // If only excluded, exclude it
+        (false, false) => include_globset.is_empty(), // If no include patterns, include everything
     };
 
     debug!(
@@ -97,25 +134,54 @@ pub fn should_include_file(
     result
 }
 
-/// Expands glob patterns containing `{}` into multiple separate patterns.
+/// Determines whether to visit/include a path (file or dir) using layered logic.
 ///
-/// This function detects patterns with brace expansion (e.g., `"src/{foo,bar}/**"`),
-/// extracts the base prefix, and generates multiple patterns with expanded values.
+/// This function implements a hierarchical decision process:
+/// 1. Explicit exclude on exact path → false (highest priority, same file exclusion wins)
+/// 2. Explicit include on self/ancestors → true (explicit include overrides ancestor excludes)
+/// 3. Explicit exclude on ancestors → false (ancestor exclusion applies when no explicit include)
+/// 4. Fallback: glob patterns (include if matches include or empty, unless excluded)
 ///
 /// # Arguments
 ///
-/// * `patterns` - A slice of `String` containing glob patterns to be expanded.
+/// * `rel_path` - A relative path to check (must be relative to the root path)
+/// * `include_globset` - A GlobSet specifying which files to include
+/// * `exclude_globset` - A GlobSet specifying which files to exclude
+/// * `explicit_includes` - A set of explicitly included paths (with ancestor propagation)
+/// * `explicit_excludes` - A set of explicitly excluded paths (with ancestor propagation)
 ///
 /// # Returns
 ///
-/// * A `Vec<String>` containing expanded patterns.
-fn expand_brace_patterns(patterns: &[String]) -> Vec<String> {
-    let joined_patterns = patterns.join(",");
-    let brace_start_index = joined_patterns.find("/{").unwrap();
-    let common_prefix = &joined_patterns[..brace_start_index];
+/// * `bool` - Returns `true` if the path should be included/visited; otherwise, returns `false`
+pub fn should_include_path(
+    rel_path: &Path,
+    include_globset: &GlobSet,
+    exclude_globset: &GlobSet,
+    explicit_includes: &HashSet<PathBuf>,
+    explicit_excludes: &HashSet<PathBuf>,
+) -> bool {
+    // Step 1: Highest priority - explicit exclude on exact path (not ancestors)
+    if explicit_excludes.contains(&rel_path.to_path_buf()) {
+        debug!("Explicit exclude hit for exact path: {:?}", rel_path);
+        return false;
+    }
 
-    return joined_patterns[brace_start_index + 2..]
-        .split(',')
-        .map(|expanded_pattern| format!("{}/{}", common_prefix, expanded_pattern))
-        .collect::<Vec<String>>();
+    // Step 2: Explicit include on self or ancestor (overrides ancestor excludes)
+    if is_or_ancestor_in_set(rel_path, explicit_includes) {
+        debug!("Explicit include hit for: {:?}", rel_path);
+        return true;
+    }
+
+    // Step 3: Check for ancestor excludes (only applies if no explicit include)
+    if is_or_ancestor_in_set(rel_path, explicit_excludes) {
+        debug!("Ancestor exclude hit for: {:?}", rel_path);
+        return false;
+    }
+
+    // Step 4: Fallback to pure pattern matching logic
+    let result = should_include_file(rel_path, include_globset, exclude_globset);
+
+    debug!("Pattern fallback result={} for {:?}", result, rel_path);
+
+    result
 }

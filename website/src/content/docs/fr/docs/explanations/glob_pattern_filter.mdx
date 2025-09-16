@@ -1,59 +1,87 @@
 ---
 title: Comment fonctionne le filtre de modèle Glob
-description: Un examen approfondi de la façon dont Code2Prompt traite les modèles d'inclusion et d'exclusion.
+description: Comment Code2Prompt décide quelles fichiers garder ou écarter en utilisant les globs d'inclusion (-i) et d'exclusion (-e).
 ---
 
-L'outil utilise des modèles glob pour inclure ou exclure des fichiers et des répertoires, fonctionnant de manière similaire à des outils comme `tree` ou `grep`. Voici une explication détaillée :
+Code2Prompt utilise des modèles glob pour inclure ou exclure des fichiers et répertoires, fonctionnant de manière similaire à des outils comme tree ou grep. Il vous permet de passer deux _listes_ indépendantes de modèles glob :
 
-## Concepts clés
+- **liste d'inclusion** (`--include` ou `-i`) - "ces modèles autorisent les fichiers"
+- **liste d'exclusion** (`--exclude` ou `-e`) - "ces modèles interdisent les fichiers"
 
-- **Liste d'inclusion (A)** : Un ensemble contenant les modèles glob pour les fichiers et répertoires que vous souhaitez inclure.
-- **Liste d'exclusion (B)** : Un ensemble contenant les modèles glob pour les fichiers et répertoires que vous souhaitez exclure.
-- **Univers (Ω)** : L'ensemble de tous les fichiers et répertoires.
+Code2prompt doit décider, pour chaque fichier du projet, s'il est conservé ou écarté. Cette page explique les règles et les choix de conception qui les sous-tendent.
 
-Lorsque vous spécifiez une liste `--exclude` et/ou une liste `--include`, la logique suivante s'applique :
+---
 
-### Cas et logique
+## 1. Ensembles et Symboles
 
-1. **Pas de liste d'inclusion, pas de liste d'exclusion**  
-   Inclure tout :
+Tout au long de l'explication, nous utilisons la notation d'ensemble habituelle
 
-   $$
-   \neg A \cap \neg B \implies \Omega
-   $$
+| Symbole                           | Signification                                                                |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| $A$                               | ensemble des fichiers qui correspondent à **au moins un** modèle d'inclusion |
+| $B$                               | ensemble des fichiers qui correspondent à **au moins un** modèle d'exclusion |
+| $\Omega$                          | l'arbre de projet entier (l'_univers_)                                       |
+| $C = A \cap B$                    | fichiers qui correspondent aux deux listes (le _chevauchement_)              |
+| $D = \Omega \setminus (A \cup B)$ | fichiers qui ne correspondent à aucune liste                                 |
 
-2. **Pas de liste d'inclusion, avec liste d'exclusion**  
-   Inclure tout sauf ce qui correspond à la liste d'exclusion :
+---
 
-   $$
-   \neg A \cap B \implies \Omega \setminus B
-   $$
+## 2. Quatre Situations
 
-3. **Avec liste d'inclusion, pas de liste d'exclusion**  
-   Inclure uniquement ce qui correspond à la liste d'inclusion :
+### Aperçu des quatre situations
 
-   $$
-   A \cap \neg B \implies A
-   $$
+| Liste d'inclusion | Liste d'exclusion | Fichiers conservés |
+| ----------------- | ----------------- | ------------------ |
+| A = ∅             | B = ∅             | Ω                  |
+| A = ∅             | B ≠ ∅             | ¬B                 |
+| A ≠ ∅             | B = ∅             | A                  |
+| A ≠ ∅             | B ≠ ∅             | A \ B              |
 
-4. **Avec liste d'inclusion et liste d'exclusion**  
-   Inclure ce qui correspond à la liste d'inclusion et exclure ce qui correspond à la liste d'exclusion. Gérez l'intersection en fonction du paramètre `include_priority` :
+1. **Pas de liste d'inclusion, pas de liste d'exclusion**
 
-   - **Priorité d'inclusion == true** :
+   Si aucun modèle n'est spécifié, tous les fichiers sont conservés (`Ω`).
 
-     $$
-     A \setminus (A \cap B)
-     $$
+2. **Liste d'exclusion seulement**
 
-   - **Priorité d'inclusion != true\*** :
-     $$
-     B \setminus (A \cap B)
-     $$
+   Dans ce cas, Code2Prompt agit comme une liste noire, supprimant les fichiers qui correspondent aux modèles exclus (` Ω \ B = ¬B`).
 
-### Représentation visuelle du cas 4
+3. **Liste d'inclusion seulement**
 
-Soit (A) et (B) se chevauchent. En fonction de la priorité, l'intersection $$( A \cap B )$$ est incluse ou exclue en fonction du paramètre `include_priority`.
+   Si seule une liste d'inclusion est spécifiée, Code2Prompt agit comme une liste blanche, ne conservant que les fichiers qui correspondent aux modèles inclus (`A`).
 
-![Représentation visuelle du cas 4](../../../../../assets/filter.png)
+4. **Listes d'inclusion _et_ d'exclusion**
 
-> Cette page a été traduite automatiquement pour votre commodité. Veuillez vous référer à la version anglaise pour le contenu original.
+   Si les deux listes sont spécifiées, Code2Prompt conserve les fichiers qui correspondent aux modèles d'inclusion, mais supprime ceux qui correspondent aux modèles d'exclusion (`A \ B`).
+
+---
+
+## 3. Plus sur le chevauchement
+
+Avec les deux listes présentes (`A ≠ ∅`, `B ≠ ∅`), vous avez quatre possibilités logiques
+pour le chevauchement `C` et le reste `D`.
+
+| Vouloir `C` ? | Vouloir `D` ? | Raisonnable ?                                                             |
+| ------------- | ------------- | ------------------------------------------------------------------------- |
+| Non           | Non           | Comportement par défaut (`A \ B`)                                         |
+| Oui           | Non           | Même comportement que le cas 3 (`A`)                                      |
+| Non           | Oui           | surprenant ("écarter ce que j'ai demandé `C`, garder ce que je n'ai pas") |
+| Oui           | Oui           | Même comportement que le cas 1 (`Ω`)                                      |
+
+C'est pour cette raison que l'option `--include-priority` a été supprimée. Parce que ce serait le même résultat que si vous n'aviez qu'une liste d'inclusion (cas 3).
+
+## 4. Table de référence rapide
+
+| Vous voulez garder…                                      | Utilisez                 |
+| -------------------------------------------------------- | ------------------------ |
+| tout                                                     | pas de `-i`, pas de `-e` |
+| tout _sauf_ certains modèles                             | `-e` seulement           |
+| _seulement_ ce qui correspond aux modèles                | `-i` seulement           |
+| ce qui correspond à `-i`, moins ce qui correspond à `-e` | `-i` **et** `-e`         |
+
+---
+
+Cette conception maintient le modèle mental simple :
+
+- La liste d'inclusion est une liste blanche dès qu'elle existe.
+- La liste d'exclusion est une liste noire superposée par-dessus.
+- Le chevauchement est écarté par défaut

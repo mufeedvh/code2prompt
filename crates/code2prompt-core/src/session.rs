@@ -2,9 +2,10 @@
 //! It allows you to load codebase data, Git info, and render prompts using a template.
 
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::configuration::Code2PromptConfig;
+use crate::filter::{build_globset, should_include_path};
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
 use crate::template::{handlebars_setup, render_template, OutputFormat};
@@ -12,7 +13,7 @@ use crate::tokenizer::{count_tokens, TokenizerType};
 
 /// Represents a live session that holds stateful data about the user's codebase,
 /// including which files have been added or removed, or other data that evolves over time.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
     pub selected_files: Vec<PathBuf>,
@@ -51,35 +52,69 @@ impl Code2PromptSession {
         }
     }
 
-    #[allow(clippy::unused_self)]
-    // Add specific file to include patterns
+    /// Query if a path is currently included (for toggle/UI)
+    pub fn is_file_included(&self, path: &Path) -> bool {
+        let rel_path = path.strip_prefix(&self.config.path).unwrap_or(path);
+        let include_gs = build_globset(&self.config.include_patterns);
+        let exclude_gs = build_globset(&self.config.exclude_patterns);
+        should_include_path(
+            rel_path,
+            &include_gs,
+            &exclude_gs,
+            &self.config.explicit_includes,
+            &self.config.explicit_excludes,
+        )
+    }
+
+    /// Add to explicit_includes (prioritized)
     pub fn include_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
+        let rel_path = path
+            .strip_prefix(&self.config.path)
+            .unwrap_or(&path)
+            .to_path_buf();
+        // Remove from excludes if present (flip)
+        self.config.explicit_excludes.remove(&rel_path);
+        self.config.explicit_includes.insert(rel_path);
+        self
+    }
+
+    /// Add to explicit_excludes
+    pub fn exclude_file(&mut self, path: PathBuf) -> &mut Self {
+        let rel_path = path
+            .strip_prefix(&self.config.path)
+            .unwrap_or(&path)
+            .to_path_buf();
+        // Remove from includes if present (flip)
+        self.config.explicit_includes.remove(&rel_path);
+        self.config.explicit_excludes.insert(rel_path);
+        self
+    }
+
+    /// Toggle via query + flip
+    pub fn toggle_file(&mut self, path: PathBuf) -> &mut Self {
+        if self.is_file_included(&path) {
+            self.exclude_file(path); // Was included → explicitly exclude
+        } else {
+            self.include_file(path); // Was excluded → explicitly include
+        }
+        self
+    }
+
+    /// Clear all explicit overrides (fallback to patterns)
+    pub fn clear_explicit_overrides(&mut self) -> &mut Self {
+        self.config.explicit_includes.clear();
+        self.config.explicit_excludes.clear();
+        self
+    }
+
+    /// Add pattern (unchanged, but now layered under explicit)
+    pub fn add_include_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.include_patterns.push(pattern);
         self
     }
 
-    #[allow(clippy::unused_self)]
-    // Add specific file to exclude patterns
-    pub fn exclude_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
+    pub fn add_exclude_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.exclude_patterns.push(pattern);
-        self
-    }
-
-    #[allow(clippy::unused_self)]
-    // Toggle inclusion of a specific file
-    pub fn toggle_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
-
-        if self.config.include_patterns.contains(&pattern) {
-            self.config.include_patterns.retain(|p| p != &pattern);
-        } else {
-            self.config.include_patterns.push(pattern);
-        }
         self
     }
 
@@ -131,7 +166,7 @@ impl Code2PromptSession {
         });
 
         // Add user-defined variables to the template data
-        if self.config.user_variables.len() > 0 {
+        if !self.config.user_variables.is_empty() {
             if let Some(obj) = data.as_object_mut() {
                 for (key, value) in &self.config.user_variables {
                     obj.insert(key.clone(), serde_json::Value::String(value.clone()));
@@ -205,10 +240,10 @@ impl Code2PromptSession {
 
         Ok(RenderedPrompt {
             prompt: final_output,
-            directory_name: directory_name,
+            directory_name,
             token_count,
             model_info,
-            files: files,
+            files,
         })
     }
 

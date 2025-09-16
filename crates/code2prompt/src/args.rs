@@ -1,3 +1,10 @@
+//! Command-line argument parsing and validation.
+//!
+//! This module defines the CLI structure using clap for parsing command-line arguments
+//! and options for the code2prompt tool. It supports both TUI and CLI modes with
+//! comprehensive configuration options for file selection, output formatting,
+//! tokenization, and git integration.
+
 use clap::Parser;
 use code2prompt_core::{template::OutputFormat, tokenizer::TokenFormat};
 use std::path::PathBuf;
@@ -15,17 +22,21 @@ pub struct Cli {
     #[arg()]
     pub path: PathBuf,
 
+    /// Optional output file (use "-" for stdout)
+    #[arg(conflicts_with = "output_file")]
+    pub output: Option<String>,
+
+    /// Launch the Terminal User Interface
+    #[clap(long)]
+    pub tui: bool,
+
     /// Patterns to include
-    #[clap(short = 'i', long = "include", value_delimiter = ',')]
+    #[clap(short = 'i', long = "include")]
     pub include: Vec<String>,
 
     /// Patterns to exclude
-    #[clap(short = 'e', long = "exclude", value_delimiter = ',')]
+    #[clap(short = 'e', long = "exclude")]
     pub exclude: Vec<String>,
-
-    /// Include files in case of conflict between include and exclude patterns
-    #[clap(long)]
-    pub include_priority: bool,
 
     /// Optional output file path
     #[clap(short = 'O', long = "output-file")]
@@ -99,7 +110,7 @@ pub struct Cli {
     pub sort: Option<String>,
 
     /// Suppress progress and success messages
-    #[clap(short, long)]
+    #[clap(short = 'q', long)]
     pub quiet: bool,
 
     /// Display a visual token map of files (similar to disk usage tools)

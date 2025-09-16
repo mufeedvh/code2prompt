@@ -1,42 +1,42 @@
 //! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
 //!
-//! Authors: Mufeed VH (@mufeedvh), Olivier D'Ancona (@ODAncona)
+//! Authors: Olivier D'Ancona (@ODAncona), Mufeed VH (@mufeedvh)
 mod args;
 mod clipboard;
+mod config;
+mod model;
 mod token_map;
+mod tui;
+mod utils;
+mod view;
+mod widgets;
 
 use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
 use code2prompt_core::{
-    configuration::Code2PromptConfig,
-    session::Code2PromptSession,
-    sort::FileSortMethod,
-    template::{extract_undefined_variables, write_to_file},
-    tokenizer::{TokenFormat, TokenizerType},
+    session::Code2PromptSession, template::write_to_file, tokenizer::TokenFormat,
 };
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
-use inquire::Text;
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
-use std::{path::PathBuf, str::FromStr};
+use std::io::Write;
+use tui::run_tui_with_args;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     env_logger::init();
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
-    let args = Cli::parse();
+
+    let args: Cli = Cli::parse();
 
     // ~~~ Arguments Validation ~~~
     // if no_clipboard is true, output_file must be specified.
     if args.no_clipboard && args.output_file.is_none() {
-        eprintln!("Error: --output-file is required when --no-clipboard is used.");
+        error!("Error: --output-file is required when --no-clipboard is used.");
         std::process::exit(1);
     }
-
-    // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
-    let no_clipboard = args.no_clipboard || 
-        args.output_file.as_ref().map_or(false, |f| f == "-");
 
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
@@ -50,82 +50,28 @@ fn main() -> Result<()> {
         }
     }
 
-    // ~~~ Configuration ~~~
-    let mut configuration = Code2PromptConfig::builder();
-
-    // Configure Path
-    configuration
-        .path(args.path.clone())
-        .include_priority(args.include_priority);
-
-    // Configure Selection Patterns
-    configuration
-        .include_patterns(args.include)
-        .exclude_patterns(args.exclude);
-
-    // Configure Output Format
-    let output_format = args.output_format.clone();
-    configuration
-        .line_numbers(args.line_numbers)
-        .absolute_path(args.absolute_paths)
-        .full_directory_tree(args.full_directory_tree)
-        .output_format(output_format);
-
-    // Configure Sort Method
-    let sort_method = args
-        .sort
-        .as_deref()
-        .map(FileSortMethod::from_str)
-        .transpose()
-        .unwrap_or_else(|err| {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        })
-        .unwrap_or(FileSortMethod::NameAsc);
-
-    configuration.sort_method(sort_method);
-
-    // Configure Tokenizer
-    let tokenizer_type = args
-        .encoding
-        .as_deref()
-        .unwrap_or("cl100k")
-        .parse::<TokenizerType>()
-        .unwrap_or_default();
-
-    configuration
-        .encoding(tokenizer_type)
-        .token_format(args.tokens);
-
-    // Configure Template
-    let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
-        error!("Failed to parse template: {}", e);
+    // ~~~ Build Session ~~~
+    let mut session = config::create_session_from_args(&args, args.tui).unwrap_or_else(|e| {
+        error!("Failed to create session: {}", e);
         std::process::exit(1);
     });
 
-    configuration
-        .template_str(template_str.clone())
-        .template_name(template_name);
+    // ~~~ TUI or CLI Mode ~~~
+    if args.tui {
+        run_tui_with_args(session).await
+    } else {
+        run_cli_mode_with_args(args, &mut session).await
+    }
+}
 
-    // Configure Git
-    let diff_branches = parse_branch_argument(&args.git_diff_branch);
-    let log_branches = parse_branch_argument(&args.git_log_branch);
+/// Run the CLI mode with parsed arguments
+async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> Result<()> {
+    // ~~~ Consolidate Arguments ~~~
+    let effective_output = args.output_file.clone().or(args.output.clone());
+    // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
+    let no_clipboard = args.no_clipboard || effective_output.as_ref().is_some_and(|f| f == "-");
 
-    configuration
-        .diff_enabled(args.diff)
-        .diff_branches(diff_branches)
-        .log_branches(log_branches);
-
-    // Boolean arguments
-    configuration
-        .no_ignore(args.no_ignore)
-        .hidden(args.hidden)
-        .no_codeblock(args.no_codeblock)
-        .follow_symlinks(args.follow_symlinks)
-        .token_map_enabled(args.token_map);
-
-    // ~~~ Code2Prompt ~~~
-    let mut session = Code2PromptSession::new(configuration.build()?);
+    // ~~~ Create Session ~~~
     let spinner = if !args.quiet {
         Some(setup_spinner("Traversing directory and building tree..."))
     } else {
@@ -133,7 +79,6 @@ fn main() -> Result<()> {
     };
 
     // ~~~ Gather Repository Data ~~~
-    // Load Codebase
     session.load_codebase().unwrap_or_else(|e| {
         if let Some(ref s) = spinner {
             s.finish_with_message("Failed!".red().to_string());
@@ -198,7 +143,7 @@ fn main() -> Result<()> {
 
     // Data
     let mut data = session.build_template_data();
-    handle_undefined_variables(&mut data, &template_str)?;
+    config::handle_undefined_variables(&mut data, &session.config.template_str)?;
     debug!(
         "JSON Data: {}",
         serde_json::to_string_pretty(&data).unwrap()
@@ -270,47 +215,41 @@ fn main() -> Result<()> {
 
     // ~~~ Copy to Clipboard ~~~
     if !no_clipboard {
-        #[cfg(target_os = "linux")]
-        {
-            use clipboard::spawn_clipboard_daemon;
-            spawn_clipboard_daemon(&rendered.prompt)?;
-        }
-        #[cfg(not(target_os = "linux"))]
-        {
-            use crate::clipboard::copy_text_to_clipboard;
-            match copy_text_to_clipboard(&rendered.prompt) {
-                Ok(_) => {
-                    if !args.quiet {
-                        println!(
-                            "{}{}{} {}",
-                            "[".bold().white(),
-                            "✓".bold().green(),
-                            "]".bold().white(),
-                            "Copied to clipboard successfully.".green()
-                        );
-                    }
+        use crate::clipboard::copy_to_clipboard;
+        match copy_to_clipboard(&rendered.prompt) {
+            Ok(_) => {
+                if !args.quiet {
+                    println!(
+                        "{}{}{} {}",
+                        "[".bold().white(),
+                        "✓".bold().green(),
+                        "]".bold().white(),
+                        "Copied to clipboard successfully.".green()
+                    );
                 }
-                Err(e) => {
-                    if !args.quiet {
-                        eprintln!(
-                            "{}{}{} {}",
-                            "[".bold().white(),
-                            "!".bold().red(),
-                            "]".bold().white(),
-                            format!("Failed to copy to clipboard: {}", e).red()
-                        );
-                    }
-                    // Always print the prompt if clipboard fails, regardless of quiet mode
-                    println!("{}", &rendered.prompt);
+            }
+            Err(e) => {
+                if !args.quiet {
+                    eprintln!(
+                        "{}{}{} {}",
+                        "[".bold().white(),
+                        "!".bold().red(),
+                        "]".bold().white(),
+                        format!("Failed to copy to clipboard: {}", e).red()
+                    );
                 }
+                // optional: fallback
+                println!("{}", &rendered.prompt);
             }
         }
     }
 
     // ~~~ Output File ~~~
-    if let Some(output_path) = &args.output_file {
-        write_to_file(output_path, &rendered.prompt, args.quiet)?;
-    }
+    output_prompt(
+        effective_output.as_deref().map(std::path::Path::new),
+        &rendered.prompt,
+        !args.quiet,
+    )?;
 
     Ok(())
 }
@@ -337,78 +276,39 @@ fn setup_spinner(message: &str) -> ProgressBar {
     spinner
 }
 
-/// Parses the branch argument from command line options.
-///
-/// Takes an optional vector of strings and converts it to a tuple of two branch names
-/// if exactly two branches are provided.
-///
-/// # Arguments
-///
-/// * `branch_arg` - An optional vector containing branch names
-///
-/// # Returns
-///
-/// * `Option<(String, String)>` - A tuple of (from_branch, to_branch) if two branches were provided, None otherwise
-fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, String)> {
-    match branch_arg {
-        Some(branches) if branches.len() == 2 => Some((branches[0].clone(), branches[1].clone())),
-        _ => None,
-    }
-}
-
-/// Loads a template from a file path or returns default values.
-///
-/// # Arguments
-///
-/// * `template_arg` - An optional path to a template file
-///
-/// # Returns
-///
-/// * `Result<(String, String)>` - A tuple containing (template_content, template_name)
-///   where template_name is "custom" for user-provided templates or "default" otherwise
-pub fn parse_template(template_arg: &Option<PathBuf>) -> Result<(String, String)> {
-    match template_arg {
-        Some(path) => {
-            let template_str =
-                std::fs::read_to_string(path).context("Failed to load custom template file")?;
-            Ok((template_str, "custom".to_string()))
-        }
-        None => Ok(("".to_string(), "default".to_string())),
-    }
-}
-
-/// Handles user-defined variables in the template and adds them to the data.
-///
-/// # Arguments
-///
-/// * `data` - The JSON data object.
-/// * `template_content` - The template content string.
-///
-/// # Returns
-///
-/// * `Result<()>` - An empty result indicating success or an error.
-pub fn handle_undefined_variables(
-    data: &mut serde_json::Value,
-    template_content: &str,
+// ~~~ Output to file or stdout ~~~
+fn output_prompt(
+    effective_output: Option<&std::path::Path>,
+    rendered: &str,
+    quiet: bool,
 ) -> Result<()> {
-    let undefined_variables = extract_undefined_variables(template_content);
-    let mut user_defined_vars = serde_json::Map::new();
+    let output_path = match effective_output {
+        Some(path) => path,
+        None => return Ok(()), // nothing to do
+    };
 
-    for var in undefined_variables.iter() {
-        if !data.as_object().unwrap().contains_key(var) {
-            let prompt = format!("Enter value for '{}': ", var);
-            let answer = Text::new(&prompt)
-                .with_help_message("Fill user defined variable in template")
-                .prompt()
-                .unwrap_or_default();
-            user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
+    let path_str = output_path.to_string_lossy();
+    if path_str == "-" {
+        // stdout
+        print!("{}", rendered);
+        std::io::stdout()
+            .flush()
+            .context("Failed to flush stdout")?;
+    } else {
+        // file
+        write_to_file(&path_str, rendered)
+            .context(format!("Failed to write to file: {}", path_str))?;
+
+        if !quiet {
+            println!(
+                "{}{}{} {}",
+                "[".bold().white(),
+                "✓".bold().green(),
+                "]".bold().white(),
+                format!("Prompt written to file: {}", path_str).green()
+            );
         }
     }
 
-    if let Some(obj) = data.as_object_mut() {
-        for (key, value) in user_defined_vars {
-            obj.insert(key, value);
-        }
-    }
     Ok(())
 }

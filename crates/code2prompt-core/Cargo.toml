@@ -1,9 +1,9 @@
 [package]
 name = "code2prompt_core"
-version = "3.2.0"
+version = "4.0.0"
 authors = [
     "Mufeed VH <mufeed@lyminal.space>",
-    "Olivier D'Ancona <olivier.dancona@master.hes-so.ch>",
+    "Olivier D'Ancona <olivier_dancona@hotmail.com>",
 ]
 description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
 keywords = ["code", "ingestion", "prompt", "llm", "agent"]
@@ -14,7 +14,6 @@ repository = "https://github.com/mufeedvh/code2prompt"
 license = "MIT"
 exclude = [".github/*", ".assets/*"]
 edition = "2021"
-build = "build.rs"
 readme = "../../README.md"
 
 
@@ -39,6 +38,7 @@ git2 = { workspace = true }
 once_cell = { workspace = true }
 globset = { workspace = true }
 derive_builder = { workspace = true }
+bracoxide = { workspace = true }
 
 [lib]
 name = "code2prompt_core"

@@ -1,6 +1,6 @@
 //! This module contains the functions for traversing the directory and processing the files.
 use crate::configuration::Code2PromptConfig;
-use crate::filter::{build_globset, should_include_file};
+use crate::filter::{build_globset, should_include_path};
 use crate::sort::{sort_files, sort_tree, FileSortMethod};
 use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
@@ -64,15 +64,17 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
     for entry in walker {
         let path = entry.path();
         if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
-            let file_match = should_include_file(
+            // Use layered match for files and tree inclusion
+            let entry_match = should_include_path(
                 relative_path,
                 &include_globset,
                 &exclude_globset,
-                config.include_priority,
+                &config.explicit_includes,
+                &config.explicit_excludes,
             );
 
             // ~~~ Directory Tree ~~~
-            let include_in_tree = config.full_directory_tree || file_match;
+            let include_in_tree = config.full_directory_tree || entry_match;
 
             if include_in_tree {
                 let mut current_tree = &mut tree;
@@ -93,11 +95,11 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
             }
 
             // ~~~ Processing File ~~~
-            if path.is_file() && file_match {
+            if path.is_file() && entry_match {
                 if let Ok(metadata) = entry.metadata() {
                     if let Ok(code_bytes) = fs::read(path) {
                         let clean_bytes = strip_utf8_bom(&code_bytes);
-                        let code = String::from_utf8_lossy(&clean_bytes);
+                        let code = String::from_utf8_lossy(clean_bytes);
 
                         let code_block = wrap_code_block(
                             &code,

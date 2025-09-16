@@ -1,11 +1,13 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
+use log::debug;
+use std::fmt;
 use std::str::FromStr;
 use std::sync::OnceLock;
 use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
-use log::debug;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub enum TokenFormat {
+    #[default]
     Raw,
     Format,
 }
@@ -25,21 +27,37 @@ impl FromStr for TokenFormat {
     }
 }
 
-impl Default for TokenFormat {
-    fn default() -> Self {
-        TokenFormat::Raw
+impl fmt::Display for TokenFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TokenFormat::Raw => write!(f, "Raw"),
+            TokenFormat::Format => write!(f, "Formatted"),
+        }
     }
 }
 
 /// Tokenizer types supported by tiktoken.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TokenizerType {
     O200kBase,
+    #[default]
     Cl100kBase,
     P50kBase,
     P50kEdit,
     R50kBase,
     Gpt2,
+}
+
+impl fmt::Display for TokenizerType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TokenizerType::O200kBase => write!(f, "o200k (GPT-4o)"),
+            TokenizerType::Cl100kBase => write!(f, "cl100k (ChatGPT)"),
+            TokenizerType::P50kBase => write!(f, "p50k (Code models)"),
+            TokenizerType::P50kEdit => write!(f, "p50k_edit (Edit models)"),
+            TokenizerType::R50kBase | TokenizerType::Gpt2 => write!(f, "r50k (GPT-3)"),
+        }
+    }
 }
 
 /// Returns a description of the tokenizer type.
@@ -71,12 +89,6 @@ impl FromStr for TokenizerType {
             "r50k" | "gpt2" => Ok(TokenizerType::R50kBase),
             _ => Err(()),
         }
-    }
-}
-
-impl Default for TokenizerType {
-    fn default() -> Self {
-        TokenizerType::Cl100kBase
     }
 }
 
