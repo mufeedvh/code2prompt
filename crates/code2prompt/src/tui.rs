@@ -30,7 +30,7 @@ pub enum InputMode {
     Normal,
     Search,
 }
-use crate::utils::build_file_tree_from_session;
+use crate::utils::{build_file_tree_from_session, build_lightweight_file_tree};
 
 pub struct TuiApp {
     model: Model,
@@ -575,14 +575,29 @@ impl TuiApp {
             }
 
             crate::model::Cmd::RefreshFileTree => {
-                // Build file tree using session data
-                match build_file_tree_from_session(&mut self.model.session) {
-                    Ok(tree) => {
-                        self.model.file_tree.set_file_tree(tree);
-                        self.model.status_message = "File tree refreshed".to_string();
+                // Use lightweight tree for initial navigation, full tree only when needed
+                if self.model.session.data.files.is_none() {
+                    // First time: use lightweight tree for fast startup
+                    match build_lightweight_file_tree(&self.model.session.config.path) {
+                        Ok(tree) => {
+                            self.model.file_tree.set_file_tree(tree);
+                            self.model.status_message =
+                                "File tree loaded (lightweight mode)".to_string();
+                        }
+                        Err(e) => {
+                            self.model.status_message = format!("Error loading files: {}", e);
+                        }
                     }
-                    Err(e) => {
-                        self.model.status_message = format!("Error loading files: {}", e);
+                } else {
+                    // Subsequent refreshes: use full tree with session data
+                    match build_file_tree_from_session(&mut self.model.session) {
+                        Ok(tree) => {
+                            self.model.file_tree.set_file_tree(tree);
+                            self.model.status_message = "File tree refreshed".to_string();
+                        }
+                        Err(e) => {
+                            self.model.status_message = format!("Error loading files: {}", e);
+                        }
                     }
                 }
             }

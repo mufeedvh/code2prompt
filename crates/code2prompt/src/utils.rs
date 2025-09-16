@@ -12,10 +12,12 @@ use crate::model::FileNode;
 
 /// Build a file tree using session data from core traversal
 pub fn build_file_tree_from_session(session: &mut Code2PromptSession) -> Result<Vec<FileNode>> {
-    // Load codebase data using the session
-    session
-        .load_codebase()
-        .context("Failed to load codebase from session")?;
+    // Only load codebase if not already loaded (performance optimization)
+    if session.data.files.is_none() {
+        session
+            .load_codebase()
+            .context("Failed to load codebase from session")?;
+    }
 
     // Get the files data from session
     let files_data = session
@@ -42,6 +44,38 @@ pub fn build_file_tree_from_session(session: &mut Code2PromptSession) -> Result<
     Ok(root_nodes)
 }
 
+/// Build a lightweight file tree for navigation only (no file content loading)
+pub fn build_lightweight_file_tree(root_path: &std::path::Path) -> Result<Vec<FileNode>> {
+    let entries = fs::read_dir(root_path).context("Failed to read root directory")?;
+    let mut root_children = Vec::new();
+
+    for entry in entries {
+        let entry = entry.context("Failed to read directory entry")?;
+        let path = entry.path();
+
+        let mut node = FileNode::new(path, 0);
+
+        // For directories, mark as not loaded for lazy loading
+        if node.is_directory {
+            node.children_loaded = false;
+        }
+
+        // Don't pre-select any files in lightweight mode
+        node.is_selected = false;
+
+        root_children.push(node);
+    }
+
+    // Sort nodes
+    root_children.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
+    });
+
+    Ok(root_children)
+}
+
 /// Build directory hierarchy from file paths - simplified approach
 fn build_directory_hierarchy(
     root: &std::path::Path,
@@ -64,73 +98,16 @@ fn build_directory_hierarchy(
             file_path == &relative_str || file_path.starts_with(&format!("{}/", relative_str))
         });
 
-        // For directories, recursively load if they contain session files
+        // For directories, mark as not loaded for lazy loading
+        // This prevents initial recursive loading and improves performance
         if node.is_directory {
-            let has_session_files = file_paths
-                .iter()
-                .any(|file_path| file_path.starts_with(&format!("{}/", relative_str)));
-
-            if has_session_files {
-                // Load children for this directory since it contains files from session
-                if let Ok(children) = build_directory_children(root, &node.path, file_paths, 1) {
-                    node.children = children;
-                    node.is_expanded = true;
-                }
-            }
+            node.children_loaded = false;
         }
 
         root_children.push(node);
     }
 
     Ok(root_children)
-}
-
-/// Recursively build children for a directory  
-fn build_directory_children(
-    root: &std::path::Path,
-    dir_path: &std::path::Path,
-    file_paths: &[String],
-    level: usize,
-) -> Result<Vec<FileNode>> {
-    if level > 3 {
-        return Ok(Vec::new()); // Prevent too deep recursion
-    }
-
-    let entries = fs::read_dir(dir_path).context("Failed to read directory")?;
-    let mut children = Vec::new();
-
-    for entry in entries {
-        let entry = entry.context("Failed to read directory entry")?;
-        let path = entry.path();
-
-        let mut node = FileNode::new(path, level);
-
-        // Check selection against session data
-        let relative_path = node.path.strip_prefix(root).unwrap_or(&node.path);
-        let relative_str = relative_path.to_string_lossy();
-
-        node.is_selected = file_paths.contains(&relative_str.to_string());
-
-        // Recursively load subdirectories that contain session files
-        if node.is_directory {
-            let has_session_files = file_paths
-                .iter()
-                .any(|file_path| file_path.starts_with(&format!("{}/", relative_str)));
-
-            if has_session_files {
-                if let Ok(grandchildren) =
-                    build_directory_children(root, &node.path, file_paths, level + 1)
-                {
-                    node.children = grandchildren;
-                    node.is_expanded = true;
-                }
-            }
-        }
-
-        children.push(node);
-    }
-
-    Ok(children)
 }
 
 /// Sort file nodes (directories first, then alphabetically)

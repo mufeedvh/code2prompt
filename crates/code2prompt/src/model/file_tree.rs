@@ -24,6 +24,7 @@ pub struct FileNode {
     pub is_selected: bool,
     pub children: Vec<FileNode>,
     pub level: usize,
+    pub children_loaded: bool,
 }
 
 impl FileTreeState {
@@ -64,6 +65,15 @@ impl FileTreeState {
     pub fn collapse_directory(&mut self, path: &std::path::Path) {
         let path_str = path.to_string_lossy();
         Self::set_directory_expanded(&mut self.file_tree, &path_str, false);
+    }
+
+    /// Load children for a directory if not already loaded
+    pub fn load_directory_children(
+        &mut self,
+        path: &std::path::Path,
+    ) -> Result<(), std::io::Error> {
+        let path_str = path.to_string_lossy();
+        Self::load_children_for_path(&mut self.file_tree, &path_str)
     }
 
     fn toggle_directory_selection_recursive(nodes: &mut [FileNode], path: &str, selected: bool) {
@@ -175,6 +185,39 @@ impl FileTreeState {
         // Fallback to contains
         text.to_lowercase().contains(&pattern.to_lowercase())
     }
+
+    /// Load children for a specific directory path
+    fn load_children_for_path(nodes: &mut [FileNode], path: &str) -> Result<(), std::io::Error> {
+        for node in nodes {
+            if node.path.to_string_lossy() == path && node.is_directory && !node.children_loaded {
+                // Load children from filesystem
+                let entries = std::fs::read_dir(&node.path)?;
+                let mut children = Vec::new();
+
+                for entry in entries {
+                    let entry = entry?;
+                    let child_path = entry.path();
+                    let child_node = FileNode::new(child_path, node.level + 1);
+                    children.push(child_node);
+                }
+
+                // Sort children (directories first, then alphabetically)
+                children.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => a.name.cmp(&b.name),
+                });
+
+                node.children = children;
+                node.children_loaded = true;
+                return Ok(());
+            }
+            if !node.children.is_empty() {
+                Self::load_children_for_path(&mut node.children, path)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl FileNode {
@@ -194,6 +237,7 @@ impl FileNode {
             is_selected: false,
             children: Vec::new(),
             level,
+            children_loaded: false,
         }
     }
 }
