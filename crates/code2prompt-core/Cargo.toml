@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt_core"
-version = "3.4.0"
+version = "4.0.0"
 authors = [
     "Mufeed VH <mufeed@lyminal.space>",
     "Olivier D'Ancona <olivier_dancona@hotmail.com>",
