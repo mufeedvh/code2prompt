@@ -7,7 +7,7 @@ license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "3.4.0" }
+code2prompt_core = { path = "../code2prompt-core", version = "4.0.0" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
