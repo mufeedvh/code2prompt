@@ -3,16 +3,15 @@
 //! This module contains pure functions that format data for display in the TUI.
 //! These functions were previously scattered in Model and widgets.
 
+use code2prompt_core::sort::FileSortMethod;
+use code2prompt_core::template::OutputFormat;
 use code2prompt_core::tokenizer::TokenFormat;
+use code2prompt_core::{session::Code2PromptSession, tokenizer::TokenizerType};
 
 use crate::model::{SettingType, SettingsGroup, SettingsItem};
 
 /// Format settings groups for display
-pub fn format_settings_groups(
-    session: &code2prompt_core::session::Code2PromptSession,
-) -> Vec<SettingsGroup> {
-    use code2prompt_core::template::OutputFormat;
-
+pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup> {
     vec![
         SettingsGroup {
             name: "Output Format".to_string(),
@@ -52,7 +51,10 @@ pub fn format_settings_groups(
                     name: "Token Format".to_string(),
                     description: "How to display token counts".to_string(),
                     setting_type: SettingType::Choice {
-                        options: vec!["Raw".to_string(), "Formatted".to_string()],
+                        options: vec![
+                            TokenFormat::Raw.to_string(),
+                            TokenFormat::Format.to_string(),
+                        ],
                         selected: match session.config.token_format {
                             TokenFormat::Raw => 0,
                             TokenFormat::Format => 1,
@@ -73,16 +75,16 @@ pub fn format_settings_groups(
                 description: "How to sort files in output".to_string(),
                 setting_type: SettingType::Choice {
                     options: vec![
-                        "Name (A→Z)".to_string(),
-                        "Name (Z→A)".to_string(),
-                        "Date (Old→New)".to_string(),
-                        "Date (New→Old)".to_string(),
+                        FileSortMethod::NameAsc.to_string(),
+                        FileSortMethod::NameDesc.to_string(),
+                        FileSortMethod::DateAsc.to_string(),
+                        FileSortMethod::DateDesc.to_string(),
                     ],
                     selected: match session.config.sort_method {
-                        Some(code2prompt_core::sort::FileSortMethod::NameAsc) => 0,
-                        Some(code2prompt_core::sort::FileSortMethod::NameDesc) => 1,
-                        Some(code2prompt_core::sort::FileSortMethod::DateAsc) => 2,
-                        Some(code2prompt_core::sort::FileSortMethod::DateDesc) => 3,
+                        Some(FileSortMethod::NameAsc) => 0,
+                        Some(FileSortMethod::NameDesc) => 1,
+                        Some(FileSortMethod::DateAsc) => 2,
+                        Some(FileSortMethod::DateDesc) => 3,
                         None => 0,
                     },
                 },
@@ -95,19 +97,18 @@ pub fn format_settings_groups(
                 description: "Encoding method for token counting".to_string(),
                 setting_type: SettingType::Choice {
                     options: vec![
-                        "cl100k (ChatGPT)".to_string(),
-                        "o200k (GPT-4o)".to_string(),
-                        "p50k (Code models)".to_string(),
-                        "p50k_edit (Edit models)".to_string(),
-                        "r50k (GPT-3)".to_string(),
+                        TokenizerType::Cl100kBase.to_string(),
+                        TokenizerType::O200kBase.to_string(),
+                        TokenizerType::P50kBase.to_string(),
+                        TokenizerType::P50kEdit.to_string(),
+                        TokenizerType::R50kBase.to_string(),
                     ],
                     selected: match session.config.encoding {
-                        code2prompt_core::tokenizer::TokenizerType::Cl100kBase => 0,
-                        code2prompt_core::tokenizer::TokenizerType::O200kBase => 1,
-                        code2prompt_core::tokenizer::TokenizerType::P50kBase => 2,
-                        code2prompt_core::tokenizer::TokenizerType::P50kEdit => 3,
-                        code2prompt_core::tokenizer::TokenizerType::R50kBase
-                        | code2prompt_core::tokenizer::TokenizerType::Gpt2 => 4,
+                        TokenizerType::Cl100kBase => 0,
+                        TokenizerType::O200kBase => 1,
+                        TokenizerType::P50kBase => 2,
+                        TokenizerType::P50kEdit => 3,
+                        TokenizerType::R50kBase | TokenizerType::Gpt2 => 4,
                     },
                 },
             }],

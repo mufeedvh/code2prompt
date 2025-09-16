@@ -1,6 +1,7 @@
 //! This module provides sorting methods for files and directory trees.
 
 use serde_json::Value;
+use std::fmt;
 use std::str::FromStr;
 use termtree::Tree;
 
@@ -26,6 +27,17 @@ impl FromStr for FileSortMethod {
                 "Invalid sort method: {}. Supported values: name_asc, name_desc, date_asc, date_desc",
                 s
             )),
+        }
+    }
+}
+
+impl fmt::Display for FileSortMethod {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FileSortMethod::NameAsc => write!(f, "Name (A → Z)"),
+            FileSortMethod::NameDesc => write!(f, "Name (Z → A)"),
+            FileSortMethod::DateAsc => write!(f, "Date (Old → New)"),
+            FileSortMethod::DateDesc => write!(f, "Date (New → Old)"),
         }
     }
 }
