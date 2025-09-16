@@ -214,15 +214,15 @@ fn load_templates_from_dir(
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("hbs") {
-                if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
-                    let display_name = if prefix.is_empty() {
-                        name.to_string()
-                    } else {
-                        format!("{}: {}", prefix, name.replace(['-', '_'], " "))
-                    };
-                    templates.push((display_name, path));
-                }
+            if path.extension().and_then(|s| s.to_str()) == Some("hbs")
+                && let Some(name) = path.file_stem().and_then(|s| s.to_str())
+            {
+                let display_name = if prefix.is_empty() {
+                    name.to_string()
+                } else {
+                    format!("{}: {}", prefix, name.replace(['-', '_'], " "))
+                };
+                templates.push((display_name, path));
             }
         }
     }

@@ -251,35 +251,34 @@ impl Model {
 
             Message::ExpandDirectory(index) => {
                 let visible_nodes = new_model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index) {
-                    if node.is_directory {
-                        let node_path = node.path.clone();
-                        let name = node.name.clone();
-                        let needs_loading = !node.children_loaded;
+                if let Some(node) = visible_nodes.get(index)
+                    && node.is_directory
+                {
+                    let node_path = node.path.clone();
+                    let name = node.name.clone();
+                    let needs_loading = !node.children_loaded;
 
-                        // Drop the immutable borrow before making mutable changes
-                        drop(visible_nodes);
+                    // Drop the immutable borrow before making mutable changes
+                    drop(visible_nodes);
 
-                        // First, load children if needed
-                        if needs_loading {
-                            match new_model.file_tree.load_directory_children(&node_path) {
-                                Ok(_) => {
-                                    new_model.status_message =
-                                        format!("Loaded and expanded {}", name);
-                                }
-                                Err(e) => {
-                                    new_model.status_message =
-                                        format!("Failed to load children for {}: {}", name, e);
-                                    return (new_model, Cmd::None);
-                                }
+                    // First, load children if needed
+                    if needs_loading {
+                        match new_model.file_tree.load_directory_children(&node_path) {
+                            Ok(_) => {
+                                new_model.status_message = format!("Loaded and expanded {}", name);
+                            }
+                            Err(e) => {
+                                new_model.status_message =
+                                    format!("Failed to load children for {}: {}", name, e);
+                                return (new_model, Cmd::None);
                             }
                         }
+                    }
 
-                        // Then expand the directory
-                        new_model.file_tree.expand_directory(&node_path);
-                        if !needs_loading {
-                            new_model.status_message = format!("Expanded {}", name);
-                        }
+                    // Then expand the directory
+                    new_model.file_tree.expand_directory(&node_path);
+                    if !needs_loading {
+                        new_model.status_message = format!("Expanded {}", name);
                     }
                 }
                 (new_model, Cmd::None)
@@ -287,17 +286,17 @@ impl Model {
 
             Message::CollapseDirectory(index) => {
                 let visible_nodes = new_model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index) {
-                    if node.is_directory {
-                        let node_path = node.path.clone();
-                        let name = node.name.clone();
+                if let Some(node) = visible_nodes.get(index)
+                    && node.is_directory
+                {
+                    let node_path = node.path.clone();
+                    let name = node.name.clone();
 
-                        // Drop the immutable borrow before making mutable changes
-                        drop(visible_nodes);
+                    // Drop the immutable borrow before making mutable changes
+                    drop(visible_nodes);
 
-                        new_model.file_tree.collapse_directory(&node_path);
-                        new_model.status_message = format!("Collapsed {}", name);
-                    }
+                    new_model.file_tree.collapse_directory(&node_path);
+                    new_model.status_message = format!("Collapsed {}", name);
                 }
                 (new_model, Cmd::None)
             }

@@ -8,8 +8,8 @@ use crate::configuration::Code2PromptConfig;
 use crate::filter::{build_globset, should_include_path};
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
-use crate::template::{handlebars_setup, render_template, OutputFormat};
-use crate::tokenizer::{count_tokens, TokenizerType};
+use crate::template::{OutputFormat, handlebars_setup, render_template};
+use crate::tokenizer::{TokenizerType, count_tokens};
 
 /// Represents a live session that holds stateful data about the user's codebase,
 /// including which files have been added or removed, or other data that evolves over time.
@@ -166,11 +166,11 @@ impl Code2PromptSession {
         });
 
         // Add user-defined variables to the template data
-        if !self.config.user_variables.is_empty() {
-            if let Some(obj) = data.as_object_mut() {
-                for (key, value) in &self.config.user_variables {
-                    obj.insert(key.clone(), serde_json::Value::String(value.clone()));
-                }
+        if !self.config.user_variables.is_empty()
+            && let Some(obj) = data.as_object_mut()
+        {
+            for (key, value) in &self.config.user_variables {
+                obj.insert(key.clone(), serde_json::Value::String(value.clone()));
             }
         }
 

@@ -10,14 +10,14 @@ use code2prompt_core::session::Code2PromptSession;
 use crossterm::{
     event::{self, Event, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     prelude::*,
     widgets::*,
 };
-use std::io::{stdout, Stdout};
+use std::io::{Stdout, stdout};
 use tokio::sync::mpsc;
 
 use crate::model::{Message, Model, Tab};
@@ -89,11 +89,12 @@ impl TuiApp {
             tokio::select! {
                 // Handle keyboard events
                 _ = tokio::time::sleep(tokio::time::Duration::from_millis(50)) => {
-                    if event::poll(std::time::Duration::from_millis(0))? {
-                        if let Event::Key(key) = event::read()? {
-                            if key.kind == KeyEventKind::Press {
-                                // Convert crossterm KeyEvent to ratatui KeyEvent
-                                let ratatui_key = KeyEvent {
+                    if event::poll(std::time::Duration::from_millis(0))?
+                        && let Event::Key(key) = event::read()?
+                        && key.kind == KeyEventKind::Press
+                    {
+                        // Convert crossterm KeyEvent to ratatui KeyEvent
+                        let ratatui_key = KeyEvent {
                                     code: match key.code {
                                         crossterm::event::KeyCode::Backspace => KeyCode::Backspace,
                                         crossterm::event::KeyCode::Enter => KeyCode::Enter,
@@ -161,10 +162,8 @@ impl TuiApp {
                                     state: ratatui::crossterm::event::KeyEventState::from_bits_truncate(key.state.bits()),
                                 };
 
-                                if let Some(message) = self.handle_key_event(ratatui_key) {
-                                    self.handle_message(message)?;
-                                }
-                            }
+                        if let Some(message) = self.handle_key_event(ratatui_key) {
+                            self.handle_message(message)?;
                         }
                     }
                 }
@@ -447,14 +446,10 @@ impl TuiApp {
                                 let variables = self.model.template.get_organized_variables();
                                 if let Some(var) =
                                     variables.get(self.model.template.variables.cursor)
-                                {
-                                    if var.category
+                                    && var.category
                                         == crate::model::template::VariableCategory::Missing
-                                    {
-                                        return Some(Message::VariableStartEditing(
-                                            var.name.clone(),
-                                        ));
-                                    }
+                                {
+                                    return Some(Message::VariableStartEditing(var.name.clone()));
                                 }
                                 return None;
                             }
