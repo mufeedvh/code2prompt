@@ -321,6 +321,7 @@ impl Model {
                     let cmd = Cmd::RunAnalysis {
                         session: Box::new(new_model.session.clone()),
                         template_content: new_model.template.get_template_content().to_string(),
+                        user_variables: new_model.template.variables.user_variables.clone(),
                     };
                     (new_model, cmd)
                 } else {

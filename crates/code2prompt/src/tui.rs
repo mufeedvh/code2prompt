@@ -590,6 +590,7 @@ impl TuiApp {
             crate::model::Cmd::RunAnalysis {
                 session,
                 template_content,
+                user_variables,
             } => {
                 // Run analysis in background
                 let mut session = *session;
@@ -599,6 +600,9 @@ impl TuiApp {
                     // Set custom template content
                     session.config.template_str = template_content;
                     session.config.template_name = "Custom Template".to_string();
+
+                    // Transfer user variables from TUI to session config
+                    session.config.user_variables = user_variables;
 
                     match session.generate_prompt() {
                         Ok(rendered) => {

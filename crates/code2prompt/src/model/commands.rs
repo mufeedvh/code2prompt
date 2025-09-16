@@ -5,6 +5,7 @@
 //! file I/O, and clipboard operations.
 
 use code2prompt_core::session::Code2PromptSession;
+use std::collections::HashMap;
 
 /// Commands represent side effects that should be executed after model updates.
 /// This allows Model::update() to remain pure while still triggering necessary
@@ -18,6 +19,7 @@ pub enum Cmd {
     RunAnalysis {
         session: Box<Code2PromptSession>,
         template_content: String,
+        user_variables: HashMap<String, String>,
     },
 
     /// Copy text to clipboard
