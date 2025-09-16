@@ -383,6 +383,7 @@ fn should_enable_colors() -> bool {
     // On Windows, enable ANSI support
     #[cfg(windows)]
     {
+        use log::error;
         match ansi_term::enable_ansi_support() {
             Ok(_) => true,
             Err(_) => {
