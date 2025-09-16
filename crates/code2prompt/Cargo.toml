@@ -1,13 +1,13 @@
 [package]
 name = "code2prompt"
-version = "4.0.0"
+version = "4.0.1"
 edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "4.0.0" }
+code2prompt_core = { path = "../code2prompt-core", version = "4.0.1" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
