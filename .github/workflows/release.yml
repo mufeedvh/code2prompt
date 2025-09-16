@@ -18,12 +18,14 @@ jobs:
             target: x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     outputs:
       asset-path: ${{ steps.set_asset.outputs.asset-path }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -32,12 +34,38 @@ jobs:
           target: ${{ matrix.target }}
           override: true
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
+
       - name: Install extra dependencies on Ubuntu
         if: runner.os == 'Linux'
         run: |
           if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
             sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
           fi
+
+      - name: Cache LLVM on Windows
+        if: runner.os == 'Windows'
+        id: cache-llvm
+        uses: actions/cache@v4
+        with:
+          path: C:\Program Files\LLVM
+          key: windows-llvm-latest
+          
+      - name: Install LLVM on Windows
+        if: runner.os == 'Windows' && steps.cache-llvm.outputs.cache-hit != 'true'
+        run: |
+          choco install llvm
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
