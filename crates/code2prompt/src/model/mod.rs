@@ -8,7 +8,6 @@
 pub mod commands;
 pub mod file_tree;
 pub mod prompt_output;
-pub mod session;
 pub mod settings;
 pub mod statistics;
 pub mod template;
@@ -16,7 +15,6 @@ pub mod template;
 pub use commands::*;
 pub use file_tree::*;
 pub use prompt_output::*;
-pub use session::*;
 pub use settings::*;
 pub use statistics::*;
 pub use template::*;
@@ -86,7 +84,7 @@ pub enum Message {
 /// Represents the overall state of the TUI application.
 #[derive(Debug, Clone)]
 pub struct Model {
-    pub session: SessionState,
+    pub session: Code2PromptSession,
     pub current_tab: Tab,
     pub should_quit: bool,
     pub file_tree: FileTreeState,
@@ -99,10 +97,11 @@ pub struct Model {
 
 impl Default for Model {
     fn default() -> Self {
-        let session_state = SessionState::default();
+        let config = code2prompt_core::configuration::Code2PromptConfig::default();
+        let session = Code2PromptSession::new(config);
 
         Model {
-            session: session_state,
+            session,
             current_tab: Tab::FileTree,
             should_quit: false,
             file_tree: FileTreeState::default(),
@@ -118,7 +117,7 @@ impl Default for Model {
 impl Model {
     pub fn new(session: Code2PromptSession) -> Self {
         Model {
-            session: SessionState::new(session),
+            session,
             current_tab: Tab::FileTree,
             should_quit: false,
             file_tree: FileTreeState::default(),
@@ -132,7 +131,7 @@ impl Model {
 
     /// Get grouped settings for display
     pub fn get_settings_groups(&self) -> Vec<SettingsGroup> {
-        crate::view::format_settings_groups(&self.session.session)
+        crate::view::format_settings_groups(&self.session)
     }
 
     pub fn update(&self, message: Message) -> (Self, Cmd) {
@@ -204,7 +203,7 @@ impl Model {
             Message::MoveSettingsCursor(delta) => {
                 let settings_count = new_model
                     .settings
-                    .get_settings_items(&new_model.session.session)
+                    .get_settings_items(&new_model.session)
                     .len();
                 if settings_count > 0 {
                     let new_cursor = if delta > 0 {
@@ -234,9 +233,9 @@ impl Model {
 
                     // Update session selection
                     if !current {
-                        new_model.session.session.include_file(node_path.clone());
+                        new_model.session.include_file(node_path.clone());
                     } else {
-                        new_model.session.session.exclude_file(node_path.clone());
+                        new_model.session.exclude_file(node_path.clone());
                     }
 
                     new_model
@@ -287,7 +286,7 @@ impl Model {
             Message::ToggleSetting(index) => {
                 if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
                     let setting_name = new_model.settings.update_setting_by_key(
-                        &mut new_model.session.session,
+                        &mut new_model.session,
                         key,
                         SettingAction::Toggle,
                     );
@@ -301,7 +300,7 @@ impl Model {
             Message::CycleSetting(index) => {
                 if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
                     let setting_name = new_model.settings.update_setting_by_key(
-                        &mut new_model.session.session,
+                        &mut new_model.session,
                         key,
                         SettingAction::Cycle,
                     );
@@ -320,7 +319,7 @@ impl Model {
                     new_model.current_tab = Tab::PromptOutput; // Switch to output tab
 
                     let cmd = Cmd::RunAnalysis {
-                        session: Box::new(new_model.session.session.clone()),
+                        session: Box::new(new_model.session.clone()),
                         template_content: new_model.template.get_template_content().to_string(),
                     };
                     (new_model, cmd)

@@ -576,7 +576,7 @@ impl TuiApp {
 
             crate::model::Cmd::RefreshFileTree => {
                 // Build file tree using session data
-                match build_file_tree_from_session(&mut self.model.session.session) {
+                match build_file_tree_from_session(&mut self.model.session) {
                     Ok(tree) => {
                         self.model.file_tree.set_file_tree(tree);
                         self.model.status_message = "File tree refreshed".to_string();

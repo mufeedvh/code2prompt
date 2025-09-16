@@ -129,7 +129,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
                 "  • Total Tokens: {}",
                 crate::model::StatisticsState::format_number(
                     token_count,
-                    &self.model.session.session.config.token_format
+                    &self.model.session.config.token_format
                 )
             )));
             if selected_count > 0 {
@@ -138,7 +138,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
                     "  • Avg per File: {}",
                     crate::model::StatisticsState::format_number(
                         avg_tokens,
-                        &self.model.session.session.config.token_format
+                        &self.model.session.config.token_format
                     )
                 )));
             }
@@ -156,7 +156,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ),
         );
 
-        let output_format = match self.model.session.session.config.output_format {
+        let output_format = match self.model.session.config.output_format {
             code2prompt_core::template::OutputFormat::Markdown => "Markdown",
             code2prompt_core::template::OutputFormat::Json => "JSON",
             code2prompt_core::template::OutputFormat::Xml => "XML",
@@ -164,7 +164,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         stats_items.push(ListItem::new(format!("  • Output: {}", output_format)));
         stats_items.push(ListItem::new(format!(
             "  • Line Numbers: {}",
-            if self.model.session.session.config.line_numbers {
+            if self.model.session.config.line_numbers {
                 "On"
             } else {
                 "Off"
@@ -172,7 +172,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         )));
         stats_items.push(ListItem::new(format!(
             "  • Git Diff: {}",
-            if self.model.session.session.config.diff_enabled {
+            if self.model.session.config.diff_enabled {
                 "On"
             } else {
                 "Off"
@@ -181,8 +181,8 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
 
         let pattern_summary = format!(
             "  • Patterns: {} include, {} exclude",
-            self.model.session.session.config.include_patterns.len(),
-            self.model.session.session.config.exclude_patterns.len()
+            self.model.session.config.include_patterns.len(),
+            self.model.session.config.exclude_patterns.len()
         );
         stats_items.push(ListItem::new(pattern_summary));
 

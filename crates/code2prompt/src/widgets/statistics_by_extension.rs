@@ -97,7 +97,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let max_tokens_width = ext_vec
             .iter()
             .map(|(_, tokens, _)| {
-                Self::format_number(*tokens, &self.model.session.session.config.token_format).len()
+                Self::format_number(*tokens, &self.model.session.config.token_format).len()
             })
             .max()
             .unwrap_or(6)
@@ -162,7 +162,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
 
                 // Format with dynamic column widths
                 let formatted_tokens =
-                    Self::format_number(*tokens, &self.model.session.session.config.token_format);
+                    Self::format_number(*tokens, &self.model.session.config.token_format);
                 let content = format!(
                     "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {:>width_count$} files",
                     extension,

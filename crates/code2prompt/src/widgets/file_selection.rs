@@ -136,44 +136,20 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
         Widget::render(search_widget, layout[1], buf);
 
         // Pattern info
-        let include_text = if self
-            .model
-            .session
-            .session
-            .config
-            .include_patterns
-            .is_empty()
-        {
+        let include_text = if self.model.session.config.include_patterns.is_empty() {
             "All files".to_string()
         } else {
             format!(
                 "Include: {}",
-                self.model
-                    .session
-                    .session
-                    .config
-                    .include_patterns
-                    .join(", ")
+                self.model.session.config.include_patterns.join(", ")
             )
         };
-        let exclude_text = if self
-            .model
-            .session
-            .session
-            .config
-            .exclude_patterns
-            .is_empty()
-        {
+        let exclude_text = if self.model.session.config.exclude_patterns.is_empty() {
             "".to_string()
         } else {
             format!(
                 " | Exclude: {}",
-                self.model
-                    .session
-                    .session
-                    .config
-                    .exclude_patterns
-                    .join(", ")
+                self.model.session.config.exclude_patterns.join(", ")
             )
         };
         let pattern_info = format!("{}{}", include_text, exclude_text);
