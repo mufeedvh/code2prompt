@@ -5,13 +5,17 @@
 //! and all state management submodules. It serves as the central state container
 //! for the terminal user interface.
 
+pub mod cache;
 pub mod commands;
+pub mod event_optimizer;
 pub mod prompt_output;
 pub mod settings;
 pub mod statistics;
 pub mod template;
 
+pub use cache::*;
 pub use commands::*;
+pub use event_optimizer::*;
 pub use prompt_output::*;
 pub use settings::*;
 pub use statistics::*;
@@ -214,6 +218,11 @@ pub struct Model {
     pub template: TemplateState,
     pub prompt_output: PromptOutputState,
     pub status_message: String,
+
+    // Performance optimization caches
+    pub visible_nodes_cache: VisibleNodesCache,
+    pub scroll_cache: ScrollCache,
+    pub performance_metrics: PerformanceMetrics,
 }
 
 impl Default for Model {
@@ -234,6 +243,9 @@ impl Default for Model {
             template: TemplateState::default(),
             prompt_output: PromptOutputState::default(),
             status_message: String::new(),
+            visible_nodes_cache: VisibleNodesCache::default(),
+            scroll_cache: ScrollCache::default(),
+            performance_metrics: PerformanceMetrics::default(),
         }
     }
 }
@@ -253,6 +265,9 @@ impl Model {
             template: TemplateState::default(),
             prompt_output: PromptOutputState::default(),
             status_message: String::new(),
+            visible_nodes_cache: VisibleNodesCache::default(),
+            scroll_cache: ScrollCache::default(),
+            performance_metrics: PerformanceMetrics::default(),
         }
     }
 

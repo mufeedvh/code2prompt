@@ -20,7 +20,7 @@ use ratatui::{
 use std::io::{Stdout, stdout};
 use tokio::sync::mpsc;
 
-use crate::model::{Message, Model, Tab};
+use crate::model::{EventOptimizer, Message, Model, Tab};
 use crate::widgets::*;
 
 use crate::token_map::generate_token_map_with_limit;
@@ -38,6 +38,7 @@ pub struct TuiApp {
     message_tx: mpsc::UnboundedSender<Message>,
     message_rx: mpsc::UnboundedReceiver<Message>,
     input_mode: InputMode,
+    event_optimizer: EventOptimizer,
 }
 
 impl TuiApp {
@@ -70,113 +71,64 @@ impl TuiApp {
             message_tx,
             message_rx,
             input_mode: InputMode::Normal,
+            event_optimizer: EventOptimizer::new(60), // 60 FPS
         })
     }
 
-    // ~~~ Main Loop ~~~
+    // ~~~ Optimized Main Loop ~~~
     pub async fn run(&mut self) -> Result<()> {
         // Initialize file tree
         self.handle_message(Message::RefreshFileTree)?;
 
         loop {
-            // Draw UI
-            let model = self.model.clone();
-            self.terminal.draw(|frame| {
-                TuiApp::render_with_model(&model, frame);
-            })?;
+            // Process all available events with coalescing
+            let mut messages = Vec::new();
 
-            // Handle events with timeout
-            tokio::select! {
-                // Handle keyboard events
-                _ = tokio::time::sleep(tokio::time::Duration::from_millis(50)) => {
-                    if event::poll(std::time::Duration::from_millis(0))?
-                        && let Event::Key(key) = event::read()?
-                        && key.kind == KeyEventKind::Press
-                    {
-                        // Convert crossterm KeyEvent to ratatui KeyEvent
-                        let ratatui_key = KeyEvent {
-                                    code: match key.code {
-                                        crossterm::event::KeyCode::Backspace => KeyCode::Backspace,
-                                        crossterm::event::KeyCode::Enter => KeyCode::Enter,
-                                        crossterm::event::KeyCode::Left => KeyCode::Left,
-                                        crossterm::event::KeyCode::Right => KeyCode::Right,
-                                        crossterm::event::KeyCode::Up => KeyCode::Up,
-                                        crossterm::event::KeyCode::Down => KeyCode::Down,
-                                        crossterm::event::KeyCode::Home => KeyCode::Home,
-                                        crossterm::event::KeyCode::End => KeyCode::End,
-                                        crossterm::event::KeyCode::PageUp => KeyCode::PageUp,
-                                        crossterm::event::KeyCode::PageDown => KeyCode::PageDown,
-                                        crossterm::event::KeyCode::Tab => KeyCode::Tab,
-                                        crossterm::event::KeyCode::BackTab => KeyCode::BackTab,
-                                        crossterm::event::KeyCode::Delete => KeyCode::Delete,
-                                        crossterm::event::KeyCode::Insert => KeyCode::Insert,
-                                        crossterm::event::KeyCode::F(n) => KeyCode::F(n),
-                                        crossterm::event::KeyCode::Char(c) => KeyCode::Char(c),
-                                        crossterm::event::KeyCode::Null => KeyCode::Null,
-                                        crossterm::event::KeyCode::Esc => KeyCode::Esc,
-                                        crossterm::event::KeyCode::CapsLock => KeyCode::CapsLock,
-                                        crossterm::event::KeyCode::ScrollLock => KeyCode::ScrollLock,
-                                        crossterm::event::KeyCode::NumLock => KeyCode::NumLock,
-                                        crossterm::event::KeyCode::PrintScreen => KeyCode::PrintScreen,
-                                        crossterm::event::KeyCode::Pause => KeyCode::Pause,
-                                        crossterm::event::KeyCode::Menu => KeyCode::Menu,
-                                        crossterm::event::KeyCode::KeypadBegin => KeyCode::KeypadBegin,
-                                        crossterm::event::KeyCode::Media(media) => KeyCode::Media(match media {
-                                            crossterm::event::MediaKeyCode::Play => ratatui::crossterm::event::MediaKeyCode::Play,
-                                            crossterm::event::MediaKeyCode::Pause => ratatui::crossterm::event::MediaKeyCode::Pause,
-                                            crossterm::event::MediaKeyCode::PlayPause => ratatui::crossterm::event::MediaKeyCode::PlayPause,
-                                            crossterm::event::MediaKeyCode::Reverse => ratatui::crossterm::event::MediaKeyCode::Reverse,
-                                            crossterm::event::MediaKeyCode::Stop => ratatui::crossterm::event::MediaKeyCode::Stop,
-                                            crossterm::event::MediaKeyCode::FastForward => ratatui::crossterm::event::MediaKeyCode::FastForward,
-                                            crossterm::event::MediaKeyCode::Rewind => ratatui::crossterm::event::MediaKeyCode::Rewind,
-                                            crossterm::event::MediaKeyCode::TrackNext => ratatui::crossterm::event::MediaKeyCode::TrackNext,
-                                            crossterm::event::MediaKeyCode::TrackPrevious => ratatui::crossterm::event::MediaKeyCode::TrackPrevious,
-                                            crossterm::event::MediaKeyCode::Record => ratatui::crossterm::event::MediaKeyCode::Record,
-                                            crossterm::event::MediaKeyCode::LowerVolume => ratatui::crossterm::event::MediaKeyCode::LowerVolume,
-                                            crossterm::event::MediaKeyCode::RaiseVolume => ratatui::crossterm::event::MediaKeyCode::RaiseVolume,
-                                            crossterm::event::MediaKeyCode::MuteVolume => ratatui::crossterm::event::MediaKeyCode::MuteVolume,
-                                        }),
-                                        crossterm::event::KeyCode::Modifier(modifier) => KeyCode::Modifier(match modifier {
-                                            crossterm::event::ModifierKeyCode::LeftShift => ratatui::crossterm::event::ModifierKeyCode::LeftShift,
-                                            crossterm::event::ModifierKeyCode::LeftControl => ratatui::crossterm::event::ModifierKeyCode::LeftControl,
-                                            crossterm::event::ModifierKeyCode::LeftAlt => ratatui::crossterm::event::ModifierKeyCode::LeftAlt,
-                                            crossterm::event::ModifierKeyCode::LeftSuper => ratatui::crossterm::event::ModifierKeyCode::LeftSuper,
-                                            crossterm::event::ModifierKeyCode::LeftHyper => ratatui::crossterm::event::ModifierKeyCode::LeftHyper,
-                                            crossterm::event::ModifierKeyCode::LeftMeta => ratatui::crossterm::event::ModifierKeyCode::LeftMeta,
-                                            crossterm::event::ModifierKeyCode::RightShift => ratatui::crossterm::event::ModifierKeyCode::RightShift,
-                                            crossterm::event::ModifierKeyCode::RightControl => ratatui::crossterm::event::ModifierKeyCode::RightControl,
-                                            crossterm::event::ModifierKeyCode::RightAlt => ratatui::crossterm::event::ModifierKeyCode::RightAlt,
-                                            crossterm::event::ModifierKeyCode::RightSuper => ratatui::crossterm::event::ModifierKeyCode::RightSuper,
-                                            crossterm::event::ModifierKeyCode::RightHyper => ratatui::crossterm::event::ModifierKeyCode::RightHyper,
-                                            crossterm::event::ModifierKeyCode::RightMeta => ratatui::crossterm::event::ModifierKeyCode::RightMeta,
-                                            crossterm::event::ModifierKeyCode::IsoLevel3Shift => ratatui::crossterm::event::ModifierKeyCode::IsoLevel3Shift,
-                                            crossterm::event::ModifierKeyCode::IsoLevel5Shift => ratatui::crossterm::event::ModifierKeyCode::IsoLevel5Shift,
-                                        }),
-                                    },
-                                    modifiers: KeyModifiers::from_bits_truncate(key.modifiers.bits()),
-                                    kind: match key.kind {
-                                        crossterm::event::KeyEventKind::Press => ratatui::crossterm::event::KeyEventKind::Press,
-                                        crossterm::event::KeyEventKind::Repeat => ratatui::crossterm::event::KeyEventKind::Repeat,
-                                        crossterm::event::KeyEventKind::Release => ratatui::crossterm::event::KeyEventKind::Release,
-                                    },
-                                    state: ratatui::crossterm::event::KeyEventState::from_bits_truncate(key.state.bits()),
-                                };
+            // Drain all available keyboard events
+            while crossterm::event::poll(std::time::Duration::from_millis(0))? {
+                if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
+                    if key.kind == crossterm::event::KeyEventKind::Press {
+                        // Convert to ratatui KeyEvent
+                        let ratatui_key = self.convert_crossterm_key(key);
 
+                        // Handle the key event
                         if let Some(message) = self.handle_key_event(ratatui_key) {
-                            self.handle_message(message)?;
+                            // Try to coalesce similar events
+                            if let Some(last_message) = messages.last_mut() {
+                                if self.try_coalesce_messages(last_message, &message) {
+                                    continue; // Message was coalesced
+                                }
+                            }
+                            messages.push(message);
                         }
                     }
                 }
+            }
 
-                // Handle internal messages
-                Some(message) = self.message_rx.recv() => {
-                    self.handle_message(message)?;
-                }
+            // Handle all messages
+            for message in messages {
+                self.handle_message(message)?;
+            }
+
+            // Handle internal messages (non-blocking)
+            while let Ok(message) = self.message_rx.try_recv() {
+                self.handle_message(message)?;
+            }
+
+            // Render only if throttler allows (60 FPS max)
+            if self.event_optimizer.should_render() {
+                let model = self.model.clone();
+                self.terminal.draw(|frame| {
+                    TuiApp::render_with_model(&model, frame);
+                })?;
             }
 
             if self.model.should_quit {
                 break;
             }
+
+            // Small sleep to prevent busy waiting
+            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
         }
 
         Ok(())
@@ -721,6 +673,69 @@ impl TuiApp {
             .block(Block::default().borders(Borders::ALL))
             .style(Style::default().fg(Color::Cyan));
         frame.render_widget(status_widget, area);
+    }
+
+    /// Convert crossterm KeyEvent to ratatui KeyEvent
+    fn convert_crossterm_key(&self, key: crossterm::event::KeyEvent) -> KeyEvent {
+        use ratatui::crossterm::event::{KeyCode, KeyEventKind, KeyEventState, KeyModifiers};
+
+        KeyEvent {
+            code: match key.code {
+                crossterm::event::KeyCode::Backspace => KeyCode::Backspace,
+                crossterm::event::KeyCode::Enter => KeyCode::Enter,
+                crossterm::event::KeyCode::Left => KeyCode::Left,
+                crossterm::event::KeyCode::Right => KeyCode::Right,
+                crossterm::event::KeyCode::Up => KeyCode::Up,
+                crossterm::event::KeyCode::Down => KeyCode::Down,
+                crossterm::event::KeyCode::Home => KeyCode::Home,
+                crossterm::event::KeyCode::End => KeyCode::End,
+                crossterm::event::KeyCode::PageUp => KeyCode::PageUp,
+                crossterm::event::KeyCode::PageDown => KeyCode::PageDown,
+                crossterm::event::KeyCode::Tab => KeyCode::Tab,
+                crossterm::event::KeyCode::BackTab => KeyCode::BackTab,
+                crossterm::event::KeyCode::Delete => KeyCode::Delete,
+                crossterm::event::KeyCode::Insert => KeyCode::Insert,
+                crossterm::event::KeyCode::F(n) => KeyCode::F(n),
+                crossterm::event::KeyCode::Char(c) => KeyCode::Char(c),
+                crossterm::event::KeyCode::Null => KeyCode::Null,
+                crossterm::event::KeyCode::Esc => KeyCode::Esc,
+                _ => KeyCode::Null, // Simplified for other key codes
+            },
+            modifiers: KeyModifiers::from_bits_truncate(key.modifiers.bits()),
+            kind: match key.kind {
+                crossterm::event::KeyEventKind::Press => KeyEventKind::Press,
+                crossterm::event::KeyEventKind::Repeat => KeyEventKind::Repeat,
+                crossterm::event::KeyEventKind::Release => KeyEventKind::Release,
+            },
+            state: KeyEventState::from_bits_truncate(key.state.bits()),
+        }
+    }
+
+    /// Try to coalesce two messages if they are similar (e.g., scroll events)
+    fn try_coalesce_messages(&self, last_message: &mut Message, new_message: &Message) -> bool {
+        match (last_message, new_message) {
+            (Message::MoveTreeCursor(delta1), Message::MoveTreeCursor(delta2)) => {
+                *delta1 += delta2;
+                true
+            }
+            (Message::MoveSettingsCursor(delta1), Message::MoveSettingsCursor(delta2)) => {
+                *delta1 += delta2;
+                true
+            }
+            (Message::ScrollStatistics(delta1), Message::ScrollStatistics(delta2)) => {
+                *delta1 += delta2;
+                true
+            }
+            (Message::ScrollOutput(delta1), Message::ScrollOutput(delta2)) => {
+                *delta1 += delta2;
+                true
+            }
+            (Message::TemplatePickerMove(delta1), Message::TemplatePickerMove(delta2)) => {
+                *delta1 += delta2;
+                true
+            }
+            _ => false, // Cannot coalesce these messages
+        }
     }
 }
 
