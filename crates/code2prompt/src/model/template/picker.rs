@@ -68,9 +68,13 @@ impl PickerState {
 
         // Load templates from default directory using utility function
         if let Ok(all_templates) = crate::utils::load_all_templates() {
-            for (name, path, is_builtin) in all_templates {
+            for (name, path) in all_templates {
+                let is_builtin = false; // All templates from load_all_templates are custom
                 if is_builtin {
-                    self.default_templates.push(TemplateFile { name, path });
+                    self.default_templates.push(TemplateFile {
+                        name,
+                        path: PathBuf::from(path),
+                    });
                 }
             }
         }
@@ -82,10 +86,12 @@ impl PickerState {
 
         // Load templates from custom directory using utility function
         if let Ok(all_templates) = crate::utils::load_all_templates() {
-            for (name, path, is_builtin) in all_templates {
-                if !is_builtin {
-                    self.custom_templates.push(TemplateFile { name, path });
-                }
+            for (name, path) in all_templates {
+                // All templates from load_all_templates are custom
+                self.custom_templates.push(TemplateFile {
+                    name,
+                    path: PathBuf::from(path),
+                });
             }
         }
     }

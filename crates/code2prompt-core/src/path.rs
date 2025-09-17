@@ -1,6 +1,6 @@
 //! This module contains the functions for traversing the directory and processing the files.
 use crate::configuration::Code2PromptConfig;
-use crate::filter::{build_globset, should_include_path};
+use crate::filter::{build_globset, should_include_file};
 use crate::sort::{FileSortMethod, sort_files, sort_tree};
 use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
@@ -36,12 +36,16 @@ impl From<&std::fs::Metadata> for EntryMetadata {
 /// # Arguments
 ///
 /// * `config` - Configuration object containing path, include/exclude patterns, and other settings
+/// * `selection_engine` - Optional SelectionEngine for advanced file selection with user actions
 ///
 /// # Returns
 ///
 /// * `Result<(String, Vec<serde_json::Value>)>` - A tuple containing the string representation of the directory
 ///   tree and a vector of JSON representations of the files
-pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<serde_json::Value>)> {
+pub fn traverse_directory(
+    config: &Code2PromptConfig,
+    mut selection_engine: Option<&mut crate::selection::SelectionEngine>,
+) -> Result<(String, Vec<serde_json::Value>)> {
     // ~~~ Initialization ~~~
     let mut files = Vec::new();
     let canonical_root_path = config.path.canonicalize()?;
@@ -64,14 +68,14 @@ pub fn traverse_directory(config: &Code2PromptConfig) -> Result<(String, Vec<ser
     for entry in walker {
         let path = entry.path();
         if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
-            // Use layered match for files and tree inclusion
-            let entry_match = should_include_path(
-                relative_path,
-                &include_globset,
-                &exclude_globset,
-                &config.explicit_includes,
-                &config.explicit_excludes,
-            );
+            // Use SelectionEngine if available, otherwise fall back to pattern matching
+            let entry_match = if let Some(engine) = selection_engine.as_mut() {
+                // New logic: use SelectionEngine (which integrates with FilterEngine)
+                engine.is_selected(relative_path)
+            } else {
+                // Existing logic: use direct pattern matching for compatibility
+                should_include_file(relative_path, &include_globset, &exclude_globset)
+            };
 
             // ~~~ Directory Tree ~~~
             let include_in_tree = config.full_directory_tree || entry_match;

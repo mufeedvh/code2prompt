@@ -6,14 +6,12 @@
 //! for the terminal user interface.
 
 pub mod commands;
-pub mod file_tree;
 pub mod prompt_output;
 pub mod settings;
 pub mod statistics;
 pub mod template;
 
 pub use commands::*;
-pub use file_tree::*;
 pub use prompt_output::*;
 pub use settings::*;
 pub use statistics::*;
@@ -29,6 +27,126 @@ pub enum Tab {
     Statistics,
     Template,
     PromptOutput,
+}
+
+/// Hierarchical file node for TUI display with proper parent-child relationships
+#[derive(Debug, Clone)]
+pub struct DisplayFileNode {
+    pub path: std::path::PathBuf,
+    pub name: String,
+    pub is_directory: bool,
+    pub is_expanded: bool,
+    pub level: usize,
+    pub children_loaded: bool,
+    pub children: Vec<DisplayFileNode>,
+}
+
+impl DisplayFileNode {
+    pub fn new(path: std::path::PathBuf, level: usize) -> Self {
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.to_string_lossy().to_string());
+
+        let is_directory = path.is_dir();
+
+        Self {
+            path,
+            name,
+            is_directory,
+            is_expanded: false,
+            level,
+            children_loaded: false,
+            children: Vec::new(),
+        }
+    }
+
+    /// Find a node by path in the tree (recursive)
+    pub fn find_node_mut(&mut self, target_path: &std::path::Path) -> Option<&mut DisplayFileNode> {
+        if self.path == target_path {
+            return Some(self);
+        }
+
+        for child in &mut self.children {
+            if let Some(found) = child.find_node_mut(target_path) {
+                return Some(found);
+            }
+        }
+
+        None
+    }
+
+    /// Load children for this directory node
+    pub fn load_children(
+        &mut self,
+        session: &mut code2prompt_core::session::Code2PromptSession,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if !self.is_directory || self.children_loaded {
+            return Ok(());
+        }
+
+        self.children.clear();
+
+        // Use ignore crate to respect gitignore
+        use ignore::WalkBuilder;
+        let walker = WalkBuilder::new(&self.path).max_depth(Some(1)).build();
+
+        for entry in walker {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path == self.path {
+                continue; // Skip self
+            }
+
+            let mut child = DisplayFileNode::new(path.to_path_buf(), self.level + 1);
+
+            // Auto-expand if contains selected files
+            if child.is_directory && directory_contains_selected_files(&child.path, session) {
+                child.is_expanded = true;
+            }
+
+            self.children.push(child);
+        }
+
+        // Sort children: directories first, then alphabetically
+        self.children
+            .sort_by(|a, b| match (a.is_directory, b.is_directory) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.name.cmp(&b.name),
+            });
+
+        self.children_loaded = true;
+        Ok(())
+    }
+}
+
+/// Check if a directory contains any selected files (helper function)
+fn directory_contains_selected_files(
+    dir_path: &std::path::Path,
+    session: &mut code2prompt_core::session::Code2PromptSession,
+) -> bool {
+    if let Ok(entries) = std::fs::read_dir(dir_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let relative_path = if let Ok(rel) = path.strip_prefix(&session.config.path) {
+                rel
+            } else {
+                continue;
+            };
+
+            if session.is_file_selected(relative_path) {
+                return true;
+            }
+
+            // Recursively check subdirectories
+            if path.is_dir() && directory_contains_selected_files(&path, session) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// Messages for updating the model
@@ -87,7 +205,10 @@ pub struct Model {
     pub session: Code2PromptSession,
     pub current_tab: Tab,
     pub should_quit: bool,
-    pub file_tree: FileTreeState,
+    pub file_tree_nodes: Vec<DisplayFileNode>,
+    pub search_query: String,
+    pub tree_cursor: usize,
+    pub file_tree_scroll: u16,
     pub settings: SettingsState,
     pub statistics: StatisticsState,
     pub template: TemplateState,
@@ -104,7 +225,10 @@ impl Default for Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
-            file_tree: FileTreeState::default(),
+            file_tree_nodes: Vec::new(),
+            search_query: String::new(),
+            tree_cursor: 0,
+            file_tree_scroll: 0,
             settings: SettingsState::default(),
             statistics: StatisticsState::default(),
             template: TemplateState::default(),
@@ -120,7 +244,10 @@ impl Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
-            file_tree: FileTreeState::default(),
+            file_tree_nodes: Vec::new(),
+            search_query: String::new(),
+            tree_cursor: 0,
+            file_tree_scroll: 0,
             settings: SettingsState::default(),
             statistics: StatisticsState::default(),
             template: TemplateState::default(),
@@ -156,8 +283,8 @@ impl Model {
             }
 
             Message::UpdateSearchQuery(query) => {
-                new_model.file_tree.search_query = query;
-                new_model.file_tree.tree_cursor = 0; // Reset cursor when search changes
+                new_model.search_query = query;
+                new_model.tree_cursor = 0; // Reset cursor when search changes
                 (new_model, Cmd::None)
             }
 
@@ -172,29 +299,31 @@ impl Model {
             }
 
             Message::MoveTreeCursor(delta) => {
-                let visible_count = new_model.file_tree.get_visible_nodes().len();
+                let visible_nodes = crate::utils::get_visible_nodes(
+                    &new_model.file_tree_nodes,
+                    &new_model.search_query,
+                    &mut new_model.session,
+                );
+                let visible_count = visible_nodes.len();
+
                 if visible_count > 0 {
                     let new_cursor = if delta > 0 {
-                        (new_model.file_tree.tree_cursor + delta as usize).min(visible_count - 1)
+                        (new_model.tree_cursor + delta as usize).min(visible_count - 1)
                     } else {
-                        new_model
-                            .file_tree
-                            .tree_cursor
-                            .saturating_sub((-delta) as usize)
+                        new_model.tree_cursor.saturating_sub((-delta) as usize)
                     };
-                    new_model.file_tree.tree_cursor = new_cursor;
+                    new_model.tree_cursor = new_cursor;
 
                     let viewport_height = 20;
-                    let cursor_pos = new_model.file_tree.tree_cursor as u16;
-                    let current_scroll = new_model.file_tree.file_tree_scroll;
+                    let cursor_pos = new_model.tree_cursor as u16;
+                    let current_scroll = new_model.file_tree_scroll;
 
                     if cursor_pos < current_scroll {
                         // Cursor is above visible area, scroll up
-                        new_model.file_tree.file_tree_scroll = cursor_pos;
+                        new_model.file_tree_scroll = cursor_pos;
                     } else if cursor_pos >= current_scroll + viewport_height {
                         // Cursor is below visible area, scroll down
-                        new_model.file_tree.file_tree_scroll =
-                            cursor_pos.saturating_sub(viewport_height - 1);
+                        new_model.file_tree_scroll = cursor_pos.saturating_sub(viewport_height - 1);
                     }
                 }
                 (new_model, Cmd::None)
@@ -221,26 +350,28 @@ impl Model {
             }
 
             Message::ToggleFileSelection(index) => {
-                let visible_nodes = new_model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index) {
-                    let node_path = node.path.clone();
-                    let name = node.name.clone();
-                    let is_directory = node.is_directory;
-                    let current = node.is_selected;
+                let visible_nodes = crate::utils::get_visible_nodes(
+                    &new_model.file_tree_nodes,
+                    &new_model.search_query,
+                    &mut new_model.session,
+                );
 
-                    // Drop the immutable borrow before making mutable changes
-                    drop(visible_nodes);
+                if let Some(display_node) = visible_nodes.get(index) {
+                    let node_path = display_node.node.path.clone();
+                    let name = display_node.node.name.clone();
+                    let is_directory = display_node.node.is_directory;
+                    let current = display_node.is_selected;
 
-                    // Update session selection
-                    if !current {
-                        new_model.session.include_file(node_path.clone());
-                    } else {
-                        new_model.session.exclude_file(node_path.clone());
-                    }
+                    // Convert to relative path for session
+                    let relative_path =
+                        if let Ok(rel) = node_path.strip_prefix(&new_model.session.config.path) {
+                            rel.to_path_buf()
+                        } else {
+                            node_path.clone()
+                        };
 
-                    new_model
-                        .file_tree
-                        .update_node_selection(&node_path, !current, is_directory);
+                    // Update session selection state (single source of truth)
+                    new_model.session.toggle_file_selection(relative_path);
 
                     let action = if current { "Deselected" } else { "Selected" };
                     let extra = if is_directory { " (and contents)" } else { "" };
@@ -250,53 +381,88 @@ impl Model {
             }
 
             Message::ExpandDirectory(index) => {
-                let visible_nodes = new_model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index)
-                    && node.is_directory
+                let visible_nodes = crate::utils::get_visible_nodes(
+                    &new_model.file_tree_nodes,
+                    &new_model.search_query,
+                    &mut new_model.session,
+                );
+
+                if let Some(display_node) = visible_nodes.get(index)
+                    && display_node.node.is_directory
                 {
-                    let node_path = node.path.clone();
-                    let name = node.name.clone();
-                    let needs_loading = !node.children_loaded;
+                    let node_path = display_node.node.path.clone();
+                    let name = display_node.node.name.clone();
 
-                    // Drop the immutable borrow before making mutable changes
-                    drop(visible_nodes);
+                    // Ensure the path exists in the tree first
+                    if let Err(e) = crate::utils::ensure_path_exists_in_tree(
+                        &mut new_model.file_tree_nodes,
+                        &node_path,
+                        &mut new_model.session,
+                    ) {
+                        new_model.status_message =
+                            format!("Failed to ensure path exists for {}: {}", name, e);
+                        return (new_model, Cmd::None);
+                    }
 
-                    // First, load children if needed
-                    if needs_loading {
-                        match new_model.file_tree.load_directory_children(&node_path) {
-                            Ok(_) => {
-                                new_model.status_message = format!("Loaded and expanded {}", name);
+                    // Find and expand the node in the tree
+                    let mut found = false;
+                    for root_node in &mut new_model.file_tree_nodes {
+                        if let Some(node) = root_node.find_node_mut(&node_path) {
+                            if !node.is_expanded {
+                                node.is_expanded = true;
+                                // Load children if not already loaded
+                                if !node.children_loaded
+                                    && let Err(e) = node.load_children(&mut new_model.session)
+                                {
+                                    new_model.status_message =
+                                        format!("Failed to load children for {}: {}", name, e);
+                                    return (new_model, Cmd::None);
+                                }
+                                new_model.status_message = format!("Expanded {}", name);
+                            } else {
+                                new_model.status_message = format!("{} is already expanded", name);
                             }
-                            Err(e) => {
-                                new_model.status_message =
-                                    format!("Failed to load children for {}: {}", name, e);
-                                return (new_model, Cmd::None);
-                            }
+                            found = true;
+                            break;
                         }
                     }
 
-                    // Then expand the directory
-                    new_model.file_tree.expand_directory(&node_path);
-                    if !needs_loading {
-                        new_model.status_message = format!("Expanded {}", name);
+                    if !found {
+                        new_model.status_message = format!("Could not find directory {}", name);
                     }
                 }
                 (new_model, Cmd::None)
             }
 
             Message::CollapseDirectory(index) => {
-                let visible_nodes = new_model.file_tree.get_visible_nodes();
-                if let Some(node) = visible_nodes.get(index)
-                    && node.is_directory
+                let visible_nodes = crate::utils::get_visible_nodes(
+                    &new_model.file_tree_nodes,
+                    &new_model.search_query,
+                    &mut new_model.session,
+                );
+
+                if let Some(display_node) = visible_nodes.get(index)
+                    && display_node.node.is_directory
                 {
-                    let node_path = node.path.clone();
-                    let name = node.name.clone();
+                    let node_path = display_node.node.path.clone();
+                    let name = display_node.node.name.clone();
 
-                    // Drop the immutable borrow before making mutable changes
-                    drop(visible_nodes);
+                    // Find and collapse the node in the tree
+                    let mut found = false;
+                    for root_node in &mut new_model.file_tree_nodes {
+                        if let Some(node) = root_node.find_node_mut(&node_path)
+                            && node.is_expanded
+                        {
+                            node.is_expanded = false;
+                            new_model.status_message = format!("Collapsed {}", name);
+                            found = true;
+                            break;
+                        }
+                    }
 
-                    new_model.file_tree.collapse_directory(&node_path);
-                    new_model.status_message = format!("Collapsed {}", name);
+                    if !found {
+                        new_model.status_message = format!("Could not find directory {}", name);
+                    }
                 }
                 (new_model, Cmd::None)
             }
@@ -337,7 +503,6 @@ impl Model {
                     new_model.current_tab = Tab::PromptOutput; // Switch to output tab
 
                     let cmd = Cmd::RunAnalysis {
-                        session: Box::new(new_model.session.clone()),
                         template_content: new_model.template.get_template_content().to_string(),
                         user_variables: new_model.template.variables.user_variables.clone(),
                     };

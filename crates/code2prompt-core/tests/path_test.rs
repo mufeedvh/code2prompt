@@ -2,7 +2,7 @@ use code2prompt_core::configuration::Code2PromptConfig;
 use code2prompt_core::path::traverse_directory;
 use colored::*;
 use log::{debug, info};
-use std::fs::{self, read_to_string, File};
+use std::fs::{self, File, read_to_string};
 use std::io::Write;
 use std::path::Path;
 use std::sync::Once;
@@ -92,7 +92,7 @@ mod tests {
             .build()
             .expect("Failed to build config");
 
-        let result = traverse_directory(&config);
+        let result = traverse_directory(&config, None);
         let (tree_str, files) = result.unwrap();
 
         // Must contain both included.txt and ignored.txt because .gitignore is ignored
@@ -119,7 +119,7 @@ mod tests {
             .build()
             .expect("Failed to build config");
 
-        let result = traverse_directory(&config);
+        let result = traverse_directory(&config, None);
         let (tree_str, files) = result.unwrap();
 
         // Must contain included.txt but NOT ignored.txt

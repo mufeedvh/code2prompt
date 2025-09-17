@@ -5,7 +5,7 @@
 
 pub mod types;
 
-use crate::model::FileNode;
+use crate::model::DisplayFileNode;
 pub use types::*;
 
 /// Statistics state containing all statistics-related data
@@ -27,28 +27,16 @@ impl Default for StatisticsState {
 }
 
 impl StatisticsState {
-    /// Count selected files in the tree (moved from widget)
-    pub fn count_selected_files(nodes: &[FileNode]) -> usize {
-        let mut count = 0;
-        for node in nodes {
-            if node.is_selected && !node.is_directory {
-                count += 1;
-            }
-            count += Self::count_selected_files(&node.children);
-        }
-        count
+    /// Count selected files using session-based approach
+    pub fn count_selected_files(
+        session: &mut code2prompt_core::session::Code2PromptSession,
+    ) -> usize {
+        session.get_selected_files().unwrap_or_default().len()
     }
 
-    /// Count total files in the tree (moved from widget)
-    pub fn count_total_files(nodes: &[FileNode]) -> usize {
-        let mut count = 0;
-        for node in nodes {
-            if !node.is_directory {
-                count += 1;
-            }
-            count += Self::count_total_files(&node.children);
-        }
-        count
+    /// Count total files in the tree nodes
+    pub fn count_total_files(nodes: &[DisplayFileNode]) -> usize {
+        nodes.iter().filter(|node| !node.is_directory).count()
     }
 
     /// Format number according to token format setting (moved from widget)

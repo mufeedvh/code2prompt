@@ -4,7 +4,6 @@
 //! function to remain pure while still triggering side effects like async operations,
 //! file I/O, and clipboard operations.
 
-use code2prompt_core::session::Code2PromptSession;
 use std::collections::HashMap;
 
 /// Commands represent side effects that should be executed after model updates.
@@ -17,7 +16,6 @@ pub enum Cmd {
 
     /// Run analysis in background
     RunAnalysis {
-        session: Box<Code2PromptSession>,
         template_content: String,
         user_variables: HashMap<String, String>,
     },

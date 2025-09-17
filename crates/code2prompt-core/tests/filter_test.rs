@@ -1,15 +1,13 @@
 /// This file tests the filter logic
 /// Code2prompt uses the file globbing and globpattern to match files
 /// Therefore you can match files:
-use code2prompt_core::filter::{build_globset, should_include_file, should_include_path};
+use code2prompt_core::filter::{build_globset, should_include_file};
 use colored::*;
 use once_cell::sync::Lazy;
-use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let file_path = dir.join(name);
     let parent_dir = file_path.parent().unwrap();
@@ -670,103 +668,5 @@ mod tests {
                 file
             );
         }
-    }
-
-    #[test]
-    fn test_explicit_include_file_overrides_ancestor_exclude() {
-        // Scenario: User runs `code2prompt *.rs`, unselects a folder (goes to explicit_excludes),
-        // then selects a specific file in that folder (goes to explicit_includes).
-        // The specific file should be included despite the ancestor being excluded.
-
-        let mut explicit_includes = HashSet::new();
-        let mut explicit_excludes = HashSet::new();
-
-        // Folder is explicitly excluded
-        explicit_excludes.insert(PathBuf::from("src"));
-
-        // But a specific file in that folder is explicitly included
-        explicit_includes.insert(PathBuf::from("src/main.rs"));
-
-        let include_gs = build_globset(&vec!["*.rs".to_string()]);
-        let exclude_gs = build_globset(&Vec::<String>::new());
-
-        // The specific file should be included despite its parent being excluded
-        assert!(
-            should_include_path(
-                &PathBuf::from("src/main.rs"),
-                &include_gs,
-                &exclude_gs,
-                &explicit_includes,
-                &explicit_excludes,
-            ),
-            "Explicit include of specific file should override ancestor exclude"
-        );
-
-        // But other files in the excluded folder should still be excluded
-        assert!(
-            !should_include_path(
-                &PathBuf::from("src/lib.rs"),
-                &include_gs,
-                &exclude_gs,
-                &explicit_includes,
-                &explicit_excludes,
-            ),
-            "Other files in excluded folder should remain excluded"
-        );
-    }
-
-    #[test]
-    fn test_explicit_include_file_overrides_deeper_ancestor_exclude() {
-        // Test with deeper nesting
-        let mut explicit_includes = HashSet::new();
-        let mut explicit_excludes = HashSet::new();
-
-        // Parent folder is explicitly excluded
-        explicit_excludes.insert(PathBuf::from("src/utils"));
-
-        // But a specific file deep in that folder is explicitly included
-        explicit_includes.insert(PathBuf::from("src/utils/helpers/important.rs"));
-
-        let include_gs = build_globset(&vec!["*.rs".to_string()]);
-        let exclude_gs = build_globset(&Vec::<String>::new());
-
-        // The specific file should be included despite its ancestor being excluded
-        assert!(
-            should_include_path(
-                &PathBuf::from("src/utils/helpers/important.rs"),
-                &include_gs,
-                &exclude_gs,
-                &explicit_includes,
-                &explicit_excludes,
-            ),
-            "Explicit include of specific file should override deeper ancestor exclude"
-        );
-    }
-
-    #[test]
-    fn test_explicit_exclude_file_still_overrides_explicit_include_same_file() {
-        // This test ensures we don't break the existing behavior where
-        // explicit exclude of the SAME file takes precedence over explicit include
-        let mut explicit_includes = HashSet::new();
-        let mut explicit_excludes = HashSet::new();
-
-        // Same file is in both sets
-        explicit_includes.insert(PathBuf::from("src/main.rs"));
-        explicit_excludes.insert(PathBuf::from("src/main.rs"));
-
-        let include_gs = build_globset(&Vec::<String>::new());
-        let exclude_gs = build_globset(&Vec::<String>::new());
-
-        // Explicit exclude should still win when it's the same file
-        assert!(
-            !should_include_path(
-                &PathBuf::from("src/main.rs"),
-                &include_gs,
-                &exclude_gs,
-                &explicit_includes,
-                &explicit_excludes,
-            ),
-            "Explicit exclude of same file should still take precedence over explicit include"
-        );
     }
 }

@@ -4,6 +4,7 @@ pub mod configuration;
 pub mod filter;
 pub mod git;
 pub mod path;
+pub mod selection;
 pub mod session;
 pub mod sort;
 pub mod template;

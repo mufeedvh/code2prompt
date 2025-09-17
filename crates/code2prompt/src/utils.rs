@@ -1,266 +1,254 @@
-//! File system utilities and analysis operations.
+//! Utility functions for the TUI application.
 //!
-//! This module provides utilities for building file trees, handling file selection
-//! patterns, running code analysis, and managing clipboard/file operations.
-//! It bridges the TUI interface with the core code2prompt functionality.
+//! This module contains helper functions for building file trees,
+//! managing file operations, and other utility functions used throughout the TUI.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use code2prompt_core::session::Code2PromptSession;
-use std::fs;
+use std::path::Path;
 
-use crate::model::FileNode;
+use crate::model::DisplayFileNode;
 
-/// Build a file tree using session data from core traversal
-pub fn build_file_tree_from_session(session: &mut Code2PromptSession) -> Result<Vec<FileNode>> {
-    // Only load codebase if not already loaded (performance optimization)
-    if session.data.files.is_none() {
-        session
-            .load_codebase()
-            .context("Failed to load codebase from session")?;
-    }
+/// Build hierarchical file tree from session using traverse_directory with SelectionEngine
+pub fn build_file_tree_from_session(
+    session: &mut Code2PromptSession,
+) -> Result<Vec<DisplayFileNode>> {
+    let mut root_nodes = Vec::new();
 
-    // Get the files data from session
-    let files_data = session
-        .data
-        .files
-        .as_ref()
-        .and_then(|f| f.as_array())
-        .context("No files data available from session")?;
+    // Build root level nodes using ignore crate to respect gitignore
+    use ignore::WalkBuilder;
+    let walker = WalkBuilder::new(&session.config.path)
+        .max_depth(Some(1))
+        .build();
 
-    // Build a hierarchical tree from session file data
-    let mut file_paths = Vec::new();
-    for file_entry in files_data {
-        if let Some(path_str) = file_entry.get("path").and_then(|p| p.as_str()) {
-            file_paths.push(path_str.to_string());
+    for entry in walker {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path == session.config.path {
+            continue; // Skip root directory itself
         }
+
+        let mut node = DisplayFileNode::new(path.to_path_buf(), 0);
+
+        // Auto-expand recursively if directory contains selected files
+        if node.is_directory {
+            auto_expand_recursively(&mut node, session);
+        }
+
+        root_nodes.push(node);
     }
 
-    // Build directory structure
-    let mut root_nodes = build_directory_hierarchy(&session.config.path, &file_paths)?;
-
-    // Sort all nodes
-    sort_nodes(&mut root_nodes);
+    // Sort root nodes: directories first, then alphabetically
+    root_nodes.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
+    });
 
     Ok(root_nodes)
 }
 
-/// Build a lightweight file tree for navigation only (no file content loading)
-pub fn build_lightweight_file_tree(root_path: &std::path::Path) -> Result<Vec<FileNode>> {
-    let entries = fs::read_dir(root_path).context("Failed to read root directory")?;
-    let mut root_children = Vec::new();
+/// Recursively auto-expand directories that contain selected files
+fn auto_expand_recursively(node: &mut DisplayFileNode, session: &mut Code2PromptSession) {
+    if !node.is_directory {
+        return;
+    }
 
-    for entry in entries {
-        let entry = entry.context("Failed to read directory entry")?;
-        let path = entry.path();
-
-        let mut node = FileNode::new(path, 0);
-
-        // For directories, mark as not loaded for lazy loading
-        if node.is_directory {
-            node.children_loaded = false;
+    if directory_contains_selected_files(&node.path, session) {
+        node.is_expanded = true;
+        // Load children
+        if let Err(e) = node.load_children(session) {
+            eprintln!("Warning: Failed to load children for {}: {}", node.name, e);
+            return;
         }
 
-        // Don't pre-select any files in lightweight mode
-        node.is_selected = false;
-
-        root_children.push(node);
-    }
-
-    // Sort nodes
-    root_children.sort_by(|a, b| match (a.is_directory, b.is_directory) {
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        _ => a.name.cmp(&b.name),
-    });
-
-    Ok(root_children)
-}
-
-/// Build directory hierarchy from file paths - simplified approach
-fn build_directory_hierarchy(
-    root: &std::path::Path,
-    file_paths: &[String],
-) -> Result<Vec<FileNode>> {
-    let entries = fs::read_dir(root).context("Failed to read root directory")?;
-    let mut root_children = Vec::new();
-
-    for entry in entries {
-        let entry = entry.context("Failed to read directory entry")?;
-        let path = entry.path();
-
-        let mut node = FileNode::new(path, 0);
-
-        // Check if this file/directory should be selected based on session data
-        let relative_path = node.path.strip_prefix(root).unwrap_or(&node.path);
-        let relative_str = relative_path.to_string_lossy();
-
-        node.is_selected = file_paths.iter().any(|file_path| {
-            file_path == &relative_str || file_path.starts_with(&format!("{}/", relative_str))
-        });
-
-        // For directories, mark as not loaded for lazy loading
-        // This prevents initial recursive loading and improves performance
-        if node.is_directory {
-            node.children_loaded = false;
-        }
-
-        root_children.push(node);
-    }
-
-    Ok(root_children)
-}
-
-/// Sort file nodes (directories first, then alphabetically)
-fn sort_nodes(nodes: &mut Vec<FileNode>) {
-    nodes.sort_by(|a, b| match (a.is_directory, b.is_directory) {
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        _ => a.name.cmp(&b.name),
-    });
-
-    // Recursively sort children
-    for node in nodes {
-        sort_nodes(&mut node.children);
-    }
-}
-
-/// Save text to file
-pub fn save_to_file(filename: &std::path::Path, content: &str) -> Result<()> {
-    use code2prompt_core::template::write_to_file;
-    let filename_str = filename.to_string_lossy();
-    write_to_file(&filename_str, content).context("Failed to save to file")
-}
-
-/// Get the user's code2prompt data directory following platform conventions
-pub fn get_code2prompt_data_dir() -> Result<std::path::PathBuf> {
-    let data_dir = if cfg!(target_os = "linux") {
-        // Linux: ~/.local/share/code2prompt
-        dirs::data_local_dir()
-            .context("Failed to get user data directory")?
-            .join("code2prompt")
-    } else if cfg!(target_os = "windows") {
-        // Windows: %APPDATA%/code2prompt
-        dirs::data_dir()
-            .context("Failed to get user data directory")?
-            .join("code2prompt")
-    } else if cfg!(target_os = "macos") {
-        // macOS: ~/Library/Application Support/code2prompt
-        dirs::data_dir()
-            .context("Failed to get user data directory")?
-            .join("code2prompt")
-    } else {
-        // Fallback for other platforms
-        dirs::data_dir()
-            .context("Failed to get user data directory")?
-            .join("code2prompt")
-    };
-
-    // Create the directory if it doesn't exist
-    if !data_dir.exists() {
-        fs::create_dir_all(&data_dir).context("Failed to create code2prompt data directory")?;
-    }
-
-    Ok(data_dir)
-}
-
-/// Get the default templates directory
-pub fn get_code2prompt_default_templates_dir() -> Result<std::path::PathBuf> {
-    let default_dir = get_code2prompt_data_dir()?.join("default");
-
-    // Create the directory if it doesn't exist
-    if !default_dir.exists() {
-        fs::create_dir_all(&default_dir)
-            .context("Failed to create code2prompt default templates directory")?;
-    }
-
-    Ok(default_dir)
-}
-
-/// Get the custom templates directory
-pub fn get_code2prompt_custom_templates_dir() -> Result<std::path::PathBuf> {
-    let custom_dir = get_code2prompt_data_dir()?.join("custom");
-
-    // Create the directory if it doesn't exist
-    if !custom_dir.exists() {
-        fs::create_dir_all(&custom_dir)
-            .context("Failed to create code2prompt custom templates directory")?;
-    }
-
-    Ok(custom_dir)
-}
-
-/// Save a template to the user's custom templates directory
-pub fn save_template_to_custom_dir(
-    filename: &std::path::Path,
-    content: &str,
-) -> Result<std::path::PathBuf> {
-    let custom_dir = get_code2prompt_custom_templates_dir()?;
-    let filename_str = filename.to_string_lossy();
-    let file_path = custom_dir.join(format!("{}.hbs", filename_str));
-
-    fs::write(&file_path, content)
-        .with_context(|| format!("Failed to save template to {}", file_path.display()))?;
-
-    Ok(file_path)
-}
-
-/// Load templates from a specific directory
-fn load_templates_from_dir(
-    dir: &std::path::Path,
-    prefix: &str,
-) -> Vec<(String, std::path::PathBuf)> {
-    let mut templates = Vec::new();
-
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("hbs")
-                && let Some(name) = path.file_stem().and_then(|s| s.to_str())
-            {
-                let display_name = if prefix.is_empty() {
-                    name.to_string()
-                } else {
-                    format!("{}: {}", prefix, name.replace(['-', '_'], " "))
-                };
-                templates.push((display_name, path));
+        // Recursively auto-expand children
+        for child in &mut node.children {
+            if child.is_directory {
+                auto_expand_recursively(child, session);
             }
         }
     }
-
-    templates
 }
 
-/// Load all available templates from default, custom, and built-in locations
-pub fn load_all_templates() -> Result<Vec<(String, std::path::PathBuf, bool)>> {
-    let mut all_templates = Vec::new();
+/// Check if a directory contains any selected files (helper function)
+fn directory_contains_selected_files(dir_path: &Path, session: &mut Code2PromptSession) -> bool {
+    if let Ok(entries) = std::fs::read_dir(dir_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let relative_path = if let Ok(rel) = path.strip_prefix(&session.config.path) {
+                rel
+            } else {
+                continue;
+            };
 
-    // Load default templates
-    if let Ok(default_dir) = get_code2prompt_default_templates_dir() {
-        let default_templates = load_templates_from_dir(&default_dir, "Default");
-        for (name, path) in default_templates {
-            all_templates.push((name, path, false));
+            if session.is_file_selected(relative_path) {
+                return true;
+            }
+
+            // Recursively check subdirectories
+            if path.is_dir() && directory_contains_selected_files(&path, session) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Get visible nodes for display (flattened tree with search filtering)
+pub fn get_visible_nodes(
+    nodes: &[DisplayFileNode],
+    search_query: &str,
+    session: &mut Code2PromptSession,
+) -> Vec<DisplayNodeWithSelection> {
+    let mut visible = Vec::new();
+    collect_visible_nodes_recursive(nodes, search_query, session, &mut visible);
+    visible
+}
+
+/// Node with selection state for display
+#[derive(Debug, Clone)]
+pub struct DisplayNodeWithSelection {
+    pub node: DisplayFileNode,
+    pub is_selected: bool,
+}
+
+/// Recursively collect visible nodes
+fn collect_visible_nodes_recursive(
+    nodes: &[DisplayFileNode],
+    search_query: &str,
+    session: &mut Code2PromptSession,
+    visible: &mut Vec<DisplayNodeWithSelection>,
+) {
+    for node in nodes {
+        let matches_search = if search_query.is_empty() {
+            true
+        } else {
+            node.name
+                .to_lowercase()
+                .contains(&search_query.to_lowercase())
+                || node
+                    .path
+                    .to_string_lossy()
+                    .to_lowercase()
+                    .contains(&search_query.to_lowercase())
+        };
+
+        if matches_search {
+            let relative_path = if let Ok(rel) = node.path.strip_prefix(&session.config.path) {
+                rel
+            } else {
+                &node.path
+            };
+
+            let is_selected = session.is_file_selected(relative_path);
+
+            visible.push(DisplayNodeWithSelection {
+                node: node.clone(),
+                is_selected,
+            });
+
+            // If this is an expanded directory, recursively add its children
+            if node.is_directory && node.is_expanded {
+                collect_visible_nodes_recursive(&node.children, search_query, session, visible);
+            }
+        }
+    }
+}
+
+/// Save content to a file
+pub fn save_to_file(path: &Path, content: &str) -> Result<()> {
+    std::fs::write(path, content)?;
+    Ok(())
+}
+
+/// Save template to custom directory
+pub fn save_template_to_custom_dir(filename: &Path, content: &str) -> Result<()> {
+    // Create templates directory if it doesn't exist
+    let templates_dir = std::env::current_dir()?.join("templates");
+    std::fs::create_dir_all(&templates_dir)?;
+
+    let full_path = templates_dir.join(filename);
+    std::fs::write(full_path, content)?;
+    Ok(())
+}
+
+/// Load all available templates (placeholder implementation)
+pub fn load_all_templates() -> Result<Vec<(String, String)>> {
+    // This is a placeholder - in the real implementation this would
+    // scan for template files and return (name, content) pairs
+    Ok(vec![(
+        "Default".to_string(),
+        "Default template content".to_string(),
+    )])
+}
+
+/// Ensure a path exists in the file tree by creating missing intermediate nodes
+pub fn ensure_path_exists_in_tree(
+    root_nodes: &mut Vec<DisplayFileNode>,
+    target_path: &Path,
+    session: &mut Code2PromptSession,
+) -> Result<()> {
+    let root_path = &session.config.path;
+
+    // Get relative path components
+    let relative_path = if let Ok(rel) = target_path.strip_prefix(root_path) {
+        rel
+    } else {
+        return Ok(()); // Path is not under root, nothing to do
+    };
+
+    let components: Vec<_> = relative_path.components().collect();
+    if components.is_empty() {
+        return Ok(());
+    }
+
+    // Build path incrementally
+    let mut current_path = root_path.to_path_buf();
+    let mut current_nodes = root_nodes;
+
+    for (level, component) in components.into_iter().enumerate() {
+        current_path.push(component);
+
+        // Find or create node at this level
+        let node_name = component.as_os_str().to_string_lossy().to_string();
+
+        // Look for existing node
+        let existing_index = current_nodes.iter().position(|n| n.name == node_name);
+
+        if let Some(index) = existing_index {
+            // Node exists, ensure it's loaded if it's a directory
+            let node = &mut current_nodes[index];
+            if node.is_directory && !node.children_loaded {
+                let _ = node.load_children(session);
+            }
+            current_nodes = &mut current_nodes[index].children;
+        } else {
+            // Node doesn't exist, create it
+            let mut new_node = DisplayFileNode::new(current_path.clone(), level);
+
+            if new_node.is_directory {
+                let _ = new_node.load_children(session);
+            }
+
+            current_nodes.push(new_node);
+
+            // Sort to maintain order
+            current_nodes.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.name.cmp(&b.name),
+            });
+
+            // Find the newly inserted node
+            let new_index = current_nodes
+                .iter()
+                .position(|n| n.name == node_name)
+                .unwrap();
+            current_nodes = &mut current_nodes[new_index].children;
         }
     }
 
-    // Load custom templates
-    if let Ok(custom_dir) = get_code2prompt_custom_templates_dir() {
-        let custom_templates = load_templates_from_dir(&custom_dir, "Custom");
-        for (name, path) in custom_templates {
-            all_templates.push((name, path, false));
-        }
-    }
-
-    // Load built-in templates from code2prompt_core (embedded as static resources)
-    let builtin_templates = code2prompt_core::builtin_templates::BuiltinTemplates::get_all();
-    for (key, template) in builtin_templates {
-        // Create a virtual path for built-in templates (they don't exist as files)
-        let virtual_path = std::path::PathBuf::from(format!("builtin://{}", key));
-        let display_name = format!("Built-in: {}", template.name);
-        all_templates.push((display_name, virtual_path, true));
-    }
-
-    // Sort templates by name
-    all_templates.sort_by(|a, b| a.0.cmp(&b.0));
-
-    Ok(all_templates)
+    Ok(())
 }

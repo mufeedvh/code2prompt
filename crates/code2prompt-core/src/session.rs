@@ -2,12 +2,12 @@
 //! It allows you to load codebase data, Git info, and render prompts using a template.
 
 use anyhow::{Context, Result};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::configuration::Code2PromptConfig;
-use crate::filter::{build_globset, should_include_path};
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
+use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use crate::tokenizer::{TokenizerType, count_tokens};
 
@@ -16,7 +16,7 @@ use crate::tokenizer::{TokenizerType, count_tokens};
 #[derive(Debug, Clone)]
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
-    pub selected_files: Vec<PathBuf>,
+    pub selection_engine: SelectionEngine,
     pub data: SessionData,
 }
 
@@ -43,85 +43,123 @@ pub struct RenderedPrompt {
 }
 
 impl Code2PromptSession {
-    /// Creates a new session that can track additional state if needed.
+    /// Creates a new session with SelectionEngine for pattern-based and user-driven file selection
     pub fn new(config: Code2PromptConfig) -> Self {
+        let selection_engine = SelectionEngine::new(
+            config.include_patterns.clone(),
+            config.exclude_patterns.clone(),
+        );
+
         Self {
+            selection_engine,
             config,
-            selected_files: Vec::new(),
             data: SessionData::default(),
         }
     }
 
-    /// Query if a path is currently included (for toggle/UI)
-    pub fn is_file_included(&self, path: &Path) -> bool {
-        let rel_path = path.strip_prefix(&self.config.path).unwrap_or(path);
-        let include_gs = build_globset(&self.config.include_patterns);
-        let exclude_gs = build_globset(&self.config.exclude_patterns);
-        should_include_path(
-            rel_path,
-            &include_gs,
-            &exclude_gs,
-            &self.config.explicit_includes,
-            &self.config.explicit_excludes,
-        )
+    /// Initialize selections based on patterns (for CLI usage like `code2prompt . -i "*.rs"`)
+    pub fn initialize_from_patterns(&mut self) -> Result<()> {
+        // This ensures that when TUI starts, files matching patterns are already "selected"
+        // The SelectionEngine will handle this automatically through pattern matching
+        Ok(())
     }
 
-    /// Add to explicit_includes (prioritized)
-    pub fn include_file(&mut self, path: PathBuf) -> &mut Self {
-        let rel_path = path
-            .strip_prefix(&self.config.path)
-            .unwrap_or(&path)
-            .to_path_buf();
-        // Remove from excludes if present (flip)
-        self.config.explicit_excludes.remove(&rel_path);
-        self.config.explicit_includes.insert(rel_path);
-        self
-    }
-
-    /// Add to explicit_excludes
-    pub fn exclude_file(&mut self, path: PathBuf) -> &mut Self {
-        let rel_path = path
-            .strip_prefix(&self.config.path)
-            .unwrap_or(&path)
-            .to_path_buf();
-        // Remove from includes if present (flip)
-        self.config.explicit_includes.remove(&rel_path);
-        self.config.explicit_excludes.insert(rel_path);
-        self
-    }
-
-    /// Toggle via query + flip
-    pub fn toggle_file(&mut self, path: PathBuf) -> &mut Self {
-        if self.is_file_included(&path) {
-            self.exclude_file(path); // Was included → explicitly exclude
-        } else {
-            self.include_file(path); // Was excluded → explicitly include
-        }
-        self
-    }
-
-    /// Clear all explicit overrides (fallback to patterns)
-    pub fn clear_explicit_overrides(&mut self) -> &mut Self {
-        self.config.explicit_includes.clear();
-        self.config.explicit_excludes.clear();
-        self
-    }
-
-    /// Add pattern (unchanged, but now layered under explicit)
+    /// Add pattern and recreate SelectionEngine
     pub fn add_include_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.include_patterns.push(pattern);
+        // Recreate SelectionEngine with new patterns
+        self.selection_engine = SelectionEngine::new(
+            self.config.include_patterns.clone(),
+            self.config.exclude_patterns.clone(),
+        );
         self
     }
 
     pub fn add_exclude_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.exclude_patterns.push(pattern);
+        // Recreate SelectionEngine with new patterns
+        self.selection_engine = SelectionEngine::new(
+            self.config.include_patterns.clone(),
+            self.config.exclude_patterns.clone(),
+        );
         self
+    }
+
+    /// User interaction: include a file (delegates to SelectionEngine)
+    pub fn select_file(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path)
+                .unwrap_or(&path)
+                .to_path_buf()
+        } else {
+            path
+        };
+
+        self.selection_engine.include_file(relative_path);
+        self
+    }
+
+    /// User interaction: exclude a file (delegates to SelectionEngine)
+    pub fn deselect_file(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path)
+                .unwrap_or(&path)
+                .to_path_buf()
+        } else {
+            path
+        };
+
+        self.selection_engine.exclude_file(relative_path);
+        self
+    }
+
+    /// User interaction: toggle file selection (delegates to SelectionEngine)
+    pub fn toggle_file_selection(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path)
+                .unwrap_or(&path)
+                .to_path_buf()
+        } else {
+            path
+        };
+
+        self.selection_engine.toggle_file(relative_path);
+        self
+    }
+
+    /// Check if a file is selected (delegates to SelectionEngine)
+    pub fn is_file_selected(&mut self, path: &std::path::Path) -> bool {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path).unwrap_or(path)
+        } else {
+            path
+        };
+
+        self.selection_engine.is_selected(relative_path)
+    }
+
+    /// Get all currently selected files (delegates to SelectionEngine)
+    pub fn get_selected_files(&mut self) -> Result<Vec<PathBuf>> {
+        Ok(self
+            .selection_engine
+            .get_selected_files(&self.config.path)?)
+    }
+
+    /// Clear all user actions (reset to pattern-only behavior)
+    pub fn clear_user_actions(&mut self) -> &mut Self {
+        self.selection_engine.clear_user_actions();
+        self
+    }
+
+    /// Check if there are any user actions beyond base patterns
+    pub fn has_user_actions(&self) -> bool {
+        self.selection_engine.has_user_actions()
     }
 
     /// Loads the codebase data (source tree and file list) into the session.
     pub fn load_codebase(&mut self) -> Result<()> {
-        let (tree, files_json) =
-            traverse_directory(&self.config).with_context(|| "Failed to traverse directory")?;
+        let (tree, files_json) = traverse_directory(&self.config, Some(&mut self.selection_engine))
+            .with_context(|| "Failed to traverse directory")?;
 
         self.data.source_tree = Some(tree);
         self.data.files = Some(serde_json::Value::Array(files_json));

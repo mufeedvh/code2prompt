@@ -88,10 +88,11 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ),
         );
 
+        let mut session_clone = self.model.session.clone();
         let selected_count =
-            crate::model::StatisticsState::count_selected_files(&self.model.file_tree.file_tree);
+            crate::model::StatisticsState::count_selected_files(&mut session_clone);
         let eligible_count =
-            crate::model::StatisticsState::count_total_files(&self.model.file_tree.file_tree);
+            crate::model::StatisticsState::count_total_files(&self.model.file_tree_nodes);
         let total_files = self.model.prompt_output.file_count;
         stats_items.push(ListItem::new(format!(
             "  • Selected: {} files",

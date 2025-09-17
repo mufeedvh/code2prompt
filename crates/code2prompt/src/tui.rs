@@ -30,7 +30,7 @@ pub enum InputMode {
     Normal,
     Search,
 }
-use crate::utils::{build_file_tree_from_session, build_lightweight_file_tree};
+use crate::utils::build_file_tree_from_session;
 
 pub struct TuiApp {
     model: Model,
@@ -343,12 +343,12 @@ impl TuiApp {
                     Some(Message::ExitSearchMode)
                 }
                 KeyCode::Backspace => {
-                    let mut query = self.model.file_tree.search_query.clone();
+                    let mut query = self.model.search_query.clone();
                     query.pop();
                     Some(Message::UpdateSearchQuery(query))
                 }
                 KeyCode::Char(c) => {
-                    let mut query = self.model.file_tree.search_query.clone();
+                    let mut query = self.model.search_query.clone();
                     query.push(c);
                     Some(Message::UpdateSearchQuery(query))
                 }
@@ -363,12 +363,10 @@ impl TuiApp {
                 KeyCode::PageDown => Some(Message::MoveTreeCursor(10)),
                 KeyCode::Home => Some(Message::MoveTreeCursor(-9999)),
                 KeyCode::End => Some(Message::MoveTreeCursor(9999)),
-                KeyCode::Char(' ') => Some(Message::ToggleFileSelection(
-                    self.model.file_tree.tree_cursor,
-                )),
+                KeyCode::Char(' ') => Some(Message::ToggleFileSelection(self.model.tree_cursor)),
                 KeyCode::Enter => Some(Message::RunAnalysis),
-                KeyCode::Right => Some(Message::ExpandDirectory(self.model.file_tree.tree_cursor)),
-                KeyCode::Left => Some(Message::CollapseDirectory(self.model.file_tree.tree_cursor)),
+                KeyCode::Right => Some(Message::ExpandDirectory(self.model.tree_cursor)),
+                KeyCode::Left => Some(Message::CollapseDirectory(self.model.tree_cursor)),
                 KeyCode::Char('/') => Some(Message::EnterSearchMode),
                 KeyCode::Char('r') | KeyCode::Char('R') => Some(Message::RefreshFileTree),
                 _ => None,
@@ -570,40 +568,26 @@ impl TuiApp {
             }
 
             crate::model::Cmd::RefreshFileTree => {
-                // Use lightweight tree for initial navigation, full tree only when needed
-                if self.model.session.data.files.is_none() {
-                    // First time: use lightweight tree for fast startup
-                    match build_lightweight_file_tree(&self.model.session.config.path) {
-                        Ok(tree) => {
-                            self.model.file_tree.set_file_tree(tree);
-                            self.model.status_message =
-                                "File tree loaded (lightweight mode)".to_string();
-                        }
-                        Err(e) => {
-                            self.model.status_message = format!("Error loading files: {}", e);
-                        }
+                // Always use session-based tree building for proper pattern initialization
+                match build_file_tree_from_session(&mut self.model.session) {
+                    Ok(tree) => {
+                        self.model.file_tree_nodes = tree;
+                        self.model.status_message =
+                            "File tree loaded with patterns applied and files auto-expanded"
+                                .to_string();
                     }
-                } else {
-                    // Subsequent refreshes: use full tree with session data
-                    match build_file_tree_from_session(&mut self.model.session) {
-                        Ok(tree) => {
-                            self.model.file_tree.set_file_tree(tree);
-                            self.model.status_message = "File tree refreshed".to_string();
-                        }
-                        Err(e) => {
-                            self.model.status_message = format!("Error loading files: {}", e);
-                        }
+                    Err(e) => {
+                        self.model.status_message = format!("Error loading files: {}", e);
                     }
                 }
             }
 
             crate::model::Cmd::RunAnalysis {
-                session,
                 template_content,
                 user_variables,
             } => {
-                // Run analysis in background
-                let mut session = *session;
+                // Use the current session state (with all user selections)
+                let mut session = self.model.session.clone();
                 let tx = self.message_tx.clone();
 
                 tokio::spawn(async move {

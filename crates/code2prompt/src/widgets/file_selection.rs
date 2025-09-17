@@ -34,16 +34,21 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
             ])
             .split(area);
 
-        // File tree with scroll support - read directly from Model
-        let visible_nodes = self.model.file_tree.get_visible_nodes();
+        // File tree with scroll support - use new session-based approach
+        let mut session_clone = self.model.session.clone();
+        let visible_nodes = crate::utils::get_visible_nodes(
+            &self.model.file_tree_nodes,
+            &self.model.search_query,
+            &mut session_clone,
+        );
         let total_nodes = visible_nodes.len();
 
         // Calculate viewport dimensions
         let tree_area = layout[0];
         let content_height = tree_area.height.saturating_sub(2) as usize; // Account for borders
 
-        // Calculate scroll position and viewport - read directly from Model
-        let scroll_start = self.model.file_tree.file_tree_scroll as usize;
+        // Calculate scroll position and viewport
+        let scroll_start = self.model.file_tree_scroll as usize;
         let scroll_end = (scroll_start + content_height).min(total_nodes);
 
         // Create items only for visible viewport
@@ -52,28 +57,27 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
             .enumerate()
             .skip(scroll_start)
             .take(content_height)
-            .map(|(i, node)| {
+            .map(|(i, display_node)| {
+                let node = &display_node.node;
+                let is_selected = display_node.is_selected;
+
                 let indent = "  ".repeat(node.level);
                 let icon = if node.is_directory {
-                    if node.is_expanded {
-                        "📂"
-                    } else {
-                        "📁"
-                    }
+                    if node.is_expanded { "📂" } else { "📁" }
                 } else {
                     "📄"
                 };
-                let checkbox = if node.is_selected { "☑" } else { "☐" };
+                let checkbox = if is_selected { "☑" } else { "☐" };
 
                 let content = format!("{}{} {} {}", indent, icon, checkbox, node.name);
                 let mut style = Style::default();
 
-                // Adjust cursor position for viewport - read directly from Model
-                if i == self.model.file_tree.tree_cursor {
+                // Adjust cursor position for viewport
+                if i == self.model.tree_cursor {
                     style = style.bg(Color::Blue).fg(Color::White);
                 }
 
-                if node.is_selected {
+                if is_selected {
                     style = style.fg(Color::Green);
                 }
 
@@ -111,7 +115,7 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
             ),
             Span::styled("earch", Style::default().fg(Color::White)),
             Span::styled(
-                if self.model.file_tree.search_query.contains('*') {
+                if self.model.search_query.contains('*') {
                     " (glob pattern active)"
                 } else {
                     " (text or glob pattern)"
@@ -120,14 +124,14 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
             ),
         ];
 
-        let search_widget = Paragraph::new(self.model.file_tree.search_query.as_str())
+        let search_widget = Paragraph::new(self.model.search_query.as_str())
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title(Line::from(title_spans)),
             )
             .style(
-                Style::default().fg(if self.model.file_tree.search_query.contains('*') {
+                Style::default().fg(if self.model.search_query.contains('*') {
                     Color::Yellow
                 } else {
                     Color::Green
