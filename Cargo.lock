@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "code2prompt"
-version = "4.0.1"
+version = "4.0.2"
 dependencies = [
  "ansi_term",
  "anyhow",
@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "code2prompt_core"
-version = "4.0.1"
+version = "4.0.2"
 dependencies = [
  "anyhow",
  "assert_cmd",

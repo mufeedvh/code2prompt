@@ -55,28 +55,18 @@ impl PickerState {
     fn load_default_templates(&mut self) {
         self.default_templates.clear();
 
-        // Add built-in templates
-        self.default_templates.push(TemplateFile {
-            name: "Default (Markdown)".to_string(),
-            path: PathBuf::new(),
-        });
+        // Load all built-in templates from the core
+        let builtin_templates = code2prompt_core::builtin_templates::BuiltinTemplates::get_all();
 
-        self.default_templates.push(TemplateFile {
-            name: "Default (XML)".to_string(),
-            path: PathBuf::new(),
-        });
+        // Sort templates by name for consistent ordering
+        let mut template_entries: Vec<_> = builtin_templates.into_iter().collect();
+        template_entries.sort_by(|a, b| a.1.name.cmp(&b.1.name));
 
-        // Load templates from default directory using utility function
-        if let Ok(all_templates) = crate::utils::load_all_templates() {
-            for (name, path) in all_templates {
-                let is_builtin = false; // All templates from load_all_templates are custom
-                if is_builtin {
-                    self.default_templates.push(TemplateFile {
-                        name,
-                        path: PathBuf::from(path),
-                    });
-                }
-            }
+        for (key, template) in template_entries {
+            self.default_templates.push(TemplateFile {
+                name: template.name,
+                path: PathBuf::from(format!("builtin://{}", key)),
+            });
         }
     }
 
