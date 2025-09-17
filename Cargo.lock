@@ -420,6 +420,7 @@ dependencies = [
  "env_logger",
  "git2",
  "handlebars",
+ "ignore",
  "indicatif",
  "inquire",
  "log",
