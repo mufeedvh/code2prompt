@@ -8,7 +8,6 @@
 use anyhow::Result;
 use code2prompt_core::session::Code2PromptSession;
 use crossterm::{
-    event::{self, Event, KeyEventKind},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -20,7 +19,7 @@ use ratatui::{
 use std::io::{Stdout, stdout};
 use tokio::sync::mpsc;
 
-use crate::model::{EventOptimizer, Message, Model, Tab};
+use crate::model::{Message, Model, Tab};
 use crate::widgets::*;
 
 use crate::token_map::generate_token_map_with_limit;
@@ -38,7 +37,6 @@ pub struct TuiApp {
     message_tx: mpsc::UnboundedSender<Message>,
     message_rx: mpsc::UnboundedReceiver<Message>,
     input_mode: InputMode,
-    event_optimizer: EventOptimizer,
 }
 
 impl TuiApp {
@@ -71,7 +69,6 @@ impl TuiApp {
             message_tx,
             message_rx,
             input_mode: InputMode::Normal,
-            event_optimizer: EventOptimizer::new(60), // 60 FPS
         })
     }
 
@@ -86,21 +83,21 @@ impl TuiApp {
 
             // Drain all available keyboard events
             while crossterm::event::poll(std::time::Duration::from_millis(0))? {
-                if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
-                    if key.kind == crossterm::event::KeyEventKind::Press {
-                        // Convert to ratatui KeyEvent
-                        let ratatui_key = self.convert_crossterm_key(key);
+                if let crossterm::event::Event::Key(key) = crossterm::event::read()?
+                    && key.kind == crossterm::event::KeyEventKind::Press
+                {
+                    // Convert to ratatui KeyEvent
+                    let ratatui_key = self.convert_crossterm_key(key);
 
-                        // Handle the key event
-                        if let Some(message) = self.handle_key_event(ratatui_key) {
-                            // Try to coalesce similar events
-                            if let Some(last_message) = messages.last_mut() {
-                                if self.try_coalesce_messages(last_message, &message) {
-                                    continue; // Message was coalesced
-                                }
-                            }
-                            messages.push(message);
+                    // Handle the key event
+                    if let Some(message) = self.handle_key_event(ratatui_key) {
+                        // Try to coalesce similar events
+                        if let Some(last_message) = messages.last_mut()
+                            && self.try_coalesce_messages(last_message, &message)
+                        {
+                            continue; // Message was coalesced
                         }
+                        messages.push(message);
                     }
                 }
             }
@@ -115,13 +112,11 @@ impl TuiApp {
                 self.handle_message(message)?;
             }
 
-            // Render only if throttler allows (60 FPS max)
-            if self.event_optimizer.should_render() {
-                let model = self.model.clone();
-                self.terminal.draw(|frame| {
-                    TuiApp::render_with_model(&model, frame);
-                })?;
-            }
+            // Render the UI
+            let model = self.model.clone();
+            self.terminal.draw(|frame| {
+                TuiApp::render_with_model(&model, frame);
+            })?;
 
             if self.model.should_quit {
                 break;
