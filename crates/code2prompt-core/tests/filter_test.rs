@@ -11,10 +11,10 @@ use tempfile::{TempDir, tempdir};
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let file_path = dir.join(name);
     let parent_dir = file_path.parent().unwrap();
-    fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
+    fs::create_dir_all(parent_dir).unwrap_or_else(|_| panic!("Failed to create directory: {:?}", parent_dir));
     let mut file =
-        File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
-    writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
+        File::create(&file_path).unwrap_or_else(|_| panic!("Failed to create temp file: {:?}", file_path));
+    writeln!(file, "{}", content).unwrap_or_else(|_| panic!("Failed to write to temp file: {:?}", file_path));
 }
 static TEST_DIR: Lazy<TempDir> = Lazy::new(|| {
     let dir = tempdir().expect("Failed to create a temp directory");
@@ -61,11 +61,11 @@ mod tests {
     #[test]
     fn test_no_include_no_exclude_path() {
         let path = Path::new("src/main.rs");
-        let include_patterns = build_globset(&vec![]);
-        let exclude_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&[]);
+        let exclude_patterns = build_globset(&[]);
         // ~~~ Must be included ~~~
         assert!(should_include_file(
-            &path,
+            path,
             &include_patterns,
             &exclude_patterns,
         ));
@@ -73,8 +73,8 @@ mod tests {
     #[test]
     fn test_no_include_no_exclude_empty() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec![]);
-        let exclude_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&[]);
+        let exclude_patterns = build_globset(&[]);
         // ~~~ Must be included ~~~
         for file in [
             "lowercase/foo.py",
@@ -103,10 +103,10 @@ mod tests {
     #[test]
     fn test_no_include_exclude_path() {
         let path = Path::new("src/main.rs");
-        let include_patterns = build_globset(&vec![]);
-        let exclude_patterns = build_globset(&vec!["*.rs".to_string()]);
+        let include_patterns = build_globset(&[]);
+        let exclude_patterns = build_globset(&["*.rs".to_string()]);
         assert!(!should_include_file(
-            &path,
+            path,
             &include_patterns,
             &exclude_patterns,
         ));
@@ -115,8 +115,8 @@ mod tests {
     /// Added for globset
     fn test_no_include_exclude_by_filename() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec![]);
-        let exclude_patterns = build_globset(&vec!["default_template.hbs".to_string()]);
+        let include_patterns = build_globset(&[]);
+        let exclude_patterns = build_globset(&["default_template.hbs".to_string()]);
         // ~~~ Must be excluded ~~~
         let excluded_path = base_path.join("src/default_template.hbs");
         assert!(!should_include_file(
@@ -128,8 +128,8 @@ mod tests {
     #[test]
     fn test_no_include_exclude_path_patterns() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec![]);
-        let exclude_patterns = build_globset(&vec!["lowercase/{*.txt,*.py}".to_string()]);
+        let include_patterns = build_globset(&[]);
+        let exclude_patterns = build_globset(&["lowercase/{*.txt,*.py}".to_string()]);
         // ~~~ Must be excluded ~~~
         for file in [
             "lowercase/qux.txt",
@@ -142,7 +142,7 @@ mod tests {
             let path = base_path.join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(!should_include_file(
-                &relative_path,
+                relative_path,
                 &include_patterns,
                 &exclude_patterns,
             ));
@@ -160,7 +160,7 @@ mod tests {
             let path = base_path.join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(should_include_file(
-                &relative_path,
+                relative_path,
                 &include_patterns,
                 &exclude_patterns,
             ));
@@ -169,8 +169,8 @@ mod tests {
     #[test]
     fn test_no_include_exclude_patterns() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec![]);
-        let exclude_patterns = build_globset(&vec!["*.txt".to_string()]);
+        let include_patterns = build_globset(&[]);
+        let exclude_patterns = build_globset(&["*.txt".to_string()]);
         // ~~~ Must be excluded ~~~
         for file in [
             "lowercase/qux.txt",
@@ -208,9 +208,9 @@ mod tests {
     #[test]
     fn test_no_include_exclude_files() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&[]);
         let exclude_patterns =
-            build_globset(&vec!["**/foo.py".to_string(), "**/bar.py".to_string()]);
+            build_globset(&["**/foo.py".to_string(), "**/bar.py".to_string()]);
         // ~~~ Must be excluded ~~~
         for file in ["lowercase/foo.py", "lowercase/bar.py"] {
             let path = base_path.join(file);
@@ -245,8 +245,8 @@ mod tests {
     #[test]
     fn test_no_include_exclude_folders() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec![]);
-        let exclude_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
+        let include_patterns = build_globset(&[]);
+        let exclude_patterns = build_globset(&["**/lowercase/**".to_string()]);
         // ~~~ Must be excluded ~~~
         for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/qux.txt"] {
             let path = base_path.join(file);
@@ -274,8 +274,8 @@ mod tests {
     #[test]
     fn test_include_no_exclude_patterns() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec!["*.py".to_string()]);
-        let exclude_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&["*.py".to_string()]);
+        let exclude_patterns = build_globset(&[]);
         // ~~~ Must be included ~~~
         for file in [
             "lowercase/foo.py",
@@ -314,8 +314,8 @@ mod tests {
     /// added for globset
     fn test_include_no_exclude_by_filename() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec!["default_template.hbs".to_string()]);
-        let exclude_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&["default_template.hbs".to_string()]);
+        let exclude_patterns = build_globset(&[]);
         // ~~~ Must be excluded ~~~
         for file in ["src/filter.rs", "src/git.rs", "src/lib.rs", "src/token.rs"] {
             let path = base_path.join(file);
@@ -337,8 +337,8 @@ mod tests {
     fn test_include_no_exclude_by_path_pattern() {
         let base_path = TEST_DIR.path();
         // let include_patterns = vec!["lowercase/*.txt".to_string(), "lowercase/*.py".to_string()];
-        let include_patterns = build_globset(&vec!["lowercase/{*.txt,*.py}".to_string()]);
-        let exclude_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&["lowercase/{*.txt,*.py}".to_string()]);
+        let exclude_patterns = build_globset(&[]);
         // ~~~ Must be included ~~~
         for file in [
             "lowercase/qux.txt",
@@ -351,7 +351,7 @@ mod tests {
             let path = base_path.join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(should_include_file(
-                &relative_path,
+                relative_path,
                 &include_patterns,
                 &exclude_patterns,
             ));
@@ -369,7 +369,7 @@ mod tests {
             let path = base_path.join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(!should_include_file(
-                &relative_path,
+                relative_path,
                 &include_patterns,
                 &exclude_patterns,
             ));
@@ -378,8 +378,8 @@ mod tests {
     #[test]
     fn test_include_no_exclude_folders() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
-        let exclude_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&["**/lowercase/**".to_string()]);
+        let exclude_patterns = build_globset(&[]);
         // ~~~ Must be included ~~~
         for file in ["lowercase/foo.py", "lowercase/bar.py", "lowercase/qux.txt"] {
             let path = base_path.join(file);
@@ -407,8 +407,8 @@ mod tests {
     fn test_include_no_exclude_files() {
         let base_path = TEST_DIR.path();
         let include_patterns =
-            build_globset(&vec!["**/foo.py".to_string(), "**/bar.py".to_string()]);
-        let exclude_patterns = build_globset(&vec![]);
+            build_globset(&["**/foo.py".to_string(), "**/bar.py".to_string()]);
+        let exclude_patterns = build_globset(&[]);
         // ~~~ Must be included ~~~
         for file in ["lowercase/foo.py", "lowercase/bar.py"] {
             let path = base_path.join(file);
@@ -444,10 +444,11 @@ mod tests {
     #[test]
     fn test_include_exclude_conflict_file() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec!["**/foo.py".to_string()]);
-        let exclude_patterns = build_globset(&vec!["**/foo.py".to_string()]);
+        let include_patterns = build_globset(&["**/foo.py".to_string()]);
+        let exclude_patterns = build_globset(&["**/foo.py".to_string()]);
         // ~~~ Must be excluded (exclude takes precedence) ~~~
-        for file in ["lowercase/foo.py"] {
+        {
+            let file = "lowercase/foo.py";
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
@@ -481,8 +482,8 @@ mod tests {
     #[test]
     fn test_include_exclude_conflict_extension() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec!["*.py".to_string()]);
-        let exclude_patterns = build_globset(&vec!["*.py".to_string()]);
+        let include_patterns = build_globset(&["*.py".to_string()]);
+        let exclude_patterns = build_globset(&["*.py".to_string()]);
         // ~~~ Must be excluded (exclude takes precedence) ~~~
         for file in [
             "lowercase/foo.py",
@@ -520,8 +521,8 @@ mod tests {
     #[test]
     fn test_include_exclude_conflict_folder() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
-        let exclude_patterns = build_globset(&vec!["**/lowercase/**".to_string()]);
+        let include_patterns = build_globset(&["**/lowercase/**".to_string()]);
+        let exclude_patterns = build_globset(&["**/lowercase/**".to_string()]);
         // ~~~ Must be excluded (exclude takes precedence) ~~~
         for file in [
             "lowercase/foo.py",
@@ -559,10 +560,11 @@ mod tests {
     #[test]
     fn test_include_exclude_exclude_takes_precedence() {
         let base_path = TEST_DIR.path();
-        let include_patterns = build_globset(&vec!["**/*.py".to_string()]);
-        let exclude_patterns = build_globset(&vec!["**/uppercase/*".to_string()]);
+        let include_patterns = build_globset(&["**/*.py".to_string()]);
+        let exclude_patterns = build_globset(&["**/uppercase/*".to_string()]);
         // ~~~ Must be included (not excluded) ~~~
-        for file in ["lowercase/foo.py"] {
+        {
+            let file = "lowercase/foo.py";
             let path = base_path.join(file);
             assert!(should_include_file(
                 &path,
@@ -571,7 +573,8 @@ mod tests {
             ));
         }
         // ~~~ Must be excluded (exclude takes precedence) ~~~
-        for file in ["uppercase/FOO.py"] {
+        {
+            let file = "uppercase/FOO.py";
             let path = base_path.join(file);
             assert!(!should_include_file(
                 &path,
@@ -599,15 +602,15 @@ mod tests {
         let base_path = TEST_DIR.path();
         // This pattern uses brace expansion to match foo.py, bar.py, and baz.py
         // The issue was that the first item (foo.py) wasn't being considered
-        let include_patterns = build_globset(&vec!["lowercase/{foo.py,bar.py,baz.py}".to_string()]);
+        let include_patterns = build_globset(&["lowercase/{foo.py,bar.py,baz.py}".to_string()]);
         let exclude_patterns =
-            build_globset(&vec!["lowercase/{qux.py,corge.py,grault.py}".to_string()]);
+            build_globset(&["lowercase/{qux.py,corge.py,grault.py}".to_string()]);
         // ALL files in the brace expansion should be included
         for file in ["foo.py", "bar.py", "baz.py"] {
             let path = base_path.join("lowercase").join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(
-                should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
+                should_include_file(relative_path, &include_patterns, &exclude_patterns,),
                 "Failed to include file: {}",
                 file
             );
@@ -617,7 +620,7 @@ mod tests {
             let path = base_path.join("lowercase").join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(
-                !should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
+                !should_include_file(relative_path, &include_patterns, &exclude_patterns,),
                 "Incorrectly included non-matching file: {}",
                 file
             );
@@ -628,11 +631,9 @@ mod tests {
     fn test_brace_expansion_multiple_patterns() {
         let base_path = TEST_DIR.path();
         // Test with multiple patterns, each with brace expansion
-        let include_patterns = build_globset(&vec![
-            "lowercase/{foo,bar,baz}.py".to_string(),
-            "uppercase/{FOO,BAR,BAZ}.py".to_string(),
-        ]);
-        let exclude_patterns = build_globset(&vec![]);
+        let include_patterns = build_globset(&["lowercase/{foo,bar,baz}.py".to_string(),
+            "uppercase/{FOO,BAR,BAZ}.py".to_string()]);
+        let exclude_patterns = build_globset(&[]);
         // All files in the brace expansions should be included
         for file in [
             "lowercase/foo.py",
@@ -645,7 +646,7 @@ mod tests {
             let path = base_path.join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(
-                should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
+                should_include_file(relative_path, &include_patterns, &exclude_patterns,),
                 "Failed to include file: {}",
                 file
             );
@@ -663,7 +664,7 @@ mod tests {
             let path = base_path.join(file);
             let relative_path = path.strip_prefix(base_path).unwrap();
             assert!(
-                !should_include_file(&relative_path, &include_patterns, &exclude_patterns,),
+                !should_include_file(relative_path, &include_patterns, &exclude_patterns,),
                 "Incorrectly included non-matching file: {}",
                 file
             );

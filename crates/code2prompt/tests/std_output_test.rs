@@ -24,10 +24,10 @@ fn init_logger() {
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let file_path = dir.join(name);
     let parent_dir = file_path.parent().unwrap();
-    fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
+    fs::create_dir_all(parent_dir).unwrap_or_else(|_| panic!("Failed to create directory: {:?}", parent_dir));
     let mut file =
-        File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
-    writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
+        File::create(&file_path).unwrap_or_else(|_| panic!("Failed to create temp file: {:?}", file_path));
+    writeln!(file, "{}", content).unwrap_or_else(|_| panic!("Failed to write to temp file: {:?}", file_path));
 }
 
 fn create_simple_test_files(base_path: &Path) {
