@@ -193,11 +193,7 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
                     .map(|(_, terminal_size::Height(h))| {
                         let height = h as usize;
                         // Ensure minimum of 10 lines, subtract 10 for other output
-                        if height > 20 {
-                            height - 10
-                        } else {
-                            10
-                        }
+                        if height > 20 { height - 10 } else { 10 }
                     })
                     .unwrap_or(20) // Default to 20 lines if terminal size detection fails
             });
