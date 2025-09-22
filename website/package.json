@@ -16,7 +16,7 @@
     "@astrojs/partytown": "^2.1.4",
     "@astrojs/prism": "3.3.0",
     "@astrojs/react": "4.3.0",
-    "@astrojs/sitemap": "3.4.1",
+    "@astrojs/sitemap": "3.6.0",
     "@astrojs/starlight": "^0.35.2",
     "@astrojs/upgrade": "^0.6.2",
     "@tailwindcss/vite": "^4.1.11",
