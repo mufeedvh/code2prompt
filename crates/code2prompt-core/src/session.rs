@@ -7,15 +7,16 @@ use std::path::PathBuf;
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{label, traverse_directory};
-use crate::template::{handlebars_setup, render_template, OutputFormat};
-use crate::tokenizer::{count_tokens, TokenizerType};
+use crate::selection::SelectionEngine;
+use crate::template::{OutputFormat, handlebars_setup, render_template};
+use crate::tokenizer::{TokenizerType, count_tokens};
 
 /// Represents a live session that holds stateful data about the user's codebase,
 /// including which files have been added or removed, or other data that evolves over time.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
-    pub selected_files: Vec<PathBuf>,
+    pub selection_engine: SelectionEngine,
     pub data: SessionData,
 }
 
@@ -42,51 +43,123 @@ pub struct RenderedPrompt {
 }
 
 impl Code2PromptSession {
-    /// Creates a new session that can track additional state if needed.
+    /// Creates a new session with SelectionEngine for pattern-based and user-driven file selection
     pub fn new(config: Code2PromptConfig) -> Self {
+        let selection_engine = SelectionEngine::new(
+            config.include_patterns.clone(),
+            config.exclude_patterns.clone(),
+        );
+
         Self {
+            selection_engine,
             config,
-            selected_files: Vec::new(),
             data: SessionData::default(),
         }
     }
 
-    #[allow(clippy::unused_self)]
-    // Add specific file to include patterns
-    pub fn include_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
+    /// Initialize selections based on patterns (for CLI usage like `code2prompt . -i "*.rs"`)
+    pub fn initialize_from_patterns(&mut self) -> Result<()> {
+        // This ensures that when TUI starts, files matching patterns are already "selected"
+        // The SelectionEngine will handle this automatically through pattern matching
+        Ok(())
+    }
+
+    /// Add pattern and recreate SelectionEngine
+    pub fn add_include_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.include_patterns.push(pattern);
+        // Recreate SelectionEngine with new patterns
+        self.selection_engine = SelectionEngine::new(
+            self.config.include_patterns.clone(),
+            self.config.exclude_patterns.clone(),
+        );
         self
     }
 
-    #[allow(clippy::unused_self)]
-    // Add specific file to exclude patterns
-    pub fn exclude_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
+    pub fn add_exclude_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.exclude_patterns.push(pattern);
+        // Recreate SelectionEngine with new patterns
+        self.selection_engine = SelectionEngine::new(
+            self.config.include_patterns.clone(),
+            self.config.exclude_patterns.clone(),
+        );
         self
     }
 
-    #[allow(clippy::unused_self)]
-    // Toggle inclusion of a specific file
-    pub fn toggle_file(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(&path);
-        let pattern = relative_path.to_string_lossy().to_string();
-
-        if self.config.include_patterns.contains(&pattern) {
-            self.config.include_patterns.retain(|p| p != &pattern);
+    /// User interaction: include a file (delegates to SelectionEngine)
+    pub fn select_file(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path)
+                .unwrap_or(&path)
+                .to_path_buf()
         } else {
-            self.config.include_patterns.push(pattern);
-        }
+            path
+        };
+
+        self.selection_engine.include_file(relative_path);
         self
+    }
+
+    /// User interaction: exclude a file (delegates to SelectionEngine)
+    pub fn deselect_file(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path)
+                .unwrap_or(&path)
+                .to_path_buf()
+        } else {
+            path
+        };
+
+        self.selection_engine.exclude_file(relative_path);
+        self
+    }
+
+    /// User interaction: toggle file selection (delegates to SelectionEngine)
+    pub fn toggle_file_selection(&mut self, path: PathBuf) -> &mut Self {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path)
+                .unwrap_or(&path)
+                .to_path_buf()
+        } else {
+            path
+        };
+
+        self.selection_engine.toggle_file(relative_path);
+        self
+    }
+
+    /// Check if a file is selected (delegates to SelectionEngine)
+    pub fn is_file_selected(&mut self, path: &std::path::Path) -> bool {
+        let relative_path = if path.is_absolute() {
+            path.strip_prefix(&self.config.path).unwrap_or(path)
+        } else {
+            path
+        };
+
+        self.selection_engine.is_selected(relative_path)
+    }
+
+    /// Get all currently selected files (delegates to SelectionEngine)
+    pub fn get_selected_files(&mut self) -> Result<Vec<PathBuf>> {
+        Ok(self
+            .selection_engine
+            .get_selected_files(&self.config.path)?)
+    }
+
+    /// Clear all user actions (reset to pattern-only behavior)
+    pub fn clear_user_actions(&mut self) -> &mut Self {
+        self.selection_engine.clear_user_actions();
+        self
+    }
+
+    /// Check if there are any user actions beyond base patterns
+    pub fn has_user_actions(&self) -> bool {
+        self.selection_engine.has_user_actions()
     }
 
     /// Loads the codebase data (source tree and file list) into the session.
     pub fn load_codebase(&mut self) -> Result<()> {
-        let (tree, files_json) =
-            traverse_directory(&self.config).with_context(|| "Failed to traverse directory")?;
+        let (tree, files_json) = traverse_directory(&self.config, Some(&mut self.selection_engine))
+            .with_context(|| "Failed to traverse directory")?;
 
         self.data.source_tree = Some(tree);
         self.data.files = Some(serde_json::Value::Array(files_json));
@@ -131,11 +204,11 @@ impl Code2PromptSession {
         });
 
         // Add user-defined variables to the template data
-        if self.config.user_variables.len() > 0 {
-            if let Some(obj) = data.as_object_mut() {
-                for (key, value) in &self.config.user_variables {
-                    obj.insert(key.clone(), serde_json::Value::String(value.clone()));
-                }
+        if !self.config.user_variables.is_empty()
+            && let Some(obj) = data.as_object_mut()
+        {
+            for (key, value) in &self.config.user_variables {
+                obj.insert(key.clone(), serde_json::Value::String(value.clone()));
             }
         }
 
@@ -205,10 +278,10 @@ impl Code2PromptSession {
 
         Ok(RenderedPrompt {
             prompt: final_output,
-            directory_name: directory_name,
+            directory_name,
             token_count,
             model_info,
-            files: files,
+            files,
         })
     }
 

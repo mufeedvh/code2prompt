@@ -26,11 +26,11 @@ fn init_logger() {
 fn create_temp_file(dir: &Path, name: &str, content: &str) {
     let file_path = dir.join(name);
     let parent_dir = file_path.parent().unwrap();
-    fs::create_dir_all(parent_dir).expect(&format!("Failed to create directory: {:?}", parent_dir));
+    fs::create_dir_all(parent_dir).unwrap_or_else(|_| panic!("Failed to create directory: {:?}", parent_dir));
     let mut file =
-        File::create(&file_path).expect(&format!("Failed to create temp file: {:?}", file_path));
+        File::create(&file_path).unwrap_or_else(|_| panic!("Failed to create temp file: {:?}", file_path));
     //debug!("Writing to file: {:?}", file_path);
-    writeln!(file, "{}", content).expect(&format!("Failed to write to temp file: {:?}", file_path));
+    writeln!(file, "{}", content).unwrap_or_else(|_| panic!("Failed to write to temp file: {:?}", file_path));
 }
 
 fn create_test_hierarchy(base_path: &Path) {
@@ -67,7 +67,7 @@ fn create_test_hierarchy(base_path: &Path) {
 
 fn read_output_file(dir: &Path, file_name: &str) -> String {
     let file_path = dir.join(file_name);
-    read_to_string(&file_path).expect(&format!("Failed to read output file: {:?}", file_path))
+    read_to_string(&file_path).unwrap_or_else(|_| panic!("Failed to read output file: {:?}", file_path))
 }
 
 mod tests {
@@ -93,7 +93,7 @@ mod tests {
         fn command(&self) -> Command {
             let mut cmd =
                 Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-            cmd.arg(&self.dir.path().to_str().unwrap())
+            cmd.arg(self.dir.path().to_str().unwrap())
                 .arg("--output-file")
                 .arg(&self.output_file)
                 .arg("--no-clipboard");

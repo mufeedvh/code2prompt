@@ -39,7 +39,7 @@ impl PyCode2PromptSession {
         config.include_patterns = patterns;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -54,22 +54,7 @@ impl PyCode2PromptSession {
         config.exclude_patterns = patterns;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
-            Ok(Py::new(
-                py,
-                Self {
-                    inner: self.inner.clone(),
-                },
-            )?)
-        })
-    }
-
-    fn include_priority(&mut self, value: bool) -> PyResult<Py<Self>> {
-        let mut config = self.inner.config.clone();
-        config.include_priority = value;
-        self.inner = Code2PromptSession::new(config);
-
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -84,7 +69,7 @@ impl PyCode2PromptSession {
         config.line_numbers = value;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -99,7 +84,7 @@ impl PyCode2PromptSession {
         config.absolute_path = value;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -114,7 +99,7 @@ impl PyCode2PromptSession {
         config.full_directory_tree = value;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -129,7 +114,7 @@ impl PyCode2PromptSession {
         config.no_codeblock = !value; // Invert because API is different
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -144,7 +129,7 @@ impl PyCode2PromptSession {
         config.follow_symlinks = value;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -159,7 +144,7 @@ impl PyCode2PromptSession {
         config.hidden = value;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -174,7 +159,7 @@ impl PyCode2PromptSession {
         config.no_ignore = value;
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -193,14 +178,14 @@ impl PyCode2PromptSession {
             "date_desc" => config.sort_method = Some(FileSortMethod::DateDesc),
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "Invalid sort method: {}. Valid values: name_asc, name_desc, date_asc, date_desc",
-                method
-            )))
+                    "Invalid sort method: {}. Valid values: name_asc, name_desc, date_asc, date_desc",
+                    method
+                )));
             }
         }
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -221,12 +206,12 @@ impl PyCode2PromptSession {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                     "Invalid output format: {}",
                     format
-                )))
+                )));
             }
         }
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -249,12 +234,12 @@ impl PyCode2PromptSession {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                     "Invalid token encoding: {}",
                     encoding
-                )))
+                )));
             }
         }
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -273,12 +258,12 @@ impl PyCode2PromptSession {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                     "Invalid token format: {}. Use 'raw' or 'format'.",
                     format
-                )))
+                )));
             }
         }
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -299,7 +284,7 @@ impl PyCode2PromptSession {
         }
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {
@@ -315,7 +300,7 @@ impl PyCode2PromptSession {
         config.user_variables.insert(key, value);
         self.inner = Code2PromptSession::new(config);
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             Ok(Py::new(
                 py,
                 Self {

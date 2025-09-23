@@ -310,7 +310,7 @@ mod tests {
             .expect("Failed to find first commit");
         repo.tag(
             "v1.0.0",
-            &first_commit.as_object(),
+            first_commit.as_object(),
             &signature,
             "Version 1.0.0",
             false,

@@ -26,10 +26,6 @@ pub struct Code2PromptConfig {
     #[builder(default)]
     pub exclude_patterns: Vec<String>,
 
-    /// If true, include patterns have priority over exclude patterns in case of conflicts.
-    #[builder(default)]
-    pub include_priority: bool,
-
     /// If true, code lines will be numbered in the output.
     #[builder(default)]
     pub line_numbers: bool,

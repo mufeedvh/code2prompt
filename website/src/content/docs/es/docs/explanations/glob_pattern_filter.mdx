@@ -1,59 +1,87 @@
 ---
-title: Cómo funciona el filtro de patrón Glob
-description: Una mirada en profundidad a cómo Code2Prompt procesa los patrones de inclusión y exclusión.
+title: Cómo funciona el filtro de patrones Glob
+description: Cómo Code2Prompt decide qué archivos conservar o descartar usando globs de inclusión (-i) y exclusión (-e).
 ---
 
-La herramienta utiliza patrones glob para incluir o excluir archivos y directorios, funcionando de manera similar a herramientas como `tree` o `grep`. Aquí hay una explicación detallada:
+Code2Prompt utiliza patrones glob para incluir o excluir archivos y directorios, funcionando de manera similar a herramientas como tree o grep. Te permite pasar dos _listas_ independientes de patrones glob:
 
-## Conceptos clave
+- **lista de inclusión** (`--include` o `-i`) - "estos patrones permiten archivos"
+- **lista de exclusión** (`--exclude` o `-e`) - "estos patrones prohíben archivos"
 
-- **Lista de inclusión (A)**: Un conjunto que contiene los patrones glob para archivos y directorios que se desean incluir.
-- **Lista de exclusión (B)**: Un conjunto que contiene los patrones glob para archivos y directorios que se desean excluir.
-- **Universo (Ω)**: El conjunto de todos los archivos y directorios.
+Code2prompt debe decidir, para cada archivo en el proyecto, si se conserva o se descarta. Esta página explica las reglas y las decisiones de diseño que las respaldan.
 
-Cuando se especifica una lista `--exclude` y/o una lista `--include`, se aplica la siguiente lógica:
+---
 
-### Casos y lógica
+## 1. Conjuntos y Símbolos
 
-1. **Sin lista de inclusión, sin lista de exclusión**  
-   Incluir todo:
+A lo largo de la explicación usamos la notación de conjuntos habitual
 
-   $$
-   \neg A \cap \neg B \implies \Omega
-   $$
+| Símbolo                           | Significado                                                                |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| $A$                               | conjunto de archivos que coinciden con **al menos un** patrón de inclusión |
+| $B$                               | conjunto de archivos que coinciden con **al menos un** patrón de exclusión |
+| $\Omega$                          | todo el árbol del proyecto (el _universo_)                                 |
+| $C = A \cap B$                    | archivos que coinciden con ambas listas (la _superposición_)               |
+| $D = \Omega \setminus (A \cup B)$ | archivos que no coinciden con ninguna lista                                |
 
-2. **Sin lista de inclusión, con lista de exclusión**  
-   Incluir todo excepto lo que coincida con la lista de exclusión:
+---
 
-   $$
-   \neg A \cap B \implies \Omega \setminus B
-   $$
+## 2. Cuatro Situaciones
 
-3. **Con lista de inclusión, sin lista de exclusión**  
-   Incluir solo lo que coincida con la lista de inclusión:
+### Resumen de las cuatro situaciones
 
-   $$
-   A \cap \neg B \implies A
-   $$
+| Lista de inclusión | Lista de exclusión | Archivos conservados |
+| ------------------ | ------------------ | -------------------- |
+| A = ∅              | B = ∅              | Ω                    |
+| A = ∅              | B ≠ ∅              | ¬B                   |
+| A ≠ ∅              | B = ∅              | A                    |
+| A ≠ ∅              | B ≠ ∅              | A \ B                |
 
-4. **Con lista de inclusión y lista de exclusión**  
-   Incluir lo que coincida con la lista de inclusión y excluir lo que coincida con la lista de exclusión. Manejar la intersección según el parámetro `include_priority`:
+1. **Sin lista de inclusión, sin lista de exclusión**
 
-   - **Prioridad de inclusión == true**:
+   Si no se especifican patrones, se conservan todos los archivos (`Ω`).
 
-     $$
-     A \setminus (A \cap B)
-     $$
+2. **Solo lista de exclusión**
 
-   - **Prioridad de inclusión != true**:
-     $$
-     B \setminus (A \cap B)
-     $$
+   En este caso, Code2Prompt actúa como una lista negra, eliminando archivos que coinciden con los patrones excluidos (` Ω \ B = ¬B`).
 
-### Representación visual del caso 4
+3. **Solo lista de inclusión**
 
-Sea (A) y (B) superpongan. Dependiendo de la prioridad, la intersección $$( A \cap B )$$ se incluye o excluye según el parámetro `include_priority`.
+   Si solo se especifica una lista de inclusión, Code2Prompt actúa como una lista blanca, conservando solo archivos que coinciden con los patrones incluidos (`A`).
 
-![Representación visual del caso 4](../../../../../assets/filter.png)
+4. **Listas de inclusión _y_ exclusión**
 
-> Esta página ha sido traducida automáticamente para su conveniencia. Consulte la versión en inglés para ver el contenido original.
+   Si se especifican ambas listas, Code2Prompt conserva archivos que coinciden con los patrones de inclusión, pero elimina aquellos que coinciden con los patrones de exclusión (`A \ B`).
+
+---
+
+## 3. Más sobre la superposición
+
+Con ambas listas presentes (`A ≠ ∅`, `B ≠ ∅`) tienes cuatro posibilidades lógicas
+para la superposición `C` y el resto `D`.
+
+| ¿Quieres `C`? | ¿Quieres `D`? | ¿Razonable?                                                     |
+| ------------- | ------------- | --------------------------------------------------------------- |
+| No            | No            | Comportamiento predeterminado (`A \ B`)                         |
+| Sí            | No            | Mismo comportamiento que el caso 3 (`A`)                        |
+| No            | Sí            | sorprendente ("descartar lo que pedí `C`, conservar lo que no") |
+| Sí            | Sí            | Mismo comportamiento que el caso 1 (`Ω`)                        |
+
+Por esta razón se eliminó la opción `--include-priority`. Porque sería el mismo resultado que si solo tuvieras una lista de inclusión (caso 3).
+
+## 4. Tabla de referencia rápida
+
+| Quieres conservar…                                       | Usa                |
+| -------------------------------------------------------- | ------------------ |
+| todo                                                     | sin `-i`, sin `-e` |
+| todo _excepto_ algunos patrones                          | solo `-e`          |
+| _solo_ lo que coincide con los patrones                  | solo `-i`          |
+| lo que coincide con `-i`, menos lo que coincide con `-e` | `-i` **y** `-e`    |
+
+---
+
+Este diseño mantiene el modelo mental simple:
+
+- La lista de inclusión es una lista blanca tan pronto como existe.
+- La lista de exclusión es una lista negra superpuesta encima.
+- La superposición se descarta por defecto

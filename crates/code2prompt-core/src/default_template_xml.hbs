@@ -1,22 +1,21 @@
-
-<directory>{{ absolute_code_path }}</directory>
+<directory>{{absolute_code_path}}</directory>
 
 <source-tree>
-{{ source_tree }}
+  {{source_tree}}
 </source-tree>
 
 <files>
-{{#each files}}
-{{#if code}}
-<file path="{{ path }}">
-{{ code }}
-</file>
-{{/if}}
-{{/each}}
+  {{#each files}}
+    {{#if code}}
+      <file path="{{path}}">
+        {{code}}
+      </file>
+    {{/if}}
+  {{/each}}
 </files>
 
 {{#if git_diff}}
-<git-diff>
-{{ git_diff }}
-</git-diff>
+  <git-diff>
+    {{git_diff}}
+  </git-diff>
 {{/if}}

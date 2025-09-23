@@ -1,7 +1,7 @@
 [package]
 name = "code2prompt"
-version = "3.0.3"
-edition = "2021"
+version = "4.0.2"
+edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
@@ -10,7 +10,7 @@ repository = "https://github.com/mufeedvh/code2prompt"
 wayland = ["arboard/wayland-data-control"]
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "3.2.0" }
+code2prompt_core = { path = "../code2prompt-core", version = "4.0.2" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
@@ -22,10 +22,26 @@ num-format = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 inquire = { workspace = true }
-unicode-width = { workspace = true }
 terminal_size = { workspace = true }
-lscolors = { version = "0.20.0", features = ["ansi_term"] }
-ansi_term = "0.12.1"
+lscolors = { workspace = true }
+ansi_term = { workspace = true }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tokio = { workspace = true }
+tui-tree-widget = { workspace = true }
+tui-textarea = { workspace = true }
+atty = { workspace = true }
+walkdir = { workspace = true }
+unicode-width = { workspace = true }
+bracoxide = { workspace = true }
+git2 = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+regex = { workspace = true }
+handlebars = { workspace = true }
+ignore = { workspace = true }
+
+
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }
 
@@ -34,7 +50,6 @@ name = "code2prompt"
 path = "src/main.rs"
 
 [dev-dependencies]
-git2 = { workspace = true }
 tempfile = "3.20"
 assert_cmd = "2.0"
 predicates = "3.1"

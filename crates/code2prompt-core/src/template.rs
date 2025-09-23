@@ -1,7 +1,6 @@
 //! This module contains the functions to set up the Handlebars template engine and render the template with the provided data.
 //! It also includes functions for handling user-defined variables, copying the rendered output to the clipboard, and writing it to a file.
 use anyhow::{anyhow, Result};
-use colored::*;
 use handlebars::{no_escape, Handlebars};
 use regex::Regex;
 use std::io::Write;
@@ -68,43 +67,27 @@ pub fn render_template(
     Ok(rendered.trim().to_string())
 }
 
-/// Writes the rendered template to a specified output file or stdout.
+/// Writes the rendered template to a specified output file
 ///
 /// # Arguments
 ///
-/// * `output_path` - The path to the output file, or "-" for stdout.
+/// * `output_path` - The path to the output file.
 /// * `rendered` - The rendered template string.
-/// * `quiet` - If true, suppress success messages.
 ///
 /// # Returns
 ///
 /// * `Result<()>` - An empty result indicating success or an error.
-pub fn write_to_file(output_path: &str, rendered: &str, quiet: bool) -> Result<()> {
-    if output_path == "-" {
-        // Write to stdout
-        print!("{}", rendered);
-        std::io::stdout().flush()?;
-    } else {
-        // Write to file
-        let file = std::fs::File::create(output_path)?;
-        let mut writer = std::io::BufWriter::new(file);
-        write!(writer, "{}", rendered)?;
-        if !quiet {
-            println!(
-                "{}{}{} {}",
-                "[".bold().white(),
-                "✓".bold().green(),
-                "]".bold().white(),
-                format!("Prompt written to file: {}", output_path).green()
-            );
-        }
-    }
+pub fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
+    let file = std::fs::File::create(output_path)?;
+    let mut writer = std::io::BufWriter::new(file);
+    write!(writer, "{}", rendered)?;
     Ok(())
 }
 
 /// Enum to represent the output format.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum OutputFormat {
+    #[default]
     Markdown,
     Json,
     Xml,
@@ -123,11 +106,5 @@ impl FromStr for OutputFormat {
                 s
             )),
         }
-    }
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Markdown
     }
 }

@@ -3,7 +3,7 @@ name = "code2prompt_rs"
 version = "3.2.1"
 description = "Python bindings for code2prompt"
 authors = [
-    { name = "Olivier D'Ancona", email = "olivier.dancona@master.hes-so.ch" },
+    { name = "Olivier D'Ancona", email = "olivier_dancona@hotmail.com" },
     { name = "Mufeed VH", email = "contact@mufeedvh.com" },
 ]
 dependencies = ["pip>=25.0.1", "patchelf>=0.17.2.1"]
