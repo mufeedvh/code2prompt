@@ -1,135 +1,99 @@
-use assert_cmd::Command;
-use colored::*;
-use log::{debug, info};
+//! Git integration tests for code2prompt
+//!
+//! This module tests git-related functionality including gitignore handling
+//! and git repository integration using rstest fixtures.
+
+mod common;
+
+use common::*;
+use log::debug;
 use predicates::prelude::*;
 use predicates::str::contains;
-use std::fs::{self, read_to_string, File};
-use std::io::Write;
-use std::path::Path;
-use std::sync::Once;
-use tempfile::tempdir;
+use rstest::*;
 
-use git2::Repository;
+/// Test gitignore functionality - files should be ignored by default
+#[rstest]
+fn test_gitignore(git_test_env: GitTestEnv) {
+    let mut cmd = git_test_env.command();
+    cmd.assert().success();
 
-static INIT: Once = Once::new();
+    let output = git_test_env.read_output();
+    debug!("Test gitignore output:\n{}", output);
 
-fn init_logger() {
-    INIT.call_once(|| {
-        env_logger::builder()
-            .is_test(true)
-            .filter_level(log::LevelFilter::Debug)
-            .try_init()
-            .expect("Failed to initialize logger");
-    });
+    // Should include files not in gitignore
+    assert!(contains("included.txt").eval(&output));
+    assert!(contains("Included file").eval(&output));
+
+    // Should exclude files in gitignore
+    assert!(contains("ignored.txt").not().eval(&output));
+    assert!(contains("Ignored file").not().eval(&output));
 }
 
-fn create_temp_file(dir: &Path, name: &str, content: &str) {
-    let file_path = dir.join(name);
-    let parent_dir = file_path.parent().unwrap();
-    fs::create_dir_all(parent_dir).unwrap_or_else(|_| panic!("Failed to create directory: {:?}", parent_dir));
-    let mut file =
-        File::create(&file_path).unwrap_or_else(|_| panic!("Failed to create temp file: {:?}", file_path));
-    //debug!("Writing to file: {:?}", file_path);
-    writeln!(file, "{}", content).unwrap_or_else(|_| panic!("Failed to write to temp file: {:?}", file_path));
+/// Test --no-ignore flag - should include gitignored files
+#[rstest]
+fn test_gitignore_no_ignore(git_test_env: GitTestEnv) {
+    let mut cmd = git_test_env.command();
+    cmd.arg("--no-ignore").assert().success();
+
+    let output = git_test_env.read_output();
+    debug!("Test --no-ignore flag output:\n{}", output);
+
+    // Should include all files when ignoring gitignore
+    assert!(contains("included.txt").eval(&output));
+    assert!(contains("Included file").eval(&output));
+    assert!(contains("ignored.txt").eval(&output));
+    assert!(contains("Ignored file").eval(&output));
 }
 
-fn create_test_hierarchy(base_path: &Path) {
-    let test_dir = base_path.join("test_dir");
-    fs::create_dir_all(&test_dir).unwrap();
+/// Test that git repository is properly initialized in fixture
+#[rstest]
+fn test_git_repo_initialization(git_test_env: GitTestEnv) {
+    // Verify that the git repository exists
+    let git_dir = git_test_env.dir.path().join(".git");
+    assert!(git_dir.exists(), "Git repository should be initialized");
+    assert!(git_dir.is_dir(), "Git directory should be a directory");
+}
 
-    let files = vec![
-        ("test_dir/included.txt", "Included file"),
-        ("test_dir/ignored.txt", "Ignored file"),
-    ];
+/// Test gitignore with different patterns
+#[rstest]
+#[case("*.log", "test.log", "Log file content")]
+#[case("build/", "build/output.txt", "Build output")]
+#[case("*.tmp", "temp.tmp", "Temporary content")]
+fn test_gitignore_patterns(
+    #[case] pattern: &str,
+    #[case] file_path: &str,
+    #[case] file_content: &str,
+) {
+    let env = GitTestEnv::new();
 
-    for (file_path, content) in files {
-        create_temp_file(base_path, file_path, content);
-    }
+    // Create the test file
+    create_temp_file(env.dir.path(), file_path, file_content);
 
-    // Create a .gitignore file
-    let gitignore_path = base_path.join(".gitignore");
-    let mut gitignore_file =
-        File::create(&gitignore_path).expect("Failed to create .gitignore file");
-    writeln!(gitignore_file, "test_dir/ignored.txt").expect("Failed to write to .gitignore file");
+    // Create gitignore with the pattern
+    let gitignore_path = env.dir.path().join(".gitignore");
+    std::fs::write(&gitignore_path, pattern).expect("Failed to write gitignore");
 
-    let gitignore_content =
-        read_to_string(&gitignore_path).expect("Failed to read .gitignore file");
-    debug!("gitignore content: {}", gitignore_content);
+    let mut cmd = env.command();
+    cmd.assert().success();
 
-    info!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Tempfiles created".green()
+    let output = env.read_output();
+    debug!("Test gitignore pattern '{}' output:\n{}", pattern, output);
+
+    // File should be ignored
+    assert!(
+        contains(file_content).not().eval(&output),
+        "File with pattern '{}' should be ignored",
+        pattern
     );
-}
 
-fn read_output_file(dir: &Path, file_name: &str) -> String {
-    let file_path = dir.join(file_name);
-    read_to_string(&file_path).unwrap_or_else(|_| panic!("Failed to read output file: {:?}", file_path))
-}
+    // Test with --no-ignore
+    let mut cmd_no_ignore = env.command();
+    cmd_no_ignore.arg("--no-ignore").assert().success();
 
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
-
-    struct TestEnv {
-        dir: TempDir,
-        output_file: String,
-    }
-
-    impl TestEnv {
-        fn new() -> Self {
-            init_logger();
-            let dir = tempdir().unwrap();
-            let _repo = Repository::init(dir.path()).expect("Failed to initialize repository");
-
-            create_test_hierarchy(dir.path());
-            let output_file = dir.path().join("output.txt").to_str().unwrap().to_string();
-            TestEnv { dir, output_file }
-        }
-
-        fn command(&self) -> Command {
-            let mut cmd =
-                Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-            cmd.arg(self.dir.path().to_str().unwrap())
-                .arg("--output-file")
-                .arg(&self.output_file)
-                .arg("--no-clipboard");
-            cmd
-        }
-
-        fn read_output(&self) -> String {
-            read_output_file(self.dir.path(), "output.txt")
-        }
-    }
-
-    #[test]
-    fn test_gitignore() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.assert().success();
-
-        let output = env.read_output();
-        debug!("Test --no-ignore flag output:\n{}", output);
-        assert!(contains("included.txt").eval(&output));
-        assert!(contains("Included file").eval(&output));
-        assert!(contains("ignored.txt").not().eval(&output));
-        assert!(contains("Ignored file").not().eval(&output));
-    }
-
-    #[test]
-    fn test_gitignore_no_ignore() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--no-ignore").assert().success();
-
-        let output2 = env.read_output();
-        debug!("Test --no-ignore flag output:\n{}", output2);
-        assert!(contains("included.txt").eval(&output2));
-        assert!(contains("Included file").eval(&output2));
-        assert!(contains("ignored.txt").eval(&output2));
-        assert!(contains("Ignored file").eval(&output2));
-    }
+    let output_no_ignore = env.read_output();
+    assert!(
+        contains(file_content).eval(&output_no_ignore),
+        "File with pattern '{}' should be included with --no-ignore",
+        pattern
+    );
 }

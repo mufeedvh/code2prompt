@@ -1,286 +1,180 @@
-use assert_cmd::Command;
-use colored::*;
-use log::{debug, info};
+//! Integration tests for code2prompt file filtering functionality
+//!
+//! This module tests the include/exclude patterns, file filtering,
+//! and directory tree generation features using rstest fixtures.
+
+mod common;
+
+use common::*;
+use log::debug;
 use predicates::prelude::*;
 use predicates::str::contains;
-use std::fs::{self, read_to_string, File};
-use std::io::Write;
-use std::path::Path;
-use std::sync::Once;
-use tempfile::tempdir;
+use rstest::*;
 
-static INIT: Once = Once::new();
+/// Test file filtering with various include/exclude patterns
+#[rstest]
+fn test_file_filtering(
+    basic_test_env: BasicTestEnv,
+    #[values(
+        ("include_extensions", vec!["--include=*.py"], vec!["foo.py", "content foo.py", "FOO.py", "CONTENT FOO.PY"], vec!["content qux.txt"]),
+        ("exclude_extensions", vec!["--exclude=*.txt"], vec!["foo.py", "content foo.py", "FOO.py", "CONTENT FOO.PY"], vec!["lowercase/qux.txt", "content qux.txt"]),
+        ("include_files", vec!["--include=**/foo.py,**/bar.py"], vec!["foo.py", "content foo.py", "bar.py", "content bar.py"], vec!["lowercase/baz.py", "content baz.py"]),
+        ("include_folders", vec!["--include=**/lowercase/**"], vec!["foo.py", "content foo.py", "baz.py", "content baz.py"], vec!["uppercase/FOO"]),
+        ("exclude_files", vec!["--exclude=**/foo.py,**/bar.py"], vec!["baz.py", "content baz.py"], vec!["lowercase/foo.py", "content foo.py", "lowercase/bar.py", "content bar.py"]),
+        ("exclude_folders", vec!["--exclude=**/uppercase/**"], vec!["foo.py", "content foo.py", "baz.py", "content baz.py"], vec!["CONTENT FOO.py"])
+    )]
+    test_case: (&str, Vec<&str>, Vec<&str>, Vec<&str>),
+) {
+    let (name, args, should_include, should_exclude) = test_case;
 
-fn init_logger() {
-    INIT.call_once(|| {
-        env_logger::builder()
-            .is_test(true)
-            .filter_level(log::LevelFilter::Debug)
-            .try_init()
-            .expect("Failed to initialize logger");
-    });
+    let mut cmd = basic_test_env.command();
+    for arg in args {
+        cmd.arg(arg);
+    }
+    cmd.assert().success();
+
+    let output = basic_test_env.read_output();
+    debug!("Test {} output:\n{}", name, output);
+
+    // Check that expected content is included
+    for expected in should_include {
+        assert!(
+            contains(expected).eval(&output),
+            "Test {}: Expected '{}' to be included in output",
+            name,
+            expected
+        );
+    }
+
+    // Check that expected content is excluded
+    for expected in should_exclude {
+        assert!(
+            contains(expected).not().eval(&output),
+            "Test {}: Expected '{}' to be excluded from output",
+            name,
+            expected
+        );
+    }
 }
 
-fn create_temp_file(dir: &Path, name: &str, content: &str) {
-    let file_path = dir.join(name);
-    let parent_dir = file_path.parent().unwrap();
-    fs::create_dir_all(parent_dir).unwrap_or_else(|_| panic!("Failed to create directory: {:?}", parent_dir));
-    let mut file =
-        File::create(&file_path).unwrap_or_else(|_| panic!("Failed to create temp file: {:?}", file_path));
-    //debug!("Writing to file: {:?}", file_path);
-    writeln!(file, "{}", content).unwrap_or_else(|_| panic!("Failed to write to temp file: {:?}", file_path));
+/// Test include/exclude combination with exclude priority
+#[rstest]
+fn test_include_exclude_with_exclude_priority(basic_test_env: BasicTestEnv) {
+    let mut cmd = basic_test_env.command();
+    cmd.arg("--include=*.py,**/lowercase/**")
+        .arg("--exclude=**/foo.py,**/uppercase/**")
+        .assert()
+        .success();
+
+    let output = basic_test_env.read_output();
+    debug!("Test include and exclude combinations output:\n{}", output);
+
+    // Should include
+    assert!(contains("lowercase/baz.py").eval(&output));
+    assert!(contains("content baz.py").eval(&output));
+
+    // Should exclude (exclude takes priority)
+    assert!(contains("lowercase/foo.py").not().eval(&output));
+    assert!(contains("content foo.py").not().eval(&output));
+    assert!(contains("uppercase/FOO.py").not().eval(&output));
+    assert!(contains("CONTENT FOO.PY").not().eval(&output));
 }
 
-fn create_test_hierarchy(base_path: &Path) {
-    let lowercase_dir = base_path.join("lowercase");
-    let uppercase_dir = base_path.join("uppercase");
+/// Test with no filters (should include everything)
+#[rstest]
+fn test_no_filters(basic_test_env: BasicTestEnv) {
+    let mut cmd = basic_test_env.command();
+    cmd.assert().success();
 
-    fs::create_dir_all(&lowercase_dir).unwrap();
-    fs::create_dir_all(&uppercase_dir).unwrap();
+    let output = basic_test_env.read_output();
+    debug!("Test no filters output:\n{}", output);
 
-    let files = vec![
-        ("lowercase/foo.py", "content foo.py"),
-        ("lowercase/bar.py", "content bar.py"),
-        ("lowercase/baz.py", "content baz.py"),
-        ("lowercase/qux.txt", "content qux.txt"),
-        ("lowercase/corge.txt", "content corge.txt"),
-        ("lowercase/grault.txt", "content grault.txt"),
-        ("uppercase/FOO.py", "CONTENT FOO.PY"),
-        ("uppercase/BAR.py", "CONTENT BAR.PY"),
-        ("uppercase/BAZ.py", "CONTENT BAZ.PY"),
-        ("uppercase/QUX.txt", "CONTENT QUX.TXT"),
-        ("uppercase/CORGE.txt", "CONTENT CORGE.TXT"),
-        ("uppercase/GRAULT.txt", "CONTENT GRAULT.TXT"),
+    // Should include all files
+    let expected_files = vec![
+        "foo.py",
+        "content foo.py",
+        "baz.py",
+        "content baz.py",
+        "FOO.py",
+        "CONTENT FOO.PY",
+        "BAZ.py",
+        "CONTENT BAZ.PY",
     ];
 
-    for (file_path, content) in files {
-        create_temp_file(base_path, file_path, content);
+    for expected in expected_files {
+        assert!(
+            contains(expected).eval(&output),
+            "Expected '{}' to be included when no filters are applied",
+            expected
+        );
     }
-    info!(
-        "{}{}{} {}",
-        "[".bold().white(),
-        "✓".bold().green(),
-        "]".bold().white(),
-        "Tempfiles created".green()
-    );
 }
 
-fn read_output_file(dir: &Path, file_name: &str) -> String {
-    let file_path = dir.join(file_name);
-    read_to_string(&file_path).unwrap_or_else(|_| panic!("Failed to read output file: {:?}", file_path))
+/// Test full directory tree generation
+#[rstest]
+fn test_full_directory_tree(basic_test_env: BasicTestEnv) {
+    let mut cmd = basic_test_env.command();
+    cmd.arg("--full-directory-tree")
+        .arg("--exclude")
+        .arg("**/uppercase/**")
+        .assert()
+        .success();
+
+    let output = basic_test_env.read_output();
+    debug!("Test full directory tree output:\n{}", output);
+
+    // Should show directory structure
+    assert!(contains("├── lowercase").eval(&output));
+    assert!(contains("└── uppercase").eval(&output));
+
+    // Should show files in tree format
+    assert!(contains("├── foo.py").eval(&output));
+    assert!(contains("├── bar.py").eval(&output));
+    assert!(contains("├── baz.py").eval(&output));
+
+    // Should show excluded directory structure but not content
+    assert!(contains("├── FOO.py").eval(&output));
+    assert!(contains("├── BAR.py").eval(&output));
+    assert!(contains("├── BAZ.py").eval(&output));
+    assert!(!contains("CONTENT BAR.PY").eval(&output));
 }
 
-mod tests {
-    use super::*;
-    use tempfile::TempDir;
+/// Test brace expansion patterns
+#[rstest]
+fn test_brace_expansion(basic_test_env: BasicTestEnv) {
+    let mut cmd = basic_test_env.command();
+    cmd.arg("--include")
+        .arg("lowercase/{foo.py,bar.py,baz.py}")
+        .arg("--exclude")
+        .arg("lowercase/{qux.txt,corge.txt,grault.txt}")
+        .assert()
+        .success();
 
-    struct TestEnv {
-        dir: TempDir,
-        output_file: String,
-    }
+    let output = basic_test_env.read_output();
+    debug!("Test brace expansion output:\n{}", output);
 
-    impl TestEnv {
-        fn new() -> Self {
-            init_logger();
-            let dir = tempdir().unwrap();
-            create_test_hierarchy(dir.path());
-            let output_file = dir.path().join("output.txt").to_str().unwrap().to_string();
-            TestEnv { dir, output_file }
-        }
+    // Should include specified Python files
+    assert!(contains("foo.py").eval(&output));
+    assert!(contains("content foo.py").eval(&output));
+    assert!(contains("bar.py").eval(&output));
+    assert!(contains("content bar.py").eval(&output));
+    assert!(contains("baz.py").eval(&output));
+    assert!(contains("content baz.py").eval(&output));
 
-        fn command(&self) -> Command {
-            let mut cmd =
-                Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-            cmd.arg(self.dir.path().to_str().unwrap())
-                .arg("--output-file")
-                .arg(&self.output_file)
-                .arg("--no-clipboard");
-            cmd
-        }
+    // Should exclude specified text files
+    assert!(contains("qux.txt").not().eval(&output));
+    assert!(contains("corge.txt").not().eval(&output));
+    assert!(contains("grault.txt").not().eval(&output));
+}
 
-        fn read_output(&self) -> String {
-            read_output_file(self.dir.path(), "output.txt")
-        }
-    }
+/// Test command creation helper
+#[rstest]
+fn test_command_helper(basic_test_env: BasicTestEnv) {
+    // Test that our fixture creates working commands
+    let mut cmd = basic_test_env.command();
+    cmd.assert().success();
 
-    #[test]
-    fn test_include_extensions() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--include=*.py").assert().success();
-
-        let output = env.read_output();
-        debug!("Test include extensions output:\n{}", output);
-        assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("FOO.py").eval(&output));
-        assert!(contains("CONTENT FOO.PY").eval(&output));
-        assert!(contains("content qux.txt").not().eval(&output));
-    }
-
-    #[test]
-    fn test_exclude_extensions() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--exclude=*.txt").assert().success();
-
-        let output = env.read_output();
-        debug!("Test exclude files output:\n{}", output);
-        assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("FOO.py").eval(&output));
-        assert!(contains("CONTENT FOO.PY").eval(&output));
-        assert!(contains("lowercase/qux.txt").not().eval(&output));
-        assert!(contains("content qux.txt").not().eval(&output));
-    }
-
-    #[test]
-    fn test_include_files() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--include=**/foo.py,**/bar.py").assert().success();
-
-        let output = env.read_output();
-        debug!("Test include files output:\n{}", output);
-        assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("bar.py").eval(&output));
-        assert!(contains("content bar.py").eval(&output));
-        assert!(contains("lowercase/baz.py").not().eval(&output));
-        assert!(contains("content baz.py").not().eval(&output));
-    }
-
-    #[test]
-    fn test_include_folders() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--include=**/lowercase/**").assert().success();
-
-        let output = env.read_output();
-        debug!("Test include folders output:\n{}", output);
-        assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("baz.py").eval(&output));
-        assert!(contains("content baz.py").eval(&output));
-        assert!(contains("uppercase/FOO").not().eval(&output));
-    }
-
-    #[test]
-    fn test_exclude_files() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--exclude=**/foo.py,**/bar.py").assert().success();
-
-        let output = env.read_output();
-        debug!("Test exclude files output:\n{}", output);
-        assert!(contains("baz.py").eval(&output));
-        assert!(contains("content baz.py").eval(&output));
-        assert!(contains("lowercase/foo.py").not().eval(&output));
-        assert!(contains("content foo.py").not().eval(&output));
-        assert!(contains("lowercase/bar.py").not().eval(&output));
-        assert!(contains("content bar.py").not().eval(&output));
-    }
-
-    #[test]
-    fn test_exclude_folders() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--exclude=**/uppercase/**").assert().success();
-
-        let output = env.read_output();
-        debug!("Test exclude folders output:\n{}", output);
-        assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("baz.py").eval(&output));
-        assert!(contains("content baz.py").eval(&output));
-        assert!(contains("CONTENT FOO.py").not().eval(&output));
-    }
-
-    #[test]
-    fn test_include_exclude_with_exclude_priority() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--include=*.py,**/lowercase/**")
-            .arg("--exclude=**/foo.py,**/uppercase/**")
-            .assert()
-            .success();
-
-        let output = env.read_output();
-        debug!("Test include and exclude combinations output:\n{}", output);
-        assert!(contains("lowercase/baz.py").eval(&output));
-        assert!(contains("content baz.py").eval(&output));
-        assert!(contains("lowercase/foo.py").not().eval(&output));
-        assert!(contains("content foo.py").not().eval(&output));
-        assert!(contains("uppercase/FOO.py").not().eval(&output));
-        assert!(contains("CONTENT FOO.PY").not().eval(&output));
-    }
-
-    #[test]
-    fn test_no_filters() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.assert().success();
-
-        let output = env.read_output();
-        debug!("Test no filters output:\n{}", output);
-        assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("baz.py").eval(&output));
-        assert!(contains("content baz.py").eval(&output));
-        assert!(contains("FOO.py").eval(&output));
-        assert!(contains("CONTENT FOO.PY").eval(&output));
-        assert!(contains("BAZ.py").eval(&output));
-        assert!(contains("CONTENT BAZ.PY").eval(&output));
-    }
-
-    #[test]
-    fn test_full_directory_tree() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--full-directory-tree")
-            .arg("--exclude")
-            .arg("**/uppercase/**")
-            .assert()
-            .success();
-
-        let output = env.read_output();
-        debug!("Test full directory tree output:\n{}", output);
-        assert!(contains("├── lowercase").eval(&output));
-        assert!(contains("└── uppercase").eval(&output));
-        assert!(contains("├── foo.py").eval(&output));
-        assert!(contains("├── bar.py").eval(&output));
-        assert!(contains("├── baz.py").eval(&output));
-        assert!(contains("├── FOO.py").eval(&output));
-        assert!(contains("├── BAR.py").eval(&output));
-        assert!(contains("├── BAZ.py").eval(&output));
-        assert!(!contains("CONTENT BAR.PY").eval(&output));
-    }
-
-    #[test]
-    fn test_brace_expansion_first_item() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--include")
-            .arg("lowercase/{foo.py,bar.py,baz.py}")
-            .arg("--exclude")
-            .arg("lowercase/{qux.txt,corge.txt,grault.txt}")
-            .assert()
-            .success();
-
-        let output = env.read_output();
-
-        println!("=== DEBUG OUTPUT ===");
-        println!("{}", output);
-        println!("=== END DEBUG OUTPUT ===");
-
-        assert!(contains("foo.py").eval(&output));
-        assert!(contains("content foo.py").eval(&output));
-        assert!(contains("bar.py").eval(&output));
-        assert!(contains("content bar.py").eval(&output));
-        assert!(contains("baz.py").eval(&output));
-        assert!(contains("content baz.py").eval(&output));
-        assert!(contains("qux.txt").not().eval(&output));
-        assert!(contains("corge.txt").not().eval(&output));
-        assert!(contains("grault.txt").not().eval(&output));
-    }
+    // Verify output file was created and is readable
+    let output = basic_test_env.read_output();
+    assert!(!output.is_empty(), "Output should not be empty");
 }

@@ -1,239 +1,188 @@
-use assert_cmd::Command;
-use log::{debug, info};
+//! Template integration tests for code2prompt
+//!
+//! This module tests template functionality, output formats,
+//! and template rendering using rstest fixtures.
+
+mod common;
+
+use common::*;
+use log::debug;
 use predicates::prelude::*;
-use predicates::str::contains;
-use std::fs::{self, File};
-use std::io::Write;
-use std::path::Path;
-use std::sync::Once;
-use tempfile::tempdir;
+use predicates::str::{contains, ends_with, starts_with};
+use rstest::*;
 
-static INIT: Once = Once::new();
+/// Test different output format templates
+#[rstest]
+#[case("markdown", vec!["Source Tree:", "```rs", "fn main()", "Hello, world!"])]
+#[case("xml", vec!["<directory>", "</file>", ".rs\"", "fn main()", "Hello, world!"])]
+fn test_output_format_templates(
+    template_test_env: TemplateTestEnv,
+    #[case] format: &str,
+    #[case] expected_content: Vec<&str>,
+) {
+    let mut cmd = template_test_env.command();
+    cmd.arg(format!("--output-format={}", format))
+        .assert()
+        .success();
 
-fn init_logger() {
-    INIT.call_once(|| {
-        env_logger::builder()
-            .is_test(true)
-            .filter_level(log::LevelFilter::Debug)
-            .try_init()
-            .expect("Failed to initialize logger");
-    });
+    let output = template_test_env.read_output();
+    debug!("{} template output:\n{}", format, output);
+
+    // Check format-specific content
+    for expected in expected_content {
+        assert!(
+            contains(expected).eval(&output),
+            "Expected '{}' in {} format output",
+            expected,
+            format
+        );
+    }
 }
 
-fn create_temp_file(dir: &Path, name: &str, content: &str) -> std::path::PathBuf {
-    let file_path = dir.join(name);
-    let parent_dir = file_path.parent().unwrap();
-    fs::create_dir_all(parent_dir).unwrap_or_else(|_| panic!("Failed to create directory: {:?}", parent_dir));
-    let mut file =
-        File::create(&file_path).unwrap_or_else(|_| panic!("Failed to create temp file: {:?}", file_path));
-    writeln!(file, "{}", content).unwrap_or_else(|_| panic!("Failed to write to temp file: {:?}", file_path));
-    file_path
+/// Test JSON output format (special case with structured output)
+#[rstest]
+fn test_json_output_format(template_test_env: TemplateTestEnv) {
+    let mut cmd = template_test_env.command();
+    cmd.arg("--output-format=json").assert().success();
+
+    let output = template_test_env.read_output();
+    debug!("JSON output format:\n{}", output);
+
+    // JSON output should be structured
+    assert!(starts_with("{").eval(&output));
+    assert!(contains("\"directory_name\":").eval(&output));
+    assert!(contains("\"prompt\": \"<directory>").eval(&output));
+    assert!(ends_with("}").eval(&output));
 }
 
-fn create_test_codebase(base_path: &Path) {
-    // Create a simple code structure for testing templates
-    let files = vec![
-        (
-            "src/main.rs",
-            "fn main() {\n    println!(\"Hello, world!\");\n}",
-        ),
-        (
-            "src/lib.rs",
-            "pub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}",
-        ),
-        (
-            "tests/test.rs",
-            "#[test]\nfn test_add() {\n    assert_eq!(3, add(1, 2));\n}",
-        ),
+/// Test that template fixture creates proper codebase structure
+#[rstest]
+fn test_template_fixture_setup(template_test_env: TemplateTestEnv) {
+    // Verify that the fixture created the expected code structure
+    let expected_files = vec![
+        ("src/main.rs", "fn main()"),
+        ("src/lib.rs", "pub fn add"),
+        ("tests/test.rs", "#[test]"),
     ];
 
-    for (file_path, content) in files {
-        create_temp_file(base_path, file_path, content);
+    for (file_path, expected_content) in expected_files {
+        let file_path = template_test_env.dir.path().join(file_path);
+        assert!(
+            file_path.exists(),
+            "Test file {} should exist",
+            file_path.display()
+        );
+
+        let content =
+            std::fs::read_to_string(&file_path).expect("Should be able to read test file");
+        assert!(
+            content.contains(expected_content),
+            "File {} should contain '{}'",
+            file_path.display(),
+            expected_content
+        );
     }
-    info!("Test codebase created");
+
+    debug!("✓ Template fixture setup test passed");
 }
 
-fn read_output_file(file_path: &Path) -> String {
-    fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Failed to read output file: {:?}", file_path))
+/// Test basic template rendering with default format
+#[rstest]
+fn test_basic_template_rendering(template_test_env: TemplateTestEnv) {
+    let mut cmd = template_test_env.command();
+    cmd.assert().success();
+
+    let output = template_test_env.read_output();
+    debug!("Basic template rendering output:\n{}", output);
+
+    // Should contain code from all test files
+    assert!(contains("fn main()").eval(&output));
+    assert!(contains("Hello, world!").eval(&output));
+    assert!(contains("pub fn add").eval(&output));
+    assert!(contains("#[test]").eval(&output));
+    assert!(contains("assert_eq!").eval(&output));
 }
 
-mod template_tests {
-    use super::*;
-    use predicates::str::{ends_with, starts_with};
-    use tempfile::TempDir;
+/// Test template with different file extensions
+#[rstest]
+fn test_template_with_file_extensions(template_test_env: TemplateTestEnv) {
+    let mut cmd = template_test_env.command();
+    cmd.assert().success();
 
-    struct TestEnv {
-        dir: TempDir,
-        output_file: std::path::PathBuf,
+    let output = template_test_env.read_output();
+    debug!("Template with file extensions output:\n{}", output);
+
+    // Should properly identify and format Rust files
+    assert!(contains("src/main.rs").eval(&output));
+    assert!(contains("src/lib.rs").eval(&output));
+    assert!(contains("tests/test.rs").eval(&output));
+}
+
+/// Test template output contains proper structure
+#[rstest]
+fn test_template_output_structure(template_test_env: TemplateTestEnv) {
+    let mut cmd = template_test_env.command();
+    cmd.assert().success();
+
+    let output = template_test_env.read_output();
+    debug!("Template output structure:\n{}", output);
+
+    // Should contain directory structure information
+    assert!(contains("src").eval(&output));
+    assert!(contains("tests").eval(&output));
+
+    // Should contain file content
+    assert!(!output.trim().is_empty(), "Output should not be empty");
+
+    // Should be properly formatted (not just raw concatenation)
+    let line_count = output.lines().count();
+    assert!(
+        line_count > 10,
+        "Output should have substantial content with multiple lines"
+    );
+}
+
+/// Test template with include/exclude filters
+#[rstest]
+#[case("--include=*.rs", vec!["src/main.rs", "src/lib.rs", "tests/test.rs"])]
+#[case("--exclude=**/test.rs", vec!["src/main.rs", "src/lib.rs"])]
+#[case("--include=src/**", vec!["src/main.rs", "src/lib.rs"])]
+fn test_template_with_filters(
+    template_test_env: TemplateTestEnv,
+    #[case] filter_arg: &str,
+    #[case] expected_files: Vec<&str>,
+) {
+    let mut cmd = template_test_env.command();
+    cmd.arg(filter_arg).assert().success();
+
+    let output = template_test_env.read_output();
+    debug!("Template with filter '{}' output:\n{}", filter_arg, output);
+
+    // Should contain expected files
+    for expected_file in expected_files {
+        assert!(
+            contains(expected_file).eval(&output),
+            "Expected file '{}' with filter '{}'",
+            expected_file,
+            filter_arg
+        );
     }
+}
 
-    impl TestEnv {
-        fn new() -> Self {
-            init_logger();
-            let dir = tempdir().unwrap();
-            create_test_codebase(dir.path());
-            let output_file = dir.path().join("output.txt");
-            TestEnv { dir, output_file }
-        }
+/// Test template command creation
+#[rstest]
+fn test_template_command_creation(template_test_env: TemplateTestEnv) {
+    // Test that our fixture creates working commands
+    let mut cmd = template_test_env.command();
+    cmd.assert().success();
 
-        fn command(&self) -> Command {
-            let mut cmd =
-                Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-            cmd.arg(self.dir.path().to_str().unwrap())
-                .arg("--output-file")
-                .arg(self.output_file.to_str().unwrap())
-                .arg("--no-clipboard");
-            cmd
-        }
+    // Verify output file was created and is readable
+    let output = template_test_env.read_output();
+    assert!(!output.is_empty(), "Template output should not be empty");
 
-        fn read_output(&self) -> String {
-            read_output_file(&self.output_file)
-        }
-    }
-
-    #[test]
-    fn test_markdown_template() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--output-format=markdown").assert().success();
-
-        let output = env.read_output();
-        debug!("Markdown template output:\n{}", output);
-
-        // Check markdown-specific formatting
-        assert!(contains("Source Tree:").eval(&output));
-        assert!(contains("```rs").eval(&output));
-        assert!(contains("fn main()").eval(&output));
-        assert!(contains("Hello, world!").eval(&output));
-    }
-
-    #[test]
-    fn test_xml_template() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--output-format=xml").assert().success();
-
-        let output = env.read_output();
-        debug!("XML template output:\n{}", output);
-
-        // Check XML-specific formatting
-        assert!(contains("<directory>").eval(&output));
-        assert!(contains("</file>").eval(&output));
-        assert!(contains(".rs\"").eval(&output));
-        assert!(contains("fn main()").eval(&output));
-        assert!(contains("Hello, world!").eval(&output));
-    }
-
-    //     #[test]
-    //     fn test_custom_template_with_variables() {
-    //         let env = TestEnv::new();
-
-    //         // Create a custom template with variables
-    //         let template_content = r#"
-    // # {{project_name}} Code Review
-
-    // Author: {{author_name}}
-    // Purpose: {{purpose}}
-
-    // ## Files
-
-    // {{#each files}}
-    // ### {{path}}
-
-    // ```{{extension}}
-    // {{code}}
-    // {{/each}}
-    // "#;
-    //         let template_path =
-    //             create_temp_file(&env.dir.path(), "custom_template.hbs", template_content);
-
-    //         // Use command-line arguments to provide variables instead of stdin
-    //         let mut cmd = env.command();
-    //         cmd.arg("--template")
-    //             .arg(template_path.to_str().unwrap())
-    //             // Add user variables as command-line arguments
-    //             .arg("--var")
-    //             .arg("project_name=Test Project")
-    //             .arg("--var")
-    //             .arg("author_name=John Doe")
-    //             .arg("--var")
-    //             .arg("purpose=Demonstrating custom templates")
-    //             .assert()
-    //             .success();
-
-    //         let output = env.read_output();
-    //         debug!("Custom template output:\n{}", output);
-
-    //         // Check custom template formatting and variables
-    //         assert!(contains("# Test Project Code Review").eval(&output));
-    //         assert!(contains("Author: John Doe").eval(&output));
-    //         assert!(contains("Purpose: Demonstrating custom templates").eval(&output));
-    //         assert!(contains("### src/main.rs").eval(&output));
-    //         assert!(contains("fn main()").eval(&output));
-    //         assert!(contains("Hello, world!").eval(&output));
-    //     }
-
-    #[test]
-    fn test_json_output_format() {
-        let env = TestEnv::new();
-        let mut cmd = env.command();
-        cmd.arg("--output-format=json").assert().success();
-
-        let output = env.read_output();
-        debug!("JSON output format:\n{}", output);
-
-        // Even though JSON is an output format flag, the content is still markdown
-        // But the content should be structured to be machine-parseable
-        assert!(starts_with("{").eval(&output));
-        assert!(contains("\"directory_name\":").eval(&output));
-        assert!(contains("\"prompt\": \"<directory>").eval(&output));
-        assert!(ends_with("}").eval(&output));
-    }
-
-    //     #[test]
-    //     fn test_template_with_empty_variables() {
-    //         let env = TestEnv::new();
-
-    //         // Create a custom template with optional variables
-    //         let template_content = r#"
-    //     Code Review {{#if project_name}}for {{project_name}}{{/if}}
-    //     {{#if notes}}
-    //     Notes: {{notes}}
-    //     {{else}}
-    //     No additional notes provided.
-    //     {{/if}}
-
-    //     Files
-    //     {{#each files}}
-
-    //     {{path}}
-    //     {{code}}
-    //     {{/each}}
-    //     "#;
-
-    //         let template_path = create_temp_file(
-    //             &env.dir.path(),
-    //             "optional_vars_template.hbs",
-    //             template_content,
-    //         );
-
-    //         // Use command-line arguments with empty values instead of stdin
-    //         let mut cmd = env.command();
-    //         cmd.arg("--template")
-    //             .arg(template_path.to_str().unwrap())
-    //             .arg("--var")
-    //             .arg("project_name=")
-    //             .arg("--var")
-    //             .arg("notes=")
-    //             .assert()
-    //             .success();
-
-    //         let output = env.read_output();
-    //         debug!("Template with empty variables output:\n{}", output);
-
-    //         // Fix assertions to match the actual template format
-    //         assert!(contains("Code Review").eval(&output));
-    //         assert!(contains("No additional notes provided.").eval(&output));
-    //         assert!(contains("src/main.rs").eval(&output));
-    //     }
+    // Verify the output file exists
+    assert!(
+        template_test_env.output_file_exists(),
+        "Output file should exist after command execution"
+    );
 }
