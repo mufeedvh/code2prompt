@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt"
-version = "4.0.2"
+version = "4.0.3"
 edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"
@@ -54,3 +54,4 @@ tempfile = "3.20"
 assert_cmd = "2.0"
 predicates = "3.1"
 env_logger = "0.11.3"
+rstest = "0.18"

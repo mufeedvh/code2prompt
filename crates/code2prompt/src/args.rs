@@ -19,12 +19,12 @@ use std::path::PathBuf;
 #[command(arg_required_else_help = true)]
 pub struct Cli {
     /// Path to the codebase directory
-    #[arg()]
+    #[arg(value_name = "PATH_TO_ANALYZE", default_value = ".")]
     pub path: PathBuf,
 
     /// Optional output file (use "-" for stdout)
-    #[arg(conflicts_with = "output_file")]
-    pub output: Option<String>,
+    #[arg(short = 'O', long = "output-file", value_name = "FILE")]
+    pub output_file: Option<String>,
 
     /// Launch the Terminal User Interface
     #[clap(long)]
@@ -38,31 +38,37 @@ pub struct Cli {
     #[clap(short = 'e', long = "exclude")]
     pub exclude: Vec<String>,
 
-    /// Optional output file path
-    #[clap(short = 'O', long = "output-file")]
-    pub output_file: Option<String>,
-
-    /// Output format: markdown, json, or xml
-    #[clap(short = 'F', long = "output-format", default_value = "markdown")]
+    // /// Optional output file path
+    // #[clap(short = 'O', long = "output-file", value_name = "FILE")]
+    // pub output_file: Option<String>,
+    /// Output format
+    #[clap(
+        short = 'F',
+        long = "output-format",
+        default_value = "markdown",
+        value_name = "markdown, json, xml"
+    )]
     pub output_format: OutputFormat,
 
     /// Optional Path to a custom Handlebars template
-    #[clap(short, long)]
+    #[clap(short, long, value_name = "TEMPLATE")]
     pub template: Option<PathBuf>,
 
     /// List the full directory tree
     #[clap(long)]
     pub full_directory_tree: bool,
 
-    /// Optional tokenizer to use for token count
-    ///
-    /// Supported tokenizers: cl100k (default), p50k, p50k_edit, r50k, gpt2
-    #[clap(short = 'c', long)]
+    /// Tokenizer to use for token count
+    #[clap(
+        short = 'c',
+        long,
+        value_name = "cl100k, p50k, p50k_edit, r50k, gpt2",
+        default_value = "cl100k"
+    )]
     pub encoding: Option<String>,
 
-    /// Display the token count of the generated prompt.
-    /// Accepts a format: "raw" (machine parsable) or "format" (human readable).
-    #[clap(long, value_name = "FORMAT", default_value = "format")]
+    /// Display the token count of the generated prompt. Accepts a format: "raw" (machine parsable) or "format" (human readable)
+    #[clap(long, value_name = "raw,format", default_value = "format")]
     pub tokens: TokenFormat,
 
     /// Include git diff

@@ -21,6 +21,7 @@ use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
+use std::io::IsTerminal;
 use std::io::Write;
 use tui::run_tui_with_args;
 
@@ -67,12 +68,14 @@ async fn main() -> Result<()> {
 /// Run the CLI mode with parsed arguments
 async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> Result<()> {
     // ~~~ Consolidate Arguments ~~~
-    let effective_output = args.output_file.clone().or(args.output.clone());
+    let effective_output = args.output_file.clone();
     // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
     let no_clipboard = args.no_clipboard || effective_output.as_ref().is_some_and(|f| f == "-");
+    let is_terminal = std::io::stdout().is_terminal();
+    let quiet_mode = args.quiet || !is_terminal;
 
     // ~~~ Create Session ~~~
-    let spinner = if !args.quiet {
+    let spinner = if !quiet_mode {
         Some(setup_spinner("Traversing directory and building tree..."))
     } else {
         None
@@ -163,8 +166,8 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
     };
     let model_info = rendered.model_info;
 
-    if !args.quiet {
-        println!(
+    if !quiet_mode {
+        eprintln!(
             "{}{}{} Token count: {}, Model info: {}",
             "[".bold().white(),
             "i".bold().blue(),
@@ -214,8 +217,8 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
         use crate::clipboard::copy_to_clipboard;
         match copy_to_clipboard(&rendered.prompt) {
             Ok(_) => {
-                if !args.quiet {
-                    println!(
+                if !quiet_mode {
+                    eprintln!(
                         "{}{}{} {}",
                         "[".bold().white(),
                         "✓".bold().green(),
@@ -225,7 +228,7 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
                 }
             }
             Err(e) => {
-                if !args.quiet {
+                if !quiet_mode {
                     eprintln!(
                         "{}{}{} {}",
                         "[".bold().white(),
@@ -244,7 +247,7 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
     output_prompt(
         effective_output.as_deref().map(std::path::Path::new),
         &rendered.prompt,
-        !args.quiet,
+        !quiet_mode,
     )?;
 
     Ok(())
@@ -296,7 +299,7 @@ fn output_prompt(
             .context(format!("Failed to write to file: {}", path_str))?;
 
         if !quiet {
-            println!(
+            eprintln!(
                 "{}{}{} {}",
                 "[".bold().white(),
                 "✓".bold().green(),
