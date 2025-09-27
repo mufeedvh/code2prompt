@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt"
-version = "4.0.3"
+version = "4.1.0"
 edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"
@@ -10,7 +10,7 @@ repository = "https://github.com/mufeedvh/code2prompt"
 wayland = ["arboard/wayland-data-control"]
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "4.0.2" }
+code2prompt_core = { path = "../code2prompt-core", version = "4.1.0" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
@@ -21,6 +21,7 @@ log = { workspace = true }
 num-format = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+toml = { workspace = true }
 inquire = { workspace = true }
 terminal_size = { workspace = true }
 lscolors = { workspace = true }

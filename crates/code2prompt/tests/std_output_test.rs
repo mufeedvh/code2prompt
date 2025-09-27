@@ -12,19 +12,21 @@ use predicates::prelude::*;
 use predicates::str::contains;
 use rstest::*;
 
-/// ~~~ Non Terminal Default Output (Auto-quiet) ~~~
+/// ~~~ Default Output Behavior ~~~
 #[rstest]
 fn test_output_default(stdout_test_env: StdoutTestEnv) {
-    // When stdout is captured by the test harness (non-terminal), auto-quiet suppresses status messages.
-    // Ensure the command does not print status messages.
+    // Default behavior: output to stdout with status messages in stderr
     let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
     cmd.arg(stdout_test_env.path())
         .assert()
         .success()
-        .stdout(contains("Token count:").not())
-        .stdout(contains("Copied to clipboard successfully").not())
-        .stderr(contains("Token count:").not())
-        .stderr(contains("Copied to clipboard successfully").not());
+        // Content should be in stdout
+        .stdout(contains("test.py"))
+        .stdout(contains("print('Hello, World!')"))
+        // Status messages should be in stderr
+        .stderr(contains("Token count:"))
+        // Status messages should NOT be in stdout
+        .stdout(contains("Token count:").not());
 
     debug!("✓ Default stdout output test passed");
 }
@@ -177,22 +179,6 @@ fn test_output_file_vs_stdout_conflict(stdout_test_env: StdoutTestEnv) {
     debug!("✓ Output file vs stdout conflict test passed (correctly failed)");
 }
 
-/// Test that --no-clipboard requires --output-file
-#[rstest]
-fn test_no_clipboard_requires_output_file(stdout_test_env: StdoutTestEnv) {
-    // Test: When --no-clipboard is used, --output-file is required
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-    cmd.arg(stdout_test_env.path())
-        .arg("--no-clipboard")
-        .assert()
-        .failure()
-        .stderr(contains(
-            "--output-file is required when --no-clipboard is used",
-        ));
-
-    debug!("✓ No clipboard requires output file test passed");
-}
-
 /// Test stdout with different output formats
 #[rstest]
 #[case("json", "{", "\"files\"")]
@@ -296,22 +282,6 @@ fn test_stderr_with_output_formats(stdout_test_env: StdoutTestEnv, #[case] forma
         .stderr(contains("Prompt written to file:"));
 
     debug!("✓ Stderr with {} format test passed", format);
-}
-
-/// Test stderr error messages for invalid scenarios
-#[rstest]
-fn test_stderr_error_messages(stdout_test_env: StdoutTestEnv) {
-    // Test error message when --no-clipboard is used without --output-file
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
-    cmd.arg(stdout_test_env.path())
-        .arg("--no-clipboard")
-        .assert()
-        .failure()
-        .stderr(contains(
-            "--output-file is required when --no-clipboard is used",
-        ));
-
-    debug!("✓ Stderr error messages test passed");
 }
 
 /// Test that stdout and stderr are properly separated

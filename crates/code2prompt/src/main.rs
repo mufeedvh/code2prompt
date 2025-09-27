@@ -4,6 +4,7 @@
 mod args;
 mod clipboard;
 mod config;
+mod config_loader;
 mod model;
 mod token_map;
 mod tui;
@@ -14,14 +15,11 @@ mod widgets;
 use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
-use code2prompt_core::{
-    session::Code2PromptSession, template::write_to_file, tokenizer::TokenFormat,
-};
+use code2prompt_core::{template::write_to_file, tokenizer::TokenFormat};
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
-use std::io::IsTerminal;
 use std::io::Write;
 use tui::run_tui_with_args;
 
@@ -31,13 +29,6 @@ async fn main() -> Result<()> {
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
 
     let args: Cli = Cli::parse();
-
-    // ~~~ Arguments Validation ~~~
-    // if no_clipboard is true, output_file must be specified.
-    if args.no_clipboard && args.output_file.is_none() {
-        error!("Error: --output-file is required when --no-clipboard is used.");
-        std::process::exit(1);
-    }
 
     // ~~~ Clipboard Daemon ~~~
     #[cfg(target_os = "linux")]
@@ -51,28 +42,60 @@ async fn main() -> Result<()> {
         }
     }
 
-    // ~~~ Build Session ~~~
-    let mut session = config::create_session_from_args(&args, args.tui).unwrap_or_else(|e| {
-        error!("Failed to create session: {}", e);
-        std::process::exit(1);
-    });
-
     // ~~~ TUI or CLI Mode ~~~
     if args.tui {
+        // ~~~ Build Session for TUI ~~~
+        let session = config::create_session_from_args(&args, args.tui).unwrap_or_else(|e| {
+            error!("Failed to create session: {}", e);
+            std::process::exit(1);
+        });
         run_tui_with_args(session).await
     } else {
-        run_cli_mode_with_args(args, &mut session).await
+        run_cli_mode_with_args(args).await
     }
 }
 
 /// Run the CLI mode with parsed arguments
-async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> Result<()> {
-    // ~~~ Consolidate Arguments ~~~
-    let effective_output = args.output_file.clone();
-    // Disable clipboard when outputting to stdout (unless clipboard is explicitly enabled)
-    let no_clipboard = args.no_clipboard || effective_output.as_ref().is_some_and(|f| f == "-");
-    let is_terminal = std::io::stdout().is_terminal();
-    let quiet_mode = args.quiet || !is_terminal;
+async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
+    use code2prompt_core::configuration::OutputDestination;
+    use config_loader::{get_default_output_destination, load_config};
+
+    let quiet_mode = args.quiet;
+
+    // ~~~ Load Configuration ~~~
+    // Always load config files first (local > global), then apply CLI args on top
+    let config_source = load_config(quiet_mode)?;
+
+    // ~~~ Build Session with config + CLI args ~~~
+    let mut session = config::create_session_from_config_and_args(&config_source, &args, false)?;
+
+    // ~~~ Determine Output Behavior ~~~
+    let default_output = get_default_output_destination(&config_source);
+
+    // Determine final output destinations (Solution B: Unix-style behavior)
+    let output_to_clipboard = if args.clipboard {
+        // Explicit clipboard flag - ONLY clipboard, no stdout
+        true
+    } else if args.output_file.is_some() {
+        // Output file specified, don't use clipboard unless explicitly requested
+        false
+    } else {
+        // Use config default
+        matches!(default_output, OutputDestination::Clipboard)
+    };
+
+    let output_to_stdout = if args.clipboard {
+        // When -c is used, ONLY output to clipboard, not stdout
+        false
+    } else if let Some(ref output_file) = args.output_file {
+        output_file == "-"
+    } else {
+        match default_output {
+            OutputDestination::Stdout => true,
+            OutputDestination::Clipboard => false,
+            OutputDestination::File => false,
+        }
+    };
 
     // ~~~ Create Session ~~~
     let spinner = if !quiet_mode {
@@ -212,8 +235,16 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
         }
     }
 
+    // ~~~ Output to Stdout (NEW DEFAULT BEHAVIOR) ~~~
+    if output_to_stdout {
+        print!("{}", &rendered.prompt);
+        std::io::stdout()
+            .flush()
+            .context("Failed to flush stdout")?;
+    }
+
     // ~~~ Copy to Clipboard ~~~
-    if !no_clipboard {
+    if output_to_clipboard {
         use crate::clipboard::copy_to_clipboard;
         match copy_to_clipboard(&rendered.prompt) {
             Ok(_) => {
@@ -237,18 +268,21 @@ async fn run_cli_mode_with_args(args: Cli, session: &mut Code2PromptSession) -> 
                         format!("Failed to copy to clipboard: {}", e).red()
                     );
                 }
-                // optional: fallback
-                println!("{}", &rendered.prompt);
             }
         }
     }
 
     // ~~~ Output File ~~~
-    output_prompt(
-        effective_output.as_deref().map(std::path::Path::new),
-        &rendered.prompt,
-        !quiet_mode,
-    )?;
+    if let Some(ref output_file) = args.output_file
+        && output_file != "-"
+    {
+        // Output to file (not stdout)
+        output_prompt(
+            Some(std::path::Path::new(output_file)),
+            &rendered.prompt,
+            quiet_mode,
+        )?;
+    }
 
     Ok(())
 }
