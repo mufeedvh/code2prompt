@@ -13,7 +13,156 @@ use inquire::Text;
 use log::error;
 use std::{path::PathBuf, str::FromStr};
 
-use crate::args::Cli;
+use crate::{args::Cli, config_loader::ConfigSource};
+
+/// Create a Code2PromptSession from config and command line arguments
+///
+/// # Arguments
+///
+/// * `config_source` - The loaded configuration source
+/// * `args` - The parsed command line arguments
+/// * `tui_mode` - Whether the application is running in TUI mode
+///
+/// # Returns
+///
+/// * `Result<Code2PromptSession>` - The configured session or an error
+pub fn create_session_from_config_and_args(
+    config_source: &ConfigSource,
+    args: &Cli,
+    tui_mode: bool,
+) -> Result<Code2PromptSession> {
+    let mut configuration = Code2PromptConfig::builder();
+
+    // Start with config file values
+    let config = &config_source.config;
+
+    // Apply config file settings first
+    if let Some(path) = &config.path {
+        configuration.path(PathBuf::from(path));
+    } else {
+        configuration.path(args.path.clone());
+    }
+
+    // CLI args override config for patterns
+    // If CLI provides any patterns, they completely override config patterns to avoid conflicts
+    let (include_patterns, exclude_patterns) =
+        if !args.include.is_empty() || !args.exclude.is_empty() {
+            // CLI patterns provided - use only CLI patterns
+            (
+                expand_comma_separated_patterns(&args.include),
+                expand_comma_separated_patterns(&args.exclude),
+            )
+        } else {
+            // No CLI patterns - use config patterns
+            (
+                config.include_patterns.clone(),
+                config.exclude_patterns.clone(),
+            )
+        };
+
+    configuration
+        .include_patterns(include_patterns)
+        .exclude_patterns(exclude_patterns);
+
+    // CLI args override config for display options
+    configuration
+        .line_numbers(args.line_numbers || config.line_numbers)
+        .absolute_path(args.absolute_paths || config.absolute_path)
+        .full_directory_tree(args.full_directory_tree || config.full_directory_tree);
+
+    // Output format: CLI overrides config
+    let output_format = args.output_format.clone();
+    configuration.output_format(output_format);
+
+    // Sort method: CLI overrides config
+    let sort_method = if let Some(sort_str) = &args.sort {
+        sort_str.parse::<FileSortMethod>().unwrap_or_else(|err| {
+            eprintln!("{}", err);
+            std::process::exit(1);
+        })
+    } else if let Some(sort_str) = &config.sort_method {
+        sort_str
+            .parse::<FileSortMethod>()
+            .unwrap_or(FileSortMethod::NameAsc)
+    } else {
+        FileSortMethod::NameAsc
+    };
+
+    configuration.sort_method(sort_method);
+
+    // Tokenizer: CLI overrides config
+    let tokenizer_type = if let Some(encoding) = &args.encoding {
+        encoding.parse::<TokenizerType>().unwrap_or_default()
+    } else if let Some(encoding) = &config.encoding {
+        encoding.parse::<TokenizerType>().unwrap_or_default()
+    } else {
+        "cl100k".parse::<TokenizerType>().unwrap_or_default()
+    };
+
+    configuration
+        .encoding(tokenizer_type)
+        .token_format(args.tokens.clone());
+
+    // Template: CLI overrides config
+    let (template_str, template_name) = if args.template.is_some() {
+        parse_template(&args.template).unwrap_or_else(|e| {
+            error!("Failed to parse template: {}", e);
+            std::process::exit(1);
+        })
+    } else {
+        (
+            config.template_str.clone().unwrap_or_default(),
+            config
+                .template_name
+                .clone()
+                .unwrap_or_else(|| "default".to_string()),
+        )
+    };
+
+    configuration
+        .template_str(template_str)
+        .template_name(template_name);
+
+    // Git options: CLI overrides config
+    let diff_branches = parse_branch_argument(&args.git_diff_branch).or_else(|| {
+        config.diff_branches.as_ref().and_then(|branches| {
+            if branches.len() == 2 {
+                Some((branches[0].clone(), branches[1].clone()))
+            } else {
+                None
+            }
+        })
+    });
+
+    let log_branches = parse_branch_argument(&args.git_log_branch).or_else(|| {
+        config.log_branches.as_ref().and_then(|branches| {
+            if branches.len() == 2 {
+                Some((branches[0].clone(), branches[1].clone()))
+            } else {
+                None
+            }
+        })
+    });
+
+    configuration
+        .diff_enabled(args.diff || config.diff_enabled)
+        .diff_branches(diff_branches)
+        .log_branches(log_branches);
+
+    // Other CLI flags
+    configuration
+        .no_ignore(args.no_ignore)
+        .hidden(args.hidden)
+        .no_codeblock(args.no_codeblock)
+        .follow_symlinks(args.follow_symlinks)
+        .token_map_enabled(args.token_map || config.token_map_enabled || tui_mode);
+
+    // User variables from config
+    configuration.user_variables(config.user_variables.clone());
+
+    let session = Code2PromptSession::new(configuration.build()?);
+    Ok(session)
+}
 
 /// Create a Code2PromptSession from command line arguments
 ///

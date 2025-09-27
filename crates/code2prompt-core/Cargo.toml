@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt_core"
-version = "4.0.2"
+version = "4.1.0"
 authors = [
     "Mufeed VH <mufeed@lyminal.space>",
     "Olivier D'Ancona <olivier_dancona@hotmail.com>",
@@ -28,6 +28,7 @@ log = { workspace = true }
 num-format = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+toml = { workspace = true }
 handlebars = { workspace = true }
 jwalk = { workspace = true }
 termtree = { workspace = true }

@@ -511,12 +511,11 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
             name_with_padding
         };
 
-        // Print the line
-        println!(
+        eprintln!(
             "{:>width$}   {}{} │{}│ {}",
             tokens_str,
             prefix,
-            colored_name_with_padding, // This now includes the padding
+            colored_name_with_padding,
             bar,
             percentage_str,
             width = max_token_width

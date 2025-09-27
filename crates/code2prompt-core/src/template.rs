@@ -1,7 +1,7 @@
 //! This module contains the functions to set up the Handlebars template engine and render the template with the provided data.
 //! It also includes functions for handling user-defined variables, copying the rendered output to the clipboard, and writing it to a file.
-use anyhow::{anyhow, Result};
-use handlebars::{no_escape, Handlebars};
+use anyhow::{Result, anyhow};
+use handlebars::{Handlebars, no_escape};
 use regex::Regex;
 use std::io::Write;
 use std::str::FromStr;
@@ -91,6 +91,16 @@ pub enum OutputFormat {
     Markdown,
     Json,
     Xml,
+}
+
+impl std::fmt::Display for OutputFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OutputFormat::Markdown => write!(f, "markdown"),
+            OutputFormat::Json => write!(f, "json"),
+            OutputFormat::Xml => write!(f, "xml"),
+        }
+    }
 }
 
 impl FromStr for OutputFormat {
