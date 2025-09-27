@@ -5,6 +5,7 @@
 
 mod common;
 
+use common::fixtures::*;
 use common::*;
 use log::debug;
 use predicates::prelude::*;

@@ -6,6 +6,7 @@
 mod common;
 
 use assert_cmd::Command;
+use common::fixtures::*;
 use common::*;
 use log::debug;
 use predicates::prelude::*;

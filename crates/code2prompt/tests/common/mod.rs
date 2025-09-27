@@ -6,7 +6,6 @@
 pub mod fixtures;
 pub mod test_env;
 
-pub use fixtures::*;
 pub use test_env::*;
 
 use std::sync::Once;
