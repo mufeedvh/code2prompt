@@ -1,0 +1,8 @@
+default_output = "clipboard"
+include_patterns = ["*.rs"]
+exclude_patterns = ["**/test*"]
+line_numbers = false
+absolute_path = true
+
+[user_variables]
+project = "code2prompt"

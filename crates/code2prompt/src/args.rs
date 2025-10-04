@@ -60,7 +60,6 @@ pub struct Cli {
 
     /// Tokenizer to use for token count
     #[clap(
-        short = 'c',
         long,
         value_name = "cl100k, p50k, p50k_edit, r50k, gpt2",
         default_value = "cl100k"
@@ -103,8 +102,12 @@ pub struct Cli {
     #[clap(long)]
     pub no_codeblock: bool,
 
-    /// Optional Disable copying to clipboard
-    #[clap(long)]
+    /// Copy output to clipboard
+    #[clap(short = 'c', long)]
+    pub clipboard: bool,
+
+    /// Optional Disable copying to clipboard (deprecated, use default behavior)
+    #[clap(long, hide = true)]
     pub no_clipboard: bool,
 
     /// Skip .gitignore rules
