@@ -15,27 +15,27 @@
     "@astrojs/mdx": "4.3.6",
     "@astrojs/partytown": "^2.1.4",
     "@astrojs/prism": "3.3.0",
-    "@astrojs/react": "4.3.1",
+    "@astrojs/react": "4.4.0",
     "@astrojs/sitemap": "3.6.0",
     "@astrojs/starlight": "^0.36.0",
     "@astrojs/upgrade": "^0.6.2",
-    "@tailwindcss/vite": "^4.1.13",
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9",
-    "astro": "5.13.10",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "astro": "5.14.1",
     "marked": "^16.3.0",
     "prismjs": "^1.30.0",
     "rehype-mathjax": "^7.1.0",
     "remark-math": "^6.0.0",
     "sharp": "^0.34.4",
     "starlight-blog": "^0.24.1",
-    "tailwindcss": "^4.1.13"
+    "tailwindcss": "^4.1.14"
   },
   "devDependencies": {
     "dlx": "^0.2.1",
     "prettier-plugin-astro": "^0.14.1",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
-  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
+  "packageManager": "pnpm@10.18.0"
 }
