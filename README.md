@@ -8,7 +8,7 @@
 </div>
 
 <h1 align="center">
-  <a href="https://code2prompt.dev"><img src=".assets/CLI.png" alt="code2prompt"></a>
+  <a href="https://code2prompt.dev"><img src=".assets/demo.gif" alt="code2prompt"></a>
 </h1>
 
 <hr />
@@ -31,7 +31,8 @@
 
 ## Quick Install ⚡
 
-### Cargo 
+### Cargo
+
 ```bash
 cargo install code2prompt 
 ```
@@ -43,6 +44,7 @@ cargo install --features wayland code2prompt
 ```
 
 ### Homebrew
+
 ```bash
 brew install code2prompt
 ```
