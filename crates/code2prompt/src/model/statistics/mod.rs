@@ -36,7 +36,14 @@ impl StatisticsState {
 
     /// Count total files in the tree nodes
     pub fn count_total_files(nodes: &[DisplayFileNode]) -> usize {
-        nodes.iter().filter(|node| !node.is_directory).count()
+        fn rec(n: &DisplayFileNode) -> usize {
+            if !n.is_directory {
+                1
+            } else {
+                n.children.iter().map(rec).sum()
+            }
+        }
+        nodes.iter().map(rec).sum()
     }
 
     /// Format number according to token format setting (moved from widget)

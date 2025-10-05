@@ -1,6 +1,5 @@
 //! Statistics overview widget for displaying analysis summary.
-
-use crate::model::Model;
+use crate::model::{Model, StatisticsState};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -89,28 +88,26 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         );
 
         let mut session_clone = self.model.session.clone();
-        let selected_count =
-            crate::model::StatisticsState::count_selected_files(&mut session_clone);
-        let eligible_count =
-            crate::model::StatisticsState::count_total_files(&self.model.file_tree_nodes);
+        let selected_count = StatisticsState::count_selected_files(&mut session_clone);
+        let eligible_count = StatisticsState::count_total_files(&self.model.file_tree_nodes);
         let total_files = self.model.prompt_output.file_count;
         stats_items.push(ListItem::new(format!(
-            "  • Selected: {} files",
+            "  • Selected (current): {} files",
             selected_count
         )));
         stats_items.push(ListItem::new(format!(
-            "  • Eligible: {} files",
+            "  • Eligible (current filters): {} files",
             eligible_count
         )));
         stats_items.push(ListItem::new(format!(
-            "  • Total Found: {} files",
+            "  • Included (last run): {} files",
             total_files
         )));
 
         if selected_count > 0 && eligible_count > 0 {
             let percentage = (selected_count as f64 / eligible_count as f64 * 100.0) as usize;
             stats_items.push(ListItem::new(format!(
-                "  • Selection Rate: {}%",
+                "  • Selection Rate (current): {}%",
                 percentage
             )));
         }
@@ -128,7 +125,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         if let Some(token_count) = self.model.prompt_output.token_count {
             stats_items.push(ListItem::new(format!(
                 "  • Total Tokens: {}",
-                crate::model::StatisticsState::format_number(
+                StatisticsState::format_number(
                     token_count,
                     &self.model.session.config.token_format
                 )
@@ -137,7 +134,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
                 let avg_tokens = token_count / selected_count;
                 stats_items.push(ListItem::new(format!(
                     "  • Avg per File: {}",
-                    crate::model::StatisticsState::format_number(
+                    StatisticsState::format_number(
                         avg_tokens,
                         &self.model.session.config.token_format
                     )
