@@ -3,11 +3,11 @@
 //! This module contains helper functions for building file trees,
 //! managing file operations, and other utility functions used throughout the TUI.
 
+use crate::model::DisplayFileNode;
 use anyhow::Result;
 use code2prompt_core::session::Code2PromptSession;
+use regex::Regex;
 use std::path::Path;
-
-use crate::model::DisplayFileNode;
 
 /// Build hierarchical file tree from session using traverse_directory with SelectionEngine
 pub fn build_file_tree_from_session(
@@ -104,8 +104,35 @@ pub fn get_visible_nodes(
 ) -> Vec<DisplayNodeWithSelection> {
     let mut visible = Vec::new();
     let search_active = !search_query.is_empty();
-    collect_visible_nodes_recursive(nodes, search_query, session, &mut visible, search_active);
+    let matcher = build_query_matcher(search_query);
+    collect_visible_nodes_recursive(nodes, &matcher, session, &mut visible, search_active);
     visible
+}
+
+/// Simple matcher that supports case-insensitive substring and '*'/'?' wildcards.
+enum QueryMatcher {
+    Substr(String),
+    Regex(Regex),
+}
+
+fn build_query_matcher(raw: &str) -> QueryMatcher {
+    let has_wildcards = raw.contains('*') || raw.contains('?');
+    if has_wildcards {
+        // Escape regex meta, then re-introduce wildcards
+        let mut pat = regex::escape(raw);
+        pat = pat.replace(r"\*", ".*").replace(r"\?", ".");
+        let anchored = format!("(?i)^{}$", pat); // (?i) = case-insensitive
+        QueryMatcher::Regex(Regex::new(&anchored).unwrap_or_else(|_| Regex::new(".*").unwrap()))
+    } else {
+        QueryMatcher::Substr(raw.to_lowercase())
+    }
+}
+
+fn matches(m: &QueryMatcher, text: &str) -> bool {
+    match m {
+        QueryMatcher::Substr(needle) => text.to_lowercase().contains(needle),
+        QueryMatcher::Regex(re) => re.is_match(text),
+    }
 }
 
 /// Node with selection state for display
@@ -118,19 +145,17 @@ pub struct DisplayNodeWithSelection {
 /// Recursively collect visible nodes
 fn collect_visible_nodes_recursive(
     nodes: &[DisplayFileNode],
-    search_query: &str,
+    matcher: &QueryMatcher,
     session: &mut Code2PromptSession,
     visible: &mut Vec<DisplayNodeWithSelection>,
     search_active: bool,
 ) {
     for node in nodes {
-        // Case-insensitive match on name or full path
-        let matches_current = if search_query.is_empty() {
+        // Case-insensitive match on name or full path (with optional wildcards)
+        let matches_current = if matches!(matcher, QueryMatcher::Substr(s) if s.is_empty()) {
             true
         } else {
-            let q = search_query.to_lowercase();
-            node.name.to_lowercase().contains(&q)
-                || node.path.to_string_lossy().to_lowercase().contains(&q)
+            matches(matcher, &node.name) || matches(matcher, &node.path.to_string_lossy())
         };
 
         if search_active {
@@ -140,7 +165,7 @@ fn collect_visible_nodes_recursive(
                 let children = get_children_for_search(node, session);
                 collect_visible_nodes_recursive(
                     &children,
-                    search_query,
+                    matcher,
                     session,
                     &mut child_results,
                     true,
@@ -189,7 +214,7 @@ fn collect_visible_nodes_recursive(
                 if node.is_directory && node.is_expanded {
                     collect_visible_nodes_recursive(
                         &node.children,
-                        search_query,
+                        matcher,
                         session,
                         visible,
                         false,

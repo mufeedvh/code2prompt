@@ -114,14 +114,7 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ),
             Span::styled("earch", Style::default().fg(Color::White)),
-            Span::styled(
-                if self.model.search_query.contains('*') {
-                    " (glob pattern active)"
-                } else {
-                    " (text or glob pattern)"
-                },
-                Style::default().fg(Color::Gray),
-            ),
+            Span::styled(" (text or * ? wildcards)", Style::default().fg(Color::Gray)),
         ];
 
         let search_widget = Paragraph::new(self.model.search_query.as_str())
