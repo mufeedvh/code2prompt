@@ -113,7 +113,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         std::process::exit(1);
     });
     if let Some(ref s) = spinner {
-        s.finish_with_message("Done!".green().to_string());
+        s.set_message("Proceeding…".to_string());
     }
 
     // ~~~ Git Related ~~~
@@ -161,10 +161,6 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         });
     }
 
-    if let Some(ref s) = spinner {
-        s.finish_with_message("Done!".green().to_string());
-    }
-
     // ~~~ Template ~~~
 
     // Data
@@ -185,7 +181,9 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     let token_count = rendered.token_count;
     let formatted_token_count: String = match session.config.token_format {
         TokenFormat::Raw => token_count.to_string(),
-        TokenFormat::Format => token_count.to_formatted_string(&SystemLocale::default().unwrap()),
+        TokenFormat::Format => SystemLocale::default()
+            .map(|loc| token_count.to_formatted_string(&loc))
+            .unwrap_or_else(|_| token_count.to_string()),
     };
     let model_info = rendered.model_info;
 
@@ -276,12 +274,15 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     if let Some(ref output_file) = args.output_file
         && output_file != "-"
     {
-        // Output to file (not stdout)
         output_prompt(
             Some(std::path::Path::new(output_file)),
             &rendered.prompt,
             quiet_mode,
         )?;
+    }
+
+    if let Some(ref s) = spinner {
+        s.finish_with_message("Done!".green().to_string());
     }
 
     Ok(())

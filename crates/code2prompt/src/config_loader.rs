@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use code2prompt_core::configuration::{OutputDestination, TomlConfig};
 use colored::*;
 use log::{debug, info};
-use std::path::PathBuf;
+use std::path::Path;
 
 /// Configuration source information
 #[derive(Debug, Clone)]
@@ -85,7 +85,7 @@ pub fn load_config(quiet: bool) -> Result<ConfigSource> {
 }
 
 /// Load TOML configuration from a file
-fn load_config_from_file(path: &PathBuf) -> Result<TomlConfig> {
+fn load_config_from_file(path: &Path) -> Result<TomlConfig> {
     let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read config file: {}", path.display()))?;
 

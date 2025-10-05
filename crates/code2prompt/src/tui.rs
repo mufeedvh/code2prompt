@@ -41,24 +41,12 @@ pub struct TuiApp {
 }
 
 impl TuiApp {
-    /// Create a new TUI application with specified parameters.
+    /// Create a new TUI application.
     ///
-    /// Initializes the TUI with a default configuration using the provided path
-    /// and file patterns, builds the initial file tree, and sets up the application state.
+    /// Initializes the terminal and sets up the application state from the provided session.
+    /// The initial file tree is requested via a `RefreshFileTree` message in `run()`.
     ///
-    /// # Arguments
-    ///
-    /// * `path` - Root path of the codebase to analyze
-    /// * `include_patterns` - Patterns for files to include
-    /// * `exclude_patterns` - Patterns for files to exclude
-    ///
-    /// # Returns
-    ///
-    /// * `Result<Self>` - The initialized TUI application
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the terminal cannot be initialized or the file tree cannot be built.
+    /// Returns an error if the terminal cannot be initialized.
     pub fn new(session: Code2PromptSession) -> Result<Self> {
         let terminal = init_terminal()?;
         let (message_tx, message_rx) = mpsc::unbounded_channel();

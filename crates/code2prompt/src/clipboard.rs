@@ -14,12 +14,12 @@ use log::info;
 /// # Returns
 ///
 /// * `Result<()>` - Returns Ok on success, or an error if the clipboard could not be accessed.
-pub fn copy_text_to_clipboard(rendered: &str) -> Result<()> {
+pub fn copy_text_to_clipboard(text: &str) -> Result<()> {
     use arboard::Clipboard;
     match Clipboard::new() {
         Ok(mut clipboard) => {
             clipboard
-                .set_text(rendered.to_string())
+                .set_text(text.to_string())
                 .context("Failed to copy to clipboard")?;
             Ok(())
         }
@@ -71,7 +71,6 @@ pub fn serve_clipboard_daemon() -> Result<()> {
 /// # Arguments
 ///
 /// * `text` - The text to be served by the daemon process.
-/// * `quiet` - If true, suppresses output messages to the console.
 ///
 /// # Returns
 ///
@@ -96,12 +95,14 @@ pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
         .context("Failed to launch clipboard daemon process")?;
 
     // ~~~ Write the content to the daemon's standard input ~~~
-    if let Some(mut stdin) = child.stdin.take() {
-        use std::io::Write;
-        stdin
-            .write_all(content.as_bytes())
-            .context("Failed to write content to clipboard daemon process")?;
-    }
+    use std::io::Write;
+    let mut stdin = child
+        .stdin
+        .take()
+        .context("Failed to acquire stdin pipe for clipboard daemon process")?;
+    stdin
+        .write_all(content.as_bytes())
+        .context("Failed to write content to clipboard daemon process")?;
     info!("Clipboard daemon launched successfully");
 
     Ok(())

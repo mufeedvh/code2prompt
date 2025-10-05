@@ -10,7 +10,7 @@ use code2prompt_core::{template::OutputFormat, tokenizer::TokenFormat};
 use std::path::PathBuf;
 
 // ~~~ CLI Arguments ~~~
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[clap(
     name = env!("CARGO_PKG_NAME"),
     version = env!("CARGO_PKG_VERSION"),
@@ -38,9 +38,6 @@ pub struct Cli {
     #[clap(short = 'e', long = "exclude")]
     pub exclude: Vec<String>,
 
-    // /// Optional output file path
-    // #[clap(short = 'O', long = "output-file", value_name = "FILE")]
-    // pub output_file: Option<String>,
     /// Output format
     #[clap(
         short = 'F',
@@ -58,7 +55,7 @@ pub struct Cli {
     #[clap(long)]
     pub full_directory_tree: bool,
 
-    /// Tokenizer to use for token count
+    /// Token encoding to use for token count
     #[clap(
         long,
         value_name = "cl100k, p50k, p50k_edit, r50k, gpt2",

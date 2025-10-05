@@ -73,7 +73,10 @@ fn auto_expand_recursively(node: &mut DisplayFileNode, session: &mut Code2Prompt
 }
 
 /// Check if a directory contains any selected files (helper function)
-fn directory_contains_selected_files(dir_path: &Path, session: &mut Code2PromptSession) -> bool {
+pub(crate) fn directory_contains_selected_files(
+    dir_path: &Path,
+    session: &mut Code2PromptSession,
+) -> bool {
     if let Ok(entries) = std::fs::read_dir(dir_path) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -116,6 +119,8 @@ enum QueryMatcher {
 }
 
 fn build_query_matcher(raw: &str) -> QueryMatcher {
+    // Trim incidental whitespace for more predictable matches.
+    let raw = raw.trim();
     let has_wildcards = raw.contains('*') || raw.contains('?');
     if has_wildcards {
         // Escape regex meta, then re-introduce wildcards
@@ -332,7 +337,8 @@ pub fn load_all_templates() -> Result<Vec<(String, String)>> {
     }
 
     // De-duplicate (same path could appear twice)
-    out.sort_by(|a: &(_, String), b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+    // Let the compiler infer tuple types for the sort closure.
+    out.sort_by(|a: &(String, String), b: &(String, String)| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
     out.dedup_by(|a, b| a.1 == b.1);
 
     Ok(out)

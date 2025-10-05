@@ -234,16 +234,20 @@ pub fn handle_undefined_variables(
 ) -> Result<()> {
     let undefined_variables = extract_undefined_variables(template_content);
     let mut user_defined_vars = serde_json::Map::new();
-
-    for var in undefined_variables.iter() {
-        if !data.as_object().unwrap().contains_key(var) {
-            let prompt = format!("Enter value for '{}': ", var);
-            let answer = Text::new(&prompt)
-                .with_help_message("Fill user defined variable in template")
-                .prompt()
-                .unwrap_or_default();
-            user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
+    if let Some(obj) = data.as_object() {
+        for var in undefined_variables.iter() {
+            if !obj.contains_key(var) {
+                let prompt = format!("Enter value for '{}': ", var);
+                let answer = Text::new(&prompt)
+                    .with_help_message("Fill user defined variable in template")
+                    .prompt()
+                    .unwrap_or_default();
+                user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
+            }
         }
+    } else {
+        // Data is not an object; nothing to prompt for in this shape.
+        return Ok(());
     }
 
     if let Some(obj) = data.as_object_mut() {

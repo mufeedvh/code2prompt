@@ -17,6 +17,7 @@ pub use settings::*;
 pub use statistics::*;
 pub use template::*;
 
+use crate::utils::directory_contains_selected_files;
 use code2prompt_core::session::Code2PromptSession;
 
 /// The five main tabs of the TUI
@@ -127,33 +128,6 @@ impl DisplayFileNode {
         self.children_loaded = true;
         Ok(())
     }
-}
-
-/// Check if a directory contains any selected files (helper function)
-fn directory_contains_selected_files(
-    dir_path: &std::path::Path,
-    session: &mut code2prompt_core::session::Code2PromptSession,
-) -> bool {
-    if let Ok(entries) = std::fs::read_dir(dir_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let relative_path = if let Ok(rel) = path.strip_prefix(&session.config.path) {
-                rel
-            } else {
-                continue;
-            };
-
-            if session.is_file_selected(relative_path) {
-                return true;
-            }
-
-            // Recursively check subdirectories
-            if path.is_dir() && directory_contains_selected_files(&path, session) {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 /// Messages for updating the model

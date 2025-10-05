@@ -1,6 +1,6 @@
 //! Statistics by extension widget for displaying extension-based histogram.
 
-use crate::model::Model;
+use crate::model::{Model, StatisticsState};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -17,22 +17,6 @@ pub struct StatisticsByExtensionWidget<'a> {
 impl<'a> StatisticsByExtensionWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
-    }
-
-    /// Format number according to token format setting
-    fn format_number(
-        num: usize,
-        token_format: &code2prompt_core::tokenizer::TokenFormat,
-    ) -> String {
-        use code2prompt_core::tokenizer::TokenFormat;
-        use num_format::{SystemLocale, ToFormattedString};
-
-        match token_format {
-            TokenFormat::Format => SystemLocale::default()
-                .map(|locale| num.to_formatted_string(&locale))
-                .unwrap_or_else(|_| num.to_string()),
-            TokenFormat::Raw => num.to_string(),
-        }
     }
 }
 
@@ -99,7 +83,8 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let max_tokens_width = ext_vec
             .iter()
             .map(|(_, tokens, _)| {
-                Self::format_number(*tokens, &self.model.session.config.token_format).len()
+                StatisticsState::format_number(*tokens, &self.model.session.config.token_format)
+                    .len()
             })
             .max()
             .unwrap_or(6)
@@ -163,8 +148,10 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
                 };
 
                 // Format with dynamic column widths
-                let formatted_tokens =
-                    Self::format_number(*tokens, &self.model.session.config.token_format);
+                let formatted_tokens = StatisticsState::format_number(
+                    *tokens,
+                    &self.model.session.config.token_format,
+                );
                 let content = format!(
                     "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {:>width_count$} files",
                     extension,
