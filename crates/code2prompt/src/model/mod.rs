@@ -481,10 +481,11 @@ impl Model {
             }
 
             Message::ToggleSetting(index) => {
-                if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
+                let items = new_model.settings.get_settings_items(&new_model.session);
+                if let Some(item) = items.get(index) {
                     let setting_name = new_model.settings.update_setting_by_key(
                         &mut new_model.session,
-                        key,
+                        item.key,
                         SettingAction::Toggle,
                     );
                     new_model.status_message = format!("Toggled {}", setting_name);
@@ -495,10 +496,11 @@ impl Model {
             }
 
             Message::CycleSetting(index) => {
-                if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
+                let items = new_model.settings.get_settings_items(&new_model.session);
+                if let Some(item) = items.get(index) {
                     let setting_name = new_model.settings.update_setting_by_key(
                         &mut new_model.session,
-                        key,
+                        item.key,
                         SettingAction::Cycle,
                     );
                     new_model.status_message = format!("Cycled {}", setting_name);

@@ -8,7 +8,7 @@ use code2prompt_core::template::OutputFormat;
 use code2prompt_core::tokenizer::TokenFormat;
 use code2prompt_core::{session::Code2PromptSession, tokenizer::TokenizerType};
 
-use crate::model::{SettingType, SettingsGroup, SettingsItem};
+use crate::model::{SettingKey, SettingType, SettingsGroup, SettingsItem};
 
 /// Format settings groups for display
 pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup> {
@@ -17,21 +17,25 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
             name: "Output Format".to_string(),
             items: vec![
                 SettingsItem {
+                    key: SettingKey::LineNumbers,
                     name: "Line Numbers".to_string(),
                     description: "Show line numbers in output".to_string(),
                     setting_type: SettingType::Boolean(session.config.line_numbers),
                 },
                 SettingsItem {
+                    key: SettingKey::AbsolutePaths,
                     name: "Absolute Paths".to_string(),
                     description: "Use absolute instead of relative paths".to_string(),
                     setting_type: SettingType::Boolean(session.config.absolute_path),
                 },
                 SettingsItem {
+                    key: SettingKey::NoCodeblock,
                     name: "No Codeblock".to_string(),
                     description: "Don't wrap code in markdown blocks".to_string(),
                     setting_type: SettingType::Boolean(session.config.no_codeblock),
                 },
                 SettingsItem {
+                    key: SettingKey::OutputFormat,
                     name: "Output Format".to_string(),
                     description: "Format for generated output".to_string(),
                     setting_type: SettingType::Choice {
@@ -48,6 +52,7 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
                     },
                 },
                 SettingsItem {
+                    key: SettingKey::TokenFormat,
                     name: "Token Format".to_string(),
                     description: "How to display token counts".to_string(),
                     setting_type: SettingType::Choice {
@@ -62,6 +67,7 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
                     },
                 },
                 SettingsItem {
+                    key: SettingKey::FullDirectoryTree,
                     name: "Full Directory Tree".to_string(),
                     description: "Show complete directory structure".to_string(),
                     setting_type: SettingType::Boolean(session.config.full_directory_tree),
@@ -71,6 +77,7 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
         SettingsGroup {
             name: "Sorting & Organization".to_string(),
             items: vec![SettingsItem {
+                key: SettingKey::SortMethod,
                 name: "Sort Method".to_string(),
                 description: "How to sort files in output".to_string(),
                 setting_type: SettingType::Choice {
@@ -93,6 +100,7 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
         SettingsGroup {
             name: "Tokenizer & Encoding".to_string(),
             items: vec![SettingsItem {
+                key: SettingKey::TokenizerType,
                 name: "Tokenizer Type".to_string(),
                 description: "Encoding method for token counting".to_string(),
                 setting_type: SettingType::Choice {
@@ -116,6 +124,7 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
         SettingsGroup {
             name: "Git Integration".to_string(),
             items: vec![SettingsItem {
+                key: SettingKey::GitDiff,
                 name: "Git Diff".to_string(),
                 description: "Include git diff in output".to_string(),
                 setting_type: SettingType::Boolean(session.config.diff_enabled),
@@ -125,16 +134,19 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
             name: "File Selection".to_string(),
             items: vec![
                 SettingsItem {
+                    key: SettingKey::FollowSymlinks,
                     name: "Follow Symlinks".to_string(),
                     description: "Follow symbolic links".to_string(),
                     setting_type: SettingType::Boolean(session.config.follow_symlinks),
                 },
                 SettingsItem {
+                    key: SettingKey::HiddenFiles,
                     name: "Hidden Files".to_string(),
                     description: "Include hidden files and directories".to_string(),
                     setting_type: SettingType::Boolean(session.config.hidden),
                 },
                 SettingsItem {
+                    key: SettingKey::NoIgnore,
                     name: "No Ignore".to_string(),
                     description: "Ignore .gitignore rules".to_string(),
                     setting_type: SettingType::Boolean(session.config.no_ignore),

@@ -23,6 +23,7 @@ pub struct SettingsGroup {
 /// Settings item for display and interaction
 #[derive(Debug, Clone)]
 pub struct SettingsItem {
+    pub key: SettingKey,
     pub name: String,
     pub description: String,
     pub setting_type: SettingType,
@@ -61,25 +62,6 @@ pub enum SettingKey {
 }
 
 impl SettingsState {
-    /// Map flat index to SettingKey for backward compatibility
-    pub fn map_index_to_setting_key(&self, index: usize) -> Option<SettingKey> {
-        match index {
-            0 => Some(SettingKey::LineNumbers),
-            1 => Some(SettingKey::AbsolutePaths),
-            2 => Some(SettingKey::NoCodeblock),
-            3 => Some(SettingKey::OutputFormat),
-            4 => Some(SettingKey::TokenFormat),
-            5 => Some(SettingKey::FullDirectoryTree),
-            6 => Some(SettingKey::SortMethod),
-            7 => Some(SettingKey::TokenizerType),
-            8 => Some(SettingKey::GitDiff),
-            9 => Some(SettingKey::FollowSymlinks),
-            10 => Some(SettingKey::HiddenFiles),
-            11 => Some(SettingKey::NoIgnore),
-            _ => None,
-        }
-    }
-
     /// Get flattened list of settings for display (uses format_settings_groups)
     pub fn get_settings_items(&self, session: &Code2PromptSession) -> Vec<SettingsItem> {
         crate::view::format_settings_groups(session)
