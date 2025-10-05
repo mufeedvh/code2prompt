@@ -295,6 +295,7 @@ impl Model {
             Message::UpdateSearchQuery(query) => {
                 new_model.search_query = query;
                 new_model.tree_cursor = 0; // Reset cursor when search changes
+                new_model.file_tree_scroll = 0; // Reset scroll when search changes
                 (new_model, Cmd::None)
             }
 
