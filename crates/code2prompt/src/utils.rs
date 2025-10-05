@@ -251,22 +251,20 @@ fn get_children_for_search(
     use ignore::WalkBuilder;
     let walker = WalkBuilder::new(&node.path).max_depth(Some(1)).build();
 
-    for entry in walker {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            if path == node.path {
-                continue;
-            }
-
-            let mut child = DisplayFileNode::new(path.to_path_buf(), node.level + 1);
-
-            // Auto-expand if contains selected files
-            if child.is_directory && directory_contains_selected_files(&child.path, session) {
-                child.is_expanded = true;
-            }
-
-            children.push(child);
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path == node.path {
+            continue;
         }
+
+        let mut child = DisplayFileNode::new(path.to_path_buf(), node.level + 1);
+
+        // Auto-expand if contains selected files
+        if child.is_directory && directory_contains_selected_files(&child.path, session) {
+            child.is_expanded = true;
+        }
+
+        children.push(child);
     }
 
     // Sort children: directories first, then alphabetically
@@ -290,14 +288,54 @@ pub fn save_template_to_custom_dir(filename: &Path, content: &str) -> Result<()>
     Ok(())
 }
 
-/// Load all available templates (placeholder implementation)
+/// Find custom templates and return (display_name, absolute_path).
 pub fn load_all_templates() -> Result<Vec<(String, String)>> {
-    // This is a placeholder - in the real implementation this would
-    // scan for template files and return (name, content) pairs
-    Ok(vec![(
-        "Default".to_string(),
-        "Default template content".to_string(),
-    )])
+    let mut out = Vec::new();
+
+    // Candidate roots
+    let mut roots = Vec::new();
+    roots.push(std::env::current_dir()?.join("templates"));
+    if let Some(cfg) = dirs::config_dir() {
+        roots.push(cfg.join("code2prompt").join("templates"));
+    }
+
+    // Accept common template extensions
+    let is_template = |p: &Path| {
+        matches!(
+            p.extension().and_then(|e| e.to_str()),
+            Some("hbs") | Some("handlebars") | Some("md") | Some("tmpl")
+        )
+    };
+
+    for root in roots {
+        if !root.exists() {
+            continue;
+        }
+        for entry in walkdir::WalkDir::new(&root).min_depth(1).max_depth(2) {
+            let entry = entry?;
+            let p = entry.path();
+            if p.is_file() && is_template(p) {
+                let name = p
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("template")
+                    .to_string();
+                out.push((
+                    name,
+                    p.canonicalize()
+                        .unwrap_or_else(|_| p.to_path_buf())
+                        .to_string_lossy()
+                        .into(),
+                ));
+            }
+        }
+    }
+
+    // De-duplicate (same path could appear twice)
+    out.sort_by(|a: &(_, String), b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+    out.dedup_by(|a, b| a.1 == b.1);
+
+    Ok(out)
 }
 
 /// Ensure a path exists in the file tree by creating missing intermediate nodes

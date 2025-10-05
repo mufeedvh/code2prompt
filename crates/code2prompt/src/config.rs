@@ -4,7 +4,7 @@
 //! Code2PromptSession instances, consolidating all configuration parsing
 //! logic in one place for better maintainability and separation of concerns.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use code2prompt_core::{
     configuration::Code2PromptConfig, session::Code2PromptSession, sort::FileSortMethod,
     template::extract_undefined_variables, tokenizer::TokenizerType,
@@ -76,10 +76,7 @@ pub fn create_session_from_config_and_args(
 
     // Sort method: CLI overrides config
     let sort_method = if let Some(sort_str) = &args.sort {
-        sort_str.parse::<FileSortMethod>().unwrap_or_else(|err| {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        })
+        sort_str.parse::<FileSortMethod>().map_err(|e| anyhow!(e))?
     } else if let Some(sort_str) = &config.sort_method {
         sort_str
             .parse::<FileSortMethod>()
@@ -105,10 +102,10 @@ pub fn create_session_from_config_and_args(
 
     // Template: CLI overrides config
     let (template_str, template_name) = if args.template.is_some() {
-        parse_template(&args.template).unwrap_or_else(|e| {
+        parse_template(&args.template).map_err(|e| {
             error!("Failed to parse template: {}", e);
-            std::process::exit(1);
-        })
+            e
+        })?
     } else {
         (
             config.template_str.clone().unwrap_or_default(),
@@ -199,10 +196,7 @@ pub fn create_session_from_args(args: &Cli, tui_mode: bool) -> Result<Code2Promp
         .as_deref()
         .map(FileSortMethod::from_str)
         .transpose()
-        .unwrap_or_else(|err| {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        })
+        .map_err(|e| anyhow!(e))?
         .unwrap_or(FileSortMethod::NameAsc);
 
     configuration.sort_method(sort_method);
@@ -218,10 +212,10 @@ pub fn create_session_from_args(args: &Cli, tui_mode: bool) -> Result<Code2Promp
         .encoding(tokenizer_type)
         .token_format(args.tokens.clone());
 
-    let (template_str, template_name) = parse_template(&args.template).unwrap_or_else(|e| {
+    let (template_str, template_name) = parse_template(&args.template).map_err(|e| {
         error!("Failed to parse template: {}", e);
-        std::process::exit(1);
-    });
+        e
+    })?;
 
     configuration
         .template_str(template_str.clone())
