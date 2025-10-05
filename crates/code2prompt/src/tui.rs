@@ -19,10 +19,12 @@ use ratatui::{
 use std::io::{Stdout, stdout};
 use tokio::sync::mpsc;
 
-use crate::model::{Message, Model, Tab};
-use crate::widgets::*;
-
+use crate::clipboard::copy_to_clipboard;
+use crate::model::template::{FocusMode, TemplateFocus, VariableCategory};
+use crate::model::{AnalysisResults, Cmd, Message, Model, StatisticsView, Tab};
 use crate::token_map::generate_token_map_with_limit;
+use crate::utils::{save_template_to_custom_dir, save_to_file};
+use crate::widgets::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InputMode {
@@ -169,16 +171,16 @@ impl TuiApp {
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
             }
             Tab::Statistics => match model.statistics.view {
-                crate::model::StatisticsView::Overview => {
+                StatisticsView::Overview => {
                     let widget = StatisticsOverviewWidget::new(model);
                     frame.render_widget(widget, main_layout[1]);
                 }
-                crate::model::StatisticsView::TokenMap => {
+                StatisticsView::TokenMap => {
                     let widget = StatisticsTokenMapWidget::new(model);
                     let mut state = ();
                     frame.render_stateful_widget(widget, main_layout[1], &mut state);
                 }
-                crate::model::StatisticsView::Extensions => {
+                StatisticsView::Extensions => {
                     let widget = StatisticsByExtensionWidget::new(model);
                     let mut state = ();
                     frame.render_stateful_widget(widget, main_layout[1], &mut state);
@@ -226,9 +228,7 @@ impl TuiApp {
         // Check if we're in template editing mode - ESC should exit editing mode, not quit app
         if self.model.current_tab == Tab::Template && self.model.template.is_in_editing_mode() {
             if key.code == KeyCode::Esc {
-                return Some(Message::SetTemplateFocusMode(
-                    crate::model::template::FocusMode::Normal,
-                ));
+                return Some(Message::SetTemplateFocusMode(FocusMode::Normal));
             }
             // In editing modes, delegate to template handler
             return self.handle_template_keys(key);
@@ -358,19 +358,17 @@ impl TuiApp {
 
         // Handle ESC key to exit editing modes
         if key.code == KeyCode::Esc && is_in_editing_mode {
-            return Some(Message::SetTemplateFocusMode(
-                crate::model::template::FocusMode::Normal,
-            ));
+            return Some(Message::SetTemplateFocusMode(FocusMode::Normal));
         }
 
         // In editing modes, handle keys with pure messages
         if is_in_editing_mode {
             match current_focus {
-                crate::model::template::TemplateFocus::Editor => {
+                TemplateFocus::Editor => {
                     // For editor, pass the key to the textarea via message
                     return Some(Message::TemplateEditorInput(key));
                 }
-                crate::model::template::TemplateFocus::Variables => {
+                TemplateFocus::Variables => {
                     // Handle variable editing with pure messages
                     if self.model.template.variables.is_editing() {
                         // Currently editing a variable value
@@ -391,8 +389,7 @@ impl TuiApp {
                                 let variables = self.model.template.get_organized_variables();
                                 if let Some(var) =
                                     variables.get(self.model.template.variables.cursor)
-                                    && var.category
-                                        == crate::model::template::VariableCategory::Missing
+                                    && var.category == VariableCategory::Missing
                                 {
                                     return Some(Message::VariableStartEditing(var.name.clone()));
                                 }
@@ -410,20 +407,20 @@ impl TuiApp {
         match key.code {
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 return Some(Message::SetTemplateFocus(
-                    crate::model::template::TemplateFocus::Editor,
-                    crate::model::template::FocusMode::EditingTemplate,
+                    TemplateFocus::Editor,
+                    FocusMode::EditingTemplate,
                 ));
             }
             KeyCode::Char('v') | KeyCode::Char('V') => {
                 return Some(Message::SetTemplateFocus(
-                    crate::model::template::TemplateFocus::Variables,
-                    crate::model::template::FocusMode::EditingVariable,
+                    TemplateFocus::Variables,
+                    FocusMode::EditingVariable,
                 ));
             }
             KeyCode::Char('p') | KeyCode::Char('P') => {
                 return Some(Message::SetTemplateFocus(
-                    crate::model::template::TemplateFocus::Picker,
-                    crate::model::template::FocusMode::Normal,
+                    TemplateFocus::Picker,
+                    FocusMode::Normal,
                 ));
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
@@ -444,7 +441,7 @@ impl TuiApp {
         }
 
         // Handle input for focused component in normal mode
-        if current_focus == crate::model::template::TemplateFocus::Picker {
+        if current_focus == TemplateFocus::Picker {
             // Handle picker navigation - pure messages only
             match key.code {
                 KeyCode::Up => return Some(Message::TemplatePickerMove(-1)),
@@ -508,13 +505,13 @@ impl TuiApp {
 
     /// Execute a command (side effect) from the Model::update() function.
     /// This is where all the impure operations happen.
-    fn execute_cmd(&mut self, cmd: crate::model::Cmd) -> Result<()> {
+    fn execute_cmd(&mut self, cmd: Cmd) -> Result<()> {
         match cmd {
-            crate::model::Cmd::None => {
+            Cmd::None => {
                 // No side effect
             }
 
-            crate::model::Cmd::RefreshFileTree => {
+            Cmd::RefreshFileTree => {
                 // Always use session-based tree building for proper pattern initialization
                 match build_file_tree_from_session(&mut self.model.session) {
                     Ok(tree) => {
@@ -529,7 +526,7 @@ impl TuiApp {
                 }
             }
 
-            crate::model::Cmd::RunAnalysis {
+            Cmd::RunAnalysis {
                 template_content,
                 user_variables,
             } => {
@@ -567,7 +564,7 @@ impl TuiApp {
                                 Vec::new()
                             };
 
-                            let result = crate::model::AnalysisResults {
+                            let result = AnalysisResults {
                                 file_count: rendered.files.len(),
                                 token_count: Some(rendered.token_count),
                                 generated_prompt: rendered.prompt,
@@ -582,19 +579,17 @@ impl TuiApp {
                 });
             }
 
-            crate::model::Cmd::CopyToClipboard(content) => {
-                match crate::clipboard::copy_to_clipboard(&content) {
-                    Ok(_) => {
-                        self.model.status_message = "Copied to clipboard!".to_string();
-                    }
-                    Err(e) => {
-                        self.model.status_message = format!("Copy failed: {}", e);
-                    }
+            Cmd::CopyToClipboard(content) => match copy_to_clipboard(&content) {
+                Ok(_) => {
+                    self.model.status_message = "Copied to clipboard!".to_string();
                 }
-            }
+                Err(e) => {
+                    self.model.status_message = format!("Copy failed: {}", e);
+                }
+            },
 
-            crate::model::Cmd::SaveToFile { filename, content } => {
-                match crate::utils::save_to_file(std::path::Path::new(&filename), &content) {
+            Cmd::SaveToFile { filename, content } => {
+                match save_to_file(std::path::Path::new(&filename), &content) {
                     Ok(_) => {
                         self.model.status_message = format!("Saved to {}", filename);
                     }
@@ -604,11 +599,8 @@ impl TuiApp {
                 }
             }
 
-            crate::model::Cmd::SaveTemplate { filename, content } => {
-                match crate::utils::save_template_to_custom_dir(
-                    std::path::Path::new(&filename),
-                    &content,
-                ) {
+            Cmd::SaveTemplate { filename, content } => {
+                match save_template_to_custom_dir(std::path::Path::new(&filename), &content) {
                     Ok(_) => {
                         self.model.status_message = format!("Template saved as {}", filename);
                         // Refresh templates to show the new one
