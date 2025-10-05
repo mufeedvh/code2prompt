@@ -195,10 +195,6 @@ impl TuiApp {
                 let widget = TemplateWidget::new(model);
                 let mut state = TemplateState::from_model(model);
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
-
-                // Synchronize template content back to model if it changed
-                // This is a workaround since StatefulWidget doesn't provide a way to get state back
-                // In a real implementation, we'd use a different pattern
             }
             Tab::PromptOutput => {
                 let widget = OutputWidget::new(model);
