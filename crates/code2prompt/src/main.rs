@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
     // ~~~ TUI or CLI Mode ~~~
     if args.tui {
         // ~~~ Build Session for TUI ~~~
-        let session = config::create_session_from_args(&args, args.tui).unwrap_or_else(|e| {
+        let session = config::build_session(None, &args, args.tui).unwrap_or_else(|e| {
             error!("Failed to create session: {}", e);
             std::process::exit(1);
         });
@@ -67,7 +67,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     let config_source = load_config(quiet_mode)?;
 
     // ~~~ Build Session with config + CLI args ~~~
-    let mut session = config::create_session_from_config_and_args(&config_source, &args, false)?;
+    let mut session = config::build_session(Some(&config_source), &args, false)?;
 
     // ~~~ Determine Output Behavior ~~~
     let default_output = get_default_output_destination(&config_source);

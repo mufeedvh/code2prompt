@@ -11,76 +11,79 @@ use code2prompt_core::{
 };
 use inquire::Text;
 use log::error;
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 
 use crate::{args::Cli, config_loader::ConfigSource};
 
-/// Create a Code2PromptSession from config and command line arguments
-///
-/// # Arguments
-///
-/// * `config_source` - The loaded configuration source
-/// * `args` - The parsed command line arguments
-/// * `tui_mode` - Whether the application is running in TUI mode
-///
-/// # Returns
-///
-/// * `Result<Code2PromptSession>` - The configured session or an error
-pub fn create_session_from_config_and_args(
-    config_source: &ConfigSource,
+/// Unified session builder that merges configuration layering in one place
+/// - base: Some(&ConfigSource) to use loaded config as defaults; None to use CLI defaults
+/// - args: CLI arguments
+/// - tui_mode: whether running in TUI mode (enables token map by default)
+pub fn build_session(
+    base: Option<&ConfigSource>,
     args: &Cli,
     tui_mode: bool,
 ) -> Result<Code2PromptSession> {
     let mut configuration = Code2PromptConfig::builder();
 
-    // Start with config file values
-    let config = &config_source.config;
+    let cfg = base.map(|b| &b.config);
 
-    // Apply config file settings first
-    if let Some(path) = &config.path {
-        configuration.path(PathBuf::from(path));
+    // Path: config path takes precedence if provided, otherwise CLI path
+    if let Some(c) = cfg {
+        if let Some(path) = &c.path {
+            configuration.path(PathBuf::from(path));
+        } else {
+            configuration.path(args.path.clone());
+        }
     } else {
         configuration.path(args.path.clone());
     }
 
-    // CLI args override config for patterns
-    // If CLI provides any patterns, they completely override config patterns to avoid conflicts
-    let (include_patterns, exclude_patterns) =
-        if !args.include.is_empty() || !args.exclude.is_empty() {
-            // CLI patterns provided - use only CLI patterns
-            (
-                expand_comma_separated_patterns(&args.include),
-                expand_comma_separated_patterns(&args.exclude),
-            )
-        } else {
-            // No CLI patterns - use config patterns
-            (
-                config.include_patterns.clone(),
-                config.exclude_patterns.clone(),
-            )
-        };
+    // Include/Exclude patterns:
+    // If CLI provides any patterns, they override config patterns completely (to avoid conflicts)
+    let use_cli_patterns = !args.include.is_empty() || !args.exclude.is_empty();
+    let (include_patterns, exclude_patterns) = if use_cli_patterns {
+        (
+            expand_comma_separated_patterns(&args.include),
+            expand_comma_separated_patterns(&args.exclude),
+        )
+    } else if let Some(c) = cfg {
+        (c.include_patterns.clone(), c.exclude_patterns.clone())
+    } else {
+        (
+            expand_comma_separated_patterns(&args.include),
+            expand_comma_separated_patterns(&args.exclude),
+        )
+    };
 
     configuration
         .include_patterns(include_patterns)
         .exclude_patterns(exclude_patterns);
 
-    // CLI args override config for display options
-    configuration
-        .line_numbers(args.line_numbers || config.line_numbers)
-        .absolute_path(args.absolute_paths || config.absolute_path)
-        .full_directory_tree(args.full_directory_tree || config.full_directory_tree);
+    // Display options: CLI overrides config (logical-or semantics for booleans)
+    let cfg_line_numbers = cfg.map(|c| c.line_numbers).unwrap_or(false);
+    let cfg_absolute = cfg.map(|c| c.absolute_path).unwrap_or(false);
+    let cfg_full_tree = cfg.map(|c| c.full_directory_tree).unwrap_or(false);
 
-    // Output format: CLI overrides config
-    let output_format = args.output_format.clone();
-    configuration.output_format(output_format);
+    configuration
+        .line_numbers(args.line_numbers || cfg_line_numbers)
+        .absolute_path(args.absolute_paths || cfg_absolute)
+        .full_directory_tree(args.full_directory_tree || cfg_full_tree);
+
+    // Output format: CLI value
+    configuration.output_format(args.output_format.clone());
 
     // Sort method: CLI overrides config
     let sort_method = if let Some(sort_str) = &args.sort {
         sort_str.parse::<FileSortMethod>().map_err(|e| anyhow!(e))?
-    } else if let Some(sort_str) = &config.sort_method {
-        sort_str
-            .parse::<FileSortMethod>()
-            .unwrap_or(FileSortMethod::NameAsc)
+    } else if let Some(c) = cfg {
+        if let Some(sort_str) = &c.sort_method {
+            sort_str
+                .parse::<FileSortMethod>()
+                .unwrap_or(FileSortMethod::NameAsc)
+        } else {
+            FileSortMethod::NameAsc
+        }
     } else {
         FileSortMethod::NameAsc
     };
@@ -90,8 +93,12 @@ pub fn create_session_from_config_and_args(
     // Tokenizer: CLI overrides config
     let tokenizer_type = if let Some(encoding) = &args.encoding {
         encoding.parse::<TokenizerType>().unwrap_or_default()
-    } else if let Some(encoding) = &config.encoding {
-        encoding.parse::<TokenizerType>().unwrap_or_default()
+    } else if let Some(c) = cfg {
+        if let Some(encoding) = &c.encoding {
+            encoding.parse::<TokenizerType>().unwrap_or_default()
+        } else {
+            "cl100k".parse::<TokenizerType>().unwrap_or_default()
+        }
     } else {
         "cl100k".parse::<TokenizerType>().unwrap_or_default()
     };
@@ -106,14 +113,15 @@ pub fn create_session_from_config_and_args(
             error!("Failed to parse template: {}", e);
             e
         })?
-    } else {
+    } else if let Some(c) = cfg {
         (
-            config.template_str.clone().unwrap_or_default(),
-            config
-                .template_name
+            c.template_str.clone().unwrap_or_default(),
+            c.template_name
                 .clone()
                 .unwrap_or_else(|| "default".to_string()),
         )
+    } else {
+        ("".to_string(), "default".to_string())
     };
 
     configuration
@@ -122,119 +130,46 @@ pub fn create_session_from_config_and_args(
 
     // Git options: CLI overrides config
     let diff_branches = parse_branch_argument(&args.git_diff_branch).or_else(|| {
-        config.diff_branches.as_ref().and_then(|branches| {
-            if branches.len() == 2 {
-                Some((branches[0].clone(), branches[1].clone()))
-            } else {
-                None
-            }
+        cfg.and_then(|c| {
+            c.diff_branches.as_ref().and_then(|branches| {
+                if branches.len() == 2 {
+                    Some((branches[0].clone(), branches[1].clone()))
+                } else {
+                    None
+                }
+            })
         })
     });
 
     let log_branches = parse_branch_argument(&args.git_log_branch).or_else(|| {
-        config.log_branches.as_ref().and_then(|branches| {
-            if branches.len() == 2 {
-                Some((branches[0].clone(), branches[1].clone()))
-            } else {
-                None
-            }
+        cfg.and_then(|c| {
+            c.log_branches.as_ref().and_then(|branches| {
+                if branches.len() == 2 {
+                    Some((branches[0].clone(), branches[1].clone()))
+                } else {
+                    None
+                }
+            })
         })
     });
 
-    configuration
-        .diff_enabled(args.diff || config.diff_enabled)
-        .diff_branches(diff_branches)
-        .log_branches(log_branches);
+    let cfg_diff_enabled = cfg.map(|c| c.diff_enabled).unwrap_or(false);
+    let cfg_token_map_enabled = cfg.map(|c| c.token_map_enabled).unwrap_or(false);
 
-    // Other CLI flags
     configuration
+        .diff_enabled(args.diff || cfg_diff_enabled)
+        .diff_branches(diff_branches)
+        .log_branches(log_branches)
         .no_ignore(args.no_ignore)
         .hidden(args.hidden)
         .no_codeblock(args.no_codeblock)
         .follow_symlinks(args.follow_symlinks)
-        .token_map_enabled(args.token_map || config.token_map_enabled || tui_mode);
+        .token_map_enabled(args.token_map || cfg_token_map_enabled || tui_mode);
 
-    // User variables from config
-    configuration.user_variables(config.user_variables.clone());
-
-    let session = Code2PromptSession::new(configuration.build()?);
-    Ok(session)
-}
-
-/// Create a Code2PromptSession from command line arguments
-///
-/// # Arguments
-///
-/// * `args` - The parsed command line arguments
-/// * `tui_mode` - Whether the application is running in TUI mode
-///
-/// # Returns
-///
-/// * `Result<Code2PromptSession>` - The configured session or an error
-pub fn create_session_from_args(args: &Cli, tui_mode: bool) -> Result<Code2PromptSession> {
-    let mut configuration = Code2PromptConfig::builder();
-
-    configuration.path(args.path.clone());
-
-    // Handle comma-separated patterns, but preserve brace expansion patterns
-    let include_patterns = expand_comma_separated_patterns(&args.include);
-    let exclude_patterns = expand_comma_separated_patterns(&args.exclude);
-
-    configuration
-        .include_patterns(include_patterns)
-        .exclude_patterns(exclude_patterns);
-
-    let output_format = args.output_format.clone();
-    configuration
-        .line_numbers(args.line_numbers)
-        .absolute_path(args.absolute_paths)
-        .full_directory_tree(args.full_directory_tree)
-        .output_format(output_format);
-
-    let sort_method = args
-        .sort
-        .as_deref()
-        .map(FileSortMethod::from_str)
-        .transpose()
-        .map_err(|e| anyhow!(e))?
-        .unwrap_or(FileSortMethod::NameAsc);
-
-    configuration.sort_method(sort_method);
-
-    let tokenizer_type = args
-        .encoding
-        .as_deref()
-        .unwrap_or("cl100k")
-        .parse::<TokenizerType>()
-        .unwrap_or_default();
-
-    configuration
-        .encoding(tokenizer_type)
-        .token_format(args.tokens.clone());
-
-    let (template_str, template_name) = parse_template(&args.template).map_err(|e| {
-        error!("Failed to parse template: {}", e);
-        e
-    })?;
-
-    configuration
-        .template_str(template_str.clone())
-        .template_name(template_name);
-
-    let diff_branches = parse_branch_argument(&args.git_diff_branch);
-    let log_branches = parse_branch_argument(&args.git_log_branch);
-
-    configuration
-        .diff_enabled(args.diff)
-        .diff_branches(diff_branches)
-        .log_branches(log_branches);
-
-    configuration
-        .no_ignore(args.no_ignore)
-        .hidden(args.hidden)
-        .no_codeblock(args.no_codeblock)
-        .follow_symlinks(args.follow_symlinks)
-        .token_map_enabled(args.token_map || tui_mode);
+    // User variables from config (if available)
+    if let Some(c) = cfg {
+        configuration.user_variables(c.user_variables.clone());
+    }
 
     let session = Code2PromptSession::new(configuration.build()?);
     Ok(session)
