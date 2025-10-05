@@ -10,7 +10,6 @@ use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
-use std::fs;
 use std::path::Path;
 use unicode_width::UnicodeWidthStr;
 
@@ -496,11 +495,9 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
                     .map(|s| s.to_ansi_term_style())
                     .unwrap_or_default()
             } else {
-                // For files, we still re-stat to get rich coloring for extensions, etc.
-                // This call will now succeed because we fixed the path logic in Step 1.
-                let meta_result = fs::metadata(&entry.path);
+                // For files, rely on extension-based styling (no filesystem stat).
                 ls_colors
-                    .style_for_path_with_metadata(&entry.path, meta_result.as_ref().ok())
+                    .style_for_path(std::path::Path::new(&entry.path))
                     .map(lscolors::Style::to_ansi_term_style)
                     .unwrap_or_default()
             };
