@@ -29,6 +29,13 @@ pub enum Tab {
     PromptOutput,
 }
 
+/// Input mode for the FileTree tab
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileTreeInputMode {
+    Normal,
+    Search,
+}
+
 /// Hierarchical file node for TUI display with proper parent-child relationships
 #[derive(Debug, Clone)]
 pub struct DisplayFileNode {
@@ -205,6 +212,7 @@ pub struct Model {
     pub session: Code2PromptSession,
     pub current_tab: Tab,
     pub should_quit: bool,
+    pub file_tree_input_mode: FileTreeInputMode,
     pub file_tree_nodes: Vec<DisplayFileNode>,
     pub search_query: String,
     pub tree_cursor: usize,
@@ -225,6 +233,7 @@ impl Default for Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
+            file_tree_input_mode: FileTreeInputMode::Normal,
             file_tree_nodes: Vec::new(),
             search_query: String::new(),
             tree_cursor: 0,
@@ -244,6 +253,7 @@ impl Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
+            file_tree_input_mode: FileTreeInputMode::Normal,
             file_tree_nodes: Vec::new(),
             search_query: String::new(),
             tree_cursor: 0,
@@ -289,11 +299,13 @@ impl Model {
             }
 
             Message::EnterSearchMode => {
+                new_model.file_tree_input_mode = FileTreeInputMode::Search;
                 new_model.status_message = "Search mode - Type to search, Esc to exit".to_string();
                 (new_model, Cmd::None)
             }
 
             Message::ExitSearchMode => {
+                new_model.file_tree_input_mode = FileTreeInputMode::Normal;
                 new_model.status_message = "Exited search mode".to_string();
                 (new_model, Cmd::None)
             }

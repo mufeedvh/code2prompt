@@ -21,7 +21,7 @@ use tokio::sync::mpsc;
 
 use crate::clipboard::copy_to_clipboard;
 use crate::model::{
-    AnalysisResults, Cmd, Message, Model, StatisticsView, Tab, TemplateState,
+    AnalysisResults, Cmd, FileTreeInputMode, Message, Model, StatisticsView, Tab, TemplateState,
     template::{FocusMode, TemplateFocus, VariableCategory},
 };
 use crate::token_map::generate_token_map_with_limit;
@@ -31,11 +31,6 @@ use crate::widgets::{
     StatisticsOverviewWidget, StatisticsTokenMapWidget, TemplateWidget,
 };
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum InputMode {
-    Normal,
-    Search,
-}
 use crate::utils::build_file_tree_from_session;
 
 pub struct TuiApp {
@@ -43,7 +38,6 @@ pub struct TuiApp {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     message_tx: mpsc::UnboundedSender<Message>,
     message_rx: mpsc::UnboundedReceiver<Message>,
-    input_mode: InputMode,
 }
 
 impl TuiApp {
@@ -75,7 +69,6 @@ impl TuiApp {
             terminal,
             message_tx,
             message_rx,
-            input_mode: InputMode::Normal,
         })
     }
 
@@ -98,7 +91,6 @@ impl TuiApp {
 
                     // Handle the key event
                     if let Some(message) = self.handle_key_event(ratatui_key) {
-                        // Try to coalesce similar events
                         if let Some(last_message) = messages.last_mut()
                             && self.try_coalesce_messages(last_message, &message)
                         {
@@ -222,7 +214,9 @@ impl TuiApp {
     ///   
     fn handle_key_event(&self, key: KeyEvent) -> Option<Message> {
         // Check if we're in search mode first - this takes priority over global shortcuts
-        if self.input_mode == InputMode::Search && self.model.current_tab == Tab::FileTree {
+        if self.model.file_tree_input_mode == FileTreeInputMode::Search
+            && self.model.current_tab == Tab::FileTree
+        {
             return self.handle_file_tree_keys(key);
         }
 
@@ -283,7 +277,7 @@ impl TuiApp {
 
     fn handle_file_tree_keys(&self, key: KeyEvent) -> Option<Message> {
         // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
-        if self.input_mode == InputMode::Search {
+        if self.model.file_tree_input_mode == FileTreeInputMode::Search {
             match key.code {
                 KeyCode::Esc => Some(Message::ExitSearchMode),
                 KeyCode::Enter => {
@@ -316,6 +310,7 @@ impl TuiApp {
                 KeyCode::Right => Some(Message::ExpandDirectory(self.model.tree_cursor)),
                 KeyCode::Left => Some(Message::CollapseDirectory(self.model.tree_cursor)),
                 KeyCode::Char('/') => Some(Message::EnterSearchMode),
+                KeyCode::Char('s') | KeyCode::Char('S') => Some(Message::EnterSearchMode),
                 KeyCode::Char('r') | KeyCode::Char('R') => Some(Message::RefreshFileTree),
                 _ => None,
             }
@@ -323,7 +318,6 @@ impl TuiApp {
     }
 
     fn handle_settings_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
         match key.code {
             KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
             KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
@@ -337,7 +331,6 @@ impl TuiApp {
     }
 
     fn handle_statistics_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure logic in Model - no direct widget calls
         match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
             KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
@@ -353,7 +346,6 @@ impl TuiApp {
     }
 
     fn handle_template_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure Elm/Redux pattern - no direct widget calls, only message generation
         let is_in_editing_mode = self.model.template.is_in_editing_mode();
         let current_focus = self.model.template.get_focus();
 
@@ -362,15 +354,12 @@ impl TuiApp {
             return Some(Message::SetTemplateFocusMode(FocusMode::Normal));
         }
 
-        // In editing modes, handle keys with pure messages
         if is_in_editing_mode {
             match current_focus {
                 TemplateFocus::Editor => {
-                    // For editor, pass the key to the textarea via message
                     return Some(Message::TemplateEditorInput(key));
                 }
                 TemplateFocus::Variables => {
-                    // Handle variable editing with pure messages
                     if self.model.template.variables.is_editing() {
                         // Currently editing a variable value
                         match key.code {
@@ -443,7 +432,6 @@ impl TuiApp {
 
         // Handle input for focused component in normal mode
         if current_focus == TemplateFocus::Picker {
-            // Handle picker navigation - pure messages only
             match key.code {
                 KeyCode::Up => return Some(Message::TemplatePickerMove(-1)),
                 KeyCode::Down => return Some(Message::TemplatePickerMove(1)),
@@ -461,7 +449,6 @@ impl TuiApp {
     }
 
     fn handle_prompt_output_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
         match key.code {
             KeyCode::Up => Some(Message::ScrollOutput(-1)),
             KeyCode::Down => Some(Message::ScrollOutput(1)),
@@ -483,18 +470,6 @@ impl TuiApp {
     /// Handle a message using the Elm/Redux pattern.
     /// This uses the pure Model::update() function and executes any side effects.
     fn handle_message(&mut self, message: Message) -> Result<()> {
-        // Handle special TUI-specific state that's not in Model
-        match &message {
-            Message::EnterSearchMode => {
-                self.input_mode = InputMode::Search;
-            }
-            Message::ExitSearchMode => {
-                self.input_mode = InputMode::Normal;
-            }
-            _ => {}
-        }
-
-        // Use the pure Model::update() function - this is the key to Elm/Redux pattern
         let (new_model, cmd) = self.model.update(message);
         self.model = new_model;
 
@@ -739,7 +714,7 @@ impl TuiApp {
 /// # Errors
 ///
 /// Returns an error if the TUI cannot be initialized or if runtime errors occur during execution.
-pub async fn run_tui_with_args(session: Code2PromptSession) -> Result<()> {
+pub async fn run_tui(session: Code2PromptSession) -> Result<()> {
     let mut app = TuiApp::new(session)?;
 
     let result = app.run().await;

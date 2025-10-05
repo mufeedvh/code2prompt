@@ -21,7 +21,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
 use num_format::{SystemLocale, ToFormattedString};
 use std::io::Write;
-use tui::run_tui_with_args;
+use tui::run_tui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
             error!("Failed to create session: {}", e);
             std::process::exit(1);
         });
-        run_tui_with_args(session).await
+        run_tui(session).await
     } else {
         run_cli_mode_with_args(args).await
     }
