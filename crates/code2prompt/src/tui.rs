@@ -20,11 +20,16 @@ use std::io::{Stdout, stdout};
 use tokio::sync::mpsc;
 
 use crate::clipboard::copy_to_clipboard;
-use crate::model::template::{FocusMode, TemplateFocus, VariableCategory};
-use crate::model::{AnalysisResults, Cmd, Message, Model, StatisticsView, Tab};
+use crate::model::{
+    AnalysisResults, Cmd, Message, Model, StatisticsView, Tab, TemplateState,
+    template::{FocusMode, TemplateFocus, VariableCategory},
+};
 use crate::token_map::generate_token_map_with_limit;
 use crate::utils::{save_template_to_custom_dir, save_to_file};
-use crate::widgets::*;
+use crate::widgets::{
+    FileSelectionWidget, OutputWidget, SettingsWidget, StatisticsByExtensionWidget,
+    StatisticsOverviewWidget, StatisticsTokenMapWidget, TemplateWidget,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InputMode {
