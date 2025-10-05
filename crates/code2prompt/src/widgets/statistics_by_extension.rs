@@ -79,9 +79,11 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
 
         // Calculate viewport for scrolling - read directly from Model
-        let content_height = layout[0].height.saturating_sub(2) as usize;
-        let scroll_start = self.model.statistics.scroll as usize;
-        let scroll_end = (scroll_start + content_height).min(ext_vec.len());
+        let content_height = layout[0].height.saturating_sub(2).max(1) as usize;
+        let total = ext_vec.len();
+        let max_scroll = total.saturating_sub(content_height);
+        let scroll_start = (self.model.statistics.scroll as usize).min(max_scroll);
+        let scroll_end = (scroll_start + content_height).min(total);
 
         // Calculate dynamic column widths based on available space and content
         let available_width = layout[0].width.saturating_sub(4) as usize; // Account for borders and padding

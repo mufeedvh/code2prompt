@@ -45,10 +45,19 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
 
         // Calculate viewport dimensions
         let tree_area = layout[0];
-        let content_height = tree_area.height.saturating_sub(2) as usize; // Account for borders
+        let content_height = tree_area.height.saturating_sub(2).max(1) as usize; // Account for borders, keep >= 1
 
-        // Calculate scroll position and viewport
-        let scroll_start = self.model.file_tree_scroll as usize;
+        // Derive a local, clamped scroll that keeps the cursor visible
+        let cursor = self.model.tree_cursor.min(total_nodes.saturating_sub(1));
+        let mut scroll_start = self.model.file_tree_scroll as usize;
+        if cursor < scroll_start {
+            scroll_start = cursor;
+        } else if cursor >= scroll_start.saturating_add(content_height) {
+            scroll_start = cursor.saturating_add(1).saturating_sub(content_height);
+        }
+        let max_scroll = total_nodes.saturating_sub(content_height);
+        scroll_start = scroll_start.min(max_scroll);
+
         let scroll_end = (scroll_start + content_height).min(total_nodes);
 
         // Create items only for visible viewport
@@ -73,7 +82,7 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
                 let mut style = Style::default();
 
                 // Adjust cursor position for viewport
-                if i == self.model.tree_cursor {
+                if i == cursor {
                     style = style.bg(Color::Blue).fg(Color::White);
                 }
 

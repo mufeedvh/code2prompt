@@ -1,7 +1,7 @@
 //! Statistics token map widget for displaying token distribution.
 
 use crate::model::Model;
-use crate::token_map::{format_token_map_for_tui, TuiColor};
+use crate::token_map::{TuiColor, format_token_map_for_tui};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -69,8 +69,10 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
         );
 
         // Calculate viewport for scrolling - read directly from Model
-        let content_height = layout[0].height.saturating_sub(2) as usize; // Account for borders
-        let scroll_start = self.model.statistics.scroll as usize;
+        let content_height = layout[0].height.saturating_sub(2).max(1) as usize; // Account for borders
+        let total = formatted_lines.len();
+        let max_scroll = total.saturating_sub(content_height);
+        let scroll_start = (self.model.statistics.scroll as usize).min(max_scroll);
         let scroll_end = (scroll_start + content_height).min(formatted_lines.len());
 
         // Convert formatted lines to ListItems with proper column layout and filename coloring

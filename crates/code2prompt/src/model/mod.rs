@@ -326,18 +326,6 @@ impl Model {
                         new_model.tree_cursor.saturating_sub((-delta) as usize)
                     };
                     new_model.tree_cursor = new_cursor;
-
-                    let viewport_height = 20;
-                    let cursor_pos = new_model.tree_cursor as u16;
-                    let current_scroll = new_model.file_tree_scroll;
-
-                    if cursor_pos < current_scroll {
-                        // Cursor is above visible area, scroll up
-                        new_model.file_tree_scroll = cursor_pos;
-                    } else if cursor_pos >= current_scroll + viewport_height {
-                        // Cursor is below visible area, scroll down
-                        new_model.file_tree_scroll = cursor_pos.saturating_sub(viewport_height - 1);
-                    }
                 }
                 (new_model, Cmd::None)
             }
@@ -533,6 +521,8 @@ impl Model {
                 new_model.prompt_output.generated_prompt = Some(results.generated_prompt);
                 new_model.prompt_output.token_count = results.token_count;
                 new_model.prompt_output.file_count = results.file_count;
+                // Reset output scroll so the new content starts at the top.
+                new_model.prompt_output.output_scroll = 0;
                 new_model.statistics.token_map_entries = results.token_map_entries;
                 let tokens = results.token_count.unwrap_or(0);
                 new_model.status_message = format!(
@@ -573,25 +563,19 @@ impl Model {
             }
 
             Message::ScrollOutput(delta) => {
-                if let Some(prompt) = &new_model.prompt_output.generated_prompt {
-                    let lines = prompt.lines().count() as u16;
-                    let viewport_height = 20; // Approximate viewport height
-                    let max_scroll = lines.saturating_sub(viewport_height);
-
-                    let new_scroll = if delta < 0 {
-                        new_model
-                            .prompt_output
-                            .output_scroll
-                            .saturating_sub((-delta) as u16)
-                    } else {
-                        new_model
-                            .prompt_output
-                            .output_scroll
-                            .saturating_add(delta as u16)
-                    };
-
-                    new_model.prompt_output.output_scroll = new_scroll.min(max_scroll);
-                }
+                // Apply delta only; widgets will clamp based on actual viewport.
+                let new_scroll = if delta < 0 {
+                    new_model
+                        .prompt_output
+                        .output_scroll
+                        .saturating_sub((-delta) as u16)
+                } else {
+                    new_model
+                        .prompt_output
+                        .output_scroll
+                        .saturating_add(delta as u16)
+                };
+                new_model.prompt_output.output_scroll = new_scroll;
                 (new_model, Cmd::None)
             }
 
