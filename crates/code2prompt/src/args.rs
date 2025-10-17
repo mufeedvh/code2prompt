@@ -4,9 +4,12 @@
 //! and options for the code2prompt tool. It supports both TUI and CLI modes with
 //! comprehensive configuration options for file selection, output formatting,
 //! tokenization, and git integration.
-
-use clap::Parser;
-use code2prompt_core::template::OutputFormat;
+use anyhow::{Result, anyhow};
+use clap::{Parser, builder::ValueParser};
+use code2prompt_core::{
+    sort::FileSortMethod, template::OutputFormat, tokenizer::TokenFormat, tokenizer::TokenizerType,
+};
+use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 
 // ~~~ CLI Arguments ~~~
@@ -58,14 +61,18 @@ pub struct Cli {
     /// Token encoding to use for token count
     #[clap(
         long,
-        value_name = "cl100k, p50k, p50k_edit, r50k, gpt2",
-        default_value = "cl100k"
+        value_name = "cl100k, p50k, p50k_edit, r50k",
+        value_parser = ValueParser::new(parse_serde::<TokenizerType>),
     )]
-    pub encoding: Option<String>,
+    pub encoding: Option<TokenizerType>,
 
     /// Display the token count of the generated prompt. Accepts a format: "raw" (machine parsable) or "format" (human readable)
-    #[clap(long, value_name = "raw,format", default_value = "format")]
-    pub token_format: Option<String>,
+    #[clap(
+        long,
+        value_name = "raw,format",
+        value_parser = ValueParser::new(parse_serde::<TokenFormat>),
+    )]
+    pub token_format: Option<TokenFormat>,
 
     /// Include git diff
     #[clap(short, long)]
@@ -112,8 +119,12 @@ pub struct Cli {
     pub no_ignore: bool,
 
     /// Sort order for files
-    #[clap(long, value_name = "name_asc, name_desc, date_asc, date_desc")]
-    pub sort: Option<String>,
+    #[clap(
+        long,
+        value_name = "name_asc, name_desc, date_asc, date_desc",
+        value_parser = ValueParser::new(parse_serde::<FileSortMethod>),
+    )]
+    pub sort: Option<FileSortMethod>,
 
     /// Suppress progress and success messages
     #[clap(short = 'q', long)]
@@ -133,4 +144,10 @@ pub struct Cli {
 
     #[arg(long, hide = true)]
     pub clipboard_daemon: bool,
+}
+
+/// Helper function to parse serde deserializable enum from string inputs.
+fn parse_serde<T: DeserializeOwned>(s: &str) -> Result<T> {
+    serde_json::from_value(serde_json::Value::String(s.to_string()))
+        .map_err(|e| anyhow!("Failed to parse value: {}", e))
 }

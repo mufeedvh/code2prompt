@@ -4,14 +4,13 @@
 //! Code2PromptSession instances, consolidating all configuration parsing
 //! logic in one place for better maintainability and separation of concerns.
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use code2prompt_core::{
     configuration::Code2PromptConfig, session::Code2PromptSession, sort::FileSortMethod,
     template::extract_undefined_variables, tokenizer::TokenizerType,
 };
 use inquire::Text;
 use log::error;
-use serde_json::Value;
 use std::path::PathBuf;
 
 use crate::{args::Cli, config_loader::ConfigSource};
@@ -75,8 +74,8 @@ pub fn build_session(
     configuration.output_format(args.output_format.clone());
 
     // Sort method: CLI overrides config
-    let sort_method = if let Some(sort_str) = &args.sort {
-        serde_json::from_value(Value::String(sort_str.clone())).map_err(|e| anyhow!(e))?
+    let sort_method = if let Some(sort_str) = args.sort {
+        sort_str
     } else if let Some(c) = cfg {
         c.sort_method.unwrap_or(FileSortMethod::NameAsc)
     } else {
@@ -85,17 +84,16 @@ pub fn build_session(
 
     configuration.sort_method(sort_method);
 
-    let tokenizer_type = if let Some(encoding) = &args.encoding {
-        serde_json::from_value(Value::String(encoding.clone()))
-            .map_err(|e| anyhow!("Failed to parse tokenizer type: {}", e))?
+    let tokenizer_type = if let Some(encoding) = args.encoding {
+        encoding
     } else if let Some(c) = cfg {
         c.encoding.unwrap_or(TokenizerType::Cl100kBase)
     } else {
         TokenizerType::Cl100kBase
     };
 
-    let token_format = if let Some(format) = &args.token_format {
-        serde_json::from_value(Value::String(format.clone())).map_err(|e| anyhow!(e))?
+    let token_format = if let Some(format) = args.token_format {
+        format
     } else if let Some(c) = cfg {
         c.token_format
             .unwrap_or(code2prompt_core::tokenizer::TokenFormat::Format)
