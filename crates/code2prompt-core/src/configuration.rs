@@ -20,87 +20,66 @@ pub struct Code2PromptConfig {
     pub path: PathBuf,
 
     /// List of glob-like patterns to include.
-    #[builder(default)]
     pub include_patterns: Vec<String>,
 
     /// List of glob-like patterns to exclude.
-    #[builder(default)]
     pub exclude_patterns: Vec<String>,
 
     /// If true, code lines will be numbered in the output.
-    #[builder(default)]
     pub line_numbers: bool,
 
     /// If true, paths in the output will be absolute instead of relative.
-    #[builder(default)]
     pub absolute_path: bool,
 
     /// If true, code2prompt will generate a full directory tree, ignoring include/exclude rules.
-    #[builder(default)]
     pub full_directory_tree: bool,
 
     /// If true, code blocks will not be wrapped in Markdown fences (```).
-    #[builder(default)]
     pub no_codeblock: bool,
 
     /// If true, symbolic links will be followed during traversal.
-    #[builder(default)]
     pub follow_symlinks: bool,
 
     /// If true, hidden files and directories will be included.
-    #[builder(default)]
     pub hidden: bool,
 
     /// If true, .gitignore rules will be ignored.
-    #[builder(default)]
     pub no_ignore: bool,
 
     /// Defines the sorting method for files.
-    #[builder(default)]
     pub sort_method: Option<FileSortMethod>,
 
     /// Determines the output format of the final prompt.
-    #[builder(default)]
     pub output_format: OutputFormat,
 
     /// An optional custom Handlebars template string.
-    #[builder(default)]
     pub custom_template: Option<String>,
 
     /// The tokenizer encoding to use for counting tokens.
-    #[builder(default)]
     pub encoding: TokenizerType,
 
     /// The counting format to use for token counting.
-    #[builder(default)]
     pub token_format: TokenFormat,
 
     /// If true, the git diff between HEAD and index will be included.
-    #[builder(default)]
     pub diff_enabled: bool,
 
     /// If set, contains two branch names for which code2prompt will generate a git diff.
-    #[builder(default)]
     pub diff_branches: Option<(String, String)>,
 
     /// If set, contains two branch names for which code2prompt will retrieve the git log.
-    #[builder(default)]
     pub log_branches: Option<(String, String)>,
 
     /// The name of the template used.
-    #[builder(default)]
     pub template_name: String,
 
     /// The template string itself.
-    #[builder(default)]
     pub template_str: String,
 
     /// Extra template data
-    #[builder(default)]
     pub user_variables: HashMap<String, String>,
 
     /// If true, token counting will be performed for each file (for token map display)
-    #[builder(default)]
     pub token_map_enabled: bool,
 }
 
@@ -122,65 +101,48 @@ pub enum OutputDestination {
 
 /// TOML configuration structure that can be serialized/deserialized
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct TomlConfig {
     /// Default output behavior: "stdout", "clipboard", or "file"
-    #[serde(default)]
     pub default_output: OutputDestination,
 
     /// Path to the codebase directory
-    #[serde(default)]
     pub path: Option<String>,
 
     /// Patterns to include
-    #[serde(default)]
     pub include_patterns: Vec<String>,
 
     /// Patterns to exclude
-    #[serde(default)]
     pub exclude_patterns: Vec<String>,
 
     /// Display options
-    #[serde(default)]
     pub line_numbers: bool,
-    #[serde(default)]
     pub absolute_path: bool,
-    #[serde(default)]
     pub full_directory_tree: bool,
 
     /// Output format
-    #[serde(default)]
     pub output_format: Option<String>,
 
     /// Sort method
-    #[serde(default)]
     pub sort_method: Option<String>,
 
     /// Tokenizer settings
-    #[serde(default)]
     pub encoding: Option<String>,
-    #[serde(default)]
     pub token_format: Option<String>,
 
     /// Git settings
-    #[serde(default)]
     pub diff_enabled: bool,
-    #[serde(default)]
     pub diff_branches: Option<Vec<String>>,
-    #[serde(default)]
     pub log_branches: Option<Vec<String>>,
 
     /// Template settings
-    #[serde(default)]
     pub template_name: Option<String>,
-    #[serde(default)]
     pub template_str: Option<String>,
 
     /// User variables
-    #[serde(default)]
     pub user_variables: HashMap<String, String>,
 
     /// Token map
-    #[serde(default)]
     pub token_map_enabled: bool,
 }
 

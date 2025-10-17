@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use log::info;
 
 #[cfg(not(target_os = "linux"))]
 /// Copies the provided text to the system clipboard.
@@ -78,6 +77,7 @@ pub fn serve_clipboard_daemon() -> Result<()> {
 ///   or an error if the process could not be launched or written to.
 pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
     use std::process::{Command, Stdio};
+    use log::info;
 
     // ~~~ Setting up the command to run the daemon ~~~
     let current_exe: std::path::PathBuf =
