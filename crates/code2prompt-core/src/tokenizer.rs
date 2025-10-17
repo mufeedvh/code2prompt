@@ -1,30 +1,16 @@
 //! This module encapsulates the logic for counting the tokens in the rendered text.
 use log::debug;
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::str::FromStr;
 use std::sync::OnceLock;
-use tiktoken_rs::{cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base, CoreBPE};
+use tiktoken_rs::{CoreBPE, cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base};
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TokenFormat {
     #[default]
     Raw,
     Format,
-}
-
-/// Parses a string into a [`TokenFormat`].
-impl FromStr for TokenFormat {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "raw" => Ok(TokenFormat::Raw),
-            "format" => Ok(TokenFormat::Format),
-            _ => Err(format!(
-                "Invalid token format: {}. Use 'raw' or 'format'.",
-                s
-            )),
-        }
-    }
 }
 
 impl fmt::Display for TokenFormat {
@@ -37,15 +23,19 @@ impl fmt::Display for TokenFormat {
 }
 
 /// Tokenizer types supported by tiktoken.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TokenizerType {
+    #[serde(alias = "o200k")]
     O200kBase,
     #[default]
+    #[serde(alias = "cl100k")]
     Cl100kBase,
+    #[serde(alias = "p50k")]
     P50kBase,
+    #[serde(alias = "p50k_edit")]
     P50kEdit,
+    #[serde(alias = "r50k")]
     R50kBase,
-    Gpt2,
 }
 
 impl fmt::Display for TokenizerType {
@@ -55,7 +45,7 @@ impl fmt::Display for TokenizerType {
             TokenizerType::Cl100kBase => write!(f, "cl100k (ChatGPT)"),
             TokenizerType::P50kBase => write!(f, "p50k (Code models)"),
             TokenizerType::P50kEdit => write!(f, "p50k_edit (Edit models)"),
-            TokenizerType::R50kBase | TokenizerType::Gpt2 => write!(f, "r50k (GPT-3)"),
+            TokenizerType::R50kBase => write!(f, "r50k (GPT-3)"),
         }
     }
 }
@@ -71,23 +61,6 @@ impl TokenizerType {
                 "Edit models like text-davinci-edit-001, code-davinci-edit-001"
             }
             TokenizerType::R50kBase => "GPT-3 models like davinci",
-            TokenizerType::Gpt2 => "GPT-2 tokenizer",
-        }
-    }
-}
-
-/// Parses a string into a [`TokenizerType`].
-impl FromStr for TokenizerType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "o200k" => Ok(TokenizerType::O200kBase),
-            "cl100k" => Ok(TokenizerType::Cl100kBase),
-            "p50k" => Ok(TokenizerType::P50kBase),
-            "p50k_edit" => Ok(TokenizerType::P50kEdit),
-            "r50k" | "gpt2" => Ok(TokenizerType::R50kBase),
-            _ => Err(()),
         }
     }
 }
@@ -118,9 +91,7 @@ pub fn count_tokens(rendered: &str, tokenizer_type: &TokenizerType) -> usize {
         TokenizerType::Cl100kBase => CL100K_BASE.get_or_init(|| cl100k_base().unwrap()),
         TokenizerType::P50kBase => P50K_BASE.get_or_init(|| p50k_base().unwrap()),
         TokenizerType::P50kEdit => P50K_EDIT.get_or_init(|| p50k_edit().unwrap()),
-        TokenizerType::R50kBase | TokenizerType::Gpt2 => {
-            R50K_BASE.get_or_init(|| r50k_base().unwrap())
-        }
+        TokenizerType::R50kBase => R50K_BASE.get_or_init(|| r50k_base().unwrap()),
     };
 
     let token_count = bpe.encode_with_special_tokens(rendered).len();

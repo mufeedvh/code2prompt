@@ -116,7 +116,7 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
                         TokenizerType::O200kBase => 1,
                         TokenizerType::P50kBase => 2,
                         TokenizerType::P50kEdit => 3,
-                        TokenizerType::R50kBase | TokenizerType::Gpt2 => 4,
+                        TokenizerType::R50kBase => 4,
                     },
                 },
             }],

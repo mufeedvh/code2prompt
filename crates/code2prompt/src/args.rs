@@ -6,7 +6,7 @@
 //! tokenization, and git integration.
 
 use clap::Parser;
-use code2prompt_core::{template::OutputFormat, tokenizer::TokenFormat};
+use code2prompt_core::template::OutputFormat;
 use std::path::PathBuf;
 
 // ~~~ CLI Arguments ~~~
@@ -65,7 +65,7 @@ pub struct Cli {
 
     /// Display the token count of the generated prompt. Accepts a format: "raw" (machine parsable) or "format" (human readable)
     #[clap(long, value_name = "raw,format", default_value = "format")]
-    pub tokens: TokenFormat,
+    pub token_format: Option<String>,
 
     /// Include git diff
     #[clap(short, long)]

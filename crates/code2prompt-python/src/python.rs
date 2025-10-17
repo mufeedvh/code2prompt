@@ -224,7 +224,6 @@ impl PyCode2PromptSession {
     fn with_token_encoding(&mut self, encoding: &str) -> PyResult<Py<Self>> {
         let mut config = self.inner.config.clone();
         match encoding.to_lowercase().as_str() {
-            "gpt2" => config.encoding = TokenizerType::Gpt2,
             "cl100k" => config.encoding = TokenizerType::Cl100kBase,
             "o200k" => config.encoding = TokenizerType::O200kBase,
             "p50k" => config.encoding = TokenizerType::P50kBase,

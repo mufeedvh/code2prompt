@@ -55,8 +55,14 @@ author = "ODAncona"
     assert!(!config.full_directory_tree);
     assert_eq!(config.output_format, Some("markdown".to_string()));
     assert_eq!(config.sort_method, Some(FileSortMethod::NameAsc));
-    assert_eq!(config.encoding, Some("cl100k".to_string()));
-    assert_eq!(config.token_format, Some("format".to_string()));
+    assert_eq!(
+        config.encoding,
+        Some(code2prompt_core::tokenizer::TokenizerType::Cl100kBase)
+    );
+    assert_eq!(
+        config.token_format,
+        Some(code2prompt_core::tokenizer::TokenFormat::Format)
+    );
     assert!(config.diff_enabled);
     assert_eq!(
         config.diff_branches,
@@ -234,7 +240,8 @@ fn test_default_config_message() {
 fn test_cli_args_message() {
     let test_env = StdoutTestEnv::new();
 
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd: Command =
+        Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
     cmd.arg(test_env.path())
         .arg("-i")
         .arg("*.py")

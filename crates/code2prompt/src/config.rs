@@ -11,6 +11,7 @@ use code2prompt_core::{
 };
 use inquire::Text;
 use log::error;
+use serde_json::Value;
 use std::path::PathBuf;
 
 use crate::{args::Cli, config_loader::ConfigSource};
@@ -75,7 +76,7 @@ pub fn build_session(
 
     // Sort method: CLI overrides config
     let sort_method = if let Some(sort_str) = &args.sort {
-        serde_json::from_str(&sort_str).map_err(|e| anyhow!(e))?
+        serde_json::from_value(Value::String(sort_str.clone())).map_err(|e| anyhow!(e))?
     } else if let Some(c) = cfg {
         c.sort_method.unwrap_or(FileSortMethod::NameAsc)
     } else {
@@ -84,22 +85,27 @@ pub fn build_session(
 
     configuration.sort_method(sort_method);
 
-    // Tokenizer: CLI overrides config
     let tokenizer_type = if let Some(encoding) = &args.encoding {
-        encoding.parse::<TokenizerType>().unwrap_or_default()
+        serde_json::from_value(Value::String(encoding.clone()))
+            .map_err(|e| anyhow!("Failed to parse tokenizer type: {}", e))?
     } else if let Some(c) = cfg {
-        if let Some(encoding) = &c.encoding {
-            encoding.parse::<TokenizerType>().unwrap_or_default()
-        } else {
-            "cl100k".parse::<TokenizerType>().unwrap_or_default()
-        }
+        c.encoding.unwrap_or(TokenizerType::Cl100kBase)
     } else {
-        "cl100k".parse::<TokenizerType>().unwrap_or_default()
+        TokenizerType::Cl100kBase
+    };
+
+    let token_format = if let Some(format) = &args.token_format {
+        serde_json::from_value(Value::String(format.clone())).map_err(|e| anyhow!(e))?
+    } else if let Some(c) = cfg {
+        c.token_format
+            .unwrap_or(code2prompt_core::tokenizer::TokenFormat::Format)
+    } else {
+        code2prompt_core::tokenizer::TokenFormat::Format
     };
 
     configuration
         .encoding(tokenizer_type)
-        .token_format(args.tokens.clone());
+        .token_format(token_format);
 
     // Template: CLI overrides config
     let (template_str, template_name) = if args.template.is_some() {

@@ -140,8 +140,7 @@ impl SettingsState {
                     code2prompt_core::tokenizer::TokenizerType::P50kEdit => {
                         code2prompt_core::tokenizer::TokenizerType::R50kBase
                     }
-                    code2prompt_core::tokenizer::TokenizerType::R50kBase
-                    | code2prompt_core::tokenizer::TokenizerType::Gpt2 => {
+                    code2prompt_core::tokenizer::TokenizerType::R50kBase => {
                         code2prompt_core::tokenizer::TokenizerType::Cl100kBase
                     }
                 };

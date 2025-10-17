@@ -127,8 +127,8 @@ pub struct TomlConfig {
     pub sort_method: Option<FileSortMethod>,
 
     /// Tokenizer settings
-    pub encoding: Option<String>,
-    pub token_format: Option<String>,
+    pub encoding: Option<TokenizerType>,
+    pub token_format: Option<TokenFormat>,
 
     /// Git settings
     pub diff_enabled: bool,
@@ -180,17 +180,9 @@ impl TomlConfig {
 
         builder.sort_method(self.sort_method);
 
-        if let Some(encoding) = &self.encoding
-            && let Ok(tokenizer) = encoding.parse::<TokenizerType>()
-        {
-            builder.encoding(tokenizer);
-        }
+        builder.encoding(self.encoding.unwrap_or_default());
 
-        if let Some(token_format) = &self.token_format
-            && let Ok(format) = token_format.parse::<TokenFormat>()
-        {
-            builder.token_format(format);
-        }
+        builder.token_format(self.token_format.unwrap_or_default());
 
         builder.diff_enabled(self.diff_enabled);
 
@@ -234,8 +226,8 @@ pub fn export_config_to_toml(config: &Code2PromptConfig) -> Result<String, toml:
         full_directory_tree: config.full_directory_tree,
         output_format: Some(config.output_format.to_string()),
         sort_method: config.sort_method,
-        encoding: Some(config.encoding.to_string()),
-        token_format: Some(config.token_format.to_string()),
+        encoding: Some(config.encoding),
+        token_format: Some(config.token_format),
         diff_enabled: config.diff_enabled,
         diff_branches: config
             .diff_branches
