@@ -131,7 +131,10 @@ impl TemplateState {
             if let Some(builtin_template) =
                 code2prompt_core::builtin_templates::BuiltinTemplates::get_template(template_key)
             {
-                (builtin_template.content, builtin_template.name)
+                (
+                    builtin_template.content.to_string(),
+                    builtin_template.name.to_string(),
+                )
             } else {
                 return Err(format!("Built-in template '{}' not found", template_key));
             }

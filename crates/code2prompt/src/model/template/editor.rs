@@ -45,14 +45,13 @@ impl Default for EditorState {
         {
             builtin_template.content
         } else {
-            // Fallback content if template not found
-            "# {{project_name}}\n\n{{#if files}}\n{{#each files}}\n## {{path}}\n\n```{{extension}}\n{{content}}\n```\n\n{{/each}}\n{{/if}}".to_string()
+            "# {{project_name}}\n\n{{#if files}}\n{{#each files}}\n## {{path}}\n\n```{{extension}}\n{{content}}\n```\n\n{{/each}}\n{{/if}}"
         };
 
         let editor = TextArea::from(content.lines());
 
         let mut state = Self {
-            content: content.clone(),
+            content: content.to_string(),
             editor,
             current_template_name: "Default (Markdown)".to_string(),
             is_valid: true,
