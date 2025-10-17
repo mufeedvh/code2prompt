@@ -111,8 +111,8 @@ pub struct Cli {
     #[clap(long)]
     pub no_ignore: bool,
 
-    /// Sort order for files: one of "name_asc", "name_desc", "date_asc", or "date_desc"
-    #[clap(long)]
+    /// Sort order for files
+    #[clap(long, value_name = "name_asc, name_desc, date_asc, date_desc")]
     pub sort: Option<String>,
 
     /// Suppress progress and success messages
