@@ -1,34 +1,22 @@
 //! This module provides sorting methods for files and directory trees.
 
+use serde::{self, Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
-use std::str::FromStr;
 use termtree::Tree;
 
 // Define the available sort methods.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FileSortMethod {
-    NameAsc,  // Sort files alphabetically (A → Z)
-    NameDesc, // Sort files alphabetically in reverse (Z → A)
-    DateAsc,  // Sort files by modification date (oldest first)
-    DateDesc, // Sort files by modification date (newest first)
-}
-
-impl FromStr for FileSortMethod {
-    type Err = String; // On retourne une String en cas d'erreur
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "name_asc" => Ok(FileSortMethod::NameAsc),
-            "name_desc" => Ok(FileSortMethod::NameDesc),
-            "date_asc" => Ok(FileSortMethod::DateAsc),
-            "date_desc" => Ok(FileSortMethod::DateDesc),
-            _ => Err(format!(
-                "Invalid sort method: {}. Supported values: name_asc, name_desc, date_asc, date_desc",
-                s
-            )),
-        }
-    }
+    /// Sort files by name (A → Z)
+    NameAsc,
+    /// Sort files by name (Z → A)
+    NameDesc,
+    /// Sort files by modification date (oldest first)
+    DateAsc,
+    /// Sort files by modification date (newest first)
+    DateDesc,
 }
 
 impl fmt::Display for FileSortMethod {

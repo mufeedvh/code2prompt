@@ -75,15 +75,9 @@ pub fn build_session(
 
     // Sort method: CLI overrides config
     let sort_method = if let Some(sort_str) = &args.sort {
-        sort_str.parse::<FileSortMethod>().map_err(|e| anyhow!(e))?
+        serde_json::from_str(&sort_str).map_err(|e| anyhow!(e))?
     } else if let Some(c) = cfg {
-        if let Some(sort_str) = &c.sort_method {
-            sort_str
-                .parse::<FileSortMethod>()
-                .unwrap_or(FileSortMethod::NameAsc)
-        } else {
-            FileSortMethod::NameAsc
-        }
+        c.sort_method.unwrap_or(FileSortMethod::NameAsc)
     } else {
         FileSortMethod::NameAsc
     };

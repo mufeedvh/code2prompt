@@ -6,6 +6,7 @@
 mod common;
 
 use assert_cmd::Command;
+use code2prompt_core::sort::FileSortMethod;
 use common::*;
 use predicates::prelude::*;
 use predicates::str::contains;
@@ -53,7 +54,7 @@ author = "ODAncona"
     assert!(!config.absolute_path);
     assert!(!config.full_directory_tree);
     assert_eq!(config.output_format, Some("markdown".to_string()));
-    assert_eq!(config.sort_method, Some("name_asc".to_string()));
+    assert_eq!(config.sort_method, Some(FileSortMethod::NameAsc));
     assert_eq!(config.encoding, Some("cl100k".to_string()));
     assert_eq!(config.token_format, Some("format".to_string()));
     assert!(config.diff_enabled);
