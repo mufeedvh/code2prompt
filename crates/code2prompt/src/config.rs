@@ -6,8 +6,11 @@
 
 use anyhow::{Context, Result};
 use code2prompt_core::{
-    configuration::Code2PromptConfig, session::Code2PromptSession, sort::FileSortMethod,
-    template::extract_undefined_variables, tokenizer::TokenizerType,
+    configuration::Code2PromptConfig,
+    session::Code2PromptSession,
+    sort::FileSortMethod,
+    template::{OutputFormat, extract_undefined_variables},
+    tokenizer::TokenizerType,
 };
 use inquire::Text;
 use log::error;
@@ -55,7 +58,6 @@ pub fn build_session(
             expand_comma_separated_patterns(&args.exclude),
         )
     };
-
     configuration
         .include_patterns(include_patterns)
         .exclude_patterns(exclude_patterns);
@@ -64,14 +66,20 @@ pub fn build_session(
     let cfg_line_numbers = cfg.map(|c| c.line_numbers).unwrap_or(false);
     let cfg_absolute = cfg.map(|c| c.absolute_path).unwrap_or(false);
     let cfg_full_tree = cfg.map(|c| c.full_directory_tree).unwrap_or(false);
-
     configuration
         .line_numbers(args.line_numbers || cfg_line_numbers)
         .absolute_path(args.absolute_paths || cfg_absolute)
         .full_directory_tree(args.full_directory_tree || cfg_full_tree);
 
-    // Output format: CLI value
-    configuration.output_format(args.output_format.clone());
+    // Output format: CLI overrides config
+    let output_format = if let Some(output_format_str) = args.output_format {
+        output_format_str
+    } else if let Some(c) = cfg {
+        c.output_format.unwrap_or(OutputFormat::Markdown)
+    } else {
+        OutputFormat::Markdown
+    };
+    configuration.output_format(output_format);
 
     // Sort method: CLI overrides config
     let sort_method = if let Some(sort_str) = args.sort {
@@ -81,9 +89,9 @@ pub fn build_session(
     } else {
         FileSortMethod::NameAsc
     };
-
     configuration.sort_method(sort_method);
 
+    // Tokenizer settings: CLI overrides config
     let tokenizer_type = if let Some(encoding) = args.encoding {
         encoding
     } else if let Some(c) = cfg {
@@ -92,6 +100,7 @@ pub fn build_session(
         TokenizerType::Cl100kBase
     };
 
+    // Token format: CLI overrides config
     let token_format = if let Some(format) = args.token_format {
         format
     } else if let Some(c) = cfg {

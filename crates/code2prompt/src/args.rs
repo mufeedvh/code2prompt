@@ -45,10 +45,10 @@ pub struct Cli {
     #[clap(
         short = 'F',
         long = "output-format",
-        default_value = "markdown",
-        value_name = "markdown, json, xml"
+        value_name = "markdown, json, xml",
+        value_parser = ValueParser::new(parse_serde::<OutputFormat>)
     )]
-    pub output_format: OutputFormat,
+    pub output_format: Option<OutputFormat>,
 
     /// Optional Path to a custom Handlebars template
     #[clap(short, long, value_name = "TEMPLATE")]

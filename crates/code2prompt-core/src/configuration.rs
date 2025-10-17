@@ -121,7 +121,7 @@ pub struct TomlConfig {
     pub full_directory_tree: bool,
 
     /// Output format
-    pub output_format: Option<String>,
+    pub output_format: Option<OutputFormat>,
 
     /// Sort method
     pub sort_method: Option<FileSortMethod>,
@@ -172,11 +172,7 @@ impl TomlConfig {
             .absolute_path(self.absolute_path)
             .full_directory_tree(self.full_directory_tree);
 
-        if let Some(output_format) = &self.output_format
-            && let Ok(format) = output_format.parse::<OutputFormat>()
-        {
-            builder.output_format(format);
-        }
+        builder.output_format(self.output_format.unwrap_or_default());
 
         builder.sort_method(self.sort_method);
 
@@ -224,7 +220,7 @@ pub fn export_config_to_toml(config: &Code2PromptConfig) -> Result<String, toml:
         line_numbers: config.line_numbers,
         absolute_path: config.absolute_path,
         full_directory_tree: config.full_directory_tree,
-        output_format: Some(config.output_format.to_string()),
+        output_format: Some(config.output_format),
         sort_method: config.sort_method,
         encoding: Some(config.encoding),
         token_format: Some(config.token_format),

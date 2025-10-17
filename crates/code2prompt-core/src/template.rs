@@ -3,8 +3,8 @@
 use anyhow::{Result, anyhow};
 use handlebars::{Handlebars, no_escape};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::io::Write;
-use std::str::FromStr;
 
 /// Set up the Handlebars template engine with a template string and a template name.
 ///
@@ -85,7 +85,8 @@ pub fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
 }
 
 /// Enum to represent the output format.
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
     #[default]
     Markdown,
@@ -99,22 +100,6 @@ impl std::fmt::Display for OutputFormat {
             OutputFormat::Markdown => write!(f, "markdown"),
             OutputFormat::Json => write!(f, "json"),
             OutputFormat::Xml => write!(f, "xml"),
-        }
-    }
-}
-
-impl FromStr for OutputFormat {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s.to_lowercase().as_str() {
-            "markdown" | "md" => Ok(OutputFormat::Markdown),
-            "json" => Ok(OutputFormat::Json),
-            "xml" => Ok(OutputFormat::Xml),
-            _ => Err(anyhow!(
-                "Invalid output format: {}. Allowed values: markdown, json, xml",
-                s
-            )),
         }
     }
 }
