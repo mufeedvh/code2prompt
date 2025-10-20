@@ -28,7 +28,7 @@
     "rehype-mathjax": "^7.1.0",
     "remark-math": "^6.0.0",
     "sharp": "^0.34.4",
-    "starlight-blog": "^0.24.1",
+    "starlight-blog": "^0.24.3",
     "tailwindcss": "^4.1.14"
   },
   "devDependencies": {
