@@ -44,7 +44,7 @@ winapi = { version = "0.3.9", features = ["errhandlingapi"] }
 terminal_size = "0.4.3"
 bracoxide = "0.1.6"
 crossterm = "0.29.0"
-lscolors = { version = "0.20.0", features = ["ansi_term"] }
+lscolors = { version = "0.21.0", features = ["ansi_term"] }
 ansi_term = "0.12.1"
 ratatui = "0.29.0"
 unicode-width = "0.2.0"
