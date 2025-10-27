@@ -19,7 +19,7 @@
     "@astrojs/sitemap": "3.6.0",
     "@astrojs/starlight": "^0.36.1",
     "@astrojs/upgrade": "^0.6.2",
-    "@tailwindcss/vite": "^4.1.15",
+    "@tailwindcss/vite": "^4.1.16",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "astro": "5.14.8",
