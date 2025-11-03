@@ -52,7 +52,7 @@ path = "src/main.rs"
 
 [dev-dependencies]
 tempfile = "3.20"
-assert_cmd = "2.0"
+assert_cmd = "2.1"
 predicates = "3.1"
 env_logger = "0.11.3"
 rstest = "0.26"
