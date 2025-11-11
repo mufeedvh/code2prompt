@@ -31,7 +31,6 @@ crossterm = { workspace = true }
 tokio = { workspace = true }
 tui-tree-widget = { workspace = true }
 tui-textarea = { workspace = true }
-atty = { workspace = true }
 walkdir = { workspace = true }
 unicode-width = { workspace = true }
 bracoxide = { workspace = true }
