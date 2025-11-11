@@ -25,7 +25,7 @@ handlebars = "6.3.2"
 jwalk = "0.8"
 termtree = "0.5"
 tiktoken-rs = "0.7.0"
-ignore = "0.4.22"
+ignore = "0.4.25"
 inquire = "0.9.1"
 regex = "1.10.3"
 git2 = { version = "0.20.2", default-features = false, features = [
