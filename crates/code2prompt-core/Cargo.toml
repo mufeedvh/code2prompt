@@ -30,7 +30,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
 handlebars = { workspace = true }
-jwalk = { workspace = true }
 termtree = { workspace = true }
 tiktoken-rs = { workspace = true }
 ignore = { workspace = true }

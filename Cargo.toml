@@ -22,7 +22,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.114"
 toml = "0.9.7"
 handlebars = "6.3.2"
-jwalk = "0.8"
 termtree = "0.5"
 tiktoken-rs = "0.9.1"
 ignore = "0.4.25"
@@ -50,7 +49,6 @@ ratatui = "0.29.0"
 unicode-width = "0.2.0"
 tokio = { version = "1.40.0", features = ["full"] }
 tui-tree-widget = "0.23.0"
-atty = "0.2.14"
 walkdir = "2.4.0"
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "6.0.0"
