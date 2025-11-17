@@ -19,6 +19,8 @@ pub fn build_file_tree_from_session(
     use ignore::WalkBuilder;
     let walker = WalkBuilder::new(&session.config.path)
         .max_depth(Some(1))
+        .git_ignore(!session.config.no_ignore)  // Respect the no_ignore flag
+        .hidden(!session.config.hidden)         // Also respect the hidden flag for consistency
         .build();
 
     for entry in walker {
@@ -254,7 +256,11 @@ fn get_children_for_search(
 
     // Use ignore crate to respect gitignore
     use ignore::WalkBuilder;
-    let walker = WalkBuilder::new(&node.path).max_depth(Some(1)).build();
+    let walker = WalkBuilder::new(&node.path)
+        .max_depth(Some(1))
+        .git_ignore(!session.config.no_ignore)  // Respect the no_ignore flag
+        .hidden(!session.config.hidden)         // Also respect the hidden flag for consistency
+        .build();
 
     for entry in walker.flatten() {
         let path = entry.path();
