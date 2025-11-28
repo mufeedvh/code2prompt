@@ -5,6 +5,7 @@ edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
+readme = "../../README.md"
 
 [features]
 wayland = ["arboard/wayland-data-control"]

@@ -15,6 +15,7 @@ codegen-units = 1
 [workspace.dependencies]
 anyhow = "1.0.98"
 colored = "3.0.0"
+csv = "1.4.0"
 indicatif = "0.18.0"
 log = "0.4"
 num-format = { version = "0.4.4", features = ["with-system-locale"] }

@@ -1,5 +1,6 @@
 //! This module contains the functions for traversing the directory and processing the files.
 use crate::configuration::Code2PromptConfig;
+use crate::file_processor;
 use crate::filter::{build_globset, should_include_file};
 use crate::sort::{FileSortMethod, sort_files, sort_tree};
 use crate::tokenizer::count_tokens;
@@ -105,14 +106,26 @@ pub fn traverse_directory(
             {
                 if let Ok(code_bytes) = fs::read(path) {
                     let clean_bytes = strip_utf8_bom(&code_bytes);
-                    let code = String::from_utf8_lossy(clean_bytes);
 
-                    let code_block = wrap_code_block(
-                        &code,
-                        path.extension().and_then(|ext| ext.to_str()).unwrap_or(""),
-                        config.line_numbers,
-                        config.no_codeblock,
-                    );
+                    // Get appropriate processor for file extension
+                    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+                    let processor = file_processor::get_processor_for_extension(extension);
+
+                    // Process file content
+                    let code = match processor.process(clean_bytes, path) {
+                        Ok(processed) => processed,
+                        Err(e) => {
+                            log::warn!(
+                                "File processing failed for {}: {}. Using raw text fallback.",
+                                path.display(),
+                                e
+                            );
+                            String::from_utf8_lossy(clean_bytes).into_owned()
+                        }
+                    };
+
+                    let code_block =
+                        wrap_code_block(&code, extension, config.line_numbers, config.no_codeblock);
 
                     if !code.trim().is_empty() && !code.contains(char::REPLACEMENT_CHARACTER) {
                         // ~~~ Filepath ~~~
