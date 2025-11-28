@@ -180,8 +180,8 @@ impl TemplateWidget {
                     ];
 
                     let specific_controls = match state.get_focus() {
-                        TemplateFocus::Editor => "".to_string(),
-                        TemplateFocus::Variables => "Press 'v' to enter variable mode".to_string(),
+                        TemplateFocus::Editor => String::from(""),
+                        TemplateFocus::Variables => String::from(""),
                         TemplateFocus::Picker => {
                             TemplatePickerWidget::get_help_text(true, state.picker.active_list)
                         }
