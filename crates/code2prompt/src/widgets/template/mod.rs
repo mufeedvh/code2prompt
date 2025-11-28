@@ -13,8 +13,8 @@ pub use editor::TemplateEditorWidget;
 pub use picker::TemplatePickerWidget;
 pub use variable::TemplateVariableWidget;
 
-use crate::model::template::{TemplateFocus, TemplateState};
 use crate::model::Model;
+use crate::model::template::{TemplateFocus, TemplateState};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph},
@@ -172,11 +172,16 @@ impl TemplateWidget {
                             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                         ),
                         Span::styled("(icker) | ", Style::default().fg(Color::Gray)),
+                        Span::styled(
+                            "s",
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled("(ave Template) ", Style::default().fg(Color::Gray)),
                     ];
 
                     let specific_controls = match state.get_focus() {
-                        TemplateFocus::Editor => "Press 'e' to enter edit mode".to_string(),
-                        TemplateFocus::Variables => "Press 'v' to enter variable mode".to_string(),
+                        TemplateFocus::Editor => "",
+                        TemplateFocus::Variables => "",
                         TemplateFocus::Picker => {
                             TemplatePickerWidget::get_help_text(true, state.picker.active_list)
                         }

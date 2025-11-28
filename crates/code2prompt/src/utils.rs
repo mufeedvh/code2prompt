@@ -19,8 +19,8 @@ pub fn build_file_tree_from_session(
     use ignore::WalkBuilder;
     let walker = WalkBuilder::new(&session.config.path)
         .max_depth(Some(1))
-        .git_ignore(!session.config.no_ignore)  // Respect the no_ignore flag
-        .hidden(!session.config.hidden)         // Also respect the hidden flag for consistency
+        .git_ignore(!session.config.no_ignore) // Respect the no_ignore flag
+        .hidden(!session.config.hidden) // Also respect the hidden flag for consistency
         .build();
 
     for entry in walker {
@@ -258,8 +258,8 @@ fn get_children_for_search(
     use ignore::WalkBuilder;
     let walker = WalkBuilder::new(&node.path)
         .max_depth(Some(1))
-        .git_ignore(!session.config.no_ignore)  // Respect the no_ignore flag
-        .hidden(!session.config.hidden)         // Also respect the hidden flag for consistency
+        .git_ignore(!session.config.no_ignore) // Respect the no_ignore flag
+        .hidden(!session.config.hidden) // Also respect the hidden flag for consistency
         .build();
 
     for entry in walker.flatten() {
@@ -290,10 +290,14 @@ fn get_children_for_search(
 
 /// Save template to custom directory
 pub fn save_template_to_custom_dir(filename: &Path, content: &str) -> Result<()> {
-    // Create templates directory if it doesn't exist
-    let templates_dir = std::env::current_dir()?.join("templates");
-    std::fs::create_dir_all(&templates_dir)?;
+    let templates_dir = if let Some(cfg) = dirs::config_dir() {
+        cfg.join("code2prompt").join("templates")
+    } else {
+        // Fallback to current directory if config_dir not available
+        std::env::current_dir()?.join("templates")
+    };
 
+    std::fs::create_dir_all(&templates_dir)?;
     let full_path = templates_dir.join(filename);
     std::fs::write(full_path, content)?;
     Ok(())
