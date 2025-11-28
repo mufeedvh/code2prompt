@@ -180,8 +180,8 @@ impl TemplateWidget {
                     ];
 
                     let specific_controls = match state.get_focus() {
-                        TemplateFocus::Editor => String::from(""),
-                        TemplateFocus::Variables => String::from(""),
+                        TemplateFocus::Editor => "",
+                        TemplateFocus::Variables => "",
                         TemplateFocus::Picker => {
                             TemplatePickerWidget::get_help_text(true, state.picker.active_list)
                         }
