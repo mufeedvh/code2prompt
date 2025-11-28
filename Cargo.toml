@@ -22,10 +22,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.114"
 toml = "0.9.7"
 handlebars = "6.3.2"
-jwalk = "0.8"
 termtree = "0.5"
-tiktoken-rs = "0.7.0"
-ignore = "0.4.22"
+tiktoken-rs = "0.9.1"
+ignore = "0.4.25"
 inquire = "0.9.1"
 regex = "1.10.3"
 git2 = { version = "0.20.2", default-features = false, features = [
@@ -35,7 +34,7 @@ git2 = { version = "0.20.2", default-features = false, features = [
 ] }
 once_cell = "1.19.0"
 globset = "0.4.15"
-pyo3 = { version = "0.26", features = ["extension-module", "abi3-py312"] }
+pyo3 = { version = "0.27", features = ["extension-module", "abi3-py312"] }
 clap = { version = "4.5", features = ["derive"] }
 env_logger = { version = "0.11.3" }
 arboard = { version = "3.6.0" }
@@ -44,13 +43,12 @@ winapi = { version = "0.3.9", features = ["errhandlingapi"] }
 terminal_size = "0.4.3"
 bracoxide = "0.1.6"
 crossterm = "0.29.0"
-lscolors = { version = "0.20.0", features = ["ansi_term"] }
+lscolors = { version = "0.21.0", features = ["ansi_term"] }
 ansi_term = "0.12.1"
 ratatui = "0.29.0"
 unicode-width = "0.2.0"
 tokio = { version = "1.40.0", features = ["full"] }
 tui-tree-widget = "0.23.0"
-atty = "0.2.14"
 walkdir = "2.4.0"
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "6.0.0"

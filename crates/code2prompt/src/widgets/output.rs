@@ -60,27 +60,41 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
         Widget::render(info_widget, layout[0], buf);
 
         // Prompt content
-        let content = if let Some(prompt) = &self.model.prompt_output.generated_prompt {
-            prompt.clone()
-        } else if self.model.prompt_output.analysis_in_progress {
+        let content = if self.model.prompt_output.analysis_in_progress {
             "Generating prompt...".to_string()
+        } else if let Some(prompt) = &self.model.prompt_output.generated_prompt {
+            prompt.clone()
         } else {
             "Press <Enter> to run analysis and generate prompt.\n\nSelected files will be processed according to your settings.".to_string()
         };
 
-        // Calculate scroll position for display - read directly from Model
-        let scroll_info = if let Some(prompt) = &self.model.prompt_output.generated_prompt {
-            let total_lines = prompt.lines().count();
-            let current_line = self.model.prompt_output.output_scroll as usize + 1;
-            format!("Generated Prompt (Line {}/{})", current_line, total_lines)
-        } else {
-            "Generated Prompt".to_string()
-        };
+        // Compute viewport-aware scroll
+        let content_height = layout[1].height.saturating_sub(2).max(1) as usize; // borders
+        let (display_scroll, scroll_info) =
+            if let Some(prompt) = &self.model.prompt_output.generated_prompt {
+                let total_lines = prompt.lines().count();
+                let max_scroll = total_lines.saturating_sub(content_height);
+                let ds = self
+                    .model
+                    .prompt_output
+                    .output_scroll
+                    .min(max_scroll as u16);
+                let current_line = ds as usize + 1;
+                (
+                    ds,
+                    format!("Generated Prompt (Line {}/{})", current_line, total_lines),
+                )
+            } else {
+                (
+                    self.model.prompt_output.output_scroll,
+                    "Generated Prompt".to_string(),
+                )
+            };
 
         let prompt_widget = Paragraph::new(content)
             .block(Block::default().borders(Borders::ALL).title(scroll_info))
             .wrap(Wrap { trim: false })
-            .scroll((self.model.prompt_output.output_scroll, 0));
+            .scroll((display_scroll, 0));
         Widget::render(prompt_widget, layout[1], buf);
 
         // Controls

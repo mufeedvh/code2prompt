@@ -18,5 +18,3 @@ pub use statistics_by_extension::StatisticsByExtensionWidget;
 pub use statistics_overview::StatisticsOverviewWidget;
 pub use statistics_token_map::StatisticsTokenMapWidget;
 pub use template::TemplateWidget;
-// Re-export TemplateState from model
-pub use crate::model::template::TemplateState;

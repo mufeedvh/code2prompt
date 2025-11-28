@@ -64,7 +64,7 @@ impl PickerState {
 
         for (key, template) in template_entries {
             self.default_templates.push(TemplateFile {
-                name: template.name,
+                name: template.name.to_string(),
                 path: PathBuf::from(format!("builtin://{}", key)),
             });
         }

@@ -19,16 +19,18 @@ use ratatui::{
 use std::io::{Stdout, stdout};
 use tokio::sync::mpsc;
 
-use crate::model::{Message, Model, Tab};
-use crate::widgets::*;
-
+use crate::clipboard::copy_to_clipboard;
+use crate::model::{
+    AnalysisResults, Cmd, FileTreeInputMode, Message, Model, StatisticsView, Tab, TemplateState,
+    template::{FocusMode, TemplateFocus, VariableCategory},
+};
 use crate::token_map::generate_token_map_with_limit;
+use crate::utils::{save_template_to_custom_dir, save_to_file};
+use crate::widgets::{
+    FileSelectionWidget, OutputWidget, SettingsWidget, StatisticsByExtensionWidget,
+    StatisticsOverviewWidget, StatisticsTokenMapWidget, TemplateWidget,
+};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum InputMode {
-    Normal,
-    Search,
-}
 use crate::utils::build_file_tree_from_session;
 
 pub struct TuiApp {
@@ -36,28 +38,15 @@ pub struct TuiApp {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     message_tx: mpsc::UnboundedSender<Message>,
     message_rx: mpsc::UnboundedReceiver<Message>,
-    input_mode: InputMode,
 }
 
 impl TuiApp {
-    /// Create a new TUI application with specified parameters.
+    /// Create a new TUI application.
     ///
-    /// Initializes the TUI with a default configuration using the provided path
-    /// and file patterns, builds the initial file tree, and sets up the application state.
+    /// Initializes the terminal and sets up the application state from the provided session.
+    /// The initial file tree is requested via a `RefreshFileTree` message in `run()`.
     ///
-    /// # Arguments
-    ///
-    /// * `path` - Root path of the codebase to analyze
-    /// * `include_patterns` - Patterns for files to include
-    /// * `exclude_patterns` - Patterns for files to exclude
-    ///
-    /// # Returns
-    ///
-    /// * `Result<Self>` - The initialized TUI application
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the terminal cannot be initialized or the file tree cannot be built.
+    /// Returns an error if the terminal cannot be initialized.
     pub fn new(session: Code2PromptSession) -> Result<Self> {
         let terminal = init_terminal()?;
         let (message_tx, message_rx) = mpsc::unbounded_channel();
@@ -68,7 +57,6 @@ impl TuiApp {
             terminal,
             message_tx,
             message_rx,
-            input_mode: InputMode::Normal,
         })
     }
 
@@ -91,7 +79,6 @@ impl TuiApp {
 
                     // Handle the key event
                     if let Some(message) = self.handle_key_event(ratatui_key) {
-                        // Try to coalesce similar events
                         if let Some(last_message) = messages.last_mut()
                             && self.try_coalesce_messages(last_message, &message)
                         {
@@ -169,16 +156,16 @@ impl TuiApp {
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
             }
             Tab::Statistics => match model.statistics.view {
-                crate::model::StatisticsView::Overview => {
+                StatisticsView::Overview => {
                     let widget = StatisticsOverviewWidget::new(model);
                     frame.render_widget(widget, main_layout[1]);
                 }
-                crate::model::StatisticsView::TokenMap => {
+                StatisticsView::TokenMap => {
                     let widget = StatisticsTokenMapWidget::new(model);
                     let mut state = ();
                     frame.render_stateful_widget(widget, main_layout[1], &mut state);
                 }
-                crate::model::StatisticsView::Extensions => {
+                StatisticsView::Extensions => {
                     let widget = StatisticsByExtensionWidget::new(model);
                     let mut state = ();
                     frame.render_stateful_widget(widget, main_layout[1], &mut state);
@@ -188,10 +175,6 @@ impl TuiApp {
                 let widget = TemplateWidget::new(model);
                 let mut state = TemplateState::from_model(model);
                 frame.render_stateful_widget(widget, main_layout[1], &mut state);
-
-                // Synchronize template content back to model if it changed
-                // This is a workaround since StatefulWidget doesn't provide a way to get state back
-                // In a real implementation, we'd use a different pattern
             }
             Tab::PromptOutput => {
                 let widget = OutputWidget::new(model);
@@ -219,16 +202,16 @@ impl TuiApp {
     ///   
     fn handle_key_event(&self, key: KeyEvent) -> Option<Message> {
         // Check if we're in search mode first - this takes priority over global shortcuts
-        if self.input_mode == InputMode::Search && self.model.current_tab == Tab::FileTree {
+        if self.model.file_tree_input_mode == FileTreeInputMode::Search
+            && self.model.current_tab == Tab::FileTree
+        {
             return self.handle_file_tree_keys(key);
         }
 
         // Check if we're in template editing mode - ESC should exit editing mode, not quit app
         if self.model.current_tab == Tab::Template && self.model.template.is_in_editing_mode() {
             if key.code == KeyCode::Esc {
-                return Some(Message::SetTemplateFocusMode(
-                    crate::model::template::FocusMode::Normal,
-                ));
+                return Some(Message::SetTemplateFocusMode(FocusMode::Normal));
             }
             // In editing modes, delegate to template handler
             return self.handle_template_keys(key);
@@ -282,7 +265,7 @@ impl TuiApp {
 
     fn handle_file_tree_keys(&self, key: KeyEvent) -> Option<Message> {
         // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
-        if self.input_mode == InputMode::Search {
+        if self.model.file_tree_input_mode == FileTreeInputMode::Search {
             match key.code {
                 KeyCode::Esc => Some(Message::ExitSearchMode),
                 KeyCode::Enter => {
@@ -315,6 +298,7 @@ impl TuiApp {
                 KeyCode::Right => Some(Message::ExpandDirectory(self.model.tree_cursor)),
                 KeyCode::Left => Some(Message::CollapseDirectory(self.model.tree_cursor)),
                 KeyCode::Char('/') => Some(Message::EnterSearchMode),
+                KeyCode::Char('s') | KeyCode::Char('S') => Some(Message::EnterSearchMode),
                 KeyCode::Char('r') | KeyCode::Char('R') => Some(Message::RefreshFileTree),
                 _ => None,
             }
@@ -322,7 +306,6 @@ impl TuiApp {
     }
 
     fn handle_settings_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
         match key.code {
             KeyCode::Up => Some(Message::MoveSettingsCursor(-1)),
             KeyCode::Down => Some(Message::MoveSettingsCursor(1)),
@@ -336,7 +319,6 @@ impl TuiApp {
     }
 
     fn handle_statistics_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure logic in Model - no direct widget calls
         match key.code {
             KeyCode::Enter => Some(Message::RunAnalysis),
             KeyCode::Left => Some(Message::CycleStatisticsView(-1)), // Previous view
@@ -352,26 +334,20 @@ impl TuiApp {
     }
 
     fn handle_template_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure Elm/Redux pattern - no direct widget calls, only message generation
         let is_in_editing_mode = self.model.template.is_in_editing_mode();
         let current_focus = self.model.template.get_focus();
 
         // Handle ESC key to exit editing modes
         if key.code == KeyCode::Esc && is_in_editing_mode {
-            return Some(Message::SetTemplateFocusMode(
-                crate::model::template::FocusMode::Normal,
-            ));
+            return Some(Message::SetTemplateFocusMode(FocusMode::Normal));
         }
 
-        // In editing modes, handle keys with pure messages
         if is_in_editing_mode {
             match current_focus {
-                crate::model::template::TemplateFocus::Editor => {
-                    // For editor, pass the key to the textarea via message
+                TemplateFocus::Editor => {
                     return Some(Message::TemplateEditorInput(key));
                 }
-                crate::model::template::TemplateFocus::Variables => {
-                    // Handle variable editing with pure messages
+                TemplateFocus::Variables => {
                     if self.model.template.variables.is_editing() {
                         // Currently editing a variable value
                         match key.code {
@@ -391,8 +367,7 @@ impl TuiApp {
                                 let variables = self.model.template.get_organized_variables();
                                 if let Some(var) =
                                     variables.get(self.model.template.variables.cursor)
-                                    && var.category
-                                        == crate::model::template::VariableCategory::Missing
+                                    && var.category == VariableCategory::Missing
                                 {
                                     return Some(Message::VariableStartEditing(var.name.clone()));
                                 }
@@ -410,20 +385,20 @@ impl TuiApp {
         match key.code {
             KeyCode::Char('e') | KeyCode::Char('E') => {
                 return Some(Message::SetTemplateFocus(
-                    crate::model::template::TemplateFocus::Editor,
-                    crate::model::template::FocusMode::EditingTemplate,
+                    TemplateFocus::Editor,
+                    FocusMode::EditingTemplate,
                 ));
             }
             KeyCode::Char('v') | KeyCode::Char('V') => {
                 return Some(Message::SetTemplateFocus(
-                    crate::model::template::TemplateFocus::Variables,
-                    crate::model::template::FocusMode::EditingVariable,
+                    TemplateFocus::Variables,
+                    FocusMode::EditingVariable,
                 ));
             }
             KeyCode::Char('p') | KeyCode::Char('P') => {
                 return Some(Message::SetTemplateFocus(
-                    crate::model::template::TemplateFocus::Picker,
-                    crate::model::template::FocusMode::Normal,
+                    TemplateFocus::Picker,
+                    FocusMode::Normal,
                 ));
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
@@ -444,8 +419,7 @@ impl TuiApp {
         }
 
         // Handle input for focused component in normal mode
-        if current_focus == crate::model::template::TemplateFocus::Picker {
-            // Handle picker navigation - pure messages only
+        if current_focus == TemplateFocus::Picker {
             match key.code {
                 KeyCode::Up => return Some(Message::TemplatePickerMove(-1)),
                 KeyCode::Down => return Some(Message::TemplatePickerMove(1)),
@@ -463,7 +437,6 @@ impl TuiApp {
     }
 
     fn handle_prompt_output_keys(&self, key: KeyEvent) -> Option<Message> {
-        // Pure logic in TUI - no direct widget calls (Elm/Redux pattern)
         match key.code {
             KeyCode::Up => Some(Message::ScrollOutput(-1)),
             KeyCode::Down => Some(Message::ScrollOutput(1)),
@@ -485,18 +458,6 @@ impl TuiApp {
     /// Handle a message using the Elm/Redux pattern.
     /// This uses the pure Model::update() function and executes any side effects.
     fn handle_message(&mut self, message: Message) -> Result<()> {
-        // Handle special TUI-specific state that's not in Model
-        match &message {
-            Message::EnterSearchMode => {
-                self.input_mode = InputMode::Search;
-            }
-            Message::ExitSearchMode => {
-                self.input_mode = InputMode::Normal;
-            }
-            _ => {}
-        }
-
-        // Use the pure Model::update() function - this is the key to Elm/Redux pattern
         let (new_model, cmd) = self.model.update(message);
         self.model = new_model;
 
@@ -508,13 +469,13 @@ impl TuiApp {
 
     /// Execute a command (side effect) from the Model::update() function.
     /// This is where all the impure operations happen.
-    fn execute_cmd(&mut self, cmd: crate::model::Cmd) -> Result<()> {
+    fn execute_cmd(&mut self, cmd: Cmd) -> Result<()> {
         match cmd {
-            crate::model::Cmd::None => {
+            Cmd::None => {
                 // No side effect
             }
 
-            crate::model::Cmd::RefreshFileTree => {
+            Cmd::RefreshFileTree => {
                 // Always use session-based tree building for proper pattern initialization
                 match build_file_tree_from_session(&mut self.model.session) {
                     Ok(tree) => {
@@ -529,7 +490,7 @@ impl TuiApp {
                 }
             }
 
-            crate::model::Cmd::RunAnalysis {
+            Cmd::RunAnalysis {
                 template_content,
                 user_variables,
             } => {
@@ -567,7 +528,7 @@ impl TuiApp {
                                 Vec::new()
                             };
 
-                            let result = crate::model::AnalysisResults {
+                            let result = AnalysisResults {
                                 file_count: rendered.files.len(),
                                 token_count: Some(rendered.token_count),
                                 generated_prompt: rendered.prompt,
@@ -582,19 +543,17 @@ impl TuiApp {
                 });
             }
 
-            crate::model::Cmd::CopyToClipboard(content) => {
-                match crate::clipboard::copy_to_clipboard(&content) {
-                    Ok(_) => {
-                        self.model.status_message = "Copied to clipboard!".to_string();
-                    }
-                    Err(e) => {
-                        self.model.status_message = format!("Copy failed: {}", e);
-                    }
+            Cmd::CopyToClipboard(content) => match copy_to_clipboard(&content) {
+                Ok(_) => {
+                    self.model.status_message = "Copied to clipboard!".to_string();
                 }
-            }
+                Err(e) => {
+                    self.model.status_message = format!("Copy failed: {}", e);
+                }
+            },
 
-            crate::model::Cmd::SaveToFile { filename, content } => {
-                match crate::utils::save_to_file(std::path::Path::new(&filename), &content) {
+            Cmd::SaveToFile { filename, content } => {
+                match save_to_file(std::path::Path::new(&filename), &content) {
                     Ok(_) => {
                         self.model.status_message = format!("Saved to {}", filename);
                     }
@@ -604,11 +563,8 @@ impl TuiApp {
                 }
             }
 
-            crate::model::Cmd::SaveTemplate { filename, content } => {
-                match crate::utils::save_template_to_custom_dir(
-                    std::path::Path::new(&filename),
-                    &content,
-                ) {
+            Cmd::SaveTemplate { filename, content } => {
+                match save_template_to_custom_dir(std::path::Path::new(&filename), &content) {
                     Ok(_) => {
                         self.model.status_message = format!("Template saved as {}", filename);
                         // Refresh templates to show the new one
@@ -746,7 +702,7 @@ impl TuiApp {
 /// # Errors
 ///
 /// Returns an error if the TUI cannot be initialized or if runtime errors occur during execution.
-pub async fn run_tui_with_args(session: Code2PromptSession) -> Result<()> {
+pub async fn run_tui(session: Code2PromptSession) -> Result<()> {
     let mut app = TuiApp::new(session)?;
 
     let result = app.run().await;

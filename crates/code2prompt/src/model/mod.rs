@@ -17,6 +17,7 @@ pub use settings::*;
 pub use statistics::*;
 pub use template::*;
 
+use crate::utils::directory_contains_selected_files;
 use code2prompt_core::session::Code2PromptSession;
 
 /// The five main tabs of the TUI
@@ -27,6 +28,13 @@ pub enum Tab {
     Statistics,
     Template,
     PromptOutput,
+}
+
+/// Input mode for the FileTree tab
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileTreeInputMode {
+    Normal,
+    Search,
 }
 
 /// Hierarchical file node for TUI display with proper parent-child relationships
@@ -122,33 +130,6 @@ impl DisplayFileNode {
     }
 }
 
-/// Check if a directory contains any selected files (helper function)
-fn directory_contains_selected_files(
-    dir_path: &std::path::Path,
-    session: &mut code2prompt_core::session::Code2PromptSession,
-) -> bool {
-    if let Ok(entries) = std::fs::read_dir(dir_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let relative_path = if let Ok(rel) = path.strip_prefix(&session.config.path) {
-                rel
-            } else {
-                continue;
-            };
-
-            if session.is_file_selected(relative_path) {
-                return true;
-            }
-
-            // Recursively check subdirectories
-            if path.is_dir() && directory_contains_selected_files(&path, session) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 /// Messages for updating the model
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -205,6 +186,7 @@ pub struct Model {
     pub session: Code2PromptSession,
     pub current_tab: Tab,
     pub should_quit: bool,
+    pub file_tree_input_mode: FileTreeInputMode,
     pub file_tree_nodes: Vec<DisplayFileNode>,
     pub search_query: String,
     pub tree_cursor: usize,
@@ -225,6 +207,7 @@ impl Default for Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
+            file_tree_input_mode: FileTreeInputMode::Normal,
             file_tree_nodes: Vec::new(),
             search_query: String::new(),
             tree_cursor: 0,
@@ -244,6 +227,7 @@ impl Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
+            file_tree_input_mode: FileTreeInputMode::Normal,
             file_tree_nodes: Vec::new(),
             search_query: String::new(),
             tree_cursor: 0,
@@ -285,15 +269,18 @@ impl Model {
             Message::UpdateSearchQuery(query) => {
                 new_model.search_query = query;
                 new_model.tree_cursor = 0; // Reset cursor when search changes
+                new_model.file_tree_scroll = 0; // Reset scroll when search changes
                 (new_model, Cmd::None)
             }
 
             Message::EnterSearchMode => {
+                new_model.file_tree_input_mode = FileTreeInputMode::Search;
                 new_model.status_message = "Search mode - Type to search, Esc to exit".to_string();
                 (new_model, Cmd::None)
             }
 
             Message::ExitSearchMode => {
+                new_model.file_tree_input_mode = FileTreeInputMode::Normal;
                 new_model.status_message = "Exited search mode".to_string();
                 (new_model, Cmd::None)
             }
@@ -313,18 +300,6 @@ impl Model {
                         new_model.tree_cursor.saturating_sub((-delta) as usize)
                     };
                     new_model.tree_cursor = new_cursor;
-
-                    let viewport_height = 20;
-                    let cursor_pos = new_model.tree_cursor as u16;
-                    let current_scroll = new_model.file_tree_scroll;
-
-                    if cursor_pos < current_scroll {
-                        // Cursor is above visible area, scroll up
-                        new_model.file_tree_scroll = cursor_pos;
-                    } else if cursor_pos >= current_scroll + viewport_height {
-                        // Cursor is below visible area, scroll down
-                        new_model.file_tree_scroll = cursor_pos.saturating_sub(viewport_height - 1);
-                    }
                 }
                 (new_model, Cmd::None)
             }
@@ -468,10 +443,11 @@ impl Model {
             }
 
             Message::ToggleSetting(index) => {
-                if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
+                let items = new_model.settings.get_settings_items(&new_model.session);
+                if let Some(item) = items.get(index) {
                     let setting_name = new_model.settings.update_setting_by_key(
                         &mut new_model.session,
-                        key,
+                        item.key,
                         SettingAction::Toggle,
                     );
                     new_model.status_message = format!("Toggled {}", setting_name);
@@ -482,10 +458,11 @@ impl Model {
             }
 
             Message::CycleSetting(index) => {
-                if let Some(key) = new_model.settings.map_index_to_setting_key(index) {
+                let items = new_model.settings.get_settings_items(&new_model.session);
+                if let Some(item) = items.get(index) {
                     let setting_name = new_model.settings.update_setting_by_key(
                         &mut new_model.session,
-                        key,
+                        item.key,
                         SettingAction::Cycle,
                     );
                     new_model.status_message = format!("Cycled {}", setting_name);
@@ -518,6 +495,8 @@ impl Model {
                 new_model.prompt_output.generated_prompt = Some(results.generated_prompt);
                 new_model.prompt_output.token_count = results.token_count;
                 new_model.prompt_output.file_count = results.file_count;
+                // Reset output scroll so the new content starts at the top.
+                new_model.prompt_output.output_scroll = 0;
                 new_model.statistics.token_map_entries = results.token_map_entries;
                 let tokens = results.token_count.unwrap_or(0);
                 new_model.status_message = format!(
@@ -558,25 +537,19 @@ impl Model {
             }
 
             Message::ScrollOutput(delta) => {
-                if let Some(prompt) = &new_model.prompt_output.generated_prompt {
-                    let lines = prompt.lines().count() as u16;
-                    let viewport_height = 20; // Approximate viewport height
-                    let max_scroll = lines.saturating_sub(viewport_height);
-
-                    let new_scroll = if delta < 0 {
-                        new_model
-                            .prompt_output
-                            .output_scroll
-                            .saturating_sub((-delta) as u16)
-                    } else {
-                        new_model
-                            .prompt_output
-                            .output_scroll
-                            .saturating_add(delta as u16)
-                    };
-
-                    new_model.prompt_output.output_scroll = new_scroll.min(max_scroll);
-                }
+                // Apply delta only; widgets will clamp based on actual viewport.
+                let new_scroll = if delta < 0 {
+                    new_model
+                        .prompt_output
+                        .output_scroll
+                        .saturating_sub((-delta) as u16)
+                } else {
+                    new_model
+                        .prompt_output
+                        .output_scroll
+                        .saturating_add(delta as u16)
+                };
+                new_model.prompt_output.output_scroll = new_scroll;
                 (new_model, Cmd::None)
             }
 

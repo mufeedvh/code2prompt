@@ -3,11 +3,11 @@
 //! This module contains helper functions for building file trees,
 //! managing file operations, and other utility functions used throughout the TUI.
 
+use crate::model::DisplayFileNode;
 use anyhow::Result;
 use code2prompt_core::session::Code2PromptSession;
+use regex::Regex;
 use std::path::Path;
-
-use crate::model::DisplayFileNode;
 
 /// Build hierarchical file tree from session using traverse_directory with SelectionEngine
 pub fn build_file_tree_from_session(
@@ -19,6 +19,8 @@ pub fn build_file_tree_from_session(
     use ignore::WalkBuilder;
     let walker = WalkBuilder::new(&session.config.path)
         .max_depth(Some(1))
+        .git_ignore(!session.config.no_ignore)  // Respect the no_ignore flag
+        .hidden(!session.config.hidden)         // Also respect the hidden flag for consistency
         .build();
 
     for entry in walker {
@@ -73,7 +75,10 @@ fn auto_expand_recursively(node: &mut DisplayFileNode, session: &mut Code2Prompt
 }
 
 /// Check if a directory contains any selected files (helper function)
-fn directory_contains_selected_files(dir_path: &Path, session: &mut Code2PromptSession) -> bool {
+pub(crate) fn directory_contains_selected_files(
+    dir_path: &Path,
+    session: &mut Code2PromptSession,
+) -> bool {
     if let Ok(entries) = std::fs::read_dir(dir_path) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -103,8 +108,38 @@ pub fn get_visible_nodes(
     session: &mut Code2PromptSession,
 ) -> Vec<DisplayNodeWithSelection> {
     let mut visible = Vec::new();
-    collect_visible_nodes_recursive(nodes, search_query, session, &mut visible);
+    let search_active = !search_query.is_empty();
+    let matcher = build_query_matcher(search_query);
+    collect_visible_nodes_recursive(nodes, &matcher, session, &mut visible, search_active);
     visible
+}
+
+/// Simple matcher that supports case-insensitive substring and '*'/'?' wildcards.
+enum QueryMatcher {
+    Substr(String),
+    Regex(Regex),
+}
+
+fn build_query_matcher(raw: &str) -> QueryMatcher {
+    // Trim incidental whitespace for more predictable matches.
+    let raw = raw.trim();
+    let has_wildcards = raw.contains('*') || raw.contains('?');
+    if has_wildcards {
+        // Escape regex meta, then re-introduce wildcards
+        let mut pat = regex::escape(raw);
+        pat = pat.replace(r"\*", ".*").replace(r"\?", ".");
+        let anchored = format!("(?i)^{}$", pat); // (?i) = case-insensitive
+        QueryMatcher::Regex(Regex::new(&anchored).unwrap_or_else(|_| Regex::new(".*").unwrap()))
+    } else {
+        QueryMatcher::Substr(raw.to_lowercase())
+    }
+}
+
+fn matches(m: &QueryMatcher, text: &str) -> bool {
+    match m {
+        QueryMatcher::Substr(needle) => text.to_lowercase().contains(needle),
+        QueryMatcher::Regex(re) => re.is_match(text),
+    }
 }
 
 /// Node with selection state for display
@@ -117,41 +152,81 @@ pub struct DisplayNodeWithSelection {
 /// Recursively collect visible nodes
 fn collect_visible_nodes_recursive(
     nodes: &[DisplayFileNode],
-    search_query: &str,
+    matcher: &QueryMatcher,
     session: &mut Code2PromptSession,
     visible: &mut Vec<DisplayNodeWithSelection>,
+    search_active: bool,
 ) {
     for node in nodes {
-        let matches_search = if search_query.is_empty() {
+        // Case-insensitive match on name or full path (with optional wildcards)
+        let matches_current = if matches!(matcher, QueryMatcher::Substr(s) if s.is_empty()) {
             true
         } else {
-            node.name
-                .to_lowercase()
-                .contains(&search_query.to_lowercase())
-                || node
-                    .path
-                    .to_string_lossy()
-                    .to_lowercase()
-                    .contains(&search_query.to_lowercase())
+            matches(matcher, &node.name) || matches(matcher, &node.path.to_string_lossy())
         };
 
-        if matches_search {
-            let relative_path = if let Ok(rel) = node.path.strip_prefix(&session.config.path) {
-                rel
-            } else {
-                &node.path
-            };
+        if search_active {
+            // In search mode, traverse into directories regardless of expansion
+            let mut child_results: Vec<DisplayNodeWithSelection> = Vec::new();
+            if node.is_directory {
+                let children = get_children_for_search(node, session);
+                collect_visible_nodes_recursive(
+                    &children,
+                    matcher,
+                    session,
+                    &mut child_results,
+                    true,
+                );
+            }
 
-            let is_selected = session.is_file_selected(relative_path);
+            let include_self = matches_current || !child_results.is_empty();
 
-            visible.push(DisplayNodeWithSelection {
-                node: node.clone(),
-                is_selected,
-            });
+            if include_self {
+                let relative_path = if let Ok(rel) = node.path.strip_prefix(&session.config.path) {
+                    rel
+                } else {
+                    &node.path
+                };
+                let is_selected = session.is_file_selected(relative_path);
 
-            // If this is an expanded directory, recursively add its children
-            if node.is_directory && node.is_expanded {
-                collect_visible_nodes_recursive(&node.children, search_query, session, visible);
+                // Show directories as expanded in search results for better context
+                let mut node_clone = node.clone();
+                if node_clone.is_directory {
+                    node_clone.is_expanded = true;
+                }
+
+                visible.push(DisplayNodeWithSelection {
+                    node: node_clone,
+                    is_selected,
+                });
+
+                visible.extend(child_results);
+            }
+        } else {
+            // Normal mode: only include node if it matches (empty query matches all)
+            if matches_current {
+                let relative_path = if let Ok(rel) = node.path.strip_prefix(&session.config.path) {
+                    rel
+                } else {
+                    &node.path
+                };
+                let is_selected = session.is_file_selected(relative_path);
+
+                visible.push(DisplayNodeWithSelection {
+                    node: node.clone(),
+                    is_selected,
+                });
+
+                // Only descend if the directory is expanded
+                if node.is_directory && node.is_expanded {
+                    collect_visible_nodes_recursive(
+                        &node.children,
+                        matcher,
+                        session,
+                        visible,
+                        false,
+                    );
+                }
             }
         }
     }
@@ -161,6 +236,56 @@ fn collect_visible_nodes_recursive(
 pub fn save_to_file(path: &Path, content: &str) -> Result<()> {
     std::fs::write(path, content)?;
     Ok(())
+}
+
+/// Load children for search mode without mutating the original tree
+fn get_children_for_search(
+    node: &DisplayFileNode,
+    session: &mut Code2PromptSession,
+) -> Vec<DisplayFileNode> {
+    if !node.is_directory {
+        return Vec::new();
+    }
+
+    if node.children_loaded {
+        return node.children.clone();
+    }
+
+    // Load children on the fly without mutating the original tree
+    let mut children: Vec<DisplayFileNode> = Vec::new();
+
+    // Use ignore crate to respect gitignore
+    use ignore::WalkBuilder;
+    let walker = WalkBuilder::new(&node.path)
+        .max_depth(Some(1))
+        .git_ignore(!session.config.no_ignore)  // Respect the no_ignore flag
+        .hidden(!session.config.hidden)         // Also respect the hidden flag for consistency
+        .build();
+
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path == node.path {
+            continue;
+        }
+
+        let mut child = DisplayFileNode::new(path.to_path_buf(), node.level + 1);
+
+        // Auto-expand if contains selected files
+        if child.is_directory && directory_contains_selected_files(&child.path, session) {
+            child.is_expanded = true;
+        }
+
+        children.push(child);
+    }
+
+    // Sort children: directories first, then alphabetically
+    children.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
+    });
+
+    children
 }
 
 /// Save template to custom directory
@@ -174,14 +299,55 @@ pub fn save_template_to_custom_dir(filename: &Path, content: &str) -> Result<()>
     Ok(())
 }
 
-/// Load all available templates (placeholder implementation)
+/// Find custom templates and return (display_name, absolute_path).
 pub fn load_all_templates() -> Result<Vec<(String, String)>> {
-    // This is a placeholder - in the real implementation this would
-    // scan for template files and return (name, content) pairs
-    Ok(vec![(
-        "Default".to_string(),
-        "Default template content".to_string(),
-    )])
+    let mut out = Vec::new();
+
+    // Candidate roots
+    let mut roots = Vec::new();
+    roots.push(std::env::current_dir()?.join("templates"));
+    if let Some(cfg) = dirs::config_dir() {
+        roots.push(cfg.join("code2prompt").join("templates"));
+    }
+
+    // Accept common template extensions
+    let is_template = |p: &Path| {
+        matches!(
+            p.extension().and_then(|e| e.to_str()),
+            Some("hbs") | Some("handlebars") | Some("md") | Some("tmpl")
+        )
+    };
+
+    for root in roots {
+        if !root.exists() {
+            continue;
+        }
+        for entry in walkdir::WalkDir::new(&root).min_depth(1).max_depth(2) {
+            let entry = entry?;
+            let p = entry.path();
+            if p.is_file() && is_template(p) {
+                let name = p
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("template")
+                    .to_string();
+                out.push((
+                    name,
+                    p.canonicalize()
+                        .unwrap_or_else(|_| p.to_path_buf())
+                        .to_string_lossy()
+                        .into(),
+                ));
+            }
+        }
+    }
+
+    // De-duplicate (same path could appear twice)
+    // Let the compiler infer tuple types for the sort closure.
+    out.sort_by(|a: &(String, String), b: &(String, String)| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+    out.dedup_by(|a, b| a.1 == b.1);
+
+    Ok(out)
 }
 
 /// Ensure a path exists in the file tree by creating missing intermediate nodes

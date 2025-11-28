@@ -57,13 +57,6 @@ impl Code2PromptSession {
         }
     }
 
-    /// Initialize selections based on patterns (for CLI usage like `code2prompt . -i "*.rs"`)
-    pub fn initialize_from_patterns(&mut self) -> Result<()> {
-        // This ensures that when TUI starts, files matching patterns are already "selected"
-        // The SelectionEngine will handle this automatically through pattern matching
-        Ok(())
-    }
-
     /// Add pattern and recreate SelectionEngine
     pub fn add_include_pattern(&mut self, pattern: String) -> &mut Self {
         self.config.include_patterns.push(pattern);

@@ -98,7 +98,15 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
         }
     }
 
-    builder.build().expect("❌ Impossible to build GlobSet")
+    match builder.build() {
+        Ok(set) => set,
+        Err(e) => {
+            warn!("❌ Failed to build GlobSet: {e}");
+            GlobSetBuilder::new()
+                .build()
+                .expect("empty GlobSet never fails")
+        }
+    }
 }
 
 /// Determines whether a file should be included based on the provided glob patterns.

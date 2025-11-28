@@ -1,6 +1,6 @@
 //! Statistics by extension widget for displaying extension-based histogram.
 
-use crate::model::Model;
+use crate::model::{Model, StatisticsState};
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -17,22 +17,6 @@ pub struct StatisticsByExtensionWidget<'a> {
 impl<'a> StatisticsByExtensionWidget<'a> {
     pub fn new(model: &'a Model) -> Self {
         Self { model }
-    }
-
-    /// Format number according to token format setting
-    fn format_number(
-        num: usize,
-        token_format: &code2prompt_core::tokenizer::TokenFormat,
-    ) -> String {
-        use code2prompt_core::tokenizer::TokenFormat;
-        use num_format::{SystemLocale, ToFormattedString};
-
-        match token_format {
-            TokenFormat::Format => SystemLocale::default()
-                .map(|locale| num.to_formatted_string(&locale))
-                .unwrap_or_else(|_| num.to_string()),
-            TokenFormat::Raw => num.to_string(),
-        }
     }
 }
 
@@ -79,9 +63,11 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
 
         // Calculate viewport for scrolling - read directly from Model
-        let content_height = layout[0].height.saturating_sub(2) as usize;
-        let scroll_start = self.model.statistics.scroll as usize;
-        let scroll_end = (scroll_start + content_height).min(ext_vec.len());
+        let content_height = layout[0].height.saturating_sub(2).max(1) as usize;
+        let total = ext_vec.len();
+        let max_scroll = total.saturating_sub(content_height);
+        let scroll_start = (self.model.statistics.scroll as usize).min(max_scroll);
+        let scroll_end = (scroll_start + content_height).min(total);
 
         // Calculate dynamic column widths based on available space and content
         let available_width = layout[0].width.saturating_sub(4) as usize; // Account for borders and padding
@@ -97,7 +83,8 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let max_tokens_width = ext_vec
             .iter()
             .map(|(_, tokens, _)| {
-                Self::format_number(*tokens, &self.model.session.config.token_format).len()
+                StatisticsState::format_number(*tokens, &self.model.session.config.token_format)
+                    .len()
             })
             .max()
             .unwrap_or(6)
@@ -161,8 +148,10 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
                 };
 
                 // Format with dynamic column widths
-                let formatted_tokens =
-                    Self::format_number(*tokens, &self.model.session.config.token_format);
+                let formatted_tokens = StatisticsState::format_number(
+                    *tokens,
+                    &self.model.session.config.token_format,
+                );
                 let content = format!(
                     "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {:>width_count$} files",
                     extension,
