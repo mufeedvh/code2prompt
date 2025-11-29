@@ -5,7 +5,6 @@
 
 mod common;
 
-use assert_cmd::Command;
 use code2prompt_core::sort::FileSortMethod;
 use code2prompt_core::template::OutputFormat;
 use common::*;
@@ -143,7 +142,7 @@ fn test_unix_style_default_stdout() {
     fs::write(temp_dir.path().join("test.py"), "print('Hello, World!')")
         .expect("Should write test file");
 
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     let temp_path = temp_dir.path().to_path_buf();
     cmd.arg(&temp_path)
         .assert()
@@ -160,7 +159,7 @@ fn test_unix_style_default_stdout() {
 fn test_clipboard_flag() {
     let test_env = StdoutTestEnv::new();
 
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(test_env.path())
         .arg("-c") // New clipboard flag
         .assert()
@@ -185,7 +184,7 @@ exclude_patterns = ["*.py"]
     fs::write(temp_dir.path().join("test.py"), "print('Hello')").expect("Should write test file");
 
     // CLI args should override config - include .py files despite config
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.current_dir(temp_dir.path())
         .arg(".")
         .arg("-i")
@@ -212,7 +211,7 @@ default_output = "stdout"
     fs::write(temp_dir.path().join("test.txt"), "content").expect("Should write test file");
 
     // Run with the temp directory as argument and set current directory for the command
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.current_dir(temp_dir.path())
         .arg(".")
         .assert()
@@ -228,7 +227,7 @@ fn test_default_config_message() {
 
     // Run with the temp directory as argument and set current directory for the command
     // No config file exists, so it should use default configuration
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.current_dir(temp_dir.path())
         .arg(".")
         .assert()
@@ -241,8 +240,7 @@ fn test_default_config_message() {
 fn test_cli_args_message() {
     let test_env = StdoutTestEnv::new();
 
-    let mut cmd: Command =
-        Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(test_env.path())
         .arg("-i")
         .arg("*.py")

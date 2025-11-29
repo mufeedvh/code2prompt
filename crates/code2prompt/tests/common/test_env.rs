@@ -23,7 +23,7 @@ impl BasicTestEnv {
     }
 
     pub fn command(&self) -> Command {
-        let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
         cmd.arg(self.dir.path().to_str().unwrap())
             .arg("--output-file")
             .arg(&self.output_file)
@@ -54,7 +54,7 @@ impl GitTestEnv {
     }
 
     pub fn command(&self) -> Command {
-        let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
         cmd.arg(self.dir.path().to_str().unwrap())
             .arg("--output-file")
             .arg(&self.output_file)
@@ -101,7 +101,7 @@ impl TemplateTestEnv {
     }
 
     pub fn command(&self) -> Command {
-        let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
         cmd.arg(self.dir.path().to_str().unwrap())
             .arg("--output-file")
             .arg(self.output_file.to_str().unwrap())

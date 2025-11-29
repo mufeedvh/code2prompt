@@ -59,8 +59,8 @@ impl PickerState {
         let builtin_templates = code2prompt_core::builtin_templates::BuiltinTemplates::get_all();
 
         // Sort templates by name for consistent ordering
-        let mut template_entries: Vec<_> = builtin_templates.into_iter().collect();
-        template_entries.sort_by(|a, b| a.1.name.cmp(&b.1.name));
+        let mut template_entries: Vec<_> = builtin_templates.iter().collect();
+        template_entries.sort_by(|a, b| a.1.name.cmp(b.1.name));
 
         for (key, template) in template_entries {
             self.default_templates.push(TemplateFile {

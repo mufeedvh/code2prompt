@@ -5,7 +5,6 @@
 
 mod common;
 
-use assert_cmd::Command;
 use common::fixtures::*;
 use common::*;
 use log::debug;
@@ -17,7 +16,7 @@ use rstest::*;
 #[rstest]
 fn test_output_default(stdout_test_env: StdoutTestEnv) {
     // Default behavior: output to stdout with status messages in stderr
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .assert()
         .success()
@@ -45,7 +44,7 @@ fn test_stdout_configurations(
     #[case] should_not_contain: Vec<&str>,
     #[case] should_succeed: bool,
 ) {
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path());
 
     for arg in args {
@@ -92,7 +91,7 @@ fn test_file_output_configurations(
 ) {
     let output_file = stdout_test_env.dir.path().join("output.txt");
 
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path());
 
     // Replace "output.txt" in args with the actual path
@@ -145,7 +144,7 @@ fn test_file_output_configurations(
 fn test_conflicting_output_options_should_fail(stdout_test_env: StdoutTestEnv) {
     // Test: Using both default stdout and explicit -O - should fail
     // This is a logical conflict - you can't output to stdout in two different ways
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .arg("-")
         .arg("-O")
@@ -162,7 +161,7 @@ fn test_conflicting_output_options_should_fail(stdout_test_env: StdoutTestEnv) {
 fn test_output_file_vs_stdout_conflict(stdout_test_env: StdoutTestEnv) {
     let output_file = stdout_test_env.dir.path().join("output.txt");
 
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .arg("--output-file")
         .arg(output_file.to_str().unwrap())
@@ -192,7 +191,7 @@ fn test_stdout_with_different_formats(
     #[case] expected_content: &str,
 ) {
     // Test: Stdout should work with different output formats
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .arg("--output-format")
         .arg(format)
@@ -215,7 +214,7 @@ fn test_stderr_messages_normal_mode(stdout_test_env: StdoutTestEnv) {
 
     // Test with file output in normal mode - should show success message in stderr
     // Note: In test environment, auto-quiet is enabled, so Token count might not appear
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .arg("--output-file")
         .arg(output_file.to_str().unwrap())
@@ -234,7 +233,7 @@ fn test_stderr_messages_quiet_mode(stdout_test_env: StdoutTestEnv) {
 
     // Test with file output in quiet mode - should still show file write confirmation
     // but suppress other messages
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .arg("--output-file")
         .arg(output_file.to_str().unwrap())
@@ -254,7 +253,7 @@ fn test_stderr_messages_quiet_mode(stdout_test_env: StdoutTestEnv) {
 fn test_stderr_messages_with_clipboard(stdout_test_env: StdoutTestEnv) {
     // Test without --no-clipboard flag - should attempt clipboard operation
     // Note: In test environment (non-terminal), auto-quiet is enabled
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path()).assert().success();
     // In test environment, clipboard operations might be silent due to auto-quiet
     // This is expected behavior
@@ -271,7 +270,7 @@ fn test_stderr_with_output_formats(stdout_test_env: StdoutTestEnv, #[case] forma
     let output_file = stdout_test_env.dir.path().join("output.txt");
 
     // Test that stderr messages appear regardless of output format
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .arg("--output-file")
         .arg(output_file.to_str().unwrap())
@@ -289,7 +288,7 @@ fn test_stderr_with_output_formats(stdout_test_env: StdoutTestEnv, #[case] forma
 #[rstest]
 fn test_stdout_stderr_separation(stdout_test_env: StdoutTestEnv) {
     // Test that when outputting to stdout, status messages go to stderr, not stdout
-    let mut cmd = Command::cargo_bin("code2prompt").expect("Failed to find code2prompt binary");
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.arg(stdout_test_env.path())
         .arg("-O")
         .arg("-")
