@@ -1,35 +1,41 @@
 <div align="center">
   <a href="https://code2prompt.dev">
-  <img align="center" width="550px" src=".assets/logo_dark_v0.0.2.svg" alt="Code2prompt"/>
+    <img align="center" width="550px" src=".assets/logo_dark_v0.0.2.svg" alt="Code2prompt"/>
   </a>
-  <p align="center">
-  <b>Convert your codebase into a single LLM prompt !</b>
-  </p>
+  <br>
+  <h3>Convert your codebase into a single LLM prompt.</h3>
 </div>
 
-<h1 align="center">
-  <a href="https://code2prompt.dev"><img src=".assets/demo.gif" alt="code2prompt"></a>
-</h1>
-
-<hr />
-
-[![crates.io](https://img.shields.io/crates/v/code2prompt.svg)](https://crates.io/crates/code2prompt)
-[![LICENSE](https://img.shields.io/github/license/mufeedvh/code2prompt.svg#cache1)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/user/repo/pulls)
-[![Lines of Code](https://tokei.rs/b1/github/mufeedvh/code2prompt)](https://github.com/mufeedvh/code2prompt)
-[![Discord](https://img.shields.io/discord/1342336677905039451?logo=discord)](https://discord.com/invite/ZZyBbsHTwH)
-
-<hr />
-
 <p align="center">
-  Want to engage with us ? Join our <a href="https://discord.com/invite/ZZyBbsHTwH">Discord</a> channel!<br>
-  <i>Stay updated on new features</i> 📢<br>
-  <i>Give your insight and suggestion</i> 💬<br>
-  <i>Get help with configuration and usage</i> 🛠️<br>
-  <i>Report Bug</i> 🐛<br>
+  <a href="https://code2prompt.dev"><b>Website</b></a> •
+  <a href="https://code2prompt.dev/docs/welcome/"><b>Documentation</b></a> •
+  <a href="https://discord.com/invite/ZZyBbsHTwH"><b>Discord</b></a>
 </p>
 
-## Quick Install ⚡
+<div align="center">
+
+[![License](https://img.shields.io/github/license/mufeedvh/code2prompt.svg?style=flat-square)](https://github.com/mufeedvh/code2prompt/blob/master/LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/code2prompt.svg?style=flat-square)](https://crates.io/crates/code2prompt)
+[![PyPI](https://img.shields.io/pypi/v/code2prompt-rs?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/code2prompt-rs/)
+[![CI](https://github.com/mufeedvh/code2prompt/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/mufeedvh/code2prompt/actions)
+[![Discord](https://img.shields.io/discord/1342336677905039451?style=flat-square&logo=discord&logoColor=white)](https://discord.com/invite/ZZyBbsHTwH)
+[![Docs.rs](https://docs.rs/code2prompt-core/badge.svg?style=flat-square)](https://docs.rs/code2prompt-core)
+[![Crates.io Downloads](https://img.shields.io/crates/d/code2prompt.svg?style=flat-square)](https://crates.io/crates/code2prompt)
+[![GitHub Stars](https://img.shields.io/github/stars/mufeedvh/code2prompt?style=social)](https://github.com/mufeedvh/code2prompt)
+
+</div>
+
+---
+
+<h1 align="center">
+  <a href="https://code2prompt.dev"><img src=".assets/demo.gif" alt="code2prompt demo"></a>
+</h1>
+
+![Flow Diagram](.assets/flow_diagram.png)
+
+**Code2Prompt** is a powerful context engineering tool designed to ingest codebases and format them for Large Language Models (LLMs). Whether you are manually copying context for ChatGPT, building AI agents via Python, or running a Model Context Protocol (MCP) server, Code2Prompt streamlines the data preparation process.
+
+## ⚡ Quick Install
 
 ### Cargo
 
@@ -55,11 +61,29 @@ brew install code2prompt
 pip install code2prompt-rs
 ```
 
-## How is it useful?
+## 🚀 Quick Start
+
+Once installed, generating a prompt from your codebase is as simple as pointing the tool to your directory.
+
+**Basic Usage**: Generate a prompt from the current directory and copy it to the clipboard.
+
+```sh
+code2prompt .
+```
+
+**Save to file**:
+
+```sh
+code2prompt path/to/project --output prompt.txt
+```
+
+## 🌐 Ecosystem
+
+Code2Prompt is more than just a CLI tool. It is a complete ecosystem for codebase context.
 
 **Core**
 
-`code2prompt` is a code ingestion tool that streamline the process of creating LLM prompts for code analysis, generation, and other tasks. It works by traversing directories, building a tree structure, and gathering informations about each file. The core library can easily be integrated into other applications.
+`code2prompt-core` is a code ingestion library that streamlines the process of creating LLM prompts for code analysis, generation, and other tasks. It works by traversing directories, building a tree structure, and gathering information about each file. The core library can easily be integrated into other applications.
 
 **CLI**
 
@@ -71,22 +95,24 @@ pip install code2prompt-rs
 
 **MCP**
 
-`code2prompt` is also available as a Model Context Protocol (MCP) server, which allows you to run it as a local service. This enables LLMs on steroids by providing them a tool to automatically gather a well-structured context of your codebase.
+`code2prompt` is also available as a Model Context Protocol (MCP) server, which allows you to run it as a local service. this enables agentic applications to read your local codebase efficiently without bloating your context window.
 
-## Documentation 📚
+## 📚 Documentation
 
 Check our online [documentation](https://code2prompt.dev/docs/welcome/) for detailed instructions
 
-## Features
+## ✨ Features
 
 Code2Prompt transforms your entire codebase into a well-structured prompt for large language models. Key features include:
 
-- **Automatic Code Processing**: Convert codebases of any size into readable, formatted prompts
+- **Terminal User Interface (TUI)**: Interactive terminal interface for configuring and generating prompts
 - **Smart Filtering**: Include/exclude files using glob patterns and respect `.gitignore` rules
 - **Flexible Templating**: Customize prompts with Handlebars templates for different use cases
+- **Automatic Code Processing**: Convert codebases of any size into readable, formatted prompts
 - **Token Tracking**: Track token usage to stay within LLM context limits
+- **Smart File Reading**: Simplify reading various file formats for LLMs (CSV, Notebooks, JSONL, etc.)
 - **Git Integration**: Include diffs, logs, and branch comparisons in your prompts
-- **Developer Experience**: Automatic clipboard copy, line numbers, and file organization options
+- **Blazing Fast**: Built in Rust for high performance and low resource usage
 
 Stop manually copying files and formatting code for LLMs. Code2Prompt handles the tedious work so you can focus on getting insights and solutions from AI models.
 
@@ -110,11 +136,11 @@ cd code2prompt/
 cargo install --path crates/code2prompt
 ```
 
-## Star History
+## ⭐ Star Gazing
 
 [![Star History Chart](https://api.star-history.com/svg?repos=mufeedvh/code2prompt&type=Date)](https://star-history.com/#mufeedvh/code2prompt&Date)
 
-## License
+## 📜 License
 
 Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2prompt/blob/master/LICENSE">LICENSE</a> for more information.
 
@@ -122,7 +148,7 @@ Licensed under the MIT License, see <a href="https://github.com/mufeedvh/code2pr
 
 If you liked the project and found it useful, please give it a :star: !
 
-## Contribution
+## 👥 Contribution
 
 Ways to contribute:
 
