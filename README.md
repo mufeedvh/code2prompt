@@ -33,7 +33,7 @@
 
 ![Flow Diagram](.assets/flow_diagram.png)
 
-**Code2Prompt** is a powerful context engineering tool designed to ingest codebases and format them for Large Language Models (LLMs). Whether you are manually copying context for ChatGPT, building AI agents via Python, or running a Model Context Protocol (MCP) server, Code2Prompt streamlines the data preparation process.
+**Code2Prompt** is a powerful context engineering tool designed to ingest codebases and format them for Large Language Models. Whether you are manually copying context for ChatGPT, building AI agents via Python, or running a MCP server, Code2Prompt streamlines the context preparation process.
 
 ## ⚡ Quick Install
 
@@ -81,21 +81,9 @@ code2prompt path/to/project --output prompt.txt
 
 Code2Prompt is more than just a CLI tool. It is a complete ecosystem for codebase context.
 
-**Core**
-
-`code2prompt-core` is a code ingestion library that streamlines the process of creating LLM prompts for code analysis, generation, and other tasks. It works by traversing directories, building a tree structure, and gathering information about each file. The core library can easily be integrated into other applications.
-
-**CLI**
-
-`code2prompt` command line interface (CLI) was designed for humans to generate prompts directly from your codebase. The generated prompt is automatically copied to your clipboard and can also be saved to an output file. Furthermore, you can customize the prompt generation using Handlebars templates. Check out the provided prompts in the doc !
-
-**SDK**
-
-`code2prompt` software development kit (SDK) offers python binding to the core library. This is perfect for AI agents or automation scripts that want to interact with codebase seamlessly. The SDK is hosted on Pypi and can be installed via pip.
-
-**MCP**
-
-`code2prompt` is also available as a Model Context Protocol (MCP) server, which allows you to run it as a local service. this enables agentic applications to read your local codebase efficiently without bloating your context window.
+| 🧱 Core Library <br><br><img src="https://img.shields.io/badge/Rust-FF6700?style=for-the-badge&logo=rust&logoColor=white" alt="Rust Core Badge"/>| 💻 CLI Tool <br><img src="https://img.shields.io/badge/Terminal-2C3E50?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="CLI Badge"/> | 🐍 Python SDK <br><img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python SDK Badge"/> | 🤖 MCP Server <img src="https://img.shields.io/badge/Agentic%20Flow-7E57C2?style=for-the-badge&logo=server&logoColor=white" alt="MCP Server Badge"/> |
+| :---: | :---: | :---: | :---: |
+| The internal, high-speed library responsible for secure file traversal, respecting `.gitignore` rules, and structuring Git metadata. | Designed for humans, featuring both a minimal CLI and an interactive TUI. Generate formatted prompts, track token usage, and outputs the result to your clipboard or stdout. | Provides fast Python bindings to the Rust Core. Ideal for AI Agents, automation scripts, or deep integration into RAG pipelines. Available on PyPI. | Run Code2Prompt as a local service, enabling agentic applications to read your local codebase efficiently without bloating your context window. |
 
 ## 📚 Documentation
 
