@@ -40,11 +40,11 @@ serde_json = { workspace = true }
 termtree = { workspace = true }
 tiktoken-rs = { workspace = true }
 toml = { workspace = true }
+rayon = { workspace = true }
 
 [lib]
 name = "code2prompt_core"
 path = "src/lib.rs"
-# crate-type = ["cdylib", "rlib"]
 crate-type = ["rlib"]
 
 [package.metadata.deb]
