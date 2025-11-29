@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt"
-version = "4.1.1"
+version = "4.2.0"
 edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"

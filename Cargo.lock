@@ -368,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "code2prompt"
-version = "4.1.1"
+version = "4.2.0"
 dependencies = [
  "ansi_term",
  "anyhow",
@@ -424,6 +424,7 @@ dependencies = [
  "assert_cmd",
  "bracoxide",
  "colored",
+ "content_inspector",
  "csv",
  "derive_builder",
  "env_logger",
@@ -487,6 +488,15 @@ dependencies = [
  "once_cell",
  "unicode-width 0.2.0",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "content_inspector"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7bda66e858c683005a53a9a60c69a4aca7eeaa45d124526e389f7aec8e62f38"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]

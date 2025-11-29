@@ -6,12 +6,14 @@ use crate::sort::{FileSortMethod, sort_files, sort_tree};
 use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
 use anyhow::Result;
+use content_inspector::{ContentType, inspect};
 use ignore::WalkBuilder;
 use log::debug;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use termtree::Tree;
 
@@ -165,6 +167,19 @@ fn process_files_parallel(
     Ok(files.into_iter().flatten().collect())
 }
 
+/// Read a sample of bytes from a file for binary detection
+///
+/// Reads up to `max_bytes` from the start of the file for efficient binary detection.
+/// This avoids reading entire large binary files when we only need to check the header.
+fn read_file_sample(path: &Path, max_bytes: usize) -> std::io::Result<Vec<u8>> {
+    let mut file = fs::File::open(path)?;
+    let mut buffer = Vec::with_capacity(max_bytes.min(8192));
+    file.by_ref()
+        .take(max_bytes as u64)
+        .read_to_end(&mut buffer)?;
+    Ok(buffer)
+}
+
 /// Process a single file and return its JSON representation
 fn process_single_file(
     file_info: &FileToProcess,
@@ -174,7 +189,22 @@ fn process_single_file(
     let relative_path = &file_info.relative_path;
     let metadata = &file_info.metadata;
 
-    // Read file
+    // Early binary detection: read a small sample first
+    let sample = match read_file_sample(path, 8192) {
+        Ok(s) => s,
+        Err(e) => {
+            debug!("Failed to read file sample {}: {}", path.display(), e);
+            return None;
+        }
+    };
+
+    // Detect binary content early to avoid processing binary files
+    if inspect(&sample) == ContentType::BINARY {
+        debug!("Skipped binary file: {}", path.display());
+        return None;
+    }
+
+    // Read full file (now that we know it's text)
     let code_bytes = match fs::read(path) {
         Ok(bytes) => bytes,
         Err(e) => {

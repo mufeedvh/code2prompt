@@ -21,6 +21,7 @@ colored = "3.0.0"
 csv = "1.4.0"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive"] }
+content_inspector = "0.2.4"
 crossterm = "0.29.0"
 dirs = "6.0.0"
 derive_builder = { version = "0.20.2" }

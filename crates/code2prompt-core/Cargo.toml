@@ -24,6 +24,7 @@ default = []
 anyhow = { workspace = true }
 bracoxide = { workspace = true }
 colored = { workspace = true }
+content_inspector = { workspace = true }
 csv = { workspace = true }
 derive_builder = { workspace = true }
 ignore = { workspace = true }
