@@ -21,7 +21,6 @@ fn create_test_directory_with_binary() -> TempDir {
 
     // Create text file with non-UTF8 encoding (GB2312)
     let mut gb2312_data = b"GB2312 test: ".to_vec();
-
     // Append "你好" encoded in GB2312
     // '你' is 0xC4 0xE3
     // '好' is 0xBA 0xC3
