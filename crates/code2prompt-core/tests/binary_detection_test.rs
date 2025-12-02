@@ -19,6 +19,15 @@ fn create_test_directory_with_binary() -> TempDir {
     .unwrap();
     fs::write(base_path.join("data.json"), r#"{"key": "value"}"#).unwrap();
 
+    // Create text file with non-UTF8 encoding (GB2312)
+    let mut gb2312_data = b"GB2312 test: ".to_vec();
+
+    // Append "你好" encoded in GB2312
+    // '你' is 0xC4 0xE3
+    // '好' is 0xBA 0xC3
+    gb2312_data.extend_from_slice(&[0xC4, 0xE3, 0xBA, 0xC3]);
+    fs::write(base_path.join("chinese_gb2312.txt"), gb2312_data).unwrap();
+
     // Create binary files (simulated)
     // PNG header signature
     let mut png_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
@@ -65,6 +74,7 @@ fn test_binary_files_are_skipped() {
     assert!(file_paths.iter().any(|p| p.contains("text.txt")));
     assert!(file_paths.iter().any(|p| p.contains("code.rs")));
     assert!(file_paths.iter().any(|p| p.contains("data.json")));
+    assert!(file_paths.iter().any(|p| p.contains("chinese_gb2312.txt")));
 
     // Binary files should be excluded
     assert!(!file_paths.iter().any(|p| p.contains("image.png")));
@@ -73,7 +83,7 @@ fn test_binary_files_are_skipped() {
     assert!(!file_paths.iter().any(|p| p.contains("compiled.o")));
 
     // Should have exactly 3 text files
-    assert_eq!(files.len(), 3);
+    assert_eq!(files.len(), 4);
 }
 
 #[test]
