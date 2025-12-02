@@ -11,8 +11,9 @@ use std::path::Path;
 
 /// Default processor that converts bytes to UTF-8 string.
 ///
-/// Uses lossy conversion to avoid crashes on invalid UTF-8 sequences.
-/// This is the fallback processor for all file types without specific handlers.
+/// This processor uses the `chardetng` crate to detect the encoding of the input bytes
+/// and converts them to a UTF-8 string. If the encoding cannot be determined, it
+/// defaults to UTF-8. Invalid sequences are replaced with the Unicode replacement character.
 pub struct DefaultTextProcessor;
 
 impl FileProcessor for DefaultTextProcessor {
