@@ -20,6 +20,7 @@ bracoxide = "0.1.6"
 colored = "3.0.0"
 csv = "1.4.0"
 chrono = { version = "0.4", features = ["serde"] }
+chardetng = { version = "0.1.17" }
 clap = { version = "4.5", features = ["derive"] }
 content_inspector = "0.2.4"
 crossterm = "0.29.0"

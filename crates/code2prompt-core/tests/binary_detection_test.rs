@@ -21,16 +21,19 @@ fn create_test_directory_with_binary() -> TempDir {
 
     // Create binary files (simulated)
     // PNG header signature
-    let png_header = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-    fs::write(base_path.join("image.png"), png_header).unwrap();
+    let mut png_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    // Append some zeros and random high bytes to ensure it hits the binary heuristic
+    png_data.extend_from_slice(&[0x00, 0x00, 0x00, 0xFF, 0xFE]);
+    fs::write(base_path.join("image.png"), png_data).unwrap();
 
     // Random binary data
     let binary_data: Vec<u8> = (0..100).map(|i| (i * 7) as u8).collect();
     fs::write(base_path.join("binary.bin"), binary_data).unwrap();
 
     // JPEG header
-    let jpeg_header = vec![0xFF, 0xD8, 0xFF, 0xE0];
-    fs::write(base_path.join("photo.jpg"), jpeg_header).unwrap();
+    let mut jpeg_data = vec![0xFF, 0xD8, 0xFF, 0xE0];
+    jpeg_data.extend_from_slice(&[0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00]);
+    fs::write(base_path.join("photo.jpg"), jpeg_data).unwrap();
 
     // Compiled object file simulation (ELF header with more data)
     let mut elf_data = vec![0x7F, b'E', b'L', b'F']; // ELF magic

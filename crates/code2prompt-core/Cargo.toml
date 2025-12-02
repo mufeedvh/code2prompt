@@ -42,6 +42,7 @@ termtree = { workspace = true }
 tiktoken-rs = { workspace = true }
 toml = { workspace = true }
 rayon = { workspace = true }
+chardetng = { workspace = true }
 
 [lib]
 name = "code2prompt_core"
