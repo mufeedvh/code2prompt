@@ -41,7 +41,7 @@ dirs = { workspace = true }
 regex = { workspace = true }
 handlebars = { workspace = true }
 ignore = { workspace = true }
-
+tiktoken-rs = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }

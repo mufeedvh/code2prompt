@@ -63,8 +63,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     let quiet_mode = args.quiet;
 
     // ~~~ Load Configuration ~~~
-    // Always load config files first (local > global), then apply CLI args on top
-    let config_source = load_config(quiet_mode)?;
+    let config_source = load_config(quiet_mode)?; // load config files first (local > global), then apply CLI args on top
 
     // ~~~ Build Session with config + CLI args ~~~
     let mut session = config::build_session(Some(&config_source), &args, false)?;
@@ -85,7 +84,6 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     };
 
     let output_to_stdout = if args.clipboard {
-        // When -c is used, ONLY output to clipboard, not stdout
         false
     } else if let Some(ref output_file) = args.output_file {
         output_file == "-"
@@ -105,27 +103,25 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     };
 
     // ~~~ Gather Repository Data ~~~
-    session.load_codebase().unwrap_or_else(|e| {
-        if let Some(ref s) = spinner {
-            s.finish_with_message("Failed!".red().to_string());
-        }
-        error!("Failed to build directory tree: {}", e);
-        std::process::exit(1);
-    });
-    if let Some(ref s) = spinner {
-        s.set_message("Proceeding…".to_string());
-    }
+    session.load_codebase().map_err(|e| {
+        spinner
+            .as_ref()
+            .map(|s| s.finish_with_message("Failed!".red().to_string()));
+        error!("Failed to build directory tree: \n{}", e);
+        anyhow::anyhow!("Failed to build directory tree: {}", e)
+    })?;
+    spinner.as_ref().map(|s| s.set_message("Proceeding…"));
 
     // ~~~ Git Related ~~~
     // Git Diff
     if session.config.diff_enabled {
-        if let Some(ref s) = spinner {
-            s.set_message("Generating git diff...");
-        }
+        spinner
+            .as_ref()
+            .map(|s| s.set_message("Generating git diff..."));
         session.load_git_diff().unwrap_or_else(|e| {
-            if let Some(ref s) = spinner {
-                s.finish_with_message("Failed!".red().to_string());
-            }
+            spinner
+                .as_ref()
+                .map(|s| s.finish_with_message("Failed!".red().to_string()));
             error!("Failed to generate git diff: {}", e);
             std::process::exit(1);
         });
@@ -133,15 +129,15 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // Load Git diff between branches if provided
     if session.config.diff_branches.is_some() {
-        if let Some(ref s) = spinner {
-            s.set_message("Generating git diff between two branches...");
-        }
+        spinner
+            .as_ref()
+            .map(|s| s.set_message("Generating git diff between two branches..."));
         session
             .load_git_diff_between_branches()
             .unwrap_or_else(|e| {
-                if let Some(ref s) = spinner {
-                    s.finish_with_message("Failed!".red().to_string());
-                }
+                spinner
+                    .as_ref()
+                    .map(|s| s.finish_with_message("Failed!".red().to_string()));
                 error!("Failed to generate git diff: {}", e);
                 std::process::exit(1);
             });
@@ -176,6 +172,10 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         error!("Failed to render prompt: {}", e);
         std::process::exit(1);
     });
+
+    if let Some(ref s) = spinner {
+        s.finish_with_message("Codebase Traversal Done!".green().to_string());
+    }
 
     // ~~~ Token Count ~~~
     let token_count = rendered.token_count;
@@ -233,7 +233,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         }
     }
 
-    // ~~~ Output to Stdout (NEW DEFAULT BEHAVIOR) ~~~
+    // ~~~ Output to Stdout ~~~
     if output_to_stdout {
         print!("{}", &rendered.prompt);
         std::io::stdout()
@@ -281,10 +281,6 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         )?;
     }
 
-    if let Some(ref s) = spinner {
-        s.finish_with_message("Done!".green().to_string());
-    }
-
     Ok(())
 }
 
@@ -299,10 +295,24 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 /// * `ProgressBar` - The configured progress spinner
 fn setup_spinner(message: &str) -> ProgressBar {
     let spinner = ProgressBar::new_spinner();
-    spinner.enable_steady_tick(std::time::Duration::from_millis(120));
+    spinner.enable_steady_tick(std::time::Duration::from_millis(220));
+    let done_symbol = format!(
+        "{}{}{}",
+        "[".bold().white(),
+        "✓".bold().green(),
+        "]".bold().white()
+    );
     spinner.set_style(
         ProgressStyle::default_spinner()
-            .tick_strings(&["▹▹▹▹▹", "▸▹▹▹▹", "▹▸▹▹▹", "▹▹▸▹▹", "▹▹▹▸▹", "▹▹▹▹▸"])
+            .tick_strings(&[
+                "▹▹▹▹▹",
+                "▸▹▹▹▹",
+                "▹▸▹▹▹",
+                "▹▹▸▹▹",
+                "▹▹▹▸▹",
+                "▹▹▹▹▸",
+                &done_symbol,
+            ])
             .template("{spinner:.blue} {msg}")
             .unwrap(),
     );
