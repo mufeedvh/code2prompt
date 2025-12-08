@@ -34,7 +34,7 @@
   "devDependencies": {
     "dlx": "^0.2.1",
     "prettier-plugin-astro": "^0.14.1",
-    "react": "^19.2.0",
+    "react": "^19.2.1",
     "react-dom": "^19.2.0"
   },
   "packageManager": "pnpm@10.18.0"
