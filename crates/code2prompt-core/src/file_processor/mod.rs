@@ -1,8 +1,8 @@
 //! File processor module for handling different file types intelligently.
 //!
-//! This module provides a strategy pattern for processing file contents based on their extension.
-//! Instead of naively reading all files as raw text, it applies format-specific logic to extract
-//! relevant information (e.g., schema + sample for CSV, code cells for Jupyter notebooks).
+//! This module provides a strategy pattern for processing file contents based on their extension
+//! in order to optimize for LLM token usage. The main idea is to extract the schema rather than
+//! raw data where applicable. (e.g., schema + sample for CSV, code cells for Jupyter notebooks).
 
 use anyhow::Result;
 use std::path::Path;
