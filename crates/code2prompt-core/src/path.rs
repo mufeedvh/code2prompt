@@ -7,13 +7,14 @@ use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
 use anyhow::Result;
 use content_inspector::{ContentType, inspect};
-use ignore::WalkBuilder;
+use ignore::{WalkBuilder, WalkState};
 use log::debug;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, mpsc};
 use termtree::Tree;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -82,76 +83,209 @@ pub fn traverse_directory(
     assemble_results(tree, &mut files, config)
 }
 
+// /// Phase 1: Discovery - Walk directories, build tree, and collect files that need processing
+// ///
+// /// This phase is sequential because:
+// /// - Directory walking is already optimized
+// /// - Tree building needs sequential structure
+// /// - Selection engine has caching that would need synchronization
+// fn discover_files(
+//     config: &Code2PromptConfig,
+//     mut selection_engine: Option<&mut crate::selection::SelectionEngine>,
+// ) -> Result<(Tree<String>, Vec<FileToProcess>)> {
+//     let canonical_root_path = config.path.canonicalize()?;
+//     let parent_directory = display_name(&canonical_root_path);
+
+//     let include_globset = build_globset(&config.include_patterns);
+//     let exclude_globset = build_globset(&config.exclude_patterns);
+
+//     // Build the Walker
+//     let walker = WalkBuilder::new(&canonical_root_path)
+//         .hidden(!config.hidden)
+//         .git_ignore(!config.no_ignore)
+//         .follow_links(config.follow_symlinks)
+//         .build()
+//         .filter_map(|entry| entry.ok());
+
+//     // Build the Tree
+//     let mut tree = Tree::new(parent_directory.to_owned());
+//     let mut files_to_process = Vec::new();
+
+//     for entry in walker {
+//         let path = entry.path();
+//         if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
+//             // Use SelectionEngine if available, otherwise fall back to pattern matching
+//             let entry_match = if let Some(engine) = selection_engine.as_mut() {
+//                 engine.is_selected(relative_path)
+//             } else {
+//                 should_include_file(relative_path, &include_globset, &exclude_globset)
+//             };
+
+//             // Directory Tree
+//             let include_in_tree = config.full_directory_tree || entry_match;
+
+//             if include_in_tree {
+//                 let mut current_tree = &mut tree;
+//                 for component in relative_path.components() {
+//                     let component_str = component.as_os_str().to_string_lossy().to_string();
+//                     current_tree = if let Some(pos) = current_tree
+//                         .leaves
+//                         .iter_mut()
+//                         .position(|child| child.root == component_str)
+//                     {
+//                         &mut current_tree.leaves[pos]
+//                     } else {
+//                         let new_tree = Tree::new(component_str.clone());
+//                         current_tree.leaves.push(new_tree);
+//                         current_tree.leaves.last_mut().unwrap()
+//                     };
+//                 }
+//             }
+
+//             // Collect files for processing
+//             if path.is_file()
+//                 && entry_match
+//                 && let Ok(metadata) = entry.metadata()
+//             {
+//                 files_to_process.push(FileToProcess {
+//                     absolute_path: path.to_path_buf(),
+//                     relative_path: relative_path.to_path_buf(),
+//                     metadata,
+//                 });
+//             }
+//         }
+//     }
+
+//     Ok((tree, files_to_process))
+// }
+
 /// Phase 1: Discovery - Walk directories, build tree, and collect files that need processing
 ///
-/// This phase is sequential because:
-/// - Directory walking is already optimized
-/// - Tree building needs sequential structure
-/// - Selection engine has caching that would need synchronization
+/// This phase uses parallel directory walking to efficiently handle IO latency.
 fn discover_files(
     config: &Code2PromptConfig,
-    mut selection_engine: Option<&mut crate::selection::SelectionEngine>,
+    selection_engine: Option<&mut crate::selection::SelectionEngine>,
 ) -> Result<(Tree<String>, Vec<FileToProcess>)> {
     let canonical_root_path = config.path.canonicalize()?;
     let parent_directory = display_name(&canonical_root_path);
 
-    let include_globset = build_globset(&config.include_patterns);
-    let exclude_globset = build_globset(&config.exclude_patterns);
+    // Prepare shared state for the parallel walker
+    let engine_snapshot = selection_engine.as_deref().cloned();
+    let include_patterns = config.include_patterns.clone();
+    let exclude_patterns = config.exclude_patterns.clone();
+    let full_tree = config.full_directory_tree;
+    let root_arc = Arc::new(canonical_root_path.clone());
 
-    // Build the Walker
+    // Channel for collecting results from threads
+    let (tx, rx) = mpsc::channel();
+
+    // Build the Parallel Walker
     let walker = WalkBuilder::new(&canonical_root_path)
         .hidden(!config.hidden)
         .git_ignore(!config.no_ignore)
         .follow_links(config.follow_symlinks)
-        .build()
-        .filter_map(|entry| entry.ok());
+        .build_parallel();
 
-    // Build the Tree
-    let mut tree = Tree::new(parent_directory.to_owned());
-    let mut files_to_process = Vec::new();
+    // Run the walker
+    walker.run({
+        let tx_main: mpsc::Sender<(PathBuf, PathBuf, fs::Metadata, bool)> = tx.clone();
 
-    for entry in walker {
-        let path = entry.path();
-        if let Ok(relative_path) = path.strip_prefix(&canonical_root_path) {
-            // Use SelectionEngine if available, otherwise fall back to pattern matching
-            let entry_match = if let Some(engine) = selection_engine.as_mut() {
-                engine.is_selected(relative_path)
+        move || {
+            let tx = tx_main.clone();
+            let root = root_arc.clone();
+
+            // Each thread gets its own clone of the selection logic.
+            // This is safe because SelectionEngine is Clone.
+            let mut local_engine = engine_snapshot.clone();
+
+            // If no engine is provided, we build globsets once per thread to avoid rebuilding them for every file
+            let (inc_glob, exc_glob) = if local_engine.is_none() {
+                (
+                    Some(build_globset(&include_patterns)),
+                    Some(build_globset(&exclude_patterns)),
+                )
             } else {
-                should_include_file(relative_path, &include_globset, &exclude_globset)
+                (None, None)
             };
 
-            // Directory Tree
-            let include_in_tree = config.full_directory_tree || entry_match;
+            Box::new(move |entry| {
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => return WalkState::Continue,
+                };
 
-            if include_in_tree {
-                let mut current_tree = &mut tree;
-                for component in relative_path.components() {
-                    let component_str = component.as_os_str().to_string_lossy().to_string();
-                    current_tree = if let Some(pos) = current_tree
-                        .leaves
-                        .iter_mut()
-                        .position(|child| child.root == component_str)
-                    {
-                        &mut current_tree.leaves[pos]
-                    } else {
-                        let new_tree = Tree::new(component_str.clone());
-                        current_tree.leaves.push(new_tree);
-                        current_tree.leaves.last_mut().unwrap()
-                    };
+                let path = entry.path();
+                // Calculate relative path
+                let relative_path = match path.strip_prefix(&*root) {
+                    Ok(p) => p.to_path_buf(),
+                    Err(_) => return WalkState::Continue,
+                };
+
+                // Determine if the file/dir is selected
+                let is_selected = if let Some(eng) = &mut local_engine {
+                    eng.is_selected(&relative_path)
+                } else {
+                    let inc = inc_glob.as_ref().unwrap();
+                    let exc = exc_glob.as_ref().unwrap();
+                    should_include_file(&relative_path, inc, exc)
+                };
+
+                // If we are building a full tree, we send everything.
+                // If not, we only send selected items.
+                if full_tree || is_selected {
+                    if let Ok(metadata) = entry.metadata() {
+                        let _ = tx.send((path.to_path_buf(), relative_path, metadata, is_selected));
+                    }
                 }
-            }
 
-            // Collect files for processing
-            if path.is_file()
-                && entry_match
-                && let Ok(metadata) = entry.metadata()
-            {
-                files_to_process.push(FileToProcess {
-                    absolute_path: path.to_path_buf(),
-                    relative_path: relative_path.to_path_buf(),
-                    metadata,
-                });
+                WalkState::Continue
+            })
+        }
+    });
+
+    // Drop the original sender so the receiver knows when to stop
+    drop(tx);
+
+    // Collect all results
+    let mut entries: Vec<_> = rx.into_iter().collect();
+
+    // Sort entries to ensure deterministic tree structure
+    entries.sort_by(|a, b| a.1.cmp(&b.1));
+
+    // Build Tree and Files
+    let mut tree = Tree::new(parent_directory);
+    let mut files_to_process = Vec::new();
+
+    for (abs_path, rel_path, metadata, is_selected) in entries {
+        // Build Directory Tree
+        // We traverse down the tree for every entry, finding or creating nodes.
+        let mut current_tree = &mut tree;
+        for component in rel_path.components() {
+            let component_str = component.as_os_str().to_string_lossy().to_string();
+
+            // This is a workaround for the fact that we can't easily hold a mutable reference
+            // to a child while iterating. We use indices instead.
+            let pos = current_tree
+                .leaves
+                .iter()
+                .position(|child| child.root == component_str);
+
+            if let Some(p) = pos {
+                current_tree = &mut current_tree.leaves[p];
+            } else {
+                let new_tree = Tree::new(component_str.clone());
+                current_tree.leaves.push(new_tree);
+                current_tree = current_tree.leaves.last_mut().unwrap();
             }
+        }
+
+        // Collect files for processing
+        if abs_path.is_file() && is_selected {
+            files_to_process.push(FileToProcess {
+                absolute_path: abs_path,
+                relative_path: rel_path,
+                metadata,
+            });
         }
     }
 
