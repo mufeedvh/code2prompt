@@ -104,24 +104,21 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // ~~~ Gather Repository Data ~~~
     session.load_codebase().map_err(|e| {
-        spinner
-            .as_ref()
-            .map(|s| s.finish_with_message("Failed!".red().to_string()));
+        if let Some(s) = spinner
+            .as_ref() { s.finish_with_message("Failed!".red().to_string()) }
         error!("Failed to build directory tree: \n{}", e);
         anyhow::anyhow!("Failed to build directory tree: {}", e)
     })?;
-    spinner.as_ref().map(|s| s.set_message("Proceeding…"));
+    if let Some(s) = spinner.as_ref() { s.set_message("Proceeding…") }
 
     // ~~~ Git Related ~~~
     // Git Diff
     if session.config.diff_enabled {
-        spinner
-            .as_ref()
-            .map(|s| s.set_message("Generating git diff..."));
+        if let Some(s) = spinner
+            .as_ref() { s.set_message("Generating git diff...") }
         session.load_git_diff().unwrap_or_else(|e| {
-            spinner
-                .as_ref()
-                .map(|s| s.finish_with_message("Failed!".red().to_string()));
+            if let Some(s) = spinner
+                .as_ref() { s.finish_with_message("Failed!".red().to_string()) }
             error!("Failed to generate git diff: {}", e);
             std::process::exit(1);
         });
@@ -129,15 +126,13 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // Load Git diff between branches if provided
     if session.config.diff_branches.is_some() {
-        spinner
-            .as_ref()
-            .map(|s| s.set_message("Generating git diff between two branches..."));
+        if let Some(s) = spinner
+            .as_ref() { s.set_message("Generating git diff between two branches...") }
         session
             .load_git_diff_between_branches()
             .unwrap_or_else(|e| {
-                spinner
-                    .as_ref()
-                    .map(|s| s.finish_with_message("Failed!".red().to_string()));
+                if let Some(s) = spinner
+                    .as_ref() { s.finish_with_message("Failed!".red().to_string()) }
                 error!("Failed to generate git diff: {}", e);
                 std::process::exit(1);
             });
@@ -202,14 +197,9 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     if args.token_map {
         use crate::token_map::{display_token_map, generate_token_map_with_limit};
 
-        if let Some(files) = session.data.files.as_ref().and_then(|f| f.as_array()) {
+        if let Some(files) = session.data.files.as_ref() {
             // Calculate total tokens from individual file counts
-            let total_from_files: usize = files
-                .iter()
-                .filter_map(|f| f.get("token_count"))
-                .filter_map(|tc| tc.as_u64())
-                .map(|tc| tc as usize)
-                .sum();
+            let total_from_files: usize = files.iter().map(|f| f.token_count).sum();
 
             // Get max lines from command line or calculate from terminal height
             let max_lines = args.token_map_lines.unwrap_or_else(|| {

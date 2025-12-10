@@ -2,11 +2,13 @@
 //! It allows you to load codebase data, Git info, and render prompts using a template.
 
 use anyhow::{Context, Result};
+use serde::Serialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
-use crate::path::{display_name, traverse_directory};
+use crate::path::{FileEntry, display_name, traverse_directory, wrap_code_block};
 use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use crate::tokenizer::{TokenizerType, count_tokens};
@@ -24,12 +26,38 @@ pub struct Code2PromptSession {
 /// The session loads these pieces separately, so you can manage them step by step.
 #[derive(Debug, Default, Clone)]
 pub struct SessionData {
+    pub absolute_code_path: Option<String>,
     pub source_tree: Option<String>,
-    pub files: Option<serde_json::Value>,
+    pub files: Option<Vec<FileEntry>>,
     pub stats: Option<serde_json::Value>,
     pub git_diff: Option<String>,
     pub git_diff_branch: Option<String>,
     pub git_log_branch: Option<String>,
+}
+
+/// Zero-copy template context for rendering
+/// Uses references to avoid deep copying of heavy data
+#[derive(Serialize)]
+pub struct TemplateContext<'a> {
+    absolute_code_path: &'a str,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_tree: &'a Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    files: Option<&'a [FileEntry]>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    git_diff: &'a Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    git_diff_branch: &'a Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    git_log_branch: &'a Option<String>,
+
+    #[serde(flatten)]
+    user_variables: &'a HashMap<String, String>,
 }
 
 /// Encapsulates the final rendered prompt and some metadata
@@ -151,11 +179,13 @@ impl Code2PromptSession {
 
     /// Loads the codebase data (source tree and file list) into the session.
     pub fn load_codebase(&mut self) -> Result<()> {
-        let (tree, files_json) = traverse_directory(&self.config, Some(&mut self.selection_engine))
+        let (tree, files) = traverse_directory(&self.config, Some(&mut self.selection_engine))
             .with_context(|| "Failed to traverse directory")?;
 
+        // Store absolute_code_path as Single Source of Truth
+        self.data.absolute_code_path = Some(display_name(&self.config.path));
         self.data.source_tree = Some(tree);
-        self.data.files = Some(serde_json::Value::Array(files_json));
+        self.data.files = Some(files);
 
         Ok(())
     }
@@ -234,7 +264,7 @@ impl Code2PromptSession {
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
         let token_count = if self.config.token_map_enabled {
-            self.calculate_token_count_from_json(template_data, &tokenizer_type)
+            self.calculate_token_count_from_cache(&template_content, &tokenizer_type)
         } else {
             count_tokens(&template_content, &tokenizer_type)
         };
@@ -249,17 +279,7 @@ impl Code2PromptSession {
             .data
             .files
             .as_ref()
-            .and_then(|files_json| files_json.as_array())
-            .map(|files| {
-                files
-                    .iter()
-                    .filter_map(|file| {
-                        file.get("path")
-                            .and_then(|p| p.as_str())
-                            .map(|s| s.to_string())
-                    })
-                    .collect()
-            })
+            .map(|files| files.iter().map(|file| file.path.clone()).collect())
             .unwrap_or_default();
 
         // ~~~ Final output format ~~~
@@ -286,52 +306,182 @@ impl Code2PromptSession {
         })
     }
 
-    /// Calculate token count using cached per-file token counts + template overhead estimation
+    /// Calculate exact token count using cached per-file token counts + skeleton rendering
     ///
-    /// This method provides a performance optimization when token_map is enabled:
-    /// Instead of re-tokenizing the entire rendered output, we sum the cached per-file
-    /// token counts and estimate the template/formatting overhead.
+    /// This method provides precise token counting when token_map is enabled:
+    /// Instead of re-tokenizing the entire rendered output, it:
+    /// 1. Sums the cached per-file token counts (from actual content)
+    /// 2. Renders a "skeleton" template with empty file contents to get structural tokens
+    /// 3. Adds them together for an exact count
     ///
     /// # Arguments
     ///
     /// * `_rendered_content` - The full rendered template content (reserved for future use)
-    /// * `tokenizer_type` - The tokenizer to use for overhead estimation
+    /// * `tokenizer_type` - The tokenizer to use for tokenization
     ///
     /// # Returns
     ///
-    /// * `usize` - The estimated total token count
+    /// * `usize` - The exact total token count
     fn calculate_token_count_from_cache(
         &self,
         _rendered_content: &str,
         tokenizer_type: &TokenizerType,
     ) -> usize {
-        // Sum up cached per-file token counts
+        // Sum up cached per-file token counts (tokens from actual file content)
         let files_token_count: usize = self
             .data
             .files
             .as_ref()
-            .and_then(|files_json| files_json.as_array())
-            .map(|files| {
-                files
-                    .iter()
-                    .filter_map(|file| file.get("token_count"))
-                    .filter_map(|tc| tc.as_u64())
-                    .map(|tc| tc as usize)
-                    .sum()
-            })
+            .map(|files| files.iter().map(|file| file.token_count).sum())
             .unwrap_or(0);
 
-        // Estimate template overhead (tree, headers, git diff, etc.)
-        // This is an approximation but much faster than full tokenization
-        let template_overhead = estimate_template_overhead(
-            &self.data.source_tree,
-            &self.data.git_diff,
-            &self.data.git_diff_branch,
-            &self.data.git_log_branch,
-            tokenizer_type,
-        );
+        // Calculate exact structural/template overhead using skeleton rendering
+        let structural_tokens = self.calculate_structural_tokens(tokenizer_type);
 
-        files_token_count + template_overhead
+        files_token_count + structural_tokens
+    }
+
+    /// Calculate structural tokens by rendering a skeleton template
+    ///
+    /// Creates FileEntry "skeletons" with empty code blocks but same structure,
+    /// renders the template, and counts tokens. This gives us the exact token count
+    /// for everything except the actual file content (tree, headers, wrappers, git info).
+    ///
+    /// # Arguments
+    ///
+    /// * `tokenizer_type` - The tokenizer to use for counting
+    ///
+    /// # Returns
+    ///
+    /// * `usize` - The number of structural tokens
+    fn calculate_structural_tokens(&self, tokenizer_type: &TokenizerType) -> usize {
+        // Create skeleton file entries (empty code, but same structure/metadata)
+        let skeleton_files: Option<Vec<FileEntry>> = self.data.files.as_ref().map(|files| {
+            files
+                .iter()
+                .map(|file| {
+                    // Create empty code block with same wrapping structure
+                    let empty_code_block = wrap_code_block(
+                        "",
+                        &file.extension,
+                        self.config.line_numbers,
+                        self.config.no_codeblock,
+                    );
+
+                    FileEntry {
+                        path: file.path.clone(),
+                        extension: file.extension.clone(),
+                        code: empty_code_block,
+                        token_count: 0, // Not used in skeleton
+                        metadata: file.metadata,
+                        mod_time: file.mod_time,
+                    }
+                })
+                .collect()
+        });
+
+        // Build skeleton template data (same structure, but with empty file contents)
+        let skeleton_data = serde_json::json!({
+            "absolute_code_path": self.data.absolute_code_path,
+            "source_tree": self.data.source_tree,
+            "files": skeleton_files,
+            "git_diff": self.data.git_diff,
+            "git_diff_branch": self.data.git_diff_branch,
+            "git_log_branch": self.data.git_log_branch,
+        });
+
+        // Merge with user variables
+        let mut skeleton_data = skeleton_data;
+        if !self.config.user_variables.is_empty()
+            && let Some(obj) = skeleton_data.as_object_mut()
+        {
+            for (key, value) in &self.config.user_variables {
+                obj.insert(key.clone(), serde_json::Value::String(value.clone()));
+            }
+        }
+
+        // Render skeleton template
+        let template_str = if self.config.template_str.is_empty() {
+            match self.config.output_format {
+                OutputFormat::Markdown => include_str!("./default_template_md.hbs").to_string(),
+                OutputFormat::Xml | OutputFormat::Json => {
+                    include_str!("./default_template_xml.hbs").to_string()
+                }
+            }
+        } else {
+            self.config.template_str.clone()
+        };
+
+        let template_name = if self.config.template_name.is_empty() {
+            match self.config.output_format {
+                OutputFormat::Markdown => "markdown".to_string(),
+                OutputFormat::Xml | OutputFormat::Json => "xml".to_string(),
+            }
+        } else {
+            self.config.template_name.clone()
+        };
+
+        // Render and count tokens
+        match handlebars_setup(&template_str, &template_name) {
+            Ok(handlebars) => {
+                match render_template(&handlebars, &template_name, &skeleton_data) {
+                    Ok(skeleton_rendered) => count_tokens(&skeleton_rendered, tokenizer_type),
+                    Err(_) => {
+                        // Fallback to simple estimation if rendering fails
+                        self.fallback_structural_estimate(tokenizer_type)
+                    }
+                }
+            }
+            Err(_) => {
+                // Fallback to simple estimation if handlebars setup fails
+                self.fallback_structural_estimate(tokenizer_type)
+            }
+        }
+    }
+
+    /// Fallback estimation when skeleton rendering fails
+    ///
+    /// Uses a simple heuristic based on tree/git sizes as a safety net.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokenizer_type` - The tokenizer to use
+    ///
+    /// # Returns
+    ///
+    /// * `usize` - Estimated structural tokens
+    fn fallback_structural_estimate(&self, tokenizer_type: &TokenizerType) -> usize {
+        let mut total_chars = 0;
+
+        if let Some(tree) = &self.data.source_tree {
+            total_chars += tree.len();
+        }
+        if let Some(diff) = &self.data.git_diff {
+            total_chars += diff.len();
+        }
+        if let Some(diff_branch) = &self.data.git_diff_branch {
+            total_chars += diff_branch.len();
+        }
+        if let Some(log_branch) = &self.data.git_log_branch {
+            total_chars += log_branch.len();
+        }
+
+        // Simple approximation: ~4 chars per token + buffer for headers
+        let estimated = (total_chars / 4) + 100;
+
+        // For better accuracy on smaller sizes, actually tokenize
+        if total_chars < 10000 {
+            let combined = format!(
+                "{}{}{}{}",
+                self.data.source_tree.as_deref().unwrap_or(""),
+                self.data.git_diff.as_deref().unwrap_or(""),
+                self.data.git_diff_branch.as_deref().unwrap_or(""),
+                self.data.git_log_branch.as_deref().unwrap_or("")
+            );
+            count_tokens(&combined, tokenizer_type)
+        } else {
+            estimated
+        }
     }
 
     pub fn generate_prompt(&mut self) -> Result<RenderedPrompt> {
@@ -363,50 +513,5 @@ impl Code2PromptSession {
         let template_data = self.build_template_data();
         let rendered = self.render_prompt(&template_data)?;
         Ok(rendered)
-    }
-}
-
-/// Estimate template overhead tokens (tree, headers, git info)
-///
-/// This provides a fast approximation of non-file tokens in the output.
-/// Uses a simple character-based heuristic: tokens ≈ chars / 4 for English text
-fn estimate_template_overhead(
-    source_tree: &Option<String>,
-    git_diff: &Option<String>,
-    git_diff_branch: &Option<String>,
-    git_log_branch: &Option<String>,
-    tokenizer_type: &TokenizerType,
-) -> usize {
-    let mut total_chars = 0;
-
-    if let Some(tree) = source_tree {
-        total_chars += tree.len();
-    }
-    if let Some(diff) = git_diff {
-        total_chars += diff.len();
-    }
-    if let Some(diff_branch) = git_diff_branch {
-        total_chars += diff_branch.len();
-    }
-    if let Some(log_branch) = git_log_branch {
-        total_chars += log_branch.len();
-    }
-
-    // Simple approximation: ~4 chars per token for typical code/text
-    // Add small buffer for template formatting (headers, etc.)
-    let estimated_tokens = (total_chars / 4) + 100;
-
-    // For better accuracy on smaller overhead, tokenize if total is small
-    if total_chars < 10000 {
-        let combined = format!(
-            "{}{}{}{}",
-            source_tree.as_deref().unwrap_or(""),
-            git_diff.as_deref().unwrap_or(""),
-            git_diff_branch.as_deref().unwrap_or(""),
-            git_log_branch.as_deref().unwrap_or("")
-        );
-        count_tokens(&combined, tokenizer_type)
-    } else {
-        estimated_tokens
     }
 }

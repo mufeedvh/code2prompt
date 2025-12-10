@@ -64,10 +64,7 @@ fn test_binary_files_are_skipped() {
     let (_, files) = traverse_directory(&config, None).unwrap();
 
     // Should only include text files, not binary files
-    let file_paths: Vec<String> = files
-        .iter()
-        .filter_map(|f| f.get("path").and_then(|p| p.as_str()).map(String::from))
-        .collect();
+    let file_paths: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
 
     // Text files should be included
     assert!(file_paths.iter().any(|p| p.contains("text.txt")));
@@ -145,7 +142,7 @@ fn test_text_file_with_unicode() {
 
     // Unicode text should be detected as text and included
     assert_eq!(files.len(), 1);
-    let file_path = files[0].get("path").and_then(|p| p.as_str()).unwrap();
+    let file_path = &files[0].path;
     assert!(file_path.contains("unicode.txt"));
 }
 
@@ -176,10 +173,7 @@ fn test_mixed_directory_structure() {
     // Should only have 2 text files from src/
     assert_eq!(files.len(), 2);
 
-    let file_paths: Vec<String> = files
-        .iter()
-        .filter_map(|f| f.get("path").and_then(|p| p.as_str()).map(String::from))
-        .collect();
+    let file_paths: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
 
     assert!(file_paths.iter().any(|p| p.contains("main.rs")));
     assert!(file_paths.iter().any(|p| p.contains("lib.rs")));
@@ -206,7 +200,7 @@ fn test_large_text_file() {
     assert_eq!(files.len(), 1);
 
     // Verify the entire content was read (not just the sample)
-    let code = files[0].get("code").and_then(|c| c.as_str()).unwrap();
+    let code = &files[0].code;
     assert!(code.contains(&large_text));
 }
 

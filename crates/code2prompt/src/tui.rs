@@ -510,17 +510,13 @@ impl TuiApp {
                         Ok(rendered) => {
                             // Convert to AnalysisResults format expected by TUI
                             let token_map_entries = if rendered.token_count > 0 {
-                                if let Some(files_value) = session.data.files.as_ref() {
-                                    if let Some(files_array) = files_value.as_array() {
-                                        generate_token_map_with_limit(
-                                            files_array,
-                                            rendered.token_count,
-                                            Some(50),
-                                            Some(0.5),
-                                        )
-                                    } else {
-                                        Vec::new()
-                                    }
+                                if let Some(files) = session.data.files.as_ref() {
+                                    generate_token_map_with_limit(
+                                        files,
+                                        rendered.token_count,
+                                        Some(50),
+                                        Some(0.5),
+                                    )
                                 } else {
                                     Vec::new()
                                 }

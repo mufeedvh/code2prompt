@@ -1,18 +1,48 @@
-use code2prompt_core::sort::{sort_files, sort_tree, FileSortMethod};
+use code2prompt_core::path::{EntryMetadata, FileEntry};
+use code2prompt_core::sort::{FileSortMethod, sort_files, sort_tree};
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
     use termtree::Tree;
 
     #[test]
     fn test_sort_files_name_asc() {
-        // Create a vector of file JSON objects with "path" and "mod_time"
+        // Create a vector of FileEntry objects
         let mut files = vec![
-            json!({"path": "zeta.txt", "mod_time": 100}),
-            json!({"path": "alpha.txt", "mod_time": 200}),
-            json!({"path": "beta.txt", "mod_time": 150}),
+            FileEntry {
+                path: "zeta.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(100),
+            },
+            FileEntry {
+                path: "alpha.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(200),
+            },
+            FileEntry {
+                path: "beta.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(150),
+            },
         ];
 
         // Sort by file name in ascending order (A → Z)
@@ -20,25 +50,47 @@ mod tests {
 
         // Expected order is: "alpha.txt", "beta.txt", "zeta.txt"
         let expected = vec!["alpha.txt", "beta.txt", "zeta.txt"];
-        let result: Vec<String> = files
-            .iter()
-            .map(|v| {
-                v.get("path")
-                    .and_then(|s| s.as_str())
-                    .unwrap_or("")
-                    .to_string()
-            })
-            .collect();
+        let result: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_sort_files_name_desc() {
-        // Create a vector of file JSON objects with "path" and "mod_time"
+        // Create a vector of FileEntry objects
         let mut files = vec![
-            json!({"path": "alpha.txt", "mod_time": 100}),
-            json!({"path": "zeta.txt", "mod_time": 200}),
-            json!({"path": "beta.txt", "mod_time": 150}),
+            FileEntry {
+                path: "alpha.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(100),
+            },
+            FileEntry {
+                path: "zeta.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(200),
+            },
+            FileEntry {
+                path: "beta.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(150),
+            },
         ];
 
         // Sort by file name in descending order (Z → A)
@@ -46,25 +98,47 @@ mod tests {
 
         // Expected order is: "zeta.txt", "beta.txt", "alpha.txt"
         let expected = vec!["zeta.txt", "beta.txt", "alpha.txt"];
-        let result: Vec<String> = files
-            .iter()
-            .map(|v| {
-                v.get("path")
-                    .and_then(|s| s.as_str())
-                    .unwrap_or("")
-                    .to_string()
-            })
-            .collect();
+        let result: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_sort_files_date_asc() {
-        // Create a vector of file JSON objects with "path" and "mod_time"
+        // Create a vector of FileEntry objects
         let mut files = vec![
-            json!({"path": "file1.txt", "mod_time": 300}),
-            json!({"path": "file2.txt", "mod_time": 100}),
-            json!({"path": "file3.txt", "mod_time": 200}),
+            FileEntry {
+                path: "file1.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(300),
+            },
+            FileEntry {
+                path: "file2.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(100),
+            },
+            FileEntry {
+                path: "file3.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(200),
+            },
         ];
 
         // Sort by modification time in ascending order (oldest first)
@@ -72,25 +146,47 @@ mod tests {
 
         // Expected order is: "file2.txt" (100), "file3.txt" (200), "file1.txt" (300)
         let expected = vec!["file2.txt", "file3.txt", "file1.txt"];
-        let result: Vec<String> = files
-            .iter()
-            .map(|v| {
-                v.get("path")
-                    .and_then(|s| s.as_str())
-                    .unwrap_or("")
-                    .to_string()
-            })
-            .collect();
+        let result: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_sort_files_date_desc() {
-        // Create a vector of file JSON objects with "path" and "mod_time"
+        // Create a vector of FileEntry objects
         let mut files = vec![
-            json!({"path": "file1.txt", "mod_time": 300}),
-            json!({"path": "file2.txt", "mod_time": 100}),
-            json!({"path": "file3.txt", "mod_time": 200}),
+            FileEntry {
+                path: "file1.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(300),
+            },
+            FileEntry {
+                path: "file2.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(100),
+            },
+            FileEntry {
+                path: "file3.txt".to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some(200),
+            },
         ];
 
         // Sort by modification time in descending order (newest first)
@@ -98,31 +194,34 @@ mod tests {
 
         // Expected order is: "file1.txt" (300), "file3.txt" (200), "file2.txt" (100)
         let expected = vec!["file1.txt", "file3.txt", "file2.txt"];
-        let result: Vec<String> = files
-            .iter()
-            .map(|v| {
-                v.get("path")
-                    .and_then(|s| s.as_str())
-                    .unwrap_or("")
-                    .to_string()
-            })
-            .collect();
+        let result: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_sort_files_none() {
         // When sort method is None, the original order should be preserved.
-        let original_files = vec![
-            json!({"path": "zeta.txt", "mod_time": 300}),
-            json!({"path": "alpha.txt", "mod_time": 100}),
-            json!({"path": "beta.txt", "mod_time": 200}),
-        ];
-        let mut files = original_files.clone();
+        let original_paths = vec!["zeta.txt", "alpha.txt", "beta.txt"];
+        let mut files: Vec<FileEntry> = original_paths
+            .iter()
+            .enumerate()
+            .map(|(i, path)| FileEntry {
+                path: path.to_string(),
+                extension: "txt".to_string(),
+                code: String::new(),
+                token_count: 0,
+                metadata: EntryMetadata {
+                    is_dir: false,
+                    is_symlink: false,
+                },
+                mod_time: Some((i as u64 + 1) * 100),
+            })
+            .collect();
 
         // Sorting with None should leave the order unchanged.
         sort_files(&mut files, None);
-        assert_eq!(files, original_files);
+        let result: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
+        assert_eq!(result, original_paths);
     }
 
     #[test]

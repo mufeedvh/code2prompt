@@ -11,7 +11,6 @@ use ignore::WalkBuilder;
 use log::debug;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -32,6 +31,18 @@ impl From<&std::fs::Metadata> for EntryMetadata {
     }
 }
 
+/// Represents a file entry with all its metadata and content
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileEntry {
+    pub path: String,
+    pub extension: String,
+    pub code: String,
+    pub token_count: usize,
+    pub metadata: EntryMetadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mod_time: Option<u64>,
+}
+
 /// Represents a file that needs to be processed
 #[derive(Debug, Clone)]
 struct FileToProcess {
@@ -43,7 +54,7 @@ struct FileToProcess {
     metadata: std::fs::Metadata,
 }
 
-/// Traverses the directory and returns the string representation of the tree and the vector of JSON file representations.
+/// Traverses the directory and returns the string representation of the tree and the vector of file entries.
 ///
 /// This function uses the provided configuration to determine which files to include, how to format them,
 /// and how to structure the directory tree.
@@ -55,14 +66,14 @@ struct FileToProcess {
 ///
 /// # Returns
 ///
-/// * `Result<(String, Vec<serde_json::Value>)>` - A tuple containing the string representation of the directory
-///   tree and a vector of JSON representations of the files
+/// * `Result<(String, Vec<FileEntry>)>` - A tuple containing the string representation of the directory
+///   tree and a vector of file entries
 pub fn traverse_directory(
     config: &Code2PromptConfig,
-    mut selection_engine: Option<&mut crate::selection::SelectionEngine>,
-) -> Result<(String, Vec<serde_json::Value>)> {
+    selection_engine: Option<&mut crate::selection::SelectionEngine>,
+) -> Result<(String, Vec<FileEntry>)> {
     // Phase 1: Discovery - Build tree and collect files to process
-    let (tree, files_to_process) = discover_files(config, selection_engine.as_deref_mut())?;
+    let (tree, files_to_process) = discover_files(config, selection_engine)?;
 
     // Phase 2: Processing - Process files in parallel
     let mut files = process_files_parallel(files_to_process, config)?;
@@ -131,14 +142,15 @@ fn discover_files(
             }
 
             // Collect files for processing
-            if path.is_file() && entry_match {
-                if let Ok(metadata) = entry.metadata() {
-                    files_to_process.push(FileToProcess {
-                        absolute_path: path.to_path_buf(),
-                        relative_path: relative_path.to_path_buf(),
-                        metadata,
-                    });
-                }
+            if path.is_file()
+                && entry_match
+                && let Ok(metadata) = entry.metadata()
+            {
+                files_to_process.push(FileToProcess {
+                    absolute_path: path.to_path_buf(),
+                    relative_path: relative_path.to_path_buf(),
+                    metadata,
+                });
             }
         }
     }
@@ -152,13 +164,13 @@ fn discover_files(
 /// - Read file contents (I/O bound)
 /// - Process file content (CPU/I/O bound)
 /// - Tokenize if enabled (CPU bound)
-/// - Build JSON entries
+/// - Build FileEntry structures
 fn process_files_parallel(
     files_to_process: Vec<FileToProcess>,
     config: &Code2PromptConfig,
-) -> Result<Vec<serde_json::Value>> {
+) -> Result<Vec<FileEntry>> {
     // Process files in parallel with rayon
-    let files: Vec<Option<serde_json::Value>> = files_to_process
+    let files: Vec<Option<FileEntry>> = files_to_process
         .par_iter()
         .map(|file_info| process_single_file(file_info, config))
         .collect();
@@ -197,11 +209,8 @@ fn read_file_with_binary_check(path: &Path, file_size: u64) -> std::io::Result<O
     Ok(Some(buffer))
 }
 
-/// Process a single file and return its JSON representation
-fn process_single_file(
-    file_info: &FileToProcess,
-    config: &Code2PromptConfig,
-) -> Option<serde_json::Value> {
+/// Process a single file and return its FileEntry representation
+fn process_single_file(file_info: &FileToProcess, config: &Code2PromptConfig) -> Option<FileEntry> {
     let path = &file_info.absolute_path;
     let relative_path = &file_info.relative_path;
     let metadata = &file_info.metadata;
@@ -253,53 +262,51 @@ fn process_single_file(
         relative_path.to_string_lossy().to_string()
     };
 
-    // Build File JSON Representation
-    let mut file_entry = serde_json::Map::new();
-    file_entry.insert("path".to_string(), json!(file_path));
-    file_entry.insert("extension".to_string(), json!(extension));
-    file_entry.insert("code".to_string(), json!(code_block));
+    // Calculate token count if enabled
+    let token_count = if config.token_map_enabled {
+        count_tokens(&code, &config.encoding)
+    } else {
+        0
+    };
 
-    // Store metadata
-    let entry_meta = EntryMetadata::from(metadata);
-    if let Ok(meta_value) = serde_json::to_value(entry_meta) {
-        file_entry.insert("metadata".to_string(), meta_value);
-    }
-
-    // Add token count for the file only if token map is enabled
-    if config.token_map_enabled {
-        let token_count = count_tokens(&code, &config.encoding);
-        file_entry.insert("token_count".to_string(), json!(token_count));
-    }
-
-    // If date sorting is requested, record the file modification time
-    if let Some(method) = config.sort_method {
+    // Get modification time if date sorting is requested
+    let mod_time = if let Some(method) = config.sort_method {
         if method == FileSortMethod::DateAsc || method == FileSortMethod::DateDesc {
-            let mod_time = metadata
+            metadata
                 .modified()
                 .ok()
                 .and_then(|mtime| mtime.duration_since(std::time::SystemTime::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs())
-                .unwrap_or(0);
-            file_entry.insert("mod_time".to_string(), json!(mod_time));
+        } else {
+            None
         }
-    }
+    } else {
+        None
+    };
 
     debug!(target: "included_files", "Included file: {}", file_path);
 
-    Some(serde_json::Value::Object(file_entry))
+    Some(FileEntry {
+        path: file_path,
+        extension: extension.to_string(),
+        code: code_block,
+        token_count,
+        metadata: EntryMetadata::from(metadata),
+        mod_time,
+    })
 }
 
 /// Phase 3: Assembly - Sort results and return
 fn assemble_results(
     mut tree: Tree<String>,
-    files: &mut Vec<serde_json::Value>,
+    files: &mut [FileEntry],
     config: &Code2PromptConfig,
-) -> Result<(String, Vec<serde_json::Value>)> {
+) -> Result<(String, Vec<FileEntry>)> {
     // Sort tree and files
     sort_tree(&mut tree, config.sort_method);
     sort_files(files, config.sort_method);
 
-    Ok((tree.to_string(), files.clone()))
+    Ok((tree.to_string(), files.to_owned()))
 }
 
 /// Returns the file name or the string representation of the path.
@@ -318,10 +325,10 @@ pub fn display_name<P: AsRef<Path>>(p: P) -> String {
         return name.to_string_lossy().into_owned();
     }
     // Current directory name
-    if let Ok(cwd) = std::env::current_dir() {
-        if let Some(name) = cwd.file_name() {
-            return name.to_string_lossy().into_owned();
-        }
+    if let Ok(cwd) = std::env::current_dir()
+        && let Some(name) = cwd.file_name()
+    {
+        return name.to_string_lossy().into_owned();
     }
     // Fallback
     ".".to_string()
@@ -339,7 +346,12 @@ pub fn display_name<P: AsRef<Path>>(p: P) -> String {
 /// # Returns
 ///
 /// * `String` - The wrapped code block.
-fn wrap_code_block(code: &str, extension: &str, line_numbers: bool, no_codeblock: bool) -> String {
+pub fn wrap_code_block(
+    code: &str,
+    extension: &str,
+    line_numbers: bool,
+    no_codeblock: bool,
+) -> String {
     let delimiter = "`".repeat(3);
     let mut code_with_line_numbers = String::new();
 
