@@ -82,7 +82,7 @@ fn discover_files(
     mut selection_engine: Option<&mut crate::selection::SelectionEngine>,
 ) -> Result<(Tree<String>, Vec<FileToProcess>)> {
     let canonical_root_path = config.path.canonicalize()?;
-    let parent_directory = label(&canonical_root_path);
+    let parent_directory = display_name(&canonical_root_path);
 
     let include_globset = build_globset(&config.include_patterns);
     let exclude_globset = build_globset(&config.exclude_patterns);
@@ -167,17 +167,34 @@ fn process_files_parallel(
     Ok(files.into_iter().flatten().collect())
 }
 
-/// Read a sample of bytes from a file for binary detection
+/// Read file with single-pass binary detection
 ///
-/// Reads up to `max_bytes` from the start of the file for efficient binary detection.
-/// This avoids reading entire large binary files when we only need to check the header.
-fn read_file_sample(path: &Path, max_bytes: usize) -> std::io::Result<Vec<u8>> {
+/// Reads file incrementally: first 8KB for binary detection, then remainder if text.
+fn read_file_with_binary_check(path: &Path, file_size: u64) -> std::io::Result<Option<Vec<u8>>> {
+    const SAMPLE_SIZE: usize = 8192;
+
     let mut file = fs::File::open(path)?;
-    let mut buffer = Vec::with_capacity(max_bytes.min(8192));
-    file.by_ref()
-        .take(max_bytes as u64)
-        .read_to_end(&mut buffer)?;
-    Ok(buffer)
+    let mut buffer = Vec::with_capacity(file_size.min(1024 * 1024 * 10) as usize); // Cap at 10MB initial allocation
+
+    // Read first chunk for binary detection
+    let bytes_to_read = SAMPLE_SIZE.min(file_size as usize);
+    let mut sample_buffer = vec![0u8; bytes_to_read];
+    file.read_exact(&mut sample_buffer)?;
+
+    // Check if binary
+    if inspect(&sample_buffer) == ContentType::BINARY {
+        return Ok(None); // Return None for binary files
+    }
+
+    // It's text! Add sample to buffer and read the rest
+    buffer.extend_from_slice(&sample_buffer);
+
+    // Read remaining bytes if file is larger than sample
+    if file_size > SAMPLE_SIZE as u64 {
+        file.read_to_end(&mut buffer)?;
+    }
+
+    Ok(Some(buffer))
 }
 
 /// Process a single file and return its JSON representation
@@ -189,24 +206,12 @@ fn process_single_file(
     let relative_path = &file_info.relative_path;
     let metadata = &file_info.metadata;
 
-    // Early binary detection: read a small sample first
-    let sample = match read_file_sample(path, 8192) {
-        Ok(s) => s,
-        Err(e) => {
-            debug!("Failed to read file sample {}: {}", path.display(), e);
+    let code_bytes = match read_file_with_binary_check(path, metadata.len()) {
+        Ok(Some(bytes)) => bytes,
+        Ok(None) => {
+            debug!("Skipped binary file: {}", path.display());
             return None;
         }
-    };
-
-    // Detect binary content early to avoid processing binary files
-    if inspect(&sample) == ContentType::BINARY {
-        debug!("Skipped binary file: {}", path.display());
-        return None;
-    }
-
-    // Read full file (now that we know it's text)
-    let code_bytes = match fs::read(path) {
-        Ok(bytes) => bytes,
         Err(e) => {
             debug!("Failed to read file {}: {}", path.display(), e);
             return None;
@@ -306,21 +311,20 @@ fn assemble_results(
 /// # Returns
 ///
 /// * `String` - The file name or string representation of the path.
-pub fn label<P: AsRef<Path>>(p: P) -> String {
+pub fn display_name<P: AsRef<Path>>(p: P) -> String {
     let path = p.as_ref();
-    if path.file_name().is_none() {
-        let current_dir = std::env::current_dir().unwrap();
-        current_dir
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or(".")
-            .to_owned()
-    } else {
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("")
-            .to_owned()
+    // File name if available
+    if let Some(name) = path.file_name() {
+        return name.to_string_lossy().into_owned();
     }
+    // Current directory name
+    if let Ok(cwd) = std::env::current_dir() {
+        if let Some(name) = cwd.file_name() {
+            return name.to_string_lossy().into_owned();
+        }
+    }
+    // Fallback
+    ".".to_string()
 }
 
 /// Wraps the code block with a delimiter and adds line numbers if required.

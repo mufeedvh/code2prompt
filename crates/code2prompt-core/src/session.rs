@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
-use crate::path::{label, traverse_directory};
+use crate::path::{display_name, traverse_directory};
 use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use crate::tokenizer::{TokenizerType, count_tokens};
@@ -188,7 +188,7 @@ impl Code2PromptSession {
     /// Constructs a JSON object that merges the session data and your config’s path label.
     pub fn build_template_data(&self) -> serde_json::Value {
         let mut data = serde_json::json!({
-            "absolute_code_path": label(&self.config.path),
+            "absolute_code_path": display_name(&self.config.path),
             "source_tree": self.data.source_tree,
             "files": self.data.files,
             "git_diff": self.data.git_diff,
@@ -209,8 +209,7 @@ impl Code2PromptSession {
     }
 
     /// Renders the final prompt given a template-data JSON object. Returns both
-    /// the rendered prompt and the token count information. The session
-    /// does not do any printing or user prompting — that’s up to the caller.
+    /// the rendered prompt and the token count information.
     pub fn render_prompt(&self, template_data: &serde_json::Value) -> Result<RenderedPrompt> {
         // ~~~ Template selection ~~~
         let mut template_str = self.config.template_str.clone();
@@ -234,9 +233,18 @@ impl Code2PromptSession {
 
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
-        let token_count = count_tokens(&template_content, &tokenizer_type);
+        let token_count = if self.config.token_map_enabled {
+            self.calculate_token_count_from_json(template_data, &tokenizer_type)
+        } else {
+            count_tokens(&template_content, &tokenizer_type)
+        };
+
         let model_info = tokenizer_type.description();
-        let directory_name = label(&self.config.path);
+        let directory_name = template_data
+            .get("absolute_code_path")
+            .and_then(|s| s.as_str())
+            .unwrap_or("unknown")
+            .to_string();
         let files: Vec<String> = self
             .data
             .files
@@ -278,6 +286,54 @@ impl Code2PromptSession {
         })
     }
 
+    /// Calculate token count using cached per-file token counts + template overhead estimation
+    ///
+    /// This method provides a performance optimization when token_map is enabled:
+    /// Instead of re-tokenizing the entire rendered output, we sum the cached per-file
+    /// token counts and estimate the template/formatting overhead.
+    ///
+    /// # Arguments
+    ///
+    /// * `_rendered_content` - The full rendered template content (reserved for future use)
+    /// * `tokenizer_type` - The tokenizer to use for overhead estimation
+    ///
+    /// # Returns
+    ///
+    /// * `usize` - The estimated total token count
+    fn calculate_token_count_from_cache(
+        &self,
+        _rendered_content: &str,
+        tokenizer_type: &TokenizerType,
+    ) -> usize {
+        // Sum up cached per-file token counts
+        let files_token_count: usize = self
+            .data
+            .files
+            .as_ref()
+            .and_then(|files_json| files_json.as_array())
+            .map(|files| {
+                files
+                    .iter()
+                    .filter_map(|file| file.get("token_count"))
+                    .filter_map(|tc| tc.as_u64())
+                    .map(|tc| tc as usize)
+                    .sum()
+            })
+            .unwrap_or(0);
+
+        // Estimate template overhead (tree, headers, git diff, etc.)
+        // This is an approximation but much faster than full tokenization
+        let template_overhead = estimate_template_overhead(
+            &self.data.source_tree,
+            &self.data.git_diff,
+            &self.data.git_diff_branch,
+            &self.data.git_log_branch,
+            tokenizer_type,
+        );
+
+        files_token_count + template_overhead
+    }
+
     pub fn generate_prompt(&mut self) -> Result<RenderedPrompt> {
         self.load_codebase()?;
 
@@ -307,5 +363,50 @@ impl Code2PromptSession {
         let template_data = self.build_template_data();
         let rendered = self.render_prompt(&template_data)?;
         Ok(rendered)
+    }
+}
+
+/// Estimate template overhead tokens (tree, headers, git info)
+///
+/// This provides a fast approximation of non-file tokens in the output.
+/// Uses a simple character-based heuristic: tokens ≈ chars / 4 for English text
+fn estimate_template_overhead(
+    source_tree: &Option<String>,
+    git_diff: &Option<String>,
+    git_diff_branch: &Option<String>,
+    git_log_branch: &Option<String>,
+    tokenizer_type: &TokenizerType,
+) -> usize {
+    let mut total_chars = 0;
+
+    if let Some(tree) = source_tree {
+        total_chars += tree.len();
+    }
+    if let Some(diff) = git_diff {
+        total_chars += diff.len();
+    }
+    if let Some(diff_branch) = git_diff_branch {
+        total_chars += diff_branch.len();
+    }
+    if let Some(log_branch) = git_log_branch {
+        total_chars += log_branch.len();
+    }
+
+    // Simple approximation: ~4 chars per token for typical code/text
+    // Add small buffer for template formatting (headers, etc.)
+    let estimated_tokens = (total_chars / 4) + 100;
+
+    // For better accuracy on smaller overhead, tokenize if total is small
+    if total_chars < 10000 {
+        let combined = format!(
+            "{}{}{}{}",
+            source_tree.as_deref().unwrap_or(""),
+            git_diff.as_deref().unwrap_or(""),
+            git_diff_branch.as_deref().unwrap_or(""),
+            git_log_branch.as_deref().unwrap_or("")
+        );
+        count_tokens(&combined, tokenizer_type)
+    } else {
+        estimated_tokens
     }
 }
