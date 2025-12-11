@@ -12,14 +12,14 @@ mod utils;
 mod view;
 mod widgets;
 
+use crate::utils::format_number;
 use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
-use code2prompt_core::{template::write_to_file, tokenizer::TokenFormat};
+use code2prompt_core::template::write_to_file;
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
-use num_format::{SystemLocale, ToFormattedString};
 use std::io::Write;
 use tui::run_tui;
 
@@ -186,12 +186,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // ~~~ Token Count ~~~
     let token_count = rendered.token_count;
-    let formatted_token_count: String = match session.config.token_format {
-        TokenFormat::Raw => token_count.to_string(),
-        TokenFormat::Format => SystemLocale::default()
-            .map(|loc| token_count.to_formatted_string(&loc))
-            .unwrap_or_else(|_| token_count.to_string()),
-    };
+    let formatted_token_count = format_number(token_count, &session.config.token_format);
     let model_info = rendered.model_info;
 
     if !quiet_mode {

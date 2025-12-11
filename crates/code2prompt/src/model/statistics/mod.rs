@@ -6,6 +6,7 @@
 pub mod types;
 
 use crate::model::DisplayFileNode;
+use crate::utils::format_number;
 pub use types::*;
 
 /// Statistics state containing all statistics-related data
@@ -51,15 +52,7 @@ impl StatisticsState {
         num: usize,
         token_format: &code2prompt_core::tokenizer::TokenFormat,
     ) -> String {
-        use code2prompt_core::tokenizer::TokenFormat;
-        use num_format::{SystemLocale, ToFormattedString};
-
-        match token_format {
-            TokenFormat::Format => SystemLocale::default()
-                .map(|locale| num.to_formatted_string(&locale))
-                .unwrap_or_else(|_| num.to_string()),
-            TokenFormat::Raw => num.to_string(),
-        }
+        format_number(num, token_format)
     }
 
     /// Aggregate tokens by file extension (moved from widget - business logic belongs in Model)

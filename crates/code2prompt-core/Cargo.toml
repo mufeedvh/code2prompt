@@ -27,13 +27,13 @@ colored = { workspace = true }
 content_inspector = { workspace = true }
 csv = { workspace = true }
 derive_builder = { workspace = true }
+encoding_rs = { workspace = true }
 ignore = { workspace = true }
 indicatif = { workspace = true }
 git2 = { workspace = true }
 globset = { workspace = true }
 handlebars = { workspace = true }
 log = { workspace = true }
-num-format = { workspace = true }
 once_cell = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }

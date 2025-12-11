@@ -238,6 +238,38 @@ pub fn save_to_file(path: &Path, content: &str) -> Result<()> {
     Ok(())
 }
 
+/// Format a number with thousand separators according to TokenFormat
+///
+/// - TokenFormat::Raw: returns the number as-is (e.g., "1234567")
+/// - TokenFormat::Format: adds separators every 3 digits (e.g., "1,234,567")
+///
+/// # Arguments
+/// * `num` - The number to format
+/// * `format` - The token format setting
+///
+/// # Returns
+/// Formatted string representation of the number
+pub fn format_number(num: usize, format: &code2prompt_core::tokenizer::TokenFormat) -> String {
+    use code2prompt_core::tokenizer::TokenFormat;
+
+    match format {
+        TokenFormat::Raw => num.to_string(),
+        TokenFormat::Format => {
+            let s = num.to_string();
+            let chars: Vec<char> = s.chars().collect();
+            let mut result = String::new();
+
+            for (i, c) in chars.iter().enumerate() {
+                if i > 0 && (chars.len() - i).is_multiple_of(3) {
+                    result.push(',');
+                }
+                result.push(*c);
+            }
+            result
+        }
+    }
+}
+
 /// Load children for search mode without mutating the original tree
 fn get_children_for_search(
     node: &DisplayFileNode,

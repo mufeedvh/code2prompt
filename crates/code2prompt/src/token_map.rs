@@ -5,8 +5,6 @@
 //! hierarchical tree structures with visual bars and colors, similar to disk usage
 //! analyzers but for token consumption.
 use code2prompt_core::path::FileEntry;
-#[cfg(windows)]
-use log::error;
 use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
