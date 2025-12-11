@@ -5,11 +5,10 @@
 
 use code2prompt_core::{
     configuration::Code2PromptConfig,
-    path::{EntryMetadata, traverse_directory},
+    path::{EntryMetadata, FileEntry, traverse_directory},
 };
 use git2::Repository;
 use rstest::*;
-use serde_json::Value;
 use std::{
     fs::{self},
     path::Path,
@@ -74,30 +73,17 @@ fn base_config(path: &Path) -> Code2PromptConfig {
 
 // ~~~ Test Helpers ~~~
 
-/// Checks if a file exists in the output JSON
-fn file_exists(files: &[Value], path: &str) -> bool {
-    files.iter().any(|file| {
-        file.get("path")
-            .and_then(|p| p.as_str())
-            .map(|p| p.contains(path))
-            .unwrap_or(false)
-    })
+/// Checks if a file exists in the output
+fn file_exists(files: &[FileEntry], path: &str) -> bool {
+    files.iter().any(|file| file.path.contains(path))
 }
 
 /// Gets metadata for a specific file
-fn get_metadata(files: &[Value], path: &str) -> Option<EntryMetadata> {
+fn get_metadata(files: &[FileEntry], path: &str) -> Option<EntryMetadata> {
     files
         .iter()
-        .find(|file| {
-            file.get("path")
-                .and_then(|p| p.as_str())
-                .map(|p| p.contains(path))
-                .unwrap_or(false)
-        })
-        .and_then(|file| {
-            file.get("metadata")
-                .and_then(|m| serde_json::from_value(m.clone()).ok())
-        })
+        .find(|file| file.path.contains(path))
+        .map(|file| file.metadata)
 }
 
 // ~~~ Tests ~~~
@@ -204,13 +190,8 @@ mod tests {
         let (_, files) = traverse_directory(&config, None).unwrap();
 
         // Find file1.txt and check its content
-        if let Some(file) = files.iter().find(|f| {
-            f.get("path")
-                .and_then(|p| p.as_str())
-                .map(|p| p.contains("file1.txt"))
-                .unwrap_or(false)
-        }) {
-            let code = file.get("code").and_then(|c| c.as_str()).unwrap();
+        if let Some(file) = files.iter().find(|f| f.path.contains("file1.txt")) {
+            let code = &file.code;
             assert!(code.contains("Content 1"));
             assert!(code.contains("1 |")); // Line numbers should be present
         } else {
@@ -242,12 +223,7 @@ mod tests {
         let (_, files) = traverse_directory(&config, None).unwrap();
 
         // Paths should be relative by default
-        assert!(files.iter().all(|file| {
-            file.get("path")
-                .and_then(|p| p.as_str())
-                .map(|p| !p.starts_with('/'))
-                .unwrap_or(false)
-        }));
+        assert!(files.iter().all(|file| !file.path.starts_with('/')));
     }
 
     #[rstest]
@@ -262,12 +238,11 @@ mod tests {
 
         // Paths should be absolute when enabled
         let abs_path = simple_dir_structure.path().canonicalize().unwrap();
-        assert!(files.iter().all(|file| {
-            file.get("path")
-                .and_then(|p| p.as_str())
-                .map(|p| p.starts_with(abs_path.to_str().unwrap()))
-                .unwrap_or(false)
-        }));
+        assert!(
+            files
+                .iter()
+                .all(|file| file.path.starts_with(abs_path.to_str().unwrap()))
+        );
     }
 
     // ~~~ Symlink Tests ~~~

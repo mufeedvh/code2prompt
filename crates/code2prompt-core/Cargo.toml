@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt_core"
-version = "4.1.0"
+version = "4.2.0"
 authors = [
     "Mufeed VH <mufeed@lyminal.space>",
     "Olivier D'Ancona <olivier_dancona@hotmail.com>",
@@ -24,6 +24,7 @@ default = []
 anyhow = { workspace = true }
 bracoxide = { workspace = true }
 colored = { workspace = true }
+content_inspector = { workspace = true }
 csv = { workspace = true }
 derive_builder = { workspace = true }
 ignore = { workspace = true }
@@ -40,11 +41,12 @@ serde_json = { workspace = true }
 termtree = { workspace = true }
 tiktoken-rs = { workspace = true }
 toml = { workspace = true }
+rayon = { workspace = true }
+chardetng = { workspace = true }
 
 [lib]
 name = "code2prompt_core"
 path = "src/lib.rs"
-# crate-type = ["cdylib", "rlib"]
 crate-type = ["rlib"]
 
 [package.metadata.deb]

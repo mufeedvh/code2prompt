@@ -1,7 +1,7 @@
 //! This module provides sorting methods for files and directory trees.
 
+use crate::path::FileEntry;
 use serde::{self, Deserialize, Serialize};
-use serde_json::Value;
 use std::fmt;
 use termtree::Tree;
 
@@ -36,33 +36,24 @@ impl fmt::Display for FileSortMethod {
 ///
 /// # Arguments
 ///
-/// * `files` - A mutable slice of JSON values representing files. Each file is expected
-///   to have a `"path"` key (as a string) and a `"mod_time"` key (as a u64).
+/// * `files` - A mutable slice of FileEntry representing files.
 /// * `sort_method` - An optional `FileSortMethod` indicating how to sort the files.
-pub fn sort_files(files: &mut [Value], sort_method: Option<FileSortMethod>) {
+pub fn sort_files(files: &mut [FileEntry], sort_method: Option<FileSortMethod>) {
     if let Some(method) = sort_method {
-        files.sort_by(|a, b| match method {
+        match method {
             FileSortMethod::NameAsc => {
-                let a_path = a.get("path").and_then(Value::as_str).unwrap_or("");
-                let b_path = b.get("path").and_then(Value::as_str).unwrap_or("");
-                a_path.cmp(b_path)
+                files.sort_by(|a, b| a.path.cmp(&b.path));
             }
             FileSortMethod::NameDesc => {
-                let a_path = a.get("path").and_then(Value::as_str).unwrap_or("");
-                let b_path = b.get("path").and_then(Value::as_str).unwrap_or("");
-                b_path.cmp(a_path)
+                files.sort_by(|a, b| b.path.cmp(&a.path));
             }
             FileSortMethod::DateAsc => {
-                let a_time = a.get("mod_time").and_then(Value::as_u64).unwrap_or(0);
-                let b_time = b.get("mod_time").and_then(Value::as_u64).unwrap_or(0);
-                a_time.cmp(&b_time)
+                files.sort_by_key(|f| f.mod_time.unwrap_or(0));
             }
             FileSortMethod::DateDesc => {
-                let a_time = a.get("mod_time").and_then(Value::as_u64).unwrap_or(0);
-                let b_time = b.get("mod_time").and_then(Value::as_u64).unwrap_or(0);
-                b_time.cmp(&a_time)
+                files.sort_by_key(|f| std::cmp::Reverse(f.mod_time.unwrap_or(0)));
             }
-        });
+        }
     }
 }
 

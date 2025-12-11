@@ -4,6 +4,7 @@
 //! that show how tokens are distributed across files in a codebase. It creates
 //! hierarchical tree structures with visual bars and colors, similar to disk usage
 //! analyzers but for token consumption.
+use code2prompt_core::path::FileEntry;
 #[cfg(windows)]
 use log::error;
 use lscolors::{Indicator, LsColors};
@@ -108,7 +109,7 @@ impl PartialOrd for NodePriority {
 ///
 /// * `Vec<TokenMapEntry>` - Hierarchical list of token map entries ready for display
 pub fn generate_token_map_with_limit(
-    files: &[serde_json::Value],
+    files: &[FileEntry],
     total_tokens: usize,
     max_lines: Option<usize>,
     min_percent: Option<f64>,
@@ -121,24 +122,21 @@ pub fn generate_token_map_with_limit(
 
     // Insert all files into the tree
     for file in files {
-        if let (Some(path_str), Some(tokens), Some(metadata_json)) = (
-            file.get("path").and_then(|p| p.as_str()),
-            file.get("token_count").and_then(|t| t.as_u64()),
-            file.get("metadata"),
-        ) {
-            let tokens = tokens as usize;
-            if let Ok(metadata) = serde_json::from_value(metadata_json.clone()) {
-                let path = Path::new(path_str);
+        let path_str = &file.path;
+        let tokens = file.token_count;
+        let metadata = EntryMetadata {
+            is_dir: file.metadata.is_dir,
+        };
 
-                // Skip the root component if it exists
-                let components: Vec<_> = path
-                    .components()
-                    .filter_map(|c| c.as_os_str().to_str())
-                    .collect();
+        let path = Path::new(path_str);
 
-                insert_path(&mut root, &components, tokens, String::new(), metadata);
-            }
-        }
+        // Skip the root component if it exists
+        let components: Vec<_> = path
+            .components()
+            .filter_map(|c| c.as_os_str().to_str())
+            .collect();
+
+        insert_path(&mut root, &components, tokens, String::new(), metadata);
     }
 
     // Use priority queue to select most significant entries

@@ -1,6 +1,6 @@
 [package]
 name = "code2prompt"
-version = "4.1.0"
+version = "4.2.0"
 edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"
@@ -11,7 +11,7 @@ readme = "../../README.md"
 wayland = ["arboard/wayland-data-control"]
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "4.1.0" }
+code2prompt_core = { path = "../code2prompt-core", version = "4.2.0" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
@@ -41,7 +41,7 @@ dirs = { workspace = true }
 regex = { workspace = true }
 handlebars = { workspace = true }
 ignore = { workspace = true }
-
+tiktoken-rs = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { workspace = true }

@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://code2prompt.dev">
-    <img align="center" width="550px" src="https://github.com/mufeedvh/code2prompt/blob/main/.assets/logo_dark_v0.0.2.svg" alt="Code2prompt"/>
+    <img align="center" width="550px" src="https://github.com/mufeedvh/code2prompt/blob/main/.assets/logo_dark_v0.0.2.svg?raw=true" alt="Code2prompt"/>
   </a>
   <br>
   <h3>Convert your codebase into a single LLM prompt.</h3>
@@ -28,10 +28,10 @@
 ---
 
 <h1 align="center">
-  <a href="https://code2prompt.dev"><img src="https://github.com/mufeedvh/code2prompt/blob/main/.assets/demo.gif" alt="code2prompt demo"></a>
+  <a href="https://code2prompt.dev"><img src="https://github.com/mufeedvh/code2prompt/blob/main/.assets/demo.gif?raw=true" alt="code2prompt demo"></a>
 </h1>
 
-![Flow Diagram](https://github.com/mufeedvh/code2prompt/blob/main/.assets/flow_diagram.png)
+![Flow Diagram](https://github.com/mufeedvh/code2prompt/blob/main/.assets/flow_diagram.png?raw=true)
 
 **Code2Prompt** is a powerful context engineering tool designed to ingest codebases and format them for Large Language Models. Whether you are manually copying context for ChatGPT, building AI agents via Python, or running a MCP server, Code2Prompt streamlines the context preparation process.
 

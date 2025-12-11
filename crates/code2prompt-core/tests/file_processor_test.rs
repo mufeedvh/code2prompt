@@ -325,4 +325,32 @@ mod default_tests {
         assert!(result.contains("Hello"));
         assert!(result.contains("world"));
     }
+
+    #[test]
+    fn test_gb2312_encoding_detection() {
+        let processor = DefaultTextProcessor;
+
+        // 1. Create the byte sequence for "GB2312 test: "
+        let mut content = b"GB2312 test: ".to_vec();
+
+        // 2. Append "你好" encoded in GB2312 MANY TIMES.
+        // Heuristic detectors need enough data (usually 100+ bytes) to be accurate.
+        // '你' = 0xC4 0xE3
+        // '好' = 0xBA 0xC3
+        let chinese_word = [0xC4, 0xE3, 0xBA, 0xC3];
+
+        // Repeat it 25 times to ensure the detector picks it up
+        for _ in 0..25 {
+            content.extend_from_slice(&chinese_word);
+        }
+
+        // 3. Process
+        let result = processor
+            .process(&content, &PathBuf::from("chinese.txt"))
+            .unwrap();
+
+        // 4. Assert that it was decoded back to UTF-8 correctly
+        // If the processor works, it should turn those hex bytes back into "你好"
+        assert!(result.contains("你好"));
+    }
 }
