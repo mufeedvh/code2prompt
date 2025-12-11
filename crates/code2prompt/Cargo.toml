@@ -11,7 +11,7 @@ readme = "../../README.md"
 wayland = ["arboard/wayland-data-control"]
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "4.1.1" }
+code2prompt_core = { path = "../code2prompt-core", version = "4.2.0" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
