@@ -39,25 +39,25 @@ pub struct SessionData {
 /// Uses references to avoid deep copying of heavy data
 #[derive(Serialize)]
 pub struct TemplateContext<'a> {
-    absolute_code_path: &'a str,
+    pub absolute_code_path: &'a str,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    source_tree: &'a Option<String>,
+    pub source_tree: &'a Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    files: Option<&'a [FileEntry]>,
+    pub files: Option<&'a [FileEntry]>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    git_diff: &'a Option<String>,
+    pub git_diff: &'a Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    git_diff_branch: &'a Option<String>,
+    pub git_diff_branch: &'a Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    git_log_branch: &'a Option<String>,
+    pub git_log_branch: &'a Option<String>,
 
     #[serde(flatten)]
-    user_variables: &'a HashMap<String, String>,
+    pub user_variables: &'a HashMap<String, String>,
 }
 
 /// Encapsulates the final rendered prompt and some metadata
@@ -215,32 +215,22 @@ impl Code2PromptSession {
         Ok(())
     }
 
-    /// Constructs a JSON object that merges the session data and your config’s path label.
-    pub fn build_template_data(&self) -> serde_json::Value {
-        let mut data = serde_json::json!({
-            "absolute_code_path": display_name(&self.config.path),
-            "source_tree": self.data.source_tree,
-            "files": self.data.files,
-            "git_diff": self.data.git_diff,
-            "git_diff_branch": self.data.git_diff_branch,
-            "git_log_branch": self.data.git_log_branch
-        });
-
-        // Add user-defined variables to the template data
-        if !self.config.user_variables.is_empty()
-            && let Some(obj) = data.as_object_mut()
-        {
-            for (key, value) in &self.config.user_variables {
-                obj.insert(key.clone(), serde_json::Value::String(value.clone()));
-            }
+    /// Constructs a zero-copy template context for rendering.
+    pub fn build_template_data(&self) -> TemplateContext<'_> {
+        TemplateContext {
+            absolute_code_path: self.data.absolute_code_path.as_deref().unwrap_or("unknown"),
+            source_tree: &self.data.source_tree,
+            files: self.data.files.as_deref(),
+            git_diff: &self.data.git_diff,
+            git_diff_branch: &self.data.git_diff_branch,
+            git_log_branch: &self.data.git_log_branch,
+            user_variables: &self.config.user_variables,
         }
-
-        data
     }
 
-    /// Renders the final prompt given a template-data JSON object. Returns both
+    /// Renders the final prompt given a template context. Returns both
     /// the rendered prompt and the token count information.
-    pub fn render_prompt(&self, template_data: &serde_json::Value) -> Result<RenderedPrompt> {
+    pub fn render_prompt(&self, template_context: &TemplateContext) -> Result<RenderedPrompt> {
         // ~~~ Template selection ~~~
         let mut template_str = self.config.template_str.clone();
         let mut template_name = self.config.template_name.clone();
@@ -259,7 +249,7 @@ impl Code2PromptSession {
 
         // ~~~ Rendering ~~~
         let handlebars = handlebars_setup(&template_str, &template_name)?;
-        let template_content = render_template(&handlebars, &template_name, template_data)?;
+        let template_content = render_template(&handlebars, &template_name, template_context)?;
 
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
@@ -270,11 +260,7 @@ impl Code2PromptSession {
         };
 
         let model_info = tokenizer_type.description();
-        let directory_name = template_data
-            .get("absolute_code_path")
-            .and_then(|s| s.as_str())
-            .unwrap_or("unknown")
-            .to_string();
+        let directory_name = template_context.absolute_code_path.to_string();
         let files: Vec<String> = self
             .data
             .files
@@ -380,25 +366,16 @@ impl Code2PromptSession {
                 .collect()
         });
 
-        // Build skeleton template data (same structure, but with empty file contents)
-        let skeleton_data = serde_json::json!({
-            "absolute_code_path": self.data.absolute_code_path,
-            "source_tree": self.data.source_tree,
-            "files": skeleton_files,
-            "git_diff": self.data.git_diff,
-            "git_diff_branch": self.data.git_diff_branch,
-            "git_log_branch": self.data.git_log_branch,
-        });
-
-        // Merge with user variables
-        let mut skeleton_data = skeleton_data;
-        if !self.config.user_variables.is_empty()
-            && let Some(obj) = skeleton_data.as_object_mut()
-        {
-            for (key, value) in &self.config.user_variables {
-                obj.insert(key.clone(), serde_json::Value::String(value.clone()));
-            }
-        }
+        // Build skeleton template context (same structure, but with empty file contents)
+        let skeleton_context = TemplateContext {
+            absolute_code_path: self.data.absolute_code_path.as_deref().unwrap_or("unknown"),
+            source_tree: &self.data.source_tree,
+            files: skeleton_files.as_deref(),
+            git_diff: &self.data.git_diff,
+            git_diff_branch: &self.data.git_diff_branch,
+            git_log_branch: &self.data.git_log_branch,
+            user_variables: &self.config.user_variables,
+        };
 
         // Render skeleton template
         let template_str = if self.config.template_str.is_empty() {
@@ -424,7 +401,7 @@ impl Code2PromptSession {
         // Render and count tokens
         match handlebars_setup(&template_str, &template_name) {
             Ok(handlebars) => {
-                match render_template(&handlebars, &template_name, &skeleton_data) {
+                match render_template(&handlebars, &template_name, &skeleton_context) {
                     Ok(skeleton_rendered) => count_tokens(&skeleton_rendered, tokenizer_type),
                     Err(_) => {
                         // Fallback to simple estimation if rendering fails

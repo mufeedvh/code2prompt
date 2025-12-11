@@ -104,21 +104,26 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // ~~~ Gather Repository Data ~~~
     session.load_codebase().map_err(|e| {
-        if let Some(s) = spinner
-            .as_ref() { s.finish_with_message("Failed!".red().to_string()) }
+        if let Some(s) = spinner.as_ref() {
+            s.finish_with_message("Failed!".red().to_string())
+        }
         error!("Failed to build directory tree: \n{}", e);
         anyhow::anyhow!("Failed to build directory tree: {}", e)
     })?;
-    if let Some(s) = spinner.as_ref() { s.set_message("Proceeding…") }
+    if let Some(s) = spinner.as_ref() {
+        s.set_message("Proceeding…")
+    }
 
     // ~~~ Git Related ~~~
     // Git Diff
     if session.config.diff_enabled {
-        if let Some(s) = spinner
-            .as_ref() { s.set_message("Generating git diff...") }
+        if let Some(s) = spinner.as_ref() {
+            s.set_message("Generating git diff...")
+        }
         session.load_git_diff().unwrap_or_else(|e| {
-            if let Some(s) = spinner
-                .as_ref() { s.finish_with_message("Failed!".red().to_string()) }
+            if let Some(s) = spinner.as_ref() {
+                s.finish_with_message("Failed!".red().to_string())
+            }
             error!("Failed to generate git diff: {}", e);
             std::process::exit(1);
         });
@@ -126,13 +131,15 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // Load Git diff between branches if provided
     if session.config.diff_branches.is_some() {
-        if let Some(s) = spinner
-            .as_ref() { s.set_message("Generating git diff between two branches...") }
+        if let Some(s) = spinner.as_ref() {
+            s.set_message("Generating git diff between two branches...")
+        }
         session
             .load_git_diff_between_branches()
             .unwrap_or_else(|e| {
-                if let Some(s) = spinner
-                    .as_ref() { s.finish_with_message("Failed!".red().to_string()) }
+                if let Some(s) = spinner.as_ref() {
+                    s.finish_with_message("Failed!".red().to_string())
+                }
                 error!("Failed to generate git diff: {}", e);
                 std::process::exit(1);
             });
@@ -154,12 +161,17 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // ~~~ Template ~~~
 
-    // Data
-    let mut data = session.build_template_data();
-    config::handle_undefined_variables(&mut data, &session.config.template_str)?;
+    // Handle undefined variables (modifies session.config.user_variables)
+    let template_str_clone = session.config.template_str.clone();
+    config::handle_undefined_variables(&mut session, &template_str_clone)?;
+
+    // Data - now build after handling undefined variables
+    let data = session.build_template_data();
     debug!(
-        "JSON Data: {}",
-        serde_json::to_string_pretty(&data).unwrap()
+        "Template Context: absolute_code_path={}, files_count={}, has_user_vars={}",
+        data.absolute_code_path,
+        data.files.map(|f| f.len()).unwrap_or(0),
+        !session.config.user_variables.is_empty()
     );
 
     // Render

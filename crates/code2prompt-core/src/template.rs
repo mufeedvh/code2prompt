@@ -51,15 +51,15 @@ pub fn extract_undefined_variables(template: &str) -> Vec<String> {
 ///
 /// * `handlebars` - The configured Handlebars instance.
 /// * `template_name` - The name of the template.
-/// * `data` - The JSON data object.
+/// * `data` - Any serializable data object.
 ///
 /// # Returns
 ///
 /// * `Result<String>` - The rendered template as a string.
-pub fn render_template(
+pub fn render_template<T: Serialize>(
     handlebars: &Handlebars,
     template_name: &str,
-    data: &serde_json::Value,
+    data: &T,
 ) -> Result<String> {
     let rendered = handlebars
         .render(template_name, data)

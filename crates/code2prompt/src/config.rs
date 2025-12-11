@@ -222,46 +222,37 @@ pub fn parse_template(template_arg: &Option<PathBuf>) -> Result<(String, String)
     }
 }
 
-/// Handles user-defined variables in the template and adds them to the data.
+/// Handles user-defined variables in the template and adds them to the session.
 ///
 /// This function extracts undefined variables from the template and prompts
 /// the user to provide values for them through interactive input.
 ///
 /// # Arguments
 ///
-/// * `data` - The JSON data object to modify
+/// * `session` - The Code2PromptSession to modify
 /// * `template_content` - The template content string to analyze
 ///
 /// # Returns
 ///
 /// * `Result<()>` - An empty result indicating success or an error
 pub fn handle_undefined_variables(
-    data: &mut serde_json::Value,
+    session: &mut Code2PromptSession,
     template_content: &str,
 ) -> Result<()> {
     let undefined_variables = extract_undefined_variables(template_content);
-    let mut user_defined_vars = serde_json::Map::new();
-    if let Some(obj) = data.as_object() {
-        for var in undefined_variables.iter() {
-            if !obj.contains_key(var) {
-                let prompt = format!("Enter value for '{}': ", var);
-                let answer = Text::new(&prompt)
-                    .with_help_message("Fill user defined variable in template")
-                    .prompt()
-                    .unwrap_or_default();
-                user_defined_vars.insert(var.clone(), serde_json::Value::String(answer));
-            }
+
+    for var in undefined_variables.iter() {
+        // Check if variable is already defined in user_variables
+        if !session.config.user_variables.contains_key(var) {
+            let prompt = format!("Enter value for '{}': ", var);
+            let answer = Text::new(&prompt)
+                .with_help_message("Fill user defined variable in template")
+                .prompt()
+                .unwrap_or_default();
+            session.config.user_variables.insert(var.clone(), answer);
         }
-    } else {
-        // Data is not an object; nothing to prompt for in this shape.
-        return Ok(());
     }
 
-    if let Some(obj) = data.as_object_mut() {
-        for (key, value) in user_defined_vars {
-            obj.insert(key, value);
-        }
-    }
     Ok(())
 }
 
