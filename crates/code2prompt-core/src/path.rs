@@ -262,12 +262,9 @@ fn process_single_file(file_info: &FileToProcess, config: &Code2PromptConfig) ->
         relative_path.to_string_lossy().to_string()
     };
 
-    // Calculate token count if enabled
-    let token_count = if config.token_map_enabled {
-        count_tokens(&code, &config.encoding)
-    } else {
-        0
-    };
+    // Always calculate token count in parallel (amortized by I/O wait time)
+    // This enables zero-overhead token counting regardless of display preferences
+    let token_count = count_tokens(&code, &config.encoding);
 
     // Get modification time if date sorting is requested
     let mod_time = if let Some(method) = config.sort_method {

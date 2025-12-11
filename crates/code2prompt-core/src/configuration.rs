@@ -79,7 +79,11 @@ pub struct Code2PromptConfig {
     /// Extra template data
     pub user_variables: HashMap<String, String>,
 
-    /// If true, token counting will be performed for each file (for token map display)
+    /// If true, detailed token map breakdown will be displayed in output.
+    ///
+    /// Note: Token counting always happens internally for performance optimization
+    /// (parallelized during file I/O). This flag only controls whether the breakdown
+    /// is shown to users in the final output.
     pub token_map_enabled: bool,
 }
 

@@ -253,11 +253,9 @@ impl Code2PromptSession {
 
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
-        let token_count = if self.config.token_map_enabled {
-            self.calculate_token_count_from_cache(&template_content, &tokenizer_type)
-        } else {
-            count_tokens(&template_content, &tokenizer_type)
-        };
+        // Always use the cached calculation: Σ(FileTokens) + TemplateOverhead
+        // This avoids re-tokenizing the entire rendered output (sequential bottleneck)
+        let token_count = self.calculate_token_count_from_cache(&tokenizer_type);
 
         let model_info = tokenizer_type.description();
         let directory_name = template_context.absolute_code_path.to_string();
@@ -294,25 +292,21 @@ impl Code2PromptSession {
 
     /// Calculate exact token count using cached per-file token counts + skeleton rendering
     ///
-    /// This method provides precise token counting when token_map is enabled:
-    /// Instead of re-tokenizing the entire rendered output, it:
-    /// 1. Sums the cached per-file token counts (from actual content)
-    /// 2. Renders a "skeleton" template with empty file contents to get structural tokens
-    /// 3. Adds them together for an exact count
+    /// This method provides precise token counting by:
+    /// 1. Summing the cached per-file token counts (from actual content tokenized in parallel)
+    /// 2. Rendering a "skeleton" template with empty file contents to get structural tokens
+    /// 3. Adding them together for an exact count
+    ///
+    /// This approach avoids re-tokenizing the entire rendered output (sequential bottleneck).
     ///
     /// # Arguments
     ///
-    /// * `_rendered_content` - The full rendered template content (reserved for future use)
     /// * `tokenizer_type` - The tokenizer to use for tokenization
     ///
     /// # Returns
     ///
     /// * `usize` - The exact total token count
-    fn calculate_token_count_from_cache(
-        &self,
-        _rendered_content: &str,
-        tokenizer_type: &TokenizerType,
-    ) -> usize {
+    fn calculate_token_count_from_cache(&self, tokenizer_type: &TokenizerType) -> usize {
         // Sum up cached per-file token counts (tokens from actual file content)
         let files_token_count: usize = self
             .data
