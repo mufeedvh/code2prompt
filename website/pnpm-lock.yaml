@@ -63,8 +63,8 @@ importers:
         specifier: ^0.25.2
         version: 0.25.2(@astrojs/starlight@0.37.0(astro@5.16.3(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.3)(typescript@5.8.3)))(astro@5.16.3(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.3)(typescript@5.8.3))
       tailwindcss:
-        specifier: ^4.1.17
-        version: 4.1.17
+        specifier: ^4.1.18
+        version: 4.1.18
     devDependencies:
       dlx:
         specifier: ^0.2.1
@@ -2228,6 +2228,9 @@ packages:
 
   tailwindcss@4.1.17:
     resolution: {integrity: sha512-j9Ee2YjuQqYT9bbRTfTZht9W/ytp5H+jJpZKiYdP/bpnXARAuELt9ofP0lPnmHjbga7SNQIxdTAXCmtKVYjN+Q==}
+
+  tailwindcss@4.1.18:
+    resolution: {integrity: sha512-4+Z+0yiYyEtUVCScyfHCxOYP06L5Ne+JiHhY2IjR2KWMIWhJOYZKLSGZaP5HkZ8+bY0cxfzwDE5uOmzFXyIwxw==}
 
   tapable@2.3.0:
     resolution: {integrity: sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg==}
@@ -5300,6 +5303,8 @@ snapshots:
       sax: 1.4.3
 
   tailwindcss@4.1.17: {}
+
+  tailwindcss@4.1.18: {}
 
   tapable@2.3.0: {}
 
