@@ -35,7 +35,7 @@ jobs:
           override: true
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -57,7 +57,7 @@ jobs:
       - name: Cache LLVM on Windows
         if: runner.os == 'Windows'
         id: cache-llvm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: C:\Program Files\LLVM
           key: windows-llvm-latest
