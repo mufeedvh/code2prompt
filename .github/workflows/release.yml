@@ -109,7 +109,7 @@ jobs:
           echo "::set-output name=asset-path::$ASSET_PATH"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: asset-${{ matrix.target }}
           path: ${{ steps.set_asset.outputs.asset-path }}
