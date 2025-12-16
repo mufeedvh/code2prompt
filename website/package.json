@@ -11,31 +11,31 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/markdoc": "0.15.9",
-    "@astrojs/mdx": "4.3.12",
+    "@astrojs/markdoc": "0.15.10",
+    "@astrojs/mdx": "4.3.13",
     "@astrojs/partytown": "^2.1.4",
     "@astrojs/prism": "3.3.0",
     "@astrojs/react": "4.4.2",
     "@astrojs/sitemap": "3.6.0",
-    "@astrojs/starlight": "^0.37.0",
+    "@astrojs/starlight": "^0.37.1",
     "@astrojs/upgrade": "^0.6.2",
-    "@tailwindcss/vite": "^4.1.17",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "astro": "5.16.3",
+    "astro": "5.16.5",
     "marked": "^17.0.1",
     "prismjs": "^1.30.0",
     "rehype-mathjax": "^7.1.0",
     "remark-math": "^6.0.0",
     "sharp": "^0.34.5",
     "starlight-blog": "^0.25.2",
-    "tailwindcss": "^4.1.17"
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "dlx": "^0.2.1",
     "prettier-plugin-astro": "^0.14.1",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "packageManager": "pnpm@10.18.0"
 }
