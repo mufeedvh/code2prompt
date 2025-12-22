@@ -1,0 +1,169 @@
+---
+title: Configuring Code2Prompt 📖
+description: Learn how to use .c2pconfig to automate your prompt generation workflow and ensure team consistency.
+---
+
+import { Card, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Tutorial Overview">
+  Manually typing long exclude patterns or specific tokenizer settings every time can be tedious. Therefore this tutorial shows you **how to use a `.c2pconfig` configuration file** to "set and forget" your project settings.
+</Card>
+
+---
+
+## Prerequisites
+
+Ensure you have `code2prompt` installed. If you haven't installed it yet, refer to the [Installation Guide](/docs/how_to/install). Familiarity with [TOML syntax](https://toml.io/en/) is helpful but not required.
+
+---
+
+## What is .c2pconfig?
+
+The `.c2pconfig` file is a configuration file written in **TOML** format. When you run `code2prompt`, it automatically searches for this file in your current working directory. 
+
+It allows you to define:
+* **Filtering Rules:** Persistent include/exclude patterns.
+* **Output Formats:** Default to JSON, Markdown, or XML.
+* **Template Context:** Pre-define variables for your Handlebars templates.
+
+---
+
+## Quick Start
+
+Create a file named `.c2pconfig` at the root of your project to define your base behavior.
+
+```toml
+# .c2pconfig example
+default_output = "stdout" # Options: stdout, clipboard, file
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = ["**/target/**", "tests/fixtures/**"]
+line_numbers = true
+output_format = "markdown"
+
+[user_variables]
+project_name = "MyAwesomeProject"
+author = "Developer"
+
+```
+
+---
+
+## Configuration Reference
+
+The following table describes the keys available in the configuration file.
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `path` | String | Default path to codebase (usually `.`). |
+| `include_patterns` | Array | Glob patterns of files to include. |
+| `exclude_patterns` | Array | Glob patterns of files to exclude. |
+| `line_numbers` | Boolean | If `true`, adds line numbers to code blocks. |
+| `absolute_path` | Boolean | Use absolute paths instead of relative paths. |
+| `full_directory_tree` | Boolean | Generate the full tree even for excluded files. |
+| `output_format` | String | `markdown`, `json`, or `xml`. |
+| `sort_method` | String | `name_asc`, `name_desc`, `date_asc`, `date_desc`. |
+| `encoding` | String | Tokenizer: `cl100k`, `p50k`, `o200k`. |
+| `diff_enabled` | Boolean | Include git diff (HEAD vs Index). |
+| `token_map_enabled` | Boolean | Display a hierarchical token usage map. |
+
+---
+
+## Implementation Guide
+
+Follow these steps to integrate a configuration file into your workflow.
+
+<Steps>
+
+1. **Initialize your Configuration**
+        Navigate to your project root and create the config file:
+        ```bash
+        touch .c2pconfig
+
+        ```
+
+2. **Define your Source of Truth**
+        Exclude heavy directories like `node_modules` or build artifacts to keep the LLM context clean.
+        ```toml
+        exclude_patterns = [
+        "**/node_modules/**",
+        "package-lock.json",
+        "dist/**"
+        ]
+
+        ```
+
+3. **Set your Model Encoding**
+        Match the tokenizer to your target LLM. Use `o200k` for GPT-4o, or `cl100k` for Claude and GPT-4.
+        ```toml
+        encoding = "o200k"
+
+        ```
+
+4. **Inject Custom Context**
+        Use the `[user_variables]` section to pass data into your [Handlebars templates](/docs/learn/templates).
+        ```toml
+        [user_variables]
+        project_goal = "Refactor the authentication module for better security."
+
+        ```
+
+5. **Run with Zero Arguments**
+        Simply run the tool. It will now respect all your predefined rules without extra CLI flags.
+        ```bash
+        code2prompt .
+
+        ```
+
+</Steps>
+
+---
+
+## Understanding Precedence
+
+It is important to understand how `code2prompt` decides which settings to use when multiple sources conflict.
+
+<Aside type="tip" title="Priority Order">
+**CLI Arguments > Configuration File > Default Settings**
+
+Arguments passed directly via the CLI will always override values defined in `.c2pconfig`. This allows you to maintain a "base" config while remaining flexible for one-off commands.
+
+</Aside>
+
+### Advanced Filtering Logic
+
+The engine uses a tiered selection system:
+
+* **Static (A/B):** Defined in your `.c2pconfig` (Include/Exclude).
+* **Dynamic (A'/B'):** If you use **Interactive Mode**, your manual toggle selections override the static patterns for that specific session.
+
+---
+
+## Example: The "Review-Ready" Config
+
+Use this setup if your primary goal is generating prompts for code reviews.
+
+```toml
+default_output = "clipboard"
+line_numbers = true
+token_map_enabled = true
+
+exclude_patterns = [
+    "tests/**",
+    "**/migrations/**",
+    "*.md"
+]
+
+[user_variables]
+review_focus = "Check for DRY principle violations and complexity."
+
+```
+
+---
+
+## Next Steps
+
+<Card title="Level Up your Workflow">
+
+* **Master Templates:** Explore [Custom Templates](/docs/tutorials/learn_templates) to see how to use `user_variables` effectively.
+* **Refine Filtering:** Check the [Filtering Guide](/docs/tutorials/learn_filters) for advanced glob pattern syntax.
+</Card>

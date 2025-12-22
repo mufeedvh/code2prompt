@@ -98,6 +98,10 @@ export default defineConfig({
                   label: "Learn Filtering",
                   link: "docs/tutorials/learn_filters",
                 },
+                { 
+                  label: "Learn Configuration", 
+                  link: "docs/tutorials/configuration"
+                },
               ],
             },
             {
