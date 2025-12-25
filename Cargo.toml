@@ -51,7 +51,7 @@ termtree = "0.5"
 tiktoken-rs = "0.9.1"
 terminal_size = "0.4.3"
 tokio = { version = "1.40.0", features = ["full"] }
-toml = "0.9.7"
+toml = "0.9.10"
 tui-tree-widget = "0.23.0"
 tui-textarea = "0.7"
 unicode-width = "0.2.0"
