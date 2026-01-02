@@ -1,5 +1,6 @@
 //! Statistics overview widget for displaying analysis summary.
 use crate::model::{Model, StatisticsState};
+use crate::utils::format_number;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -132,19 +133,13 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             let token_count = result.token_count;
             stats_items.push(ListItem::new(format!(
                 "  • Total Tokens: {}",
-                StatisticsState::format_number(
-                    token_count,
-                    &self.model.session.config.token_format
-                )
+                format_number(token_count, &self.model.session.config.token_format)
             )));
             if selected_count > 0 {
                 let avg_tokens = token_count / selected_count;
                 stats_items.push(ListItem::new(format!(
                     "  • Avg per File: {}",
-                    StatisticsState::format_number(
-                        avg_tokens,
-                        &self.model.session.config.token_format
-                    )
+                    format_number(avg_tokens, &self.model.session.config.token_format)
                 )));
             }
         } else {

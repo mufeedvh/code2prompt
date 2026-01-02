@@ -72,6 +72,7 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
             &self.model.statistics.token_map_entries,
             total_tokens,
             terminal_width,
+            &self.model.session.config.token_format,
         );
 
         // Calculate viewport for scrolling - read directly from Model

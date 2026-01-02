@@ -8,7 +8,6 @@ pub mod types;
 use code2prompt_core::analysis::{CodebaseAnalysis, TokenMapEntry};
 
 use crate::model::DisplayFileNode;
-use crate::utils::format_number;
 pub use types::*;
 
 /// Statistics state containing all statistics-related data
@@ -47,14 +46,6 @@ impl StatisticsState {
             }
         }
         nodes.iter().map(rec).sum()
-    }
-
-    /// Format number according to token format setting (moved from widget)
-    pub fn format_number(
-        num: usize,
-        token_format: &code2prompt_core::tokenizer::TokenFormat,
-    ) -> String {
-        format_number(num, token_format)
     }
 
     /// Aggregate tokens by file extension using a CodebaseAnalysis

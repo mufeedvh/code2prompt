@@ -1,6 +1,7 @@
 //! Statistics by extension widget for displaying extension-based histogram.
 
 use crate::model::{Model, StatisticsState};
+use crate::utils::format_number;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -99,8 +100,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let max_tokens_width = ext_vec
             .iter()
             .map(|(_, tokens, _)| {
-                StatisticsState::format_number(*tokens, &self.model.session.config.token_format)
-                    .len()
+                format_number(*tokens, &self.model.session.config.token_format).len()
             })
             .max()
             .unwrap_or(6)
@@ -164,10 +164,8 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
                 };
 
                 // Format with dynamic column widths
-                let formatted_tokens = StatisticsState::format_number(
-                    *tokens,
-                    &self.model.session.config.token_format,
-                );
+                let formatted_tokens =
+                    format_number(*tokens, &self.model.session.config.token_format);
                 let content = format!(
                     "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {:>width_count$} files",
                     extension,

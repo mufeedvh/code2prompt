@@ -5,7 +5,7 @@
 
 use crate::utils::format_number;
 use code2prompt_core::analysis::TokenMapEntry;
-use code2prompt_core::tokenizer::TokenFormat::Format;
+use code2prompt_core::tokenizer::TokenFormat;
 use colored::Colorize;
 use unicode_width::UnicodeWidthStr;
 
@@ -53,7 +53,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         .unwrap_or(80);
 
     // 1. REUSE: Call the shared formatting logic used by the TUI
-    let formatted_lines = format_token_map_for_tui(entries, total_tokens, terminal_width);
+    let formatted_lines =
+        format_token_map_for_tui(entries, total_tokens, terminal_width, &TokenFormat::Format);
 
     // 2. RENDER: Print lines to stderr using 'colored' crate for ANSI output
     for line in formatted_lines {
@@ -198,8 +199,8 @@ pub fn format_token_map_for_tui(
     entries: &[TokenMapEntry],
     total_tokens: usize,
     terminal_width: usize,
+    token_format: &TokenFormat,
 ) -> Vec<TuiTokenMapLine> {
-    let format = Format;
     if entries.is_empty() {
         return Vec::new();
     }
@@ -210,10 +211,10 @@ pub fn format_token_map_for_tui(
     // Calculate max token width
     let max_token_width = entries
         .iter()
-        .map(|e| format_number(e.tokens, &format).len())
+        .map(|e| format_number(e.tokens, token_format).len())
         .max()
         .unwrap_or(3)
-        .max(format_number(total_tokens, &format).len())
+        .max(format_number(total_tokens, token_format).len())
         .max(4);
 
     // Calculate max name length
@@ -243,7 +244,7 @@ pub fn format_token_map_for_tui(
         let prefix = build_tree_prefix(entry, entries, i);
 
         // Format tokens
-        let tokens_str = format_number(entry.tokens, &format);
+        let tokens_str = format_number(entry.tokens, token_format);
 
         // Generate hierarchical bar
         let depth_index = entry.depth;
