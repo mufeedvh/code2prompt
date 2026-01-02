@@ -58,9 +58,13 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
             return;
         }
 
-        // Use business logic from Model - pure Elm/Redux pattern
-        let ext_vec = self.model.statistics.aggregate_by_extension();
+        // Use CodebaseAnalysis facade for accurate stats on ALL files
         let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
+        let ext_vec = if let Some(files) = self.model.session.data.files.as_ref() {
+            StatisticsState::aggregate_by_extension(files, total_tokens)
+        } else {
+            Vec::new()
+        };
 
         // Calculate viewport for scrolling - read directly from Model
         let content_height = layout[0].height.saturating_sub(2).max(1) as usize;

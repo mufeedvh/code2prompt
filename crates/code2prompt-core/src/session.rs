@@ -13,8 +13,12 @@ use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use crate::tokenizer::{TokenizerType, count_tokens};
 
-/// Represents a live session that holds stateful data about the user's codebase,
-/// including which files have been added or removed, or other data that evolves over time.
+/// Represents a live session that orchestrates c2p workflow.
+///
+/// This struct acts as the high-level controller. It binds together:
+/// - Static Configuration (Code2PromptConfig)
+/// - Filtering Logic (SelectionEngine)
+/// - Codebase Data (SessionData)
 #[derive(Debug, Clone)]
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
@@ -23,7 +27,7 @@ pub struct Code2PromptSession {
 }
 
 /// Represents the collected data about the code (tree + files) and optional Git info.
-/// The session loads these pieces separately, so you can manage them step by step.
+/// It acts as a "Single Source of Truth" and persists throughout the session.
 #[derive(Debug, Default, Clone)]
 pub struct SessionData {
     pub absolute_code_path: Option<String>,
@@ -35,8 +39,8 @@ pub struct SessionData {
     pub git_log_branch: Option<String>,
 }
 
-/// Zero-copy template context for rendering
-/// Uses references to avoid deep copying of heavy data
+/// Represents a transient, zero-copy data view for template rendering
+/// Created on-the-fly, it borrows references (`&'a`) from `SessionData` to avoid cloning heavy file content.
 #[derive(Serialize)]
 pub struct TemplateContext<'a> {
     pub absolute_code_path: &'a str,

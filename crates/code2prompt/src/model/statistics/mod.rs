@@ -5,6 +5,8 @@
 
 pub mod types;
 
+use code2prompt_core::analysis::{CodebaseAnalysis, TokenMapEntry};
+
 use crate::model::DisplayFileNode;
 use crate::utils::format_number;
 pub use types::*;
@@ -14,7 +16,7 @@ pub use types::*;
 pub struct StatisticsState {
     pub view: StatisticsView,
     pub scroll: u16,
-    pub token_map_entries: Vec<crate::token_map::TokenMapEntry>,
+    pub token_map_entries: Vec<TokenMapEntry>,
 }
 
 impl Default for StatisticsState {
@@ -55,32 +57,21 @@ impl StatisticsState {
         format_number(num, token_format)
     }
 
-    /// Aggregate tokens by file extension (moved from widget - business logic belongs in Model)
-    pub fn aggregate_by_extension(&self) -> Vec<(String, usize, usize)> {
-        let mut extension_stats: std::collections::HashMap<String, (usize, usize)> =
-            std::collections::HashMap::new();
+    /// Aggregate tokens by file extension using CodebaseAnalysis facade
+    ///
+    /// This method operates on ALL files in the codebase, not just the filtered
+    /// token map entries, ensuring accurate statistics.
+    pub fn aggregate_by_extension(
+        files: &[code2prompt_core::path::FileEntry],
+        total_tokens: usize,
+    ) -> Vec<(String, usize, usize)> {
+        let analysis = CodebaseAnalysis::new(files, total_tokens);
+        let ext_stats = analysis.by_extension();
 
-        for entry in &self.token_map_entries {
-            if !entry.metadata.is_dir {
-                let extension = entry
-                    .name
-                    .split('.')
-                    .next_back()
-                    .map(|ext| format!(".{}", ext))
-                    .unwrap_or_else(|| "(no extension)".to_string());
-
-                let (tokens, count) = extension_stats.entry(extension).or_insert((0, 0));
-                *tokens += entry.tokens;
-                *count += 1;
-            }
-        }
-
-        // Convert to sorted vec (by tokens desc)
-        let mut ext_vec: Vec<(String, usize, usize)> = extension_stats
+        // Convert to the format expected by the widget (extension, tokens, count)
+        ext_stats
             .into_iter()
-            .map(|(ext, (tokens, count))| (ext, tokens, count))
-            .collect();
-        ext_vec.sort_by(|a, b| b.1.cmp(&a.1));
-        ext_vec
+            .map(|stat| (stat.extension, stat.tokens, stat.file_count))
+            .collect()
     }
 }

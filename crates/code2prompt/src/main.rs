@@ -12,10 +12,12 @@ mod utils;
 mod view;
 mod widgets;
 
+use crate::token_map::display_token_map;
 use crate::utils::format_number;
 use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
+use code2prompt_core::analysis::{CodebaseAnalysis, TokenMapOptions};
 use code2prompt_core::template::write_to_file;
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -202,12 +204,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // ~~~ Token Map Display ~~~
     if args.token_map {
-        use crate::token_map::{display_token_map, generate_token_map_with_limit};
-
         if let Some(files) = session.data.files.as_ref() {
-            // Calculate total tokens from individual file counts
-            let total_from_files: usize = files.iter().map(|f| f.token_count).sum();
-
             // Get max lines from command line or calculate from terminal height
             let max_lines = args.token_map_lines.unwrap_or_else(|| {
                 terminal_size::terminal_size()
@@ -219,14 +216,15 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
                     .unwrap_or(20) // Default to 20 lines if terminal size detection fails
             });
 
-            // Use the sum of individual file tokens for the map with line limit
-            let entries = generate_token_map_with_limit(
-                files,
-                total_from_files,
-                Some(max_lines),
-                args.token_map_min_percent,
-            );
-            display_token_map(&entries, total_from_files);
+            // Use the CodebaseAnalysis facade to generate token map
+            // IMPORTANT: Use token_count from rendered (includes structural overhead)
+            let analysis = CodebaseAnalysis::new(files, token_count);
+            let entries = analysis.token_map(TokenMapOptions {
+                max_lines,
+                min_percent: args.token_map_min_percent.unwrap_or(0.1),
+            });
+
+            display_token_map(&entries, token_count);
         }
     }
 
