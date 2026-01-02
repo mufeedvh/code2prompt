@@ -240,7 +240,8 @@ fn generate_token_map_internal(
     // Add "other files" aggregation if needed
     let displayed_tokens: usize = entries
         .iter()
-        .map(|e| if !e.metadata.is_dir { e.tokens } else { 0 })
+        .filter(|e| e.depth == 0)
+        .map(|e| e.tokens)
         .sum();
 
     let hidden_tokens = calculate_file_tokens(&root).saturating_sub(displayed_tokens);

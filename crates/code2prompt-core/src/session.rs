@@ -6,6 +6,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use crate::analysis::CodebaseAnalysis;
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{FileEntry, display_name, traverse_directory, wrap_code_block};
@@ -65,7 +66,7 @@ pub struct TemplateContext<'a> {
 }
 
 /// Encapsulates the final rendered prompt and some metadata
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RenderedPrompt {
     pub prompt: String,
     pub directory_name: String,
@@ -232,6 +233,46 @@ impl Code2PromptSession {
         }
     }
 
+    /// Create a "raw" (intrinsic) analysis of the loaded codebase
+    ///
+    /// This analysis uses the sum of per-file token counts (Σ FileEntry.token_count)
+    /// without including template structural overhead.
+    ///
+    /// **Use case**: Before prompt generation, for cost estimation, or for
+    /// pure codebase statistics exploration (e.g., in TUI Statistics tab).
+    ///
+    /// # Returns
+    ///
+    /// * `Option<CodebaseAnalysis>` - Analysis facade if files are loaded, None otherwise
+    pub fn raw_analysis(&self) -> Option<CodebaseAnalysis<'_>> {
+        self.data.files.as_ref().map(|files| {
+            let raw_token_sum: usize = files.iter().map(|f| f.token_count).sum();
+            CodebaseAnalysis::new(files.as_slice(), raw_token_sum)
+        })
+    }
+
+    /// Create a "contextual" (post-generation) analysis based on a rendered prompt
+    ///
+    /// This analysis uses the token count from a RenderedPrompt, which includes
+    /// both file content tokens AND template structural overhead (tree, git info, etc.).
+    ///
+    /// **Use case**: After `generate_prompt()`, when you need analysis in the context
+    /// of the actual rendered output (e.g., token map showing real percentages).
+    ///
+    /// # Arguments
+    ///
+    /// * `prompt` - A RenderedPrompt containing the contextual token count
+    ///
+    /// # Returns
+    ///
+    /// * `Option<CodebaseAnalysis>` - Analysis facade if files are loaded, None otherwise
+    pub fn contextual_analysis(&self, prompt: &RenderedPrompt) -> Option<CodebaseAnalysis<'_>> {
+        self.data
+            .files
+            .as_ref()
+            .map(|files| CodebaseAnalysis::new(files.as_slice(), prompt.token_count))
+    }
+
     /// Renders the final prompt given a template context. Returns both
     /// the rendered prompt and the token count information.
     pub fn render_prompt(&self, template_context: &TemplateContext) -> Result<RenderedPrompt> {
@@ -258,7 +299,6 @@ impl Code2PromptSession {
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
         // Always use the cached calculation: Σ(FileTokens) + TemplateOverhead
-        // This avoids re-tokenizing the entire rendered output (sequential bottleneck)
         let token_count = self.calculate_token_count_from_cache(&tokenizer_type);
 
         let model_info = tokenizer_type.description();

@@ -29,7 +29,7 @@ use crate::widgets::{
     FileSelectionWidget, OutputWidget, SettingsWidget, StatisticsByExtensionWidget,
     StatisticsOverviewWidget, StatisticsTokenMapWidget, TemplateWidget,
 };
-use code2prompt_core::analysis::{CodebaseAnalysis, TokenMapOptions};
+use code2prompt_core::analysis::TokenMapOptions;
 
 use crate::utils::build_file_tree_from_session;
 
@@ -508,26 +508,18 @@ impl TuiApp {
 
                     match session.generate_prompt() {
                         Ok(rendered) => {
-                            // Use CodebaseAnalysis facade to generate token map
-                            let token_map_entries = if rendered.token_count > 0 {
-                                if let Some(files) = session.data.files.as_ref() {
-                                    let analysis =
-                                        CodebaseAnalysis::new(files, rendered.token_count);
+                            let token_map_entries = session
+                                .contextual_analysis(&rendered)
+                                .map(|analysis| {
                                     analysis.token_map(TokenMapOptions {
                                         max_lines: 50,
                                         min_percent: 0.5,
                                     })
-                                } else {
-                                    Vec::new()
-                                }
-                            } else {
-                                Vec::new()
-                            };
+                                })
+                                .unwrap_or_default();
 
                             let result = AnalysisResults {
-                                file_count: rendered.files.len(),
-                                token_count: Some(rendered.token_count),
-                                generated_prompt: rendered.prompt,
+                                rendered,
                                 token_map_entries,
                             };
                             let _ = tx.send(Message::AnalysisComplete(result));

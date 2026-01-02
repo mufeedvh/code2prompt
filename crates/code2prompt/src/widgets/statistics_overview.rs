@@ -27,7 +27,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             .split(area);
 
         // Check if analysis has been run
-        if self.model.prompt_output.generated_prompt.is_none()
+        if self.model.prompt_output.result.is_none()
             && !self.model.prompt_output.analysis_in_progress
         {
             // Show placeholder when no analysis has been run
@@ -57,7 +57,7 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ("Generating prompt...".to_string(), Color::Yellow)
         } else if self.model.prompt_output.analysis_error.is_some() {
             ("Analysis failed".to_string(), Color::Red)
-        } else if self.model.prompt_output.generated_prompt.is_some() {
+        } else if self.model.prompt_output.result.is_some() {
             ("Analysis complete".to_string(), Color::Green)
         } else {
             ("Ready to analyze".to_string(), Color::Gray)
@@ -90,7 +90,13 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         let mut session_clone = self.model.session.clone();
         let selected_count = StatisticsState::count_selected_files(&mut session_clone);
         let eligible_count = StatisticsState::count_total_files(&self.model.file_tree_nodes);
-        let total_files = self.model.prompt_output.file_count;
+        let total_files = self
+            .model
+            .prompt_output
+            .result
+            .as_ref()
+            .map(|r| r.files.len())
+            .unwrap_or(0);
         stats_items.push(ListItem::new(format!(
             "  • Selected (current): {} files",
             selected_count
@@ -122,7 +128,8 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
             ),
         );
 
-        if let Some(token_count) = self.model.prompt_output.token_count {
+        if let Some(result) = &self.model.prompt_output.result {
+            let token_count = result.token_count;
             stats_items.push(ListItem::new(format!(
                 "  • Total Tokens: {}",
                 StatisticsState::format_number(

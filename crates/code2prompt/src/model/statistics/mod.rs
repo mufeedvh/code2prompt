@@ -57,15 +57,19 @@ impl StatisticsState {
         format_number(num, token_format)
     }
 
-    /// Aggregate tokens by file extension using CodebaseAnalysis facade
+    /// Aggregate tokens by file extension using a CodebaseAnalysis
     ///
-    /// This method operates on ALL files in the codebase, not just the filtered
-    /// token map entries, ensuring accurate statistics.
-    pub fn aggregate_by_extension(
-        files: &[code2prompt_core::path::FileEntry],
-        total_tokens: usize,
-    ) -> Vec<(String, usize, usize)> {
-        let analysis = CodebaseAnalysis::new(files, total_tokens);
+    /// This method delegates to the analysis facade's by_extension() method.
+    /// The caller can provide either a raw or contextual analysis depending on their needs.
+    ///
+    /// # Arguments
+    ///
+    /// * `analysis` - A CodebaseAnalysis instance (raw or contextual)
+    ///
+    /// # Returns
+    ///
+    /// * `Vec<(extension, tokens, file_count)>` - Aggregated statistics
+    pub fn aggregate_by_extension(analysis: &CodebaseAnalysis) -> Vec<(String, usize, usize)> {
         let ext_stats = analysis.by_extension();
 
         // Convert to the format expected by the widget (extension, tokens, count)
