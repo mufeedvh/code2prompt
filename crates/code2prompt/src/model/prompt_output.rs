@@ -9,24 +9,13 @@ use code2prompt_core::session::RenderedPrompt;
 ///
 /// This struct stores the complete RenderedPrompt from the Core, preserving
 /// all context (files, directory_name, model_info, etc.) as a Single Source of Truth.
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct PromptOutputState {
     /// The complete rendered prompt result from the Core
     pub result: Option<RenderedPrompt>,
     pub analysis_in_progress: bool,
     pub analysis_error: Option<String>,
     pub output_scroll: u16,
-}
-
-impl Default for PromptOutputState {
-    fn default() -> Self {
-        Self {
-            result: None,
-            analysis_in_progress: false,
-            analysis_error: None,
-            output_scroll: 0,
-        }
-    }
 }
 
 /// Results from code2prompt analysis

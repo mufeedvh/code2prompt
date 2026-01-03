@@ -217,7 +217,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
             .contextual_analysis(&rendered)
             .map(|analysis| {
                 analysis.token_map(TokenMapOptions {
-                    max_lines: max_lines,
+                    max_lines,
                     min_percent: args.token_map_min_percent.unwrap_or(0.5),
                 })
             })
