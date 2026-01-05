@@ -16,7 +16,7 @@ codegen-units = 1
 anyhow = "1.0.98"
 ansi_term = "0.12.1"
 arboard = { version = "3.6.0" }
-bracoxide = "0.1.6"
+bracoxide = "0.1.8"
 colored = "3.0.0"
 csv = "1.4.0"
 chrono = { version = "0.4", features = ["serde"] }
