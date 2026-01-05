@@ -50,7 +50,7 @@ serde_json = "1.0.148"
 termtree = "0.5"
 tiktoken-rs = "0.9.1"
 terminal_size = "0.4.3"
-tokio = { version = "1.40.0", features = ["full"] }
+tokio = { version = "1.49.0", features = ["full"] }
 toml = "0.9.10"
 tui-tree-widget = "0.23.0"
 tui-textarea = "0.7"
