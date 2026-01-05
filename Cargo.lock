@@ -1068,9 +1068,9 @@ dependencies = [
 
 [[package]]
 name = "handlebars"
-version = "6.3.2"
+version = "6.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "759e2d5aea3287cb1190c8ec394f42866cb5bf74fcbf213f354e3c856ea26098"
+checksum = "9b3f9296c208515b87bd915a2f5d1163d4b3f863ba83337d7713cf478055948e"
 dependencies = [
  "derive_builder",
  "log",
