@@ -20,7 +20,7 @@
     "@astrojs/starlight": "^0.37.1",
     "@astrojs/upgrade": "^0.6.2",
     "@tailwindcss/vite": "^4.1.18",
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "astro": "5.16.5",
     "marked": "^17.0.1",

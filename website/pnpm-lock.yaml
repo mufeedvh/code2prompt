@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@astrojs/markdoc':
         specifier: 0.15.10
-        version: 0.15.10(@types/react@19.2.7)(astro@5.16.5(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.5)(typescript@5.8.3))(react@19.2.3)
+        version: 0.15.10(@types/react@19.2.8)(astro@5.16.5(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.5)(typescript@5.8.3))(react@19.2.3)
       '@astrojs/mdx':
         specifier: 4.3.13
         version: 4.3.13(astro@5.16.5(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.5)(typescript@5.8.3))
@@ -22,7 +22,7 @@ importers:
         version: 3.3.0
       '@astrojs/react':
         specifier: 4.4.2
-        version: 4.4.2(@types/node@25.0.2)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 4.4.2(@types/node@25.0.2)(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@astrojs/sitemap':
         specifier: 3.6.0
         version: 3.6.0
@@ -36,11 +36,11 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@6.4.1(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2))
       '@types/react':
-        specifier: ^19.2.7
-        version: 19.2.7
+        specifier: ^19.2.8
+        version: 19.2.8
       '@types/react-dom':
         specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.7)
+        version: 19.2.3(@types/react@19.2.8)
       astro:
         specifier: 5.16.5
         version: 5.16.5(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.5)(typescript@5.8.3)
@@ -921,8 +921,8 @@ packages:
     peerDependencies:
       '@types/react': ^19.2.0
 
-  '@types/react@19.2.7':
-    resolution: {integrity: sha512-MWtvHrGZLFttgeEj28VXHxpmwYbor/ATPYbBfSFZEIRK0ecCFLl2Qo55z52Hss+UV9CRN7trSeq1zbgx7YDWWg==}
+  '@types/react@19.2.8':
+    resolution: {integrity: sha512-3MbSL37jEchWZz2p2mjntRZtPt837ij10ApxKfgmXCTuHWagYg7iA5bqPw6C8BMPfwidlvfPI/fxOc42HLhcyg==}
 
   '@types/sax@1.2.7':
     resolution: {integrity: sha512-rO73L89PJxeYM3s3pPPjiPgVVcymqU490g0YO5n5By0k2Erzj6tay/4lr1CHAAU4JyOWd1rpQ8bCf6cZfHU96A==}
@@ -2538,12 +2538,12 @@ snapshots:
 
   '@astrojs/internal-helpers@0.7.5': {}
 
-  '@astrojs/markdoc@0.15.10(@types/react@19.2.7)(astro@5.16.5(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.5)(typescript@5.8.3))(react@19.2.3)':
+  '@astrojs/markdoc@0.15.10(@types/react@19.2.8)(astro@5.16.5(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.5)(typescript@5.8.3))(react@19.2.3)':
     dependencies:
       '@astrojs/internal-helpers': 0.7.5
       '@astrojs/markdown-remark': 6.3.10
       '@astrojs/prism': 3.3.0
-      '@markdoc/markdoc': 0.5.4(@types/react@19.2.7)(react@19.2.3)
+      '@markdoc/markdoc': 0.5.4(@types/react@19.2.8)(react@19.2.3)
       astro: 5.16.5(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.5)(typescript@5.8.3)
       esbuild: 0.25.12
       github-slugger: 2.0.0
@@ -2607,10 +2607,10 @@ snapshots:
     dependencies:
       prismjs: 1.30.0
 
-  '@astrojs/react@4.4.2(@types/node@25.0.2)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@astrojs/react@4.4.2(@types/node@25.0.2)(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(jiti@2.6.1)(lightningcss@1.30.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@types/react': 19.2.7
-      '@types/react-dom': 19.2.3(@types/react@19.2.7)
+      '@types/react': 19.2.8
+      '@types/react-dom': 19.2.3(@types/react@19.2.8)
       '@vitejs/plugin-react': 4.7.0(vite@6.4.1(@types/node@25.0.2)(jiti@2.6.1)(lightningcss@1.30.2))
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -3037,11 +3037,11 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@markdoc/markdoc@0.5.4(@types/react@19.2.7)(react@19.2.3)':
+  '@markdoc/markdoc@0.5.4(@types/react@19.2.8)(react@19.2.3)':
     optionalDependencies:
       '@types/linkify-it': 3.0.5
       '@types/markdown-it': 12.2.3
-      '@types/react': 19.2.7
+      '@types/react': 19.2.8
       react: 19.2.3
 
   '@mdx-js/mdx@3.1.1':
@@ -3356,11 +3356,11 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
-  '@types/react-dom@19.2.3(@types/react@19.2.7)':
+  '@types/react-dom@19.2.3(@types/react@19.2.8)':
     dependencies:
-      '@types/react': 19.2.7
+      '@types/react': 19.2.8
 
-  '@types/react@19.2.7':
+  '@types/react@19.2.8':
     dependencies:
       csstype: 3.2.3
 
