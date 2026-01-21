@@ -162,6 +162,7 @@ pub fn build_session(
 
     let cfg_diff_enabled = cfg.map(|c| c.diff_enabled).unwrap_or(false);
     let cfg_token_map_enabled = cfg.map(|c| c.token_map_enabled).unwrap_or(false);
+    let cfg_deselected = cfg.map(|c| c.deselected).unwrap_or(false);
 
     configuration
         .diff_enabled(args.diff || cfg_diff_enabled)
@@ -171,7 +172,8 @@ pub fn build_session(
         .hidden(args.hidden)
         .no_codeblock(args.no_codeblock)
         .follow_symlinks(args.follow_symlinks)
-        .token_map_enabled(args.token_map || cfg_token_map_enabled || tui_mode);
+        .token_map_enabled(args.token_map || cfg_token_map_enabled || tui_mode)
+        .deselected(args.deselected || cfg_deselected);
 
     // User variables from config (if available)
     if let Some(c) = cfg {

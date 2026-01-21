@@ -151,6 +151,12 @@ pub fn format_settings_groups(session: &Code2PromptSession) -> Vec<SettingsGroup
                     description: "Ignore .gitignore rules".to_string(),
                     setting_type: SettingType::Boolean(session.config.no_ignore),
                 },
+                SettingsItem {
+                    key: SettingKey::Deselected,
+                    name: "Deselected by Default".to_string(),
+                    description: "Start with all files deselected".to_string(),
+                    setting_type: SettingType::Boolean(session.config.deselected),
+                },
             ],
         },
     ]
