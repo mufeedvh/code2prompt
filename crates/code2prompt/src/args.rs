@@ -142,6 +142,10 @@ pub struct Cli {
     #[clap(long, value_name = "PERCENT")]
     pub token_map_min_percent: Option<f64>,
 
+    /// Start with all files deselected
+    #[clap(long)]
+    pub deselected: bool,
+
     #[arg(long, hide = true)]
     pub clipboard_daemon: bool,
 }

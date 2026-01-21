@@ -76,6 +76,7 @@ impl Code2PromptSession {
         let selection_engine = SelectionEngine::new(
             config.include_patterns.clone(),
             config.exclude_patterns.clone(),
+            config.deselected,
         );
 
         Self {
@@ -92,6 +93,7 @@ impl Code2PromptSession {
         self.selection_engine = SelectionEngine::new(
             self.config.include_patterns.clone(),
             self.config.exclude_patterns.clone(),
+            self.config.deselected,
         );
         self
     }
@@ -102,6 +104,7 @@ impl Code2PromptSession {
         self.selection_engine = SelectionEngine::new(
             self.config.include_patterns.clone(),
             self.config.exclude_patterns.clone(),
+            self.config.deselected,
         );
         self
     }
@@ -175,6 +178,13 @@ impl Code2PromptSession {
     /// Check if there are any user actions beyond base patterns
     pub fn has_user_actions(&self) -> bool {
         self.selection_engine.has_user_actions()
+    }
+
+    /// Set deselected by default and update selection engine
+    pub fn set_deselected(&mut self, value: bool) -> &mut Self {
+        self.config.deselected = value;
+        self.selection_engine.set_deselected_by_default(value);
+        self
     }
 
     /// Loads the codebase data (source tree and file list) into the session.

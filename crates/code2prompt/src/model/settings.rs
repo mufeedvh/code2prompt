@@ -59,6 +59,7 @@ pub enum SettingKey {
     FollowSymlinks,
     HiddenFiles,
     NoIgnore,
+    Deselected,
 }
 
 impl SettingsState {
@@ -161,6 +162,10 @@ impl SettingsState {
             (SettingKey::NoIgnore, SettingAction::Toggle | SettingAction::Cycle) => {
                 session.config.no_ignore = !session.config.no_ignore;
                 "No Ignore"
+            }
+            (SettingKey::Deselected, SettingAction::Toggle | SettingAction::Cycle) => {
+                session.set_deselected(!session.config.deselected);
+                "Deselected by Default"
             }
             _ => "Unknown Setting",
         }

@@ -85,6 +85,9 @@ pub struct Code2PromptConfig {
     /// (parallelized during file I/O). This flag only controls whether the breakdown
     /// is shown to users in the final output.
     pub token_map_enabled: bool,
+
+    /// If true, starts with all files deselected.
+    pub deselected: bool,
 }
 
 impl Code2PromptConfig {
@@ -148,6 +151,9 @@ pub struct TomlConfig {
 
     /// Token map
     pub token_map_enabled: bool,
+
+    /// Initial selection state
+    pub deselected: bool,
 }
 
 impl TomlConfig {
@@ -208,7 +214,8 @@ impl TomlConfig {
 
         builder
             .user_variables(self.user_variables.clone())
-            .token_map_enabled(self.token_map_enabled);
+            .token_map_enabled(self.token_map_enabled)
+            .deselected(self.deselected);
 
         builder.build().unwrap_or_default()
     }
@@ -249,6 +256,7 @@ pub fn export_config_to_toml(config: &Code2PromptConfig) -> Result<String, toml:
         },
         user_variables: config.user_variables.clone(),
         token_map_enabled: config.token_map_enabled,
+        deselected: config.deselected,
     };
 
     toml_config.to_string()
