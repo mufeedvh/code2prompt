@@ -17,7 +17,7 @@
     "@astrojs/prism": "3.3.0",
     "@astrojs/react": "4.4.2",
     "@astrojs/sitemap": "3.6.0",
-    "@astrojs/starlight": "^0.37.1",
+    "@astrojs/starlight": "^0.37.4",
     "@astrojs/upgrade": "^0.6.2",
     "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.7",
