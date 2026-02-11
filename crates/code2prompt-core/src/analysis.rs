@@ -1,40 +1,44 @@
 //! Analysis Engine for Codebase Statistics
 //!
-//! This module provides a "GraphQL-like" query interface for analyzing codebase data.
-//! It offers various aggregation and filtering methods that operate on the raw file list,
-//! ensuring complete and accurate statistics regardless of display filtering.
+//! This module computes TOPOLOGY and STRUCTURE.
+//! It knows nothing about ASCII art, colors, or how to draw a tree.
 
 use crate::path::FileEntry;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap};
 use std::path::Path;
 
 // ============================================================================
 // Public Data Models
 // ============================================================================
 
-/// Represents a single entry in the hierarchical token map
+/// Represents a topological entry in the statistics tree.
+///
+/// CLEAN ARCHITECTURE: This struct contains NO visual artifacts (like "│ │").
+/// It only describes the node's properties and its position in the hierarchy.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenMapEntry {
     pub path: String,
     pub name: String,
     pub tokens: usize,
     pub percentage: f64,
-    /// Depth in the tree hierarchy (valid for tree projections)
+
+    // Topological Metadata
     pub depth: usize,
-    /// Whether this is the last child in its parent's list
-    pub is_last: bool,
+    /// Is this node the last child of its parent? (Crucial for drawing logic)
+    pub is_last_child: bool,
+    /// Does this node have visible children in the filtered set?
+    pub has_children: bool,
+
     pub metadata: EntryMetadata,
 }
 
-/// Metadata about a file or directory entry
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EntryMetadata {
     pub is_dir: bool,
 }
 
-/// Statistics for a file extension
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtensionStat {
     pub extension: String,
@@ -43,7 +47,6 @@ pub struct ExtensionStat {
     pub percentage: f64,
 }
 
-/// Options for token map generation
 #[derive(Debug, Clone)]
 pub struct TokenMapOptions {
     pub max_lines: usize,
@@ -63,30 +66,12 @@ impl Default for TokenMapOptions {
 // CodebaseAnalysis Facade
 // ============================================================================
 
-/// Facade for querying codebase analysis data
-///
-/// This struct provides a clean, query-like interface for analyzing codebase statistics.
-/// Each method operates on the complete file list, ensuring accurate results.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let analysis = CodebaseAnalysis::new(files, total_tokens);
-/// let token_map = analysis.token_map(TokenMapOptions::default());
-/// let extensions = analysis.by_extension();
-/// ```
 pub struct CodebaseAnalysis<'a> {
     files: &'a [FileEntry],
     total_tokens: usize,
 }
 
 impl<'a> CodebaseAnalysis<'a> {
-    /// Create a new analysis instance
-    ///
-    /// # Arguments
-    ///
-    /// * `files` - Complete list of files from the codebase
-    /// * `total_tokens` - Total token count (including structural overhead)
     pub fn new(files: &'a [FileEntry], total_tokens: usize) -> Self {
         Self {
             files,
@@ -94,22 +79,62 @@ impl<'a> CodebaseAnalysis<'a> {
         }
     }
 
-    /// Query: Get hierarchical token map (filtered and sorted)
-    ///
-    /// Returns a tree-like structure showing token distribution across
-    /// directories and files, limited to the most significant entries.
-    ///
-    /// # Arguments
-    ///
-    /// * `options` - Filtering options (max lines, min percentage)
+    /// Generates a flat list of entries representing the filtered tree.
     pub fn token_map(&self, options: TokenMapOptions) -> Vec<TokenMapEntry> {
-        generate_token_map_internal(self.files, self.total_tokens, options)
+        // 1. Build the full internal tree
+        let mut root = Node::new("", true);
+        for file in self.files {
+            root.insert(&file.path, file.token_count, file.metadata.is_dir);
+        }
+
+        // 2. Calculate recursive token sums (Post-Order Traversal)
+        root.calculate_sizes();
+
+        // 3. Select which nodes to keep (The "Dust" Algorithm)
+        let mut keep_set = HashMap::new();
+        // Always keep root (depth 0 is virtual, so we track children of root)
+        select_significant_nodes(&root, self.total_tokens, &options, &mut keep_set);
+
+        // 4. Flatten the tree into the public struct, respecting the selection
+        let mut entries = Vec::new();
+        let mut covered_tokens = 0;
+
+        flatten_tree(
+            &root,
+            0,
+            true, // Root is functionally "last" in its context
+            &keep_set,
+            self.total_tokens,
+            &mut entries,
+            &mut covered_tokens,
+        );
+
+        // 5. Add "Other files" aggregation if we filtered things out
+        let remainder = self.total_tokens.saturating_sub(covered_tokens);
+        if remainder > 0 {
+            // Adjust the previous last item to not be last anymore
+            if let Some(last) = entries.last_mut() {
+                // Only if at root level (depth 0)
+                if last.depth == 0 {
+                    last.is_last_child = false;
+                }
+            }
+
+            entries.push(TokenMapEntry {
+                path: "(other files)".to_string(),
+                name: "(other files)".to_string(),
+                tokens: remainder,
+                percentage: (remainder as f64 / self.total_tokens as f64) * 100.0,
+                depth: 0,
+                is_last_child: true,
+                has_children: false,
+                metadata: EntryMetadata { is_dir: false },
+            });
+        }
+
+        entries
     }
 
-    /// Query: Get token statistics by file extension
-    ///
-    /// Returns aggregated statistics for each file extension found in the codebase.
-    /// Unlike the token map, this includes ALL files regardless of filtering.
     pub fn by_extension(&self) -> Vec<ExtensionStat> {
         let mut stats: HashMap<String, (usize, usize)> = HashMap::new();
 
@@ -125,8 +150,8 @@ impl<'a> CodebaseAnalysis<'a> {
                 .to_string();
 
             let entry = stats.entry(ext).or_insert((0, 0));
-            entry.0 += 1; // file count
-            entry.1 += file.token_count; // token count
+            entry.0 += 1;
+            entry.1 += file.token_count;
         }
 
         let mut result: Vec<ExtensionStat> = stats
@@ -139,265 +164,233 @@ impl<'a> CodebaseAnalysis<'a> {
             })
             .collect();
 
-        // Sort by tokens descending
         result.sort_by(|a, b| b.tokens.cmp(&a.tokens));
         result
     }
 
-    /// Query: Get raw file list
-    ///
-    /// Provides direct access to the underlying file list for custom processing.
     pub fn raw_files(&self) -> &[FileEntry] {
         self.files
     }
 }
 
 // ============================================================================
-// Internal Implementation (Token Map Generation)
+// Internal Logic
 // ============================================================================
 
-#[derive(Debug, Clone)]
-struct TreeNode {
-    tokens: usize,
-    children: BTreeMap<String, TreeNode>,
+struct Node {
+    name: String,
     path: String,
-    metadata: Option<EntryMetadata>,
+    token_sum: usize,
+    is_dir: bool,
+    children: HashMap<String, Node>,
 }
 
-impl TreeNode {
-    fn with_path(path: String) -> Self {
-        TreeNode {
-            tokens: 0,
-            children: BTreeMap::new(),
-            path,
-            metadata: None,
+impl Node {
+    fn new(name: &str, is_dir: bool) -> Self {
+        Self {
+            name: name.to_string(),
+            path: String::new(), // set during insert
+            token_sum: 0,
+            is_dir,
+            children: HashMap::new(),
+        }
+    }
+
+    fn insert(&mut self, path: &str, tokens: usize, is_dir: bool) {
+        let parts: Vec<&str> = path.split('/').collect();
+        self.insert_recursive(&parts, path, tokens, is_dir);
+    }
+
+    fn insert_recursive(
+        &mut self,
+        parts: &[&str],
+        full_path: &str,
+        tokens: usize,
+        is_file_dir: bool,
+    ) {
+        if parts.is_empty() {
+            return;
+        }
+
+        let name = parts[0];
+        let is_last_part = parts.len() == 1;
+
+        let child = self.children.entry(name.to_string()).or_insert_with(|| {
+            // Internal nodes are dirs, leaf is whatever the file says
+            let child_is_dir = if is_last_part { is_file_dir } else { true };
+            Node::new(name, child_is_dir)
+        });
+
+        // Reconstruct path for the child
+        child.path = if self.path.is_empty() {
+            name.to_string()
+        } else {
+            format!("{}/{}", self.path, name)
+        };
+
+        if is_last_part {
+            child.token_sum = tokens; // Leaf gets the tokens
+        } else {
+            child.insert_recursive(&parts[1..], full_path, tokens, is_file_dir);
+        }
+    }
+
+    /// Sums up tokens from children to parents
+    fn calculate_sizes(&mut self) {
+        if !self.children.is_empty() {
+            let mut sum = 0;
+            for child in self.children.values_mut() {
+                child.calculate_sizes();
+                sum += child.token_sum;
+            }
+            // If it's a directory, its sum is the children's sum.
+            // Note: If a directory also has own tokens (rare in this model), handled here.
+            self.token_sum = sum;
         }
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct NodePriority {
+/// Helper for Priority Queue
+#[derive(Eq, PartialEq)]
+struct NodeRef<'a> {
     tokens: usize,
-    path: String,
     depth: usize,
+    path: &'a str,
 }
 
-impl Ord for NodePriority {
+impl<'a> Ord for NodeRef<'a> {
     fn cmp(&self, other: &Self) -> Ordering {
+        // Sort by Tokens (Desc), then Depth (Desc), then Path (Asc)
         self.tokens
             .cmp(&other.tokens)
-            .then_with(|| other.depth.cmp(&self.depth))
-            .then_with(|| self.path.cmp(&other.path))
+            .then_with(|| other.depth.cmp(&self.depth)) // deeper first if equal tokens
+            .then_with(|| other.path.cmp(self.path)) // reverse path for stability
     }
 }
 
-impl PartialOrd for NodePriority {
+impl<'a> PartialOrd for NodeRef<'a> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-/// Internal function to generate the token map
-fn generate_token_map_internal(
-    files: &[FileEntry],
-    total_tokens: usize,
-    options: TokenMapOptions,
-) -> Vec<TokenMapEntry> {
-    let mut root = TreeNode::with_path(String::new());
-    root.tokens = total_tokens;
-
-    // Build the tree from flat file list
-    for file in files {
-        let path_str = &file.path;
-        let tokens = file.token_count;
-        let metadata = EntryMetadata {
-            is_dir: file.metadata.is_dir,
-        };
-        let path = Path::new(path_str);
-        let components: Vec<_> = path
-            .components()
-            .filter_map(|c| c.as_os_str().to_str())
-            .collect();
-
-        insert_path(&mut root, &components, tokens, String::new(), metadata);
-    }
-
-    // Select nodes to display using priority queue (Dust algorithm)
-    let allowed_nodes = select_nodes_to_display(&root, total_tokens, &options);
-
-    // Rebuild as flat list with tree metadata
-    let mut entries = Vec::new();
-    rebuild_filtered_tree(
-        &root,
-        String::new(),
-        &allowed_nodes,
-        &mut entries,
-        0,
-        total_tokens,
-        true,
-    );
-
-    // Add "other files" aggregation if needed
-    let displayed_tokens: usize = entries
-        .iter()
-        .map(|e| if !e.metadata.is_dir { e.tokens } else { 0 })
-        .sum();
-
-    let hidden_tokens = calculate_file_tokens(&root).saturating_sub(displayed_tokens);
-
-    if hidden_tokens > 0 {
-        entries.push(TokenMapEntry {
-            path: "(other files)".to_string(),
-            name: "(other files)".to_string(),
-            tokens: hidden_tokens,
-            percentage: (hidden_tokens as f64 / total_tokens as f64) * 100.0,
-            depth: 0,
-            is_last: true,
-            metadata: EntryMetadata { is_dir: false },
-        });
-    }
-
-    entries
-}
-
-fn calculate_file_tokens(node: &TreeNode) -> usize {
-    if node.metadata.is_some_and(|m| !m.is_dir) {
-        node.tokens
-    } else {
-        node.children.values().map(calculate_file_tokens).sum()
-    }
-}
-
-fn insert_path(
-    node: &mut TreeNode,
-    components: &[&str],
-    tokens: usize,
-    parent_path: String,
-    file_metadata: EntryMetadata,
-) {
-    if components.is_empty() {
-        return;
-    }
-
-    let name = components[0].to_string();
-    let current_path = if parent_path.is_empty() {
-        name.clone()
-    } else {
-        format!("{}/{}", parent_path, name)
-    };
-
-    let child = node
-        .children
-        .entry(name)
-        .or_insert_with(|| TreeNode::with_path(current_path.clone()));
-
-    if components.len() == 1 {
-        // File
-        child.tokens = tokens;
-        child.metadata = Some(file_metadata);
-    } else {
-        // Directory
-        child.tokens += tokens;
-        child.metadata = Some(EntryMetadata { is_dir: true });
-        insert_path(child, &components[1..], tokens, current_path, file_metadata);
-    }
-}
-
-fn select_nodes_to_display(
-    root: &TreeNode,
+fn select_significant_nodes(
+    root: &Node,
     total_tokens: usize,
     options: &TokenMapOptions,
-) -> HashMap<String, usize> {
+    keep_set: &mut HashMap<String, bool>, // Path -> keep
+) {
     let mut heap = BinaryHeap::new();
-    let mut allowed_nodes = HashMap::new();
     let min_tokens = (total_tokens as f64 * options.min_percent / 100.0) as usize;
 
+    // Seed heap with root children
     for child in root.children.values() {
-        if child.tokens >= min_tokens {
-            heap.push(NodePriority {
-                tokens: child.tokens,
-                path: child.path.clone(),
+        if child.token_sum >= min_tokens {
+            heap.push(NodeRef {
+                tokens: child.token_sum,
                 depth: 0,
+                path: &child.path,
             });
         }
     }
 
-    while allowed_nodes.len() < options.max_lines.saturating_sub(1) && !heap.is_empty() {
-        if let Some(prio) = heap.pop() {
-            allowed_nodes.insert(prio.path.clone(), prio.depth);
+    let mut count = 0;
+    while let Some(node_ref) = heap.pop() {
+        if count >= options.max_lines {
+            break;
+        }
 
-            if let Some(node) = find_node_by_path(root, &prio.path) {
-                for child in node.children.values() {
-                    if child.tokens >= min_tokens && !allowed_nodes.contains_key(&child.path) {
-                        heap.push(NodePriority {
-                            tokens: child.tokens,
-                            path: child.path.clone(),
-                            depth: prio.depth + 1,
-                        });
-                    }
+        keep_set.insert(node_ref.path.to_string(), true);
+        count += 1;
+
+        // Find the node in the tree to add its children
+        // (Inefficient lookup here but safe. Optimization: traverse and pass refs?
+        //  Given depth < 20, string lookup is negligible)
+        if let Some(node) = find_node(root, node_ref.path) {
+            for child in node.children.values() {
+                if child.token_sum >= min_tokens {
+                    heap.push(NodeRef {
+                        tokens: child.token_sum,
+                        depth: node_ref.depth + 1,
+                        path: &child.path,
+                    });
                 }
             }
         }
     }
-    allowed_nodes
 }
 
-fn find_node_by_path<'a>(root: &'a TreeNode, path: &str) -> Option<&'a TreeNode> {
-    if path.is_empty() {
-        return Some(root);
-    }
+fn find_node<'a>(root: &'a Node, path: &str) -> Option<&'a Node> {
     let mut current = root;
-    for component in path.split('/') {
-        current = current.children.get(component)?;
+    for part in path.split('/') {
+        if part.is_empty() {
+            continue;
+        }
+        current = current.children.get(part)?;
     }
     Some(current)
 }
 
-fn rebuild_filtered_tree(
-    node: &TreeNode,
-    path: String,
-    allowed_nodes: &HashMap<String, usize>,
-    entries: &mut Vec<TokenMapEntry>,
+fn flatten_tree(
+    node: &Node,
     depth: usize,
-    total_tokens: usize,
     is_last: bool,
+    keep_set: &HashMap<String, bool>,
+    total_tokens: usize,
+    output: &mut Vec<TokenMapEntry>,
+    covered_tokens: &mut usize,
 ) {
-    if !path.is_empty() && allowed_nodes.contains_key(&path) {
-        let name = path.split('/').next_back().unwrap_or(&path).to_string();
-        entries.push(TokenMapEntry {
-            path: path.clone(),
-            name,
-            tokens: node.tokens,
-            percentage: (node.tokens as f64 / total_tokens as f64) * 100.0,
-            depth,
-            is_last,
-            metadata: node.metadata.unwrap_or(EntryMetadata { is_dir: true }),
+    // Only verify non-root nodes
+    if !node.path.is_empty() {
+        if !keep_set.contains_key(&node.path) {
+            return;
+        }
+
+        // Check if any children are kept to set `has_children`
+        let has_visible_children = node
+            .children
+            .values()
+            .any(|c| keep_set.contains_key(&c.path));
+
+        // Add to output
+        output.push(TokenMapEntry {
+            path: node.path.clone(),
+            name: node.name.clone(),
+            tokens: node.token_sum,
+            percentage: (node.token_sum as f64 / total_tokens as f64) * 100.0,
+            depth: depth.saturating_sub(1), // Adjust because root is depth -1 conceptually
+            is_last_child: is_last,
+            has_children: has_visible_children,
+            metadata: EntryMetadata {
+                is_dir: node.is_dir,
+            },
         });
+
+        // If it's a file (leaf in display), mark tokens as covered
+        if !has_visible_children {
+            *covered_tokens += node.token_sum;
+        }
     }
 
-    let mut filtered_children: Vec<_> = node
+    // Sort children by size descending for display
+    let mut children: Vec<&Node> = node
         .children
-        .iter()
-        .filter(|(_, child)| allowed_nodes.contains_key(&child.path))
+        .values()
+        .filter(|c| keep_set.contains_key(&c.path))
         .collect();
 
-    filtered_children.sort_by(|a, b| b.1.tokens.cmp(&a.1.tokens));
+    children.sort_by(|a, b| b.token_sum.cmp(&a.token_sum));
 
-    let count = filtered_children.len();
-    for (i, (name, child)) in filtered_children.into_iter().enumerate() {
-        let child_path = if path.is_empty() {
-            name.clone()
-        } else {
-            format!("{}/{}", path, name)
-        };
-        rebuild_filtered_tree(
+    let count = children.len();
+    for (i, child) in children.into_iter().enumerate() {
+        flatten_tree(
             child,
-            child_path,
-            allowed_nodes,
-            entries,
-            depth + 1,
-            total_tokens,
+            if node.path.is_empty() { 0 } else { depth + 1 }, // Reset depth for root children
             i == count - 1,
+            keep_set,
+            total_tokens,
+            output,
+            covered_tokens,
         );
     }
 }

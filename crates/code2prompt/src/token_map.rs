@@ -1,7 +1,7 @@
 //! Token map visualization (View Layer).
 //!
-//! This module provides rendering functionality for displaying token maps
-//! in both CLI and TUI modes. It unifies the logic so CLI looks exactly like TUI.
+//! This module transforms the raw topological data from `analysis` into ASCII art.
+//! It owns all presentation logic: colors, indentation guides, and formatting.
 
 use crate::utils::format_number;
 use code2prompt_core::analysis::TokenMapEntry;
@@ -9,7 +9,7 @@ use code2prompt_core::tokenizer::TokenFormat;
 use colored::Colorize;
 use unicode_width::UnicodeWidthStr;
 
-/// Color information for TUI rendering (Intermediate representation)
+/// Color information for TUI rendering
 #[derive(Debug, Clone, Copy)]
 pub enum TuiColor {
     White,
@@ -28,7 +28,7 @@ pub enum TuiColor {
     LightMagenta,
 }
 
-/// Formatted line for TUI/CLI display with separate components
+/// Formatted line for TUI/CLI display
 #[derive(Debug, Clone)]
 pub struct TuiTokenMapLine {
     pub tokens_part: String,
@@ -39,28 +39,21 @@ pub struct TuiTokenMapLine {
     pub percentage_part: String,
 }
 
-/// Display a visual token map in the CLI using the shared TUI formatting logic.
-///
-/// This ensures strict visual parity between CLI and TUI.
+/// Display a visual token map in the CLI.
 pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
     if entries.is_empty() {
         return;
     }
 
-    // Detect terminal width
     let terminal_width = terminal_size::terminal_size()
         .map(|(terminal_size::Width(w), _)| w as usize)
         .unwrap_or(80);
 
-    // 1. REUSE: Call the shared formatting logic used by the TUI
     let formatted_lines =
         format_token_map_for_tui(entries, total_tokens, terminal_width, &TokenFormat::Format);
 
-    // 2. RENDER: Print lines to stderr using 'colored' crate for ANSI output
     for line in formatted_lines {
         let colored_name = apply_cli_color(&line.name_part, line.name_color);
-
-        // Output format: TOKENS | PREFIX | NAME | BAR | PERCENTAGE
         eprintln!(
             "{}   {}{} │{}│ {}",
             line.tokens_part, line.prefix_part, colored_name, line.bar_part, line.percentage_part
@@ -68,11 +61,140 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
     }
 }
 
-/// Helper to convert internal TuiColor to 'colored' crate styles for CLI
+/// Main formatting engine.
+/// Used by both CLI (display_token_map) and TUI widgets.
+pub fn format_token_map_for_tui(
+    entries: &[TokenMapEntry],
+    total_tokens: usize,
+    terminal_width: usize,
+    token_format: &TokenFormat,
+) -> Vec<TuiTokenMapLine> {
+    if entries.is_empty() {
+        return Vec::new();
+    }
+
+    let terminal_width = terminal_width.max(80);
+
+    // 1. Calculate Layout Constraints
+    let max_token_width = entries
+        .iter()
+        .map(|e| format_number(e.tokens, token_format).len())
+        .max()
+        .unwrap_or(3)
+        .max(format_number(total_tokens, token_format).len())
+        .max(4);
+
+    let max_depth = entries.iter().map(|e| e.depth).max().unwrap_or(0);
+
+    // Calculate max name length considering the tree prefix width
+    let max_name_length = entries
+        .iter()
+        .map(|e| {
+            let prefix_len = (e.depth * 2) + 3; // "│ " * depth + "├─ "
+            prefix_len + UnicodeWidthStr::width(e.name.as_str())
+        })
+        .max()
+        .unwrap_or(20)
+        .min(terminal_width / 2);
+
+    let bar_width = terminal_width
+        .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 7)
+        .max(15);
+
+    // 2. Rendering Loop
+    let mut parent_bars: Vec<String> = vec![String::new(); max_depth + 2];
+    parent_bars[0] = "█".repeat(bar_width);
+
+    // State for tree guides: is the ancestor at depth `i` NOT last?
+    // true = draw "│", false = draw " "
+    let mut open_branches: Vec<bool> = Vec::new();
+
+    let mut lines = Vec::new();
+
+    for entry in entries {
+        // -- Logic: Tree Prefix Generation --
+        // Update guide state based on depth
+        if entry.depth < open_branches.len() {
+            open_branches.truncate(entry.depth);
+        }
+
+        let mut prefix = String::new();
+        // Draw ancestors
+        for &is_open in &open_branches {
+            prefix.push_str(if is_open { "│ " } else { "  " });
+        }
+        // Draw current connector
+        prefix.push_str(if entry.is_last_child {
+            "└─"
+        } else {
+            "├─"
+        });
+        // Draw branch indicator
+        prefix.push_str(if entry.has_children { "┬ " } else { "─ " });
+
+        // Update state for children
+        open_branches.push(!entry.is_last_child);
+        // -----------------------------------
+
+        // Format Numbers
+        let tokens_str = format_number(entry.tokens, token_format);
+        let percentage_str = format!("{:>4.0}%", entry.percentage);
+
+        // -- Logic: Bar Generation --
+        let parent_bar = if entry.depth > 0 {
+            &parent_bars[entry.depth - 1]
+        } else {
+            &parent_bars[0]
+        };
+        let bar = generate_hierarchical_bar(bar_width, parent_bar, entry.percentage, entry.depth);
+        if entry.depth < parent_bars.len() {
+            parent_bars[entry.depth] = bar.clone();
+        }
+        // ----------------------------
+
+        // Name alignment
+        let prefix_display_width = (entry.depth * 2) + 3;
+        let name_padding = max_name_length
+            .saturating_sub(prefix_display_width + UnicodeWidthStr::width(entry.name.as_str()));
+        let name_with_padding = format!("{}{}", entry.name, " ".repeat(name_padding));
+
+        lines.push(TuiTokenMapLine {
+            tokens_part: format!("{:>width$}", tokens_str, width = max_token_width),
+            prefix_part: prefix,
+            name_part: name_with_padding,
+            name_color: determine_tui_color(entry),
+            bar_part: bar,
+            percentage_part: percentage_str,
+        });
+    }
+
+    lines
+}
+
+/// Helper: Color logic (same as before, just mapped cleanly)
+fn determine_tui_color(entry: &TokenMapEntry) -> TuiColor {
+    if entry.name == "(other files)" {
+        return TuiColor::Gray;
+    }
+    if entry.metadata.is_dir {
+        return TuiColor::Cyan;
+    }
+
+    match entry.name.split('.').next_back().unwrap_or("") {
+        "rs" => TuiColor::Yellow,
+        "js" | "ts" | "jsx" | "tsx" => TuiColor::LightGreen,
+        "py" => TuiColor::LightYellow,
+        "go" => TuiColor::LightBlue,
+        "md" | "txt" => TuiColor::Green,
+        "json" | "toml" | "yaml" => TuiColor::Magenta,
+        _ => TuiColor::White,
+    }
+}
+
 fn apply_cli_color(text: &str, color: TuiColor) -> colored::ColoredString {
     match color {
         TuiColor::White => text.white(),
-        TuiColor::Gray => text.truecolor(128, 128, 128), // Gray approximation
+        TuiColor::Gray => text.truecolor(128, 128, 128),
         TuiColor::Red => text.red(),
         TuiColor::Green => text.green(),
         TuiColor::Blue => text.blue(),
@@ -88,213 +210,6 @@ fn apply_cli_color(text: &str, color: TuiColor) -> colored::ColoredString {
     }
 }
 
-/// Build tree prefix for an entry
-fn build_tree_prefix(entry: &TokenMapEntry, entries: &[TokenMapEntry], index: usize) -> String {
-    let mut prefix = String::new();
-
-    // Add vertical lines for parent levels
-    for d in 0..entry.depth {
-        if d < entry.depth - 1 {
-            // Check if we need a vertical line at this depth
-            let needs_line = entries
-                .iter()
-                .skip(index + 1)
-                .take_while(|e| e.depth > d)
-                .any(|e| e.depth == d + 1);
-            if needs_line {
-                prefix.push_str("│ ");
-            } else {
-                prefix.push_str("  ");
-            }
-        } else if entry.is_last {
-            prefix.push_str("└─");
-        } else {
-            prefix.push_str("├─");
-        }
-    }
-
-    // Special handling for root (depth 0)
-    if entry.depth == 0 {
-        if index == 0 && entries.len() > 1 {
-            prefix = "┌─".to_string();
-        } else if index == entries.len() - 1 && index > 0 {
-            prefix = "└─".to_string();
-        } else if entries.len() > 1 {
-            prefix = "├─".to_string();
-        } else {
-            prefix = "──".to_string(); // Single item list
-        }
-    }
-
-    // Check if has children (next item is deeper)
-    let has_children = entries
-        .get(index + 1)
-        .map(|next| next.depth > entry.depth)
-        .unwrap_or(false);
-
-    // Add the connecting character
-    if has_children {
-        prefix.push('┬');
-    } else {
-        prefix.push('─');
-    }
-
-    prefix.push(' ');
-    prefix
-}
-
-/// Determine TUI color for an entry based on file type and extension
-fn determine_tui_color(entry: &TokenMapEntry) -> TuiColor {
-    if entry.name == "(other files)" {
-        return TuiColor::Gray;
-    }
-
-    if entry.metadata.is_dir {
-        TuiColor::Cyan
-    } else {
-        match entry.name.split('.').next_back().unwrap_or("") {
-            // Systems / compiled langs
-            "rs" => TuiColor::Yellow,
-            "c" | "h" | "cpp" | "cxx" | "hpp" => TuiColor::Blue,
-            "go" => TuiColor::LightBlue,
-            "java" | "kt" | "kts" => TuiColor::Red,
-            "swift" => TuiColor::LightRed,
-            "zig" => TuiColor::LightYellow,
-
-            // Web
-            "js" | "mjs" | "cjs" => TuiColor::LightGreen,
-            "ts" | "tsx" | "jsx" => TuiColor::LightCyan,
-            "html" | "htm" => TuiColor::Magenta,
-            "css" | "scss" | "less" => TuiColor::LightMagenta,
-
-            // Scripting / automation
-            "py" => TuiColor::LightYellow,
-            "sh" | "bash" | "zsh" => TuiColor::Gray,
-            "rb" => TuiColor::LightRed,
-            "pl" => TuiColor::LightCyan,
-            "php" => TuiColor::LightMagenta,
-            "lua" => TuiColor::LightBlue,
-
-            // Data / config / markup
-            "json" | "toml" | "yaml" | "yml" => TuiColor::Magenta,
-            "xml" => TuiColor::LightGreen,
-            "csv" => TuiColor::Green,
-            "ini" => TuiColor::Gray,
-
-            // Docs
-            "md" | "txt" | "rst" | "adoc" => TuiColor::Green,
-            "pdf" => TuiColor::Red,
-
-            // Default
-            _ => TuiColor::White,
-        }
-    }
-}
-
-/// Format token map entries for TUI display with adaptive layout.
-///
-/// Returns structured data components used by BOTH the TUI (via widgets)
-/// and the CLI (via display_token_map).
-pub fn format_token_map_for_tui(
-    entries: &[TokenMapEntry],
-    total_tokens: usize,
-    terminal_width: usize,
-    token_format: &TokenFormat,
-) -> Vec<TuiTokenMapLine> {
-    if entries.is_empty() {
-        return Vec::new();
-    }
-
-    // Adaptive layout logic
-    let terminal_width = terminal_width.max(80);
-
-    // Calculate max token width
-    let max_token_width = entries
-        .iter()
-        .map(|e| format_number(e.tokens, token_format).len())
-        .max()
-        .unwrap_or(3)
-        .max(format_number(total_tokens, token_format).len())
-        .max(4);
-
-    // Calculate max name length
-    let max_name_length = entries
-        .iter()
-        .map(|e| {
-            let prefix_width = if e.depth == 0 { 3 } else { (e.depth * 2) + 3 };
-            prefix_width + UnicodeWidthStr::width(e.name.as_str())
-        })
-        .max()
-        .unwrap_or(20)
-        .min(terminal_width / 2);
-
-    // Calculate bar width
-    let bar_width = terminal_width
-        .saturating_sub(max_token_width + 3 + max_name_length + 2 + 2 + 7)
-        .max(15);
-
-    // Initialize parent bars array for hierarchical view
-    let mut parent_bars: Vec<String> = vec![String::new(); 20]; // Support up to depth 20
-    parent_bars[0] = "█".repeat(bar_width);
-
-    let mut lines = Vec::new();
-
-    for (i, entry) in entries.iter().enumerate() {
-        // Build tree prefix
-        let prefix = build_tree_prefix(entry, entries, i);
-
-        // Format tokens
-        let tokens_str = format_number(entry.tokens, token_format);
-
-        // Generate hierarchical bar
-        let depth_index = entry.depth;
-        let parent_bar = if depth_index > 0 && depth_index - 1 < parent_bars.len() {
-            &parent_bars[depth_index - 1]
-        } else {
-            &parent_bars[0]
-        };
-
-        let bar = generate_hierarchical_bar(bar_width, parent_bar, entry.percentage, entry.depth);
-
-        // Update parent bars for children to inherit
-        if depth_index < parent_bars.len() {
-            parent_bars[depth_index] = bar.clone();
-        }
-
-        // Format percentage
-        let percentage_str = format!("{:>4.0}%", entry.percentage);
-
-        // Calculate padding for name alignment
-        let prefix_display_width = prefix.chars().count();
-        let name_padding = max_name_length
-            .saturating_sub(prefix_display_width + UnicodeWidthStr::width(entry.name.as_str()));
-
-        // Create name with padding
-        // FIX: Ensure name is not empty. If root has empty name, use "." or project name.
-        let display_name = if entry.name.is_empty() {
-            "."
-        } else {
-            &entry.name
-        };
-        let name_with_padding = format!("{}{}", display_name, " ".repeat(name_padding));
-
-        // Determine color
-        let name_color = determine_tui_color(entry);
-
-        lines.push(TuiTokenMapLine {
-            tokens_part: format!("{:>width$}", tokens_str, width = max_token_width),
-            prefix_part: prefix,
-            name_part: name_with_padding,
-            name_color,
-            bar_part: bar,
-            percentage_part: percentage_str,
-        });
-    }
-
-    lines
-}
-
-// Generate bar with dust-style depth shading
 fn generate_hierarchical_bar(
     bar_width: usize,
     parent_bar: &str,
@@ -303,32 +218,27 @@ fn generate_hierarchical_bar(
 ) -> String {
     let filled_chars = ((percentage / 100.0) * bar_width as f64).round() as usize;
     let mut result = String::new();
-
-    // Depth determines which shade to use for parent's solid blocks
     let shade_char = match depth {
-        0 => '█', // Root level is solid
-        1 => '░', // Level 1: light shade
-        2 => '▒', // Level 2: medium shade
-        _ => '▓', // Level 3+: dark shade
+        0 => '█',
+        1 => '░',
+        2 => '▒',
+        _ => '▓',
     };
 
     let parent_chars: Vec<char> = parent_bar.chars().collect();
     for i in 0..bar_width {
         if i < filled_chars {
-            // This entry's contribution is always solid
-            result.push('█');
+            result.push('█'); // Self is always solid
         } else if i < parent_chars.len() {
-            // Inherit parent bar but shade it to show nesting
-            let parent_char = parent_chars[i];
-            if parent_char == '█' {
-                result.push(shade_char);
+            // Parent ghosting
+            result.push(if parent_chars[i] == '█' {
+                shade_char
             } else {
-                result.push(parent_char); // Keep existing shade
-            }
+                parent_chars[i]
+            });
         } else {
             result.push(' ');
         }
     }
-
     result
 }
