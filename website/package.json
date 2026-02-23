@@ -23,7 +23,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "astro": "5.16.5",
-    "marked": "^17.0.1",
+    "marked": "^17.0.2",
     "prismjs": "^1.30.0",
     "rehype-mathjax": "^7.1.0",
     "remark-math": "^6.0.0",
