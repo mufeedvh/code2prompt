@@ -57,5 +57,5 @@ assets = [["target/release/code2prompt_core", "/usr/bin/", "755"]]
 tempfile = "3.24"
 assert_cmd = "2.1.1"
 predicates = "3.1"
-env_logger = "0.11.3"
+env_logger = "0.11.9"
 rstest = "0.26.1"
