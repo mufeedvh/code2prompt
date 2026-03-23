@@ -247,7 +247,7 @@ fn process_single_file(file_info: &FileToProcess, config: &Code2PromptConfig) ->
     };
 
     // Wrap code block
-    let code_block = wrap_code_block(&code, extension, config.line_numbers, config.no_codeblock);
+    let code_block = wrap_code_block(&code, config.line_numbers);
 
     // Filter empty or invalid files
     if code.trim().is_empty() || code.contains(char::REPLACEMENT_CHARACTER) {
@@ -331,24 +331,17 @@ pub fn display_name<P: AsRef<Path>>(p: P) -> String {
     ".".to_string()
 }
 
-/// Wraps the code block with a delimiter and adds line numbers if required.
+/// Adds line numbers to a code block if required.
 ///
 /// # Arguments
 ///
-/// * `code` - The code block to wrap.
-/// * `_extension` - The file extension of the code block (unused; fencing is now done in templates).
-/// * `line_numbers` - Whether to add line numbers to the code.
-/// * `_no_codeblock` - Whether to not wrap the code block with a delimiter (unused; fencing is now done in templates).
+/// * `code` - The code to process.
+/// * `line_numbers` - Whether to add line numbers.
 ///
 /// # Returns
 ///
-/// * `String` - The wrapped code block.
-pub fn wrap_code_block(
-    code: &str,
-    _extension: &str,
-    line_numbers: bool,
-    _no_codeblock: bool,
-) -> String {
+/// * `String` - The processed code.
+pub fn wrap_code_block(code: &str, line_numbers: bool) -> String {
     if line_numbers {
         code.lines()
             .enumerate()

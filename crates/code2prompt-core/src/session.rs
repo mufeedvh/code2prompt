@@ -354,12 +354,7 @@ impl Code2PromptSession {
                 .iter()
                 .map(|file| {
                     // Create empty code block with same wrapping structure
-                    let empty_code_block = wrap_code_block(
-                        "",
-                        &file.extension,
-                        self.config.line_numbers,
-                        self.config.no_codeblock,
-                    );
+                    let empty_code_block = wrap_code_block("", self.config.line_numbers);
 
                     FileEntry {
                         path: file.path.clone(),

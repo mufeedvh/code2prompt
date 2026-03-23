@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn test_wrap_code_block_no_longer_adds_backtick_fences() {
         use code2prompt_core::path::wrap_code_block;
-        let result = wrap_code_block("fn main() {}", "rs", false, false);
+        let result = wrap_code_block("fn main() {}", false);
         assert_eq!(result, "fn main() {}");
         assert!(!result.contains("```"));
     }
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn test_wrap_code_block_line_numbers_still_work() {
         use code2prompt_core::path::wrap_code_block;
-        let result = wrap_code_block("line one\nline two", "rs", true, false);
+        let result = wrap_code_block("line one\nline two", true);
         assert!(result.contains("1 |"));
         assert!(result.contains("2 |"));
         assert!(!result.contains("```"));
