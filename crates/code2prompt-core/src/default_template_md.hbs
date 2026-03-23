@@ -11,8 +11,10 @@ Source Tree:
 `{{path}}`:
 
 {{#unless ../no_codeblock}}```{{extension}}
-{{/unless}}{{code}}{{#unless ../no_codeblock}}
-```{{/unless}}
+{{code}}
+```{{else}}
+{{code}}
+{{/unless}}
 
 {{/if}}
 {{/each}}
