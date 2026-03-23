@@ -8,7 +8,9 @@
   {{#each files}}
     {{#if code}}
       <file path="{{path}}">
-        {{code}}
+        {{#unless ../no_codeblock}}```{{extension}}
+        {{/unless}}{{code}}{{#unless ../no_codeblock}}
+        ```{{/unless}}
       </file>
     {{/if}}
   {{/each}}

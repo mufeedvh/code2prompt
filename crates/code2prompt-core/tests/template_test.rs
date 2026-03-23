@@ -49,4 +49,36 @@ mod tests {
             Err(e) => panic!("Template rendering failed: {}", e),
         }
     }
+
+    #[test]
+    fn test_xml_template_contains_backtick_fences() {
+        use code2prompt_core::template::{handlebars_setup, render_template};
+        let template_str = include_str!("../src/default_template_xml.hbs");
+        let handlebars = handlebars_setup(template_str, "xml").unwrap();
+        let data = serde_json::json!({
+            "absolute_code_path": "/some/path",
+            "source_tree": "tree",
+            "files": [{"path": "main.rs", "extension": "rs", "code": "fn main() {}"}],
+            "no_codeblock": false
+        });
+        let rendered = render_template(&handlebars, "xml", &data).unwrap();
+        assert!(rendered.contains("```rs"));
+        assert!(rendered.contains("fn main() {}"));
+    }
+
+    #[test]
+    fn test_xml_template_no_fences_when_no_codeblock() {
+        use code2prompt_core::template::{handlebars_setup, render_template};
+        let template_str = include_str!("../src/default_template_xml.hbs");
+        let handlebars = handlebars_setup(template_str, "xml").unwrap();
+        let data = serde_json::json!({
+            "absolute_code_path": "/some/path",
+            "source_tree": "tree",
+            "files": [{"path": "main.rs", "extension": "rs", "code": "fn main() {}"}],
+            "no_codeblock": true
+        });
+        let rendered = render_template(&handlebars, "xml", &data).unwrap();
+        assert!(!rendered.contains("```"));
+        assert!(rendered.contains("fn main() {}"));
+    }
 }
