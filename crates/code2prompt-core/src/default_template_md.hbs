@@ -10,7 +10,11 @@ Source Tree:
 {{#if code}}
 `{{path}}`:
 
+{{#unless ../no_codeblock}}```{{extension}}
 {{code}}
+```{{else}}
+{{code}}
+{{/unless}}
 
 {{/if}}
 {{/each}}

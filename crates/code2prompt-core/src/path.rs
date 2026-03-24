@@ -247,7 +247,7 @@ fn process_single_file(file_info: &FileToProcess, config: &Code2PromptConfig) ->
     };
 
     // Wrap code block
-    let code_block = wrap_code_block(&code, extension, config.line_numbers, config.no_codeblock);
+    let code_block = wrap_code_block(&code, config.line_numbers);
 
     // Filter empty or invalid files
     if code.trim().is_empty() || code.contains(char::REPLACEMENT_CHARACTER) {
@@ -331,41 +331,23 @@ pub fn display_name<P: AsRef<Path>>(p: P) -> String {
     ".".to_string()
 }
 
-/// Wraps the code block with a delimiter and adds line numbers if required.
+/// Adds line numbers to a code block if required.
 ///
 /// # Arguments
 ///
-/// * `code` - The code block to wrap.
-/// * `extension` - The file extension of the code block.
-/// * `line_numbers` - Whether to add line numbers to the code.
-/// * `no_codeblock` - Whether to not wrap the code block with a delimiter.
+/// * `code` - The code to process.
+/// * `line_numbers` - Whether to add line numbers.
 ///
 /// # Returns
 ///
-/// * `String` - The wrapped code block.
-pub fn wrap_code_block(
-    code: &str,
-    extension: &str,
-    line_numbers: bool,
-    no_codeblock: bool,
-) -> String {
-    let delimiter = "`".repeat(3);
-    let mut code_with_line_numbers = String::new();
-
+/// * `String` - The processed code.
+pub fn wrap_code_block(code: &str, line_numbers: bool) -> String {
     if line_numbers {
-        for (line_number, line) in code.lines().enumerate() {
-            code_with_line_numbers.push_str(&format!("{:4} | {}\n", line_number + 1, line));
-        }
+        code.lines()
+            .enumerate()
+            .map(|(i, line)| format!("{:4} | {}\n", i + 1, line))
+            .collect()
     } else {
-        code_with_line_numbers = code.to_string();
-    }
-
-    if no_codeblock {
-        code_with_line_numbers
-    } else {
-        format!(
-            "{}{}\n{}\n{}",
-            delimiter, extension, code_with_line_numbers, delimiter
-        )
+        code.to_string()
     }
 }

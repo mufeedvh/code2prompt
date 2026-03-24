@@ -58,6 +58,8 @@ pub struct TemplateContext<'a> {
 
     #[serde(flatten)]
     pub user_variables: &'a HashMap<String, String>,
+
+    pub no_codeblock: bool,
 }
 
 /// Encapsulates the final rendered prompt and some metadata
@@ -235,6 +237,7 @@ impl Code2PromptSession {
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
             user_variables: &self.config.user_variables,
+            no_codeblock: self.config.no_codeblock,
         }
     }
 
@@ -351,12 +354,7 @@ impl Code2PromptSession {
                 .iter()
                 .map(|file| {
                     // Create empty code block with same wrapping structure
-                    let empty_code_block = wrap_code_block(
-                        "",
-                        &file.extension,
-                        self.config.line_numbers,
-                        self.config.no_codeblock,
-                    );
+                    let empty_code_block = wrap_code_block("", self.config.line_numbers);
 
                     FileEntry {
                         path: file.path.clone(),
@@ -379,6 +377,7 @@ impl Code2PromptSession {
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
             user_variables: &self.config.user_variables,
+            no_codeblock: self.config.no_codeblock,
         };
 
         // Render skeleton template

@@ -43,6 +43,8 @@ pub fn extract_undefined_variables(template: &str) -> Vec<String> {
         "files",
         "path",
         "code",
+        "extension",
+        "no_codeblock",
         "git_diff",
         "git_diff_branch",
         "git_log_branch"
