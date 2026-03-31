@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::configuration::Code2PromptConfig;
-use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
+use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_diff_file_paths, get_git_log};
 use crate::path::{FileEntry, display_name, traverse_directory, wrap_code_block};
 use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
@@ -191,6 +191,16 @@ impl Code2PromptSession {
 
     /// Loads the codebase data (source tree and file list) into the session.
     pub fn load_codebase(&mut self) -> Result<()> {
+        // Pre-compute changed file paths when diff_branches is set
+        if self.config.diff_files.is_none() {
+            if let Some((ref b1, ref b2)) = self.config.diff_branches {
+                match get_git_diff_file_paths(&self.config.path, b1, b2) {
+                    Ok(paths) => self.config.diff_files = Some(paths),
+                    Err(e) => log::warn!("Could not compute diff file paths: {}", e),
+                }
+            }
+        }
+
         let (tree, files) = traverse_directory(&self.config, Some(&mut self.selection_engine))
             .with_context(|| "Failed to traverse directory")?;
 

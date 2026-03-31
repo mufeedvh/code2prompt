@@ -1,4 +1,6 @@
-use code2prompt_core::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
+use code2prompt_core::git::{
+    get_git_diff, get_git_diff_between_branches, get_git_diff_file_paths, get_git_log,
+};
 
 #[cfg(test)]
 mod tests {
@@ -263,6 +265,93 @@ mod tests {
         // Assert that the log contains the expected content
         assert!(log.contains("First commit in development"));
         assert!(log.contains("Second commit in development"));
+    }
+
+    #[test]
+    fn test_get_git_diff_file_paths() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let repo_path = temp_dir.path();
+
+        let mut binding = RepositoryInitOptions::new();
+        let init_options = binding.initial_head("master");
+        let repo = Repository::init_opts(repo_path, init_options)
+            .expect("Failed to initialize repository");
+
+        // Create two files on master
+        let file_a = repo_path.join("file_a.txt");
+        let file_b = repo_path.join("file_b.txt");
+        fs::write(&file_a, "content a").expect("Failed to write file_a");
+        fs::write(&file_b, "content b").expect("Failed to write file_b");
+
+        let mut index = repo.index().expect("Failed to get index");
+        index
+            .add_path(std::path::Path::new("file_a.txt"))
+            .expect("Failed to add file_a");
+        index
+            .add_path(std::path::Path::new("file_b.txt"))
+            .expect("Failed to add file_b");
+        index.write().expect("Failed to write index");
+
+        let tree_id = index.write_tree().expect("Failed to write tree");
+        let tree = repo.find_tree(tree_id).expect("Failed to find tree");
+        let sig = Signature::now("Test", "test@example.com").expect("Failed to create signature");
+
+        let master_commit = repo
+            .commit(Some("HEAD"), &sig, &sig, "initial commit", &tree, &[])
+            .expect("Failed to commit");
+
+        // Create dev branch, modify file_a and add file_c
+        repo.branch(
+            "dev",
+            &repo.find_commit(master_commit).expect("Failed to find commit"),
+            false,
+        )
+        .expect("Failed to create branch");
+
+        repo.set_head("refs/heads/dev").expect("Failed to set HEAD");
+        repo.checkout_head(None).expect("Failed to checkout");
+
+        fs::write(&file_a, "modified content a").expect("Failed to modify file_a");
+        let file_c = repo_path.join("file_c.txt");
+        fs::write(&file_c, "content c").expect("Failed to write file_c");
+
+        let mut index = repo.index().expect("Failed to get index");
+        index
+            .add_path(std::path::Path::new("file_a.txt"))
+            .expect("Failed to add file_a");
+        index
+            .add_path(std::path::Path::new("file_c.txt"))
+            .expect("Failed to add file_c");
+        index.write().expect("Failed to write index");
+
+        let tree_id = index.write_tree().expect("Failed to write tree");
+        let tree = repo.find_tree(tree_id).expect("Failed to find tree");
+
+        repo.commit(
+            Some("HEAD"),
+            &sig,
+            &sig,
+            "dev changes",
+            &tree,
+            &[&repo.find_commit(master_commit).expect("Failed to find commit")],
+        )
+        .expect("Failed to commit on dev");
+
+        let paths = get_git_diff_file_paths(repo_path, "master", "dev")
+            .expect("Failed to get diff file paths");
+
+        assert!(
+            paths.contains(&std::path::PathBuf::from("file_a.txt")),
+            "should contain modified file_a.txt"
+        );
+        assert!(
+            paths.contains(&std::path::PathBuf::from("file_c.txt")),
+            "should contain added file_c.txt"
+        );
+        assert!(
+            !paths.contains(&std::path::PathBuf::from("file_b.txt")),
+            "should not contain unchanged file_b.txt"
+        );
     }
 
     #[test]
