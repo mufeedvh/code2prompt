@@ -7,7 +7,7 @@ use crate::tokenizer::TokenizerType;
 use crate::{sort::FileSortMethod, tokenizer::TokenFormat};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 /// A stateless configuration object describing all the preferences and filters
@@ -88,6 +88,10 @@ pub struct Code2PromptConfig {
 
     /// If true, starts with all files deselected.
     pub deselected: bool,
+
+    /// Pre-computed set of file paths changed between diff_branches.
+    /// When set, only these files are included in the source tree and file list.
+    pub diff_files: Option<HashSet<PathBuf>>,
 }
 
 impl Code2PromptConfig {

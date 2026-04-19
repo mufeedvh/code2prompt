@@ -3,7 +3,8 @@
 use anyhow::{Context, Result};
 use git2::{DiffOptions, Repository};
 use log::info;
-use std::path::Path;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 
 /// Generates a git diff for the repository at the provided path.
 ///
@@ -174,6 +175,59 @@ pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<Str
 
     info!("Retrieved git log successfully");
     Ok(log_text)
+}
+
+/// Returns the set of file paths changed between two branches.
+///
+/// Extracts both old and new file paths from each delta to handle renames.
+///
+/// # Arguments
+///
+/// * `repo_path` - Path to the git repository
+/// * `branch1` - The name of the first branch (base)
+/// * `branch2` - The name of the second branch (target)
+///
+/// # Returns
+///
+/// * `Result<HashSet<PathBuf>>` - Set of changed file paths (relative to repo root)
+pub fn get_git_diff_file_paths(
+    repo_path: &Path,
+    branch1: &str,
+    branch2: &str,
+) -> Result<HashSet<PathBuf>> {
+    let repo = Repository::open(repo_path).context("Failed to open repository")?;
+
+    for branch in [branch1, branch2].iter() {
+        if !branch_exists(&repo, branch) {
+            return Err(anyhow::anyhow!("Branch {} doesn't exist!", branch));
+        }
+    }
+
+    let branch1_commit = repo.revparse_single(branch1)?.peel_to_commit()?;
+    let branch2_commit = repo.revparse_single(branch2)?.peel_to_commit()?;
+
+    let branch1_tree = branch1_commit.tree()?;
+    let branch2_tree = branch2_commit.tree()?;
+
+    let diff = repo
+        .diff_tree_to_tree(
+            Some(&branch1_tree),
+            Some(&branch2_tree),
+            Some(DiffOptions::new().ignore_whitespace(true)),
+        )
+        .context("Failed to generate diff between branches")?;
+
+    let mut paths = HashSet::new();
+    for delta in diff.deltas() {
+        if let Some(p) = delta.old_file().path() {
+            paths.insert(PathBuf::from(p));
+        }
+        if let Some(p) = delta.new_file().path() {
+            paths.insert(PathBuf::from(p));
+        }
+    }
+
+    Ok(paths)
 }
 
 /// Checks if a git reference exists in the given repository
