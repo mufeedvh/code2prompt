@@ -21,7 +21,8 @@ use tokio::sync::mpsc;
 
 use crate::clipboard::copy_to_clipboard;
 use crate::model::{
-    AnalysisResults, Cmd, FileTreeInputMode, Message, Model, StatisticsView, Tab, TemplateState,
+    AnalysisResults, AppMode, Cmd, FileTreeInputMode, Message, Model, StatisticsView, Tab,
+    TemplateState,
     template::{FocusMode, TemplateFocus, VariableCategory},
 };
 use crate::token_map::generate_token_map_with_limit;
@@ -201,6 +202,10 @@ impl TuiApp {
     /// * `Option<Message>` - An optional message to be processed by the main loop.
     ///   
     fn handle_key_event(&self, key: KeyEvent) -> Option<Message> {
+        // Command line intercepts everything while open.
+        if self.model.command_line.is_some() {
+            return self.handle_command_keys(key);
+        }
         // Check if we're in search mode first - this takes priority over global shortcuts
         if self.model.file_tree_input_mode == FileTreeInputMode::Search
             && self.model.current_tab == Tab::FileTree
@@ -222,7 +227,9 @@ impl TuiApp {
             KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 return Some(Message::Quit);
             }
-            KeyCode::Esc => return Some(Message::Quit),
+            KeyCode::Char(':') => return Some(Message::EnterCommandMode),
+            // Normal-mode Esc is a no-op now; quit moved to `:q`. Ctrl+Q kept as a hard escape hatch.
+            KeyCode::Esc => return None,
             KeyCode::Char('1') => return Some(Message::SwitchTab(Tab::FileTree)),
             KeyCode::Char('2') => return Some(Message::SwitchTab(Tab::Settings)),
             KeyCode::Char('3') => return Some(Message::SwitchTab(Tab::Statistics)),
@@ -272,6 +279,9 @@ impl TuiApp {
                     // Apply search and exit search mode
                     Some(Message::ExitSearchMode)
                 }
+                KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    Some(Message::SearchHistoryPrev)
+                }
                 KeyCode::Backspace => {
                     let mut query = self.model.search_query.clone();
                     query.pop();
@@ -287,16 +297,20 @@ impl TuiApp {
         } else {
             // Normal navigation mode
             match key.code {
-                KeyCode::Up => Some(Message::MoveTreeCursor(-1)),
-                KeyCode::Down => Some(Message::MoveTreeCursor(1)),
+                KeyCode::Up | KeyCode::Char('k') => Some(Message::MoveTreeCursor(-1)),
+                KeyCode::Down | KeyCode::Char('j') => Some(Message::MoveTreeCursor(1)),
                 KeyCode::PageUp => Some(Message::MoveTreeCursor(-10)),
                 KeyCode::PageDown => Some(Message::MoveTreeCursor(10)),
-                KeyCode::Home => Some(Message::MoveTreeCursor(-9999)),
-                KeyCode::End => Some(Message::MoveTreeCursor(9999)),
+                KeyCode::Home | KeyCode::Char('g') => Some(Message::MoveTreeCursor(-9999)),
+                KeyCode::End | KeyCode::Char('G') => Some(Message::MoveTreeCursor(9999)),
                 KeyCode::Char(' ') => Some(Message::ToggleFileSelection(self.model.tree_cursor)),
                 KeyCode::Enter => Some(Message::RunAnalysis),
-                KeyCode::Right => Some(Message::ExpandDirectory(self.model.tree_cursor)),
-                KeyCode::Left => Some(Message::CollapseDirectory(self.model.tree_cursor)),
+                KeyCode::Right | KeyCode::Char('l') => {
+                    Some(Message::ExpandDirectory(self.model.tree_cursor))
+                }
+                KeyCode::Left | KeyCode::Char('h') => {
+                    Some(Message::CollapseDirectory(self.model.tree_cursor))
+                }
                 KeyCode::Char('/') => Some(Message::EnterSearchMode),
                 KeyCode::Char('s') | KeyCode::Char('S') => Some(Message::EnterSearchMode),
                 KeyCode::Char('r') | KeyCode::Char('R') => Some(Message::RefreshFileTree),
@@ -454,7 +468,15 @@ impl TuiApp {
             _ => None,
         }
     }
-
+    fn handle_command_keys(&self, key: KeyEvent) -> Option<Message> {
+        match key.code {
+            KeyCode::Esc => Some(Message::ExitCommandMode),
+            KeyCode::Enter => Some(Message::ExecuteCommand),
+            KeyCode::Backspace => Some(Message::CommandInputBackspace),
+            KeyCode::Char(c) => Some(Message::CommandInputChar(c)),
+            _ => None,
+        }
+    }
     /// Handle a message using the Elm/Redux pattern.
     /// This uses the pure Model::update() function and executes any side effects.
     fn handle_message(&mut self, message: Message) -> Result<()> {
@@ -610,15 +632,28 @@ impl TuiApp {
     }
 
     fn render_status_bar_static(model: &Model, frame: &mut Frame, area: Rect) {
-        let status_text = if !model.status_message.is_empty() {
-            model.status_message.clone()
-        } else {
-            "Tab/Shift+Tab: Switch tabs | 1/2/3/4: Direct tab | Enter: Run Analysis | Esc/Ctrl+Q: Quit".to_string()
+        let (status_text, color) = match model.mode() {
+            AppMode::Command => (
+                format!(":{}", model.command_line.as_deref().unwrap_or("")),
+                Color::Yellow,
+            ),
+            AppMode::Insert => (
+                format!("-- INSERT --  {}", model.status_message),
+                Color::Green,
+            ),
+            AppMode::Normal => {
+                let text = if !model.status_message.is_empty() {
+                    model.status_message.clone()
+                } else {
+                    ":q Quit | : Command | 1-5 Tabs | Tab/Shift+Tab Switch | / Search".to_string()
+                };
+                (text, Color::Cyan)
+            }
         };
 
         let status_widget = Paragraph::new(status_text)
             .block(Block::default().borders(Borders::ALL))
-            .style(Style::default().fg(Color::Cyan));
+            .style(Style::default().fg(color));
         frame.render_widget(status_widget, area);
     }
 

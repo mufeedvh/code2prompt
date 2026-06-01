@@ -33,8 +33,17 @@ pub enum Tab {
 /// Input mode for the FileTree tab
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileTreeInputMode {
-    Normal,
+    Browsing,
     Search,
+}
+
+/// Top-level interaction mode (vim-style). Derived for display via `Model::mode()`;
+/// only the command line is stored, the rest is computed from existing flags.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppMode {
+    Normal,
+    Insert,
+    Command,
 }
 
 /// Hierarchical file node for TUI display with proper parent-child relationships
@@ -136,6 +145,13 @@ pub enum Message {
     SwitchTab(Tab),
     Quit,
 
+    EnterCommandMode,
+    ExitCommandMode,
+    CommandInputChar(char),
+    CommandInputBackspace,
+    ExecuteCommand,
+
+    SearchHistoryPrev,
     UpdateSearchQuery(String),
     ToggleFileSelection(usize),
     ExpandDirectory(usize),
@@ -196,6 +212,12 @@ pub struct Model {
     pub template: TemplateState,
     pub prompt_output: PromptOutputState,
     pub status_message: String,
+    /// `Some` while the `:` command line is open; holds the text typed after the colon.
+    pub command_line: Option<String>,
+    /// Committed search queries, oldest first, newest last. Capped, de-duplicated.
+    pub search_history: Vec<String>,
+    /// Cursor into history while cycling with Ctrl+P; None = editing live, not browsing history.
+    pub search_history_pos: Option<usize>,
 }
 
 impl Default for Model {
@@ -207,7 +229,7 @@ impl Default for Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
-            file_tree_input_mode: FileTreeInputMode::Normal,
+            file_tree_input_mode: FileTreeInputMode::Browsing,
             file_tree_nodes: Vec::new(),
             search_query: String::new(),
             tree_cursor: 0,
@@ -217,6 +239,9 @@ impl Default for Model {
             template: TemplateState::default(),
             prompt_output: PromptOutputState::default(),
             status_message: String::new(),
+            command_line: None,
+            search_history: Vec::new(),
+            search_history_pos: None,
         }
     }
 }
@@ -227,7 +252,7 @@ impl Model {
             session,
             current_tab: Tab::FileTree,
             should_quit: false,
-            file_tree_input_mode: FileTreeInputMode::Normal,
+            file_tree_input_mode: FileTreeInputMode::Browsing,
             file_tree_nodes: Vec::new(),
             search_query: String::new(),
             tree_cursor: 0,
@@ -237,12 +262,35 @@ impl Model {
             template: TemplateState::default(),
             prompt_output: PromptOutputState::default(),
             status_message: String::new(),
+            command_line: None,
+            search_history: Vec::new(),
+            search_history_pos: None,
         }
     }
 
     /// Get grouped settings for display
     pub fn get_settings_groups(&self) -> Vec<SettingsGroup> {
         crate::view::format_settings_groups(&self.session)
+    }
+
+    /// The current interaction mode, derived from existing state. Command mode is
+    /// explicit (command_line is open); insert is computed from search/template flags.
+    pub fn mode(&self) -> AppMode {
+        if self.command_line.is_some() {
+            AppMode::Command
+        } else if self.is_in_insert_context() {
+            AppMode::Insert
+        } else {
+            AppMode::Normal
+        }
+    }
+
+    fn is_in_insert_context(&self) -> bool {
+        let searching = self.current_tab == Tab::FileTree
+            && self.file_tree_input_mode == FileTreeInputMode::Search;
+        let editing_template =
+            self.current_tab == Tab::Template && self.template.is_in_editing_mode();
+        searching || editing_template
     }
 
     pub fn update(&self, message: Message) -> (Self, Cmd) {
@@ -252,6 +300,57 @@ impl Model {
             Message::Quit => {
                 new_model.should_quit = true;
                 new_model.status_message = "Goodbye!".to_string();
+                (new_model, Cmd::None)
+            }
+
+            Message::EnterCommandMode => {
+                new_model.command_line = Some(String::new());
+                new_model.status_message.clear();
+                (new_model, Cmd::None)
+            }
+
+            Message::ExitCommandMode => {
+                new_model.command_line = None;
+                (new_model, Cmd::None)
+            }
+
+            Message::CommandInputChar(c) => {
+                if let Some(buf) = new_model.command_line.as_mut() {
+                    buf.push(c);
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::CommandInputBackspace => {
+                // Backspacing past the ':' closes the command line (vim behavior).
+                match new_model.command_line.as_mut() {
+                    Some(buf) if !buf.is_empty() => {
+                        buf.pop();
+                    }
+                    _ => new_model.command_line = None,
+                }
+                (new_model, Cmd::None)
+            }
+
+            Message::ExecuteCommand => {
+                // take() closes the command line regardless of outcome.
+                let cmd = new_model
+                    .command_line
+                    .take()
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                match cmd.as_str() {
+                    "q" | "q!" | "quit" => {
+                        new_model.should_quit = true;
+                        new_model.status_message = "Goodbye!".to_string();
+                    }
+                    // "w" | "wq" => /* wire to SaveToFile later */,
+                    "" => {} // bare ":" — no-op
+                    other => {
+                        new_model.status_message = format!("Not a command: :{other}");
+                    }
+                }
                 (new_model, Cmd::None)
             }
 
@@ -268,23 +367,53 @@ impl Model {
 
             Message::UpdateSearchQuery(query) => {
                 new_model.search_query = query;
-                new_model.tree_cursor = 0; // Reset cursor when search changes
-                new_model.file_tree_scroll = 0; // Reset scroll when search changes
+                new_model.search_history_pos = None; // live typing leaves history-browsing
+                new_model.tree_cursor = 0;
+                new_model.file_tree_scroll = 0;
                 (new_model, Cmd::None)
             }
 
             Message::EnterSearchMode => {
+                new_model.search_query.clear();
+                new_model.search_history_pos = None;
+                new_model.tree_cursor = 0;
+                new_model.file_tree_scroll = 0;
                 new_model.file_tree_input_mode = FileTreeInputMode::Search;
                 new_model.status_message = "Search mode - Type to search, Esc to exit".to_string();
                 (new_model, Cmd::None)
             }
 
             Message::ExitSearchMode => {
-                new_model.file_tree_input_mode = FileTreeInputMode::Normal;
+                let q = new_model.search_query.trim().to_string();
+                if !q.is_empty() {
+                    // De-dup: if it's already in history, lift it to newest rather than dupe.
+                    new_model.search_history.retain(|h| h != &q);
+                    new_model.search_history.push(q);
+                    const MAX_HISTORY: usize = 50;
+                    let len = new_model.search_history.len();
+                    if len > MAX_HISTORY {
+                        new_model.search_history.drain(0..len - MAX_HISTORY);
+                    }
+                }
+                new_model.search_history_pos = None;
+                new_model.file_tree_input_mode = FileTreeInputMode::Browsing;
                 new_model.status_message = "Exited search mode".to_string();
                 (new_model, Cmd::None)
             }
-
+            Message::SearchHistoryPrev => {
+                if !new_model.search_history.is_empty() {
+                    let next = match new_model.search_history_pos {
+                        None => new_model.search_history.len() - 1, // first press: newest
+                        Some(0) => 0,                               // already oldest, stay
+                        Some(i) => i - 1,
+                    };
+                    new_model.search_history_pos = Some(next);
+                    new_model.search_query = new_model.search_history[next].clone();
+                    new_model.tree_cursor = 0;
+                    new_model.file_tree_scroll = 0;
+                }
+                (new_model, Cmd::None)
+            }
             Message::MoveTreeCursor(delta) => {
                 let visible_nodes = crate::utils::get_visible_nodes(
                     &new_model.file_tree_nodes,
