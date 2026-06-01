@@ -45,5 +45,5 @@ packages = ["src/python_sdk"]
 
 [project.urls]
 Homepage = "https://gnaw.dev"
-Documentation = "https://gnaw.dev/docs/welcome"
-Repository = "https://github.com/mufeedvh/gnaw"
+Documentation = "https://gnaw.gitbadger.com/docs"
+Repository = "https://github.com/gitbadger-clan/gnaw.git"
