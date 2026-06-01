@@ -6,11 +6,11 @@
 //! file tree browsing, real-time analysis, and clipboard integration.
 
 use anyhow::Result;
-use gnaw_core::session::GnawSession;
 use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use gnaw_core::session::GnawSession;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     prelude::*,
@@ -615,11 +615,7 @@ impl TuiApp {
         };
 
         let tabs_widget = Tabs::new(tabs)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Gnaw TUI"),
-            )
+            .block(Block::default().borders(Borders::ALL).title("Gnaw TUI"))
             .select(selected)
             .style(Style::default().fg(Color::White))
             .highlight_style(

@@ -11,9 +11,7 @@ use regex::Regex;
 use std::path::Path;
 
 /// Build hierarchical file tree from session using traverse_directory with SelectionEngine
-pub fn build_file_tree_from_session(
-    session: &mut GnawSession,
-) -> Result<Vec<DisplayFileNode>> {
+pub fn build_file_tree_from_session(session: &mut GnawSession) -> Result<Vec<DisplayFileNode>> {
     let mut root_nodes = Vec::new();
 
     // Build root level nodes using ignore crate to respect gitignore
