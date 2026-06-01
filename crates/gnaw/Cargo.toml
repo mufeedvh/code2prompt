@@ -35,6 +35,7 @@ walkdir = { workspace = true }
 unicode-width = { workspace = true }
 bracoxide = { workspace = true }
 git2 = { workspace = true }
+globset = { workspace = true }
 chrono = { workspace = true }
 dirs = { workspace = true }
 regex = { workspace = true }

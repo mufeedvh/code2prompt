@@ -1106,6 +1106,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "git2",
+ "globset",
  "gnaw_core",
  "handlebars",
  "ignore",
