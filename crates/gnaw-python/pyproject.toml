@@ -1,17 +1,16 @@
 [project]
 name = "gnaw"
-version = "3.2.1"
+version = "0.1.0"
 description = "Python bindings for gnaw"
 authors = [
-    { name = "Olivier D'Ancona", email = "olivier_dancona@hotmail.com" },
-    { name = "Mufeed VH", email = "contact@mufeedvh.com" },
+    { name = "Artur Daschevici", email = "me@gitbadger.com" },
 ]
 dependencies = ["pip>=25.0.1", "patchelf>=0.17.2.1"]
 requires-python = ">= 3.11"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: MIT License :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
