@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/code2prompt-core",
-    "crates/code2prompt",
-    "crates/code2prompt-python",
+    "crates/gnaw-core",
+    "crates/gnaw",
+    "crates/gnaw-python",
 ]
-default-members = ["crates/code2prompt-core", "crates/code2prompt"]
+default-members = ["crates/gnaw-core", "crates/gnaw"]
 
 [profile.release]
 lto = "thin"
@@ -13,47 +13,47 @@ panic = 'abort'
 codegen-units = 1
 
 [workspace.dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.102"
 ansi_term = "0.12.1"
-arboard = { version = "3.6.0" }
+arboard = { version = "3.6.1" }
 bracoxide = "0.1.8"
-colored = "3.0.0"
+colored = "3.1.1"
 csv = "1.4.0"
 chrono = { version = "0.4", features = ["serde"] }
-chardetng = { version = "0.1.17" }
-clap = { version = "4.5", features = ["derive"] }
+chardetng = { version = "1.0.0" }
+clap = { version = "4.6", features = ["derive"] }
 content_inspector = "0.2.4"
 crossterm = "0.29.0"
 dirs = "6.0.0"
 derive_builder = { version = "0.20.2" }
-env_logger = { version = "0.11.3" }
+env_logger = { version = "0.11.10" }
 encoding_rs = { version = "0.8.35" }
-indicatif = "0.18.0"
-inquire = "0.9.1"
+indicatif = "0.18.4"
+inquire = "0.9.4"
 log = "0.4"
 lscolors = { version = "0.21.0", features = ["ansi_term"] }
 ignore = "0.4.25"
-git2 = { version = "0.20.2", default-features = false, features = [
+git2 = { version = "0.21.0", default-features = false, features = [
     "https",
     "vendored-libgit2",
     "vendored-openssl",
 ] }
-globset = "0.4.15"
-handlebars = "6.4.0"
-once_cell = "1.19.0"
-pyo3 = { version = "0.27", features = ["extension-module", "abi3-py312"] }
-ratatui = "0.29.0"
-regex = "1.10.3"
-rayon = "1.11.0"
+globset = "0.4.18"
+handlebars = "6.4.1"
+once_cell = "1.21.4"
+pyo3 = { version = "0.28", features = ["extension-module", "abi3-py312"] }
+ratatui = "0.30.0"
+regex = "1.12.3"
+rayon = "1.12.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.148"
-termtree = "0.5"
-tiktoken-rs = "0.9.1"
-terminal_size = "0.4.3"
-tokio = { version = "1.49.0", features = ["full"] }
-toml = "0.9.10"
-tui-tree-widget = "0.23.0"
-tui-textarea = "0.7"
-unicode-width = "0.2.0"
-walkdir = "2.4.0"
+serde_json = "1.0.150"
+termtree = "1.0"
+tiktoken-rs = "0.11.0"
+terminal_size = "0.4.4"
+tokio = { version = "1.52.3", features = ["full"] }
+toml = "1.1.2"
+tui-tree-widget = "0.24.0"
+ratatui-textarea = "0.9.1"
+unicode-width = "0.2.2"
+walkdir = "2.5.0"
 winapi = { version = "0.3.9", features = ["errhandlingapi"] }

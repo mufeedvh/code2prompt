@@ -1,0 +1,60 @@
+[package]
+name = "gnaw_core"
+version = "0.1.0"
+authors = [
+    "gitbadger <me@gitbadger.com>",
+]
+description = "A command-line (CLI) tool to generate an LLM prompt from codebases of any size, fast."
+keywords = ["code", "ingestion", "prompt", "llm", "agent"]
+categories = ["command-line-utilities", "development-tools"]
+homepage = "https://gnaw.gitbadger.com"
+documentation = "https://gnaw.gitbadger.com/docs/welcome"
+repository = "https://github.com/gitbadger-clan/gnaw.git"
+license = "MIT or Apache-2.0"
+exclude = [".github/*", ".assets/*"]
+edition = "2024"
+readme = "../../README.md"
+
+
+[features]
+default = []
+
+[dependencies]
+anyhow = { workspace = true }
+bracoxide = { workspace = true }
+colored = { workspace = true }
+content_inspector = { workspace = true }
+csv = { workspace = true }
+derive_builder = { workspace = true }
+encoding_rs = { workspace = true }
+ignore = { workspace = true }
+indicatif = { workspace = true }
+git2 = { workspace = true }
+globset = { workspace = true }
+handlebars = { workspace = true }
+log = { workspace = true }
+once_cell = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+termtree = { workspace = true }
+tiktoken-rs = { workspace = true }
+toml = { workspace = true }
+rayon = { workspace = true }
+chardetng = { workspace = true }
+
+[lib]
+name = "gnaw_core"
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[package.metadata.deb]
+section = "utility"
+assets = [["target/release/gnaw_core", "/usr/bin/", "755"]]
+
+[dev-dependencies]
+tempfile = "3.27"
+assert_cmd = "2.2.2"
+predicates = "3.1"
+env_logger = "0.11.10"
+rstest = "0.26.1"

@@ -1,0 +1,13 @@
+[package]
+name = "gnaw-python"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "gnaw_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json = { workspace = true }
+gnaw_core = { path = "../gnaw-core" }
+pyo3 = { workspace = true }
