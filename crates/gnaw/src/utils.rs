@@ -5,6 +5,7 @@
 
 use crate::model::DisplayFileNode;
 use anyhow::Result;
+use globset::GlobSet;
 use gnaw_core::session::GnawSession;
 use regex::Regex;
 use std::path::Path;
@@ -114,31 +115,38 @@ pub fn get_visible_nodes(
     visible
 }
 
-/// Simple matcher that supports case-insensitive substring and '*'/'?' wildcards.
+/// Matcher for the file-tree search box.
+/// - No glob metacharacters (`* ? {`) → case-insensitive substring (interactive default).
+/// - Any metacharacter → full glob dialect via the shared build_globset (braces, **, etc.),
+///   matched against name and path, same engine as --include/--exclude.
 enum QueryMatcher {
     Substr(String),
-    Regex(Regex),
+    Glob(GlobSet),
+    MatchAll,
 }
 
 fn build_query_matcher(raw: &str) -> QueryMatcher {
-    // Trim incidental whitespace for more predictable matches.
     let raw = raw.trim();
-    let has_wildcards = raw.contains('*') || raw.contains('?');
-    if has_wildcards {
-        // Escape regex meta, then re-introduce wildcards
-        let mut pat = regex::escape(raw);
-        pat = pat.replace(r"\*", ".*").replace(r"\?", ".");
-        let anchored = format!("(?i)^{}$", pat); // (?i) = case-insensitive
-        QueryMatcher::Regex(Regex::new(&anchored).unwrap_or_else(|_| Regex::new(".*").unwrap()))
-    } else {
-        QueryMatcher::Substr(raw.to_lowercase())
+    if raw.is_empty() {
+        return QueryMatcher::MatchAll;
     }
+
+    let has_glob = raw.contains('*') || raw.contains('?') || raw.contains('{');
+    if !has_glob {
+        return QueryMatcher::Substr(raw.to_lowercase());
+    }
+
+    // Reuse the filter's globset (brace expansion + **/ prefixing + case fold).
+    // Lowercase the pattern and match against lowercased text below for case-insensitivity,
+    // since globset itself is case-sensitive.
+    QueryMatcher::Glob(gnaw_core::filter::build_globset(&[raw.to_lowercase()]))
 }
 
 fn matches(m: &QueryMatcher, text: &str) -> bool {
     match m {
+        QueryMatcher::MatchAll => true,
         QueryMatcher::Substr(needle) => text.to_lowercase().contains(needle),
-        QueryMatcher::Regex(re) => re.is_match(text),
+        QueryMatcher::Glob(set) => set.is_match(text.to_lowercase()),
     }
 }
 
@@ -159,7 +167,7 @@ fn collect_visible_nodes_recursive(
 ) {
     for node in nodes {
         // Case-insensitive match on name or full path (with optional wildcards)
-        let matches_current = if matches!(matcher, QueryMatcher::Substr(s) if s.is_empty()) {
+        let matches_current = if matches!(matcher, QueryMatcher::MatchAll) {
             true
         } else {
             matches(matcher, &node.name) || matches(matcher, &node.path.to_string_lossy())
