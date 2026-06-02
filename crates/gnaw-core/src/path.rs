@@ -293,6 +293,35 @@ fn process_single_file(file_info: &FileToProcess, config: &GnawConfig) -> Option
     })
 }
 
+/// Count tokens for a single file using the same pipeline as full analysis
+/// (binary check, BOM strip, extension processor, encoding). Returns None for
+/// binary/empty/unreadable files, so callers can render a blank.
+pub fn count_file_tokens(path: &Path, config: &GnawConfig) -> Option<usize> {
+    let meta = std::fs::metadata(path).ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+
+    let code_bytes = match read_file_with_binary_check(path, meta.len()) {
+        Ok(Some(bytes)) => bytes,
+        _ => return None, // binary or read error
+    };
+    let clean_bytes = strip_utf8_bom(&code_bytes);
+
+    let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let processor = file_processor::get_processor_for_extension(extension);
+    let code = match processor.process(clean_bytes, path) {
+        Ok(processed) => processed,
+        Err(_) => String::from_utf8_lossy(clean_bytes).into_owned(),
+    };
+
+    if code.trim().is_empty() || code.contains(char::REPLACEMENT_CHARACTER) {
+        return None;
+    }
+
+    Some(count_tokens(&code, &config.encoding))
+}
+
 /// Phase 3: Assembly - Sort results and return
 fn assemble_results(
     mut tree: Tree<String>,
