@@ -8,8 +8,56 @@ use anyhow::Result;
 use globset::GlobSet;
 use gnaw_core::session::GnawSession;
 use regex::Regex;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+/// Collect selected leaf files at or under a path (file → itself if selected;
+/// directory → walk, respecting ignore/hidden config). Paths are absolute.
+pub fn collect_selected_files_under(node_path: &Path, session: &mut GnawSession) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+
+    if node_path.is_file() {
+        if session.is_file_selected(node_path) {
+            out.push(node_path.to_path_buf());
+        }
+        return out;
+    }
+
+    use ignore::WalkBuilder;
+    let walker = WalkBuilder::new(node_path)
+        .git_ignore(!session.config.no_ignore)
+        .hidden(!session.config.hidden)
+        .build();
+
+    for entry in walker.flatten() {
+        let p = entry.path();
+        if p.is_file() && session.is_file_selected(p) {
+            out.push(p.to_path_buf());
+        }
+    }
+    out
+}
+
+/// Collect every selected leaf in the already-loaded display tree.
+/// Selected files are auto-expanded at build time, so their nodes are loaded.
+pub fn collect_selected_files_in_tree(
+    nodes: &[DisplayFileNode],
+    session: &mut GnawSession,
+) -> Vec<PathBuf> {
+    fn rec(n: &DisplayFileNode, session: &mut GnawSession, out: &mut Vec<PathBuf>) {
+        if n.is_directory {
+            for c in &n.children {
+                rec(c, session, out);
+            }
+        } else if session.is_file_selected(&n.path) {
+            out.push(n.path.clone());
+        }
+    }
+    let mut out = Vec::new();
+    for n in nodes {
+        rec(n, session, &mut out);
+    }
+    out
+}
 /// Build hierarchical file tree from session using traverse_directory with SelectionEngine
 pub fn build_file_tree_from_session(session: &mut GnawSession) -> Result<Vec<DisplayFileNode>> {
     let mut root_nodes = Vec::new();

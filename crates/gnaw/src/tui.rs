@@ -33,6 +33,8 @@ use crate::widgets::{
 };
 
 use crate::utils::build_file_tree_from_session;
+/// Quiet window after the last selection before a count batch fires.
+const TOKEN_DEBOUNCE_MS: u64 = 200;
 
 pub struct TuiApp {
     model: Model,
@@ -505,6 +507,8 @@ impl TuiApp {
                         self.model.status_message =
                             "File tree loaded with patterns applied and files auto-expanded"
                                 .to_string();
+                        // Count files that started out selected.
+                        let _ = self.message_tx.send(Message::InitialTokenScan);
                     }
                     Err(e) => {
                         self.model.status_message = format!("Error loading files: {}", e);
@@ -560,7 +564,28 @@ impl TuiApp {
                     }
                 });
             }
+            Cmd::ScheduleTokenCount(debounce_gen) => {
+                // Sleep, then ask update to flush. If a newer selection bumped the
+                // generation meanwhile, the flush arm sees gen != current and drops it.
+                let tx = self.message_tx.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(TOKEN_DEBOUNCE_MS)).await;
+                    let _ = tx.send(Message::FlushTokenQueue(debounce_gen));
+                });
+            }
 
+            Cmd::CountTokens { paths } => {
+                // BPE tokenization is CPU-bound → spawn_blocking so it doesn't stall
+                // the async runtime. Stream one TokenCounted per file as it completes.
+                let tx = self.message_tx.clone();
+                let config = self.model.session.config.clone();
+                tokio::task::spawn_blocking(move || {
+                    for path in paths {
+                        let tokens = gnaw_core::path::count_file_tokens(&path, &config);
+                        let _ = tx.send(Message::TokenCounted { path, tokens });
+                    }
+                });
+            }
             Cmd::CopyToClipboard(content) => match copy_to_clipboard(&content) {
                 Ok(_) => {
                     self.model.status_message = "Copied to clipboard!".to_string();

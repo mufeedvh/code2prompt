@@ -19,6 +19,8 @@ pub use template::*;
 
 use crate::utils::directory_contains_selected_files;
 use gnaw_core::session::GnawSession;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// The five main tabs of the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,6 +46,16 @@ pub enum AppMode {
     Normal,
     Insert,
     Command,
+}
+
+/// Per-file token-counting state. Map presence doubles as the work queue
+/// (Pending entries are what FlushTokenQueue drains) and as a cache.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenState {
+    Pending,  // selected, queued, not yet counting
+    Counting, // handed to a background task
+    Done(usize),
+    Failed, // binary/empty/unreadable
 }
 
 /// Hierarchical file node for TUI display with proper parent-child relationships
@@ -159,6 +171,16 @@ pub enum Message {
     MoveTreeCursor(i32),
     RefreshFileTree,
 
+    /// A background count finished (tokens=None means binary/empty/failed).
+    TokenCounted {
+        path: PathBuf,
+        tokens: Option<usize>,
+    },
+    /// Debounce fired for this generation; drain Pending if still current.
+    FlushTokenQueue(u64),
+    /// After the tree loads, enqueue files that were already selected.
+    InitialTokenScan,
+
     EnterSearchMode,
     ExitSearchMode,
 
@@ -218,6 +240,13 @@ pub struct Model {
     pub search_history: Vec<String>,
     /// Cursor into history while cycling with Ctrl+P; None = editing live, not browsing history.
     pub search_history_pos: Option<usize>,
+    /// Token-counting state per absolute file path. Only selected files appear
+    /// here; deselected entries may linger as a cache and are filtered out of totals.
+    pub token_states: HashMap<PathBuf, TokenState>,
+    /// Debounce generation; bumped on every (re)schedule, checked on flush.
+    pub token_debounce_gen: u64,
+    /// Cached Σ tokens of currently-selected Done files (the % denominator).
+    pub selected_token_total: usize,
 }
 
 impl Default for Model {
@@ -242,6 +271,9 @@ impl Default for Model {
             command_line: None,
             search_history: Vec::new(),
             search_history_pos: None,
+            token_states: HashMap::new(),
+            token_debounce_gen: 0,
+            selected_token_total: 0,
         }
     }
 }
@@ -265,6 +297,9 @@ impl Model {
             command_line: None,
             search_history: Vec::new(),
             search_history_pos: None,
+            token_states: HashMap::new(),
+            token_debounce_gen: 0,
+            selected_token_total: 0,
         }
     }
 
@@ -283,6 +318,26 @@ impl Model {
         } else {
             AppMode::Normal
         }
+    }
+
+    /// Recompute the % denominator: Σ Done tokens over currently-selected files.
+    /// Clones keys first to avoid borrowing token_states while mutating session.
+    fn recompute_selected_token_total(&mut self) {
+        let done: Vec<(PathBuf, usize)> = self
+            .token_states
+            .iter()
+            .filter_map(|(p, s)| match s {
+                TokenState::Done(n) => Some((p.clone(), *n)),
+                _ => None,
+            })
+            .collect();
+        let mut total = 0;
+        for (p, n) in done {
+            if self.session.is_file_selected(&p) {
+                total += n;
+            }
+        }
+        self.selected_token_total = total;
     }
 
     fn is_in_insert_context(&self) -> bool {
@@ -480,10 +535,105 @@ impl Model {
                     let action = if current { "Deselected" } else { "Selected" };
                     let extra = if is_directory { " (and contents)" } else { "" };
                     new_model.status_message = format!("{} {}{}", action, name, extra);
+
+                    // Selected-only counting. On select, mark newly-selected leaves
+                    // Pending and (re)arm the debounce. On deselect, just refresh the %.
+                    let mut scheduled = false;
+                    if !current {
+                        let leaves = crate::utils::collect_selected_files_under(
+                            &node_path,
+                            &mut new_model.session,
+                        );
+                        for p in leaves {
+                            // Skip anything already counted/counting/queued (dedup).
+                            if !matches!(
+                                new_model.token_states.get(&p),
+                                Some(TokenState::Done(_))
+                                    | Some(TokenState::Counting)
+                                    | Some(TokenState::Pending)
+                            ) {
+                                new_model.token_states.insert(p, TokenState::Pending);
+                                scheduled = true;
+                            }
+                        }
+                    }
+
+                    new_model.recompute_selected_token_total();
+
+                    if scheduled {
+                        new_model.token_debounce_gen += 1;
+                        let debounce_gen = new_model.token_debounce_gen;
+                        return (new_model, Cmd::ScheduleTokenCount(debounce_gen));
+                    }
+                }
+                (new_model, Cmd::None)
+            }
+            Message::FlushTokenQueue(debounce_gen) => {
+                // Stale flush from a superseded debounce — drop it.
+                if debounce_gen != new_model.token_debounce_gen {
+                    return (new_model, Cmd::None);
+                }
+                let pending: Vec<PathBuf> = new_model
+                    .token_states
+                    .iter()
+                    .filter(|(_, s)| matches!(s, TokenState::Pending))
+                    .map(|(p, _)| p.clone())
+                    .collect();
+
+                let mut to_count = Vec::new();
+                for p in pending {
+                    if new_model.session.is_file_selected(&p) {
+                        new_model
+                            .token_states
+                            .insert(p.clone(), TokenState::Counting);
+                        to_count.push(p);
+                    } else {
+                        // Deselected during the debounce window — forget it.
+                        new_model.token_states.remove(&p);
+                    }
+                }
+
+                if to_count.is_empty() {
+                    (new_model, Cmd::None)
+                } else {
+                    (new_model, Cmd::CountTokens { paths: to_count })
+                }
+            }
+
+            Message::TokenCounted { path, tokens } => {
+                // Ignore results invalidated by an encoding change (key removed).
+                if new_model.token_states.contains_key(&path) {
+                    let state = match tokens {
+                        Some(n) => TokenState::Done(n),
+                        None => TokenState::Failed,
+                    };
+                    new_model.token_states.insert(path, state);
+                    new_model.recompute_selected_token_total();
                 }
                 (new_model, Cmd::None)
             }
 
+            Message::InitialTokenScan => {
+                let leaves = crate::utils::collect_selected_files_in_tree(
+                    &new_model.file_tree_nodes,
+                    &mut new_model.session,
+                );
+                let mut scheduled = false;
+                for p in leaves {
+                    if !new_model.token_states.contains_key(&p) {
+                        new_model.token_states.insert(p, TokenState::Pending);
+                        scheduled = true;
+                    }
+                }
+                new_model.recompute_selected_token_total();
+                if scheduled {
+                    new_model.token_debounce_gen += 1;
+                    let debounce_gen = new_model.token_debounce_gen;
+                    (new_model, Cmd::ScheduleTokenCount(debounce_gen))
+                } else {
+                    (new_model, Cmd::None)
+                }
+            }
             Message::ExpandDirectory(index) => {
                 let visible_nodes = crate::utils::get_visible_nodes(
                     &new_model.file_tree_nodes,
@@ -589,12 +739,30 @@ impl Model {
             Message::CycleSetting(index) => {
                 let items = new_model.settings.get_settings_items(&new_model.session);
                 if let Some(item) = items.get(index) {
+                    let key = item.key;
                     let setting_name = new_model.settings.update_setting_by_key(
                         &mut new_model.session,
-                        item.key,
+                        key,
                         SettingAction::Cycle,
                     );
                     new_model.status_message = format!("Cycled {}", setting_name);
+
+                    // Token counts are encoding-specific — invalidate and re-enqueue
+                    // the still-selected files when the tokenizer changes.
+                    if key == SettingKey::TokenizerType {
+                        let previously: Vec<PathBuf> =
+                            new_model.token_states.keys().cloned().collect();
+                        new_model.token_states.clear();
+                        new_model.selected_token_total = 0;
+                        for p in previously {
+                            if new_model.session.is_file_selected(&p) {
+                                new_model.token_states.insert(p, TokenState::Pending);
+                            }
+                        }
+                        new_model.token_debounce_gen += 1;
+                        let debounce_gen = new_model.token_debounce_gen;
+                        return (new_model, Cmd::ScheduleTokenCount(debounce_gen));
+                    }
                 } else {
                     new_model.status_message = format!("Invalid setting index: {}", index);
                 }

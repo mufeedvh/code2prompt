@@ -5,6 +5,7 @@
 //! file I/O, and clipboard operations.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// Commands represent side effects that should be executed after model updates.
 /// This allows Model::update() to remain pure while still triggering necessary
@@ -31,4 +32,10 @@ pub enum Cmd {
 
     /// Refresh file tree from session
     RefreshFileTree,
+
+    /// Debounced trigger: sleep, then emit FlushTokenQueue(gen) to drain Pending counts.
+    ScheduleTokenCount(u64),
+
+    /// Tokenize these (already selected, already marked Counting) files, streaming results.
+    CountTokens { paths: Vec<PathBuf> },
 }
