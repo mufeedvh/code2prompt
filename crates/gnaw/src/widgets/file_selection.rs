@@ -1,6 +1,7 @@
 //! File selection widget for directory tree navigation and file selection.
 
 use crate::model::Model;
+use crate::model::TokenState;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph},
@@ -12,6 +13,18 @@ pub type FileSelectionState = ();
 /// Widget for file selection with directory tree, search, and filter patterns
 pub struct FileSelectionWidget<'a> {
     pub model: &'a Model,
+}
+
+/// Braille snake spinner (npm/pnpm style). Frame chosen from wall-clock time so it
+/// animates across the TUI's redraw loop without any stored tick counter.
+fn spinner_frame() -> char {
+    const FRAMES: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    const INTERVAL_MS: u128 = 80; // ~12.5 fps, same cadence as npm
+    let ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    FRAMES[((ms / INTERVAL_MS) % FRAMES.len() as u128) as usize]
 }
 
 impl<'a> FileSelectionWidget<'a> {
@@ -78,7 +91,41 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
                 };
                 let checkbox = if is_selected { "☑" } else { "☐" };
 
-                let content = format!("{}{} {} {}", indent, icon, checkbox, node.name);
+                let token_suffix = if is_selected {
+                    match self.model.token_states.get(&node.path) {
+                        Some(TokenState::Done(n)) => {
+                            let count = crate::utils::format_number(
+                                *n,
+                                &self.model.session.config.token_format,
+                            );
+                            if self.model.selected_token_total > 0 {
+                                let pct =
+                                    *n as f64 / self.model.selected_token_total as f64 * 100.0;
+                                // floor sub-0.1% to avoid a misleading "0.0%"
+                                if pct >= 0.1 {
+                                    format!("  [{} · {:.1}%]", count, pct)
+                                } else {
+                                    format!("  [{} · <0.1%]", count)
+                                }
+                            } else {
+                                format!("  [{}]", count)
+                            }
+                        }
+                        Some(TokenState::Counting) => {
+                            format!("  [{}]", spinner_frame())
+                        }
+                        Some(TokenState::Pending) => "  [·]".to_string(),
+                        Some(TokenState::Failed) => "  [—]".to_string(),
+                        None => String::new(),
+                    }
+                } else {
+                    String::new() // unselected rows carry no prompt share
+                };
+
+                let content = format!(
+                    "{}{} {} {}{}",
+                    indent, icon, checkbox, node.name, token_suffix
+                );
                 let mut style = Style::default();
 
                 // Adjust cursor position for viewport
