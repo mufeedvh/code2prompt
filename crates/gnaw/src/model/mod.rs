@@ -48,6 +48,22 @@ pub enum AppMode {
     Command,
 }
 
+/// How the file tree orders siblings. Path is the default (stable spatial layout);
+/// TokenWeight reorders by aggregate token count, heaviest first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TreeSortMode {
+    Path,
+    TokenWeight,
+}
+
+impl TreeSortMode {
+    fn toggled(self) -> Self {
+        match self {
+            TreeSortMode::Path => TreeSortMode::TokenWeight,
+            TreeSortMode::TokenWeight => TreeSortMode::Path,
+        }
+    }
+}
 /// Per-file token-counting state. Map presence doubles as the work queue
 /// (Pending entries are what FlushTokenQueue drains) and as a cache.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,6 +72,13 @@ pub enum TokenState {
     Counting, // handed to a background task
     Done(usize),
     Failed, // binary/empty/unreadable
+}
+
+/// Active token-size filter on the tree. None = no size filtering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SizeFilter {
+    GreaterThan(usize),
+    LessThan(usize),
 }
 
 /// Hierarchical file node for TUI display with proper parent-child relationships
@@ -68,6 +91,9 @@ pub struct DisplayFileNode {
     pub level: usize,
     pub children_loaded: bool,
     pub children: Vec<DisplayFileNode>,
+    /// Σ Done-tokens of selected leaves under this node. None until first aggregated.
+    /// Maintained on count-quiescence; doubles as the weight-sort key.
+    pub agg_tokens: Option<usize>,
 }
 
 impl DisplayFileNode {
@@ -87,6 +113,7 @@ impl DisplayFileNode {
             level,
             children_loaded: false,
             children: Vec::new(),
+            agg_tokens: None,
         }
     }
 
@@ -148,6 +175,95 @@ impl DisplayFileNode {
 
         self.children_loaded = true;
         Ok(())
+    }
+}
+
+/// Collapse every directory in the tree. Children stay loaded (children_loaded
+/// untouched) so re-expanding is instant and doesn't re-walk the filesystem.
+fn collapse_all(nodes: &mut [DisplayFileNode]) {
+    for n in nodes {
+        if n.is_directory {
+            n.is_expanded = false;
+            collapse_all(&mut n.children); // collapse descendants too, so re-expanding
+            // one level doesn't reveal a still-expanded subtree
+        }
+    }
+}
+/// Recompute agg_tokens bottom-up: a file's weight is its Done count (else 0),
+/// a directory's is the sum of its children. Fills every node on the way up.
+fn recompute_agg(node: &mut DisplayFileNode, states: &HashMap<PathBuf, TokenState>) -> usize {
+    let total = if node.is_directory {
+        node.children
+            .iter_mut()
+            .map(|c| recompute_agg(c, states))
+            .sum()
+    } else {
+        match states.get(&node.path) {
+            Some(TokenState::Done(n)) => *n,
+            _ => 0,
+        }
+    };
+    node.agg_tokens = Some(total);
+    total
+}
+
+/// Heaviest first; ties fall back to dirs-first-then-name so equal-weight nodes
+/// (e.g. all-zero before counting) keep a stable, familiar order instead of jumping.
+fn weight_cmp(a: &DisplayFileNode, b: &DisplayFileNode) -> std::cmp::Ordering {
+    b.agg_tokens
+        .unwrap_or(0)
+        .cmp(&a.agg_tokens.unwrap_or(0))
+        .then_with(|| path_cmp(a, b))
+}
+
+/// Dirs first, then alphabetical — the original tree ordering.
+fn path_cmp(a: &DisplayFileNode, b: &DisplayFileNode) -> std::cmp::Ordering {
+    match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
+    }
+}
+
+fn sort_recursive(nodes: &mut [DisplayFileNode], by_weight: bool) {
+    let cmp = if by_weight { weight_cmp } else { path_cmp };
+    nodes.sort_by(cmp);
+    for n in nodes {
+        sort_recursive(&mut n.children, by_weight);
+    }
+}
+
+/// Parse a size-filter arg: ">N" / "<N", with k/m suffixes. "" or "0" clears.
+fn parse_size_filter(arg: &str) -> Result<Option<SizeFilter>, String> {
+    if arg.is_empty() || arg == "0" {
+        return Ok(None);
+    }
+    let (ctor, num): (fn(usize) -> SizeFilter, &str) = match arg.chars().next() {
+        Some('>') => (SizeFilter::GreaterThan, &arg[1..]),
+        Some('<') => (SizeFilter::LessThan, &arg[1..]),
+        _ => return Err("Usage: :size >N | <N | 0  (e.g. :size >500, :size <2k)".into()),
+    };
+    let n = parse_count(num.trim()).ok_or_else(|| format!("Bad size: {num} (try >500 or <2k)"))?;
+    Ok(Some(ctor(n)))
+}
+
+/// "500" → 500, "2k" → 2000, "1m" → 1_000_000.
+fn parse_count(s: &str) -> Option<usize> {
+    let s = s.to_lowercase();
+    if let Some(stripped) = s.strip_suffix('k') {
+        stripped
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .map(|v| (v * 1_000.0) as usize)
+    } else if let Some(stripped) = s.strip_suffix('m') {
+        stripped
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .map(|v| (v * 1_000_000.0) as usize)
+    } else {
+        s.parse().ok()
     }
 }
 
@@ -247,6 +363,9 @@ pub struct Model {
     pub token_debounce_gen: u64,
     /// Cached Σ tokens of currently-selected Done files (the % denominator).
     pub selected_token_total: usize,
+    /// Current tree ordering. Path by default to preserve spatial memory.
+    pub tree_sort_mode: TreeSortMode,
+    pub size_filter: Option<SizeFilter>,
 }
 
 impl Default for Model {
@@ -274,6 +393,8 @@ impl Default for Model {
             token_states: HashMap::new(),
             token_debounce_gen: 0,
             selected_token_total: 0,
+            tree_sort_mode: TreeSortMode::Path,
+            size_filter: None,
         }
     }
 }
@@ -300,6 +421,8 @@ impl Model {
             token_states: HashMap::new(),
             token_debounce_gen: 0,
             selected_token_total: 0,
+            tree_sort_mode: TreeSortMode::Path,
+            size_filter: None,
         }
     }
 
@@ -338,6 +461,50 @@ impl Model {
             }
         }
         self.selected_token_total = total;
+    }
+
+    /// Recompute every node's agg_tokens, then re-order siblings per the current
+    /// sort mode. Preserves the cursor by path across the reorder. Cheap parts
+    /// (aggregate walk) always run; the reorder only matters in TokenWeight mode
+    /// but Path mode re-applies the canonical order too (harmless, keeps it consistent).
+    fn refresh_tree_aggregates_and_sort(&mut self) {
+        // 1. Aggregates — disjoint field borrows (file_tree_nodes mut, token_states immut).
+        {
+            let states = &self.token_states;
+            for n in &mut self.file_tree_nodes {
+                recompute_agg(n, states);
+            }
+        }
+
+        // 2. Capture the path under the cursor before the order changes.
+        let cursor_path = {
+            let vis = crate::utils::get_visible_nodes(
+                &self.file_tree_nodes,
+                &self.search_query,
+                self.size_filter,
+                &self.token_states,
+                &mut self.session,
+            );
+            vis.get(self.tree_cursor).map(|d| d.node.path.clone())
+        };
+
+        // 3. Reorder.
+        let by_weight = self.tree_sort_mode == TreeSortMode::TokenWeight;
+        sort_recursive(&mut self.file_tree_nodes, by_weight);
+
+        // 4. Restore the cursor to wherever that path landed.
+        if let Some(path) = cursor_path {
+            let vis = crate::utils::get_visible_nodes(
+                &self.file_tree_nodes,
+                &self.search_query,
+                self.size_filter,
+                &self.token_states,
+                &mut self.session,
+            );
+            if let Some(idx) = vis.iter().position(|d| d.node.path == path) {
+                self.tree_cursor = idx;
+            }
+        }
     }
 
     fn is_in_insert_context(&self) -> bool {
@@ -403,7 +570,57 @@ impl Model {
                     // "w" | "wq" => /* wire to SaveToFile later */,
                     "" => {} // bare ":" — no-op
                     other => {
-                        new_model.status_message = format!("Not a command: :{other}");
+                        if let Some(rest) = other.strip_prefix("sort") {
+                            let arg = rest.trim();
+                            let new_mode = match arg {
+                                "tokens" | "weight" => Some(TreeSortMode::TokenWeight),
+                                "path" | "name" => Some(TreeSortMode::Path),
+                                "" => Some(new_model.tree_sort_mode.toggled()),
+                                _ => None,
+                            };
+                            match new_mode {
+                                Some(mode) => {
+                                    new_model.tree_sort_mode = mode;
+                                    new_model.refresh_tree_aggregates_and_sort();
+                                    new_model.status_message = match mode {
+                                        TreeSortMode::TokenWeight => {
+                                            "Tree sorted by token weight".to_string()
+                                        }
+                                        TreeSortMode::Path => "Tree sorted by path".to_string(),
+                                    };
+                                }
+                                None => {
+                                    new_model.status_message =
+                                        format!("Unknown sort mode: {arg} (try tokens|path)");
+                                }
+                            }
+                        } else if other == "collapse" {
+                            collapse_all(&mut new_model.file_tree_nodes);
+                            new_model.tree_cursor = 0;
+                            new_model.file_tree_scroll = 0;
+                            new_model.status_message = "Collapsed all folders".to_string();
+                        } else if let Some(rest) = other.strip_prefix("size") {
+                            let arg = rest.trim();
+                            match parse_size_filter(arg) {
+                                Ok(filter) => {
+                                    new_model.size_filter = filter;
+                                    new_model.tree_cursor = 0;
+                                    new_model.file_tree_scroll = 0;
+                                    new_model.status_message = match filter {
+                                        Some(SizeFilter::GreaterThan(n)) => {
+                                            format!("Filtering: files over {n} tokens")
+                                        }
+                                        Some(SizeFilter::LessThan(n)) => {
+                                            format!("Filtering: files under {n} tokens")
+                                        }
+                                        None => "Size filter cleared".to_string(),
+                                    };
+                                }
+                                Err(e) => new_model.status_message = e,
+                            }
+                        } else {
+                            new_model.status_message = format!("Not a command: :{other}");
+                        }
                     }
                 }
                 (new_model, Cmd::None)
@@ -473,6 +690,8 @@ impl Model {
                 let visible_nodes = crate::utils::get_visible_nodes(
                     &new_model.file_tree_nodes,
                     &new_model.search_query,
+                    new_model.size_filter,
+                    &new_model.token_states,
                     &mut new_model.session,
                 );
                 let visible_count = visible_nodes.len();
@@ -512,6 +731,8 @@ impl Model {
                 let visible_nodes = crate::utils::get_visible_nodes(
                     &new_model.file_tree_nodes,
                     &new_model.search_query,
+                    new_model.size_filter,
+                    &new_model.token_states,
                     &mut new_model.session,
                 );
 
@@ -565,6 +786,16 @@ impl Model {
                         let debounce_gen = new_model.token_debounce_gen;
                         return (new_model, Cmd::ScheduleTokenCount(debounce_gen));
                     }
+
+                    // Deselect or all-already-counted: if nothing is in flight, the
+                    // aggregates/totals just changed, so refresh now.
+                    let busy = new_model
+                        .token_states
+                        .values()
+                        .any(|s| matches!(s, TokenState::Pending | TokenState::Counting));
+                    if !busy {
+                        new_model.refresh_tree_aggregates_and_sort();
+                    }
                 }
                 (new_model, Cmd::None)
             }
@@ -609,6 +840,16 @@ impl Model {
                     };
                     new_model.token_states.insert(path, state);
                     new_model.recompute_selected_token_total();
+
+                    // Quiescent (no Pending/Counting left)? The count set is now stable,
+                    // so aggregates are complete — refresh and sort exactly once.
+                    let busy = new_model
+                        .token_states
+                        .values()
+                        .any(|s| matches!(s, TokenState::Pending | TokenState::Counting));
+                    if !busy {
+                        new_model.refresh_tree_aggregates_and_sort();
+                    }
                 }
                 (new_model, Cmd::None)
             }
@@ -638,6 +879,8 @@ impl Model {
                 let visible_nodes = crate::utils::get_visible_nodes(
                     &new_model.file_tree_nodes,
                     &new_model.search_query,
+                    new_model.size_filter,
+                    &new_model.token_states,
                     &mut new_model.session,
                 );
 
@@ -692,6 +935,8 @@ impl Model {
                 let visible_nodes = crate::utils::get_visible_nodes(
                     &new_model.file_tree_nodes,
                     &new_model.search_query,
+                    new_model.size_filter,
+                    &new_model.token_states,
                     &mut new_model.session,
                 );
 

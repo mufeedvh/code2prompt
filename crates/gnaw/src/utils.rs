@@ -4,10 +4,11 @@
 //! managing file operations, and other utility functions used throughout the TUI.
 
 use crate::model::DisplayFileNode;
+use crate::model::{SizeFilter, TokenState};
 use anyhow::Result;
 use globset::GlobSet;
 use gnaw_core::session::GnawSession;
-use regex::Regex;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 /// Collect selected leaf files at or under a path (file → itself if selected;
@@ -152,12 +153,22 @@ pub(crate) fn directory_contains_selected_files(
 pub fn get_visible_nodes(
     nodes: &[DisplayFileNode],
     search_query: &str,
+    size_filter: Option<SizeFilter>,
+    token_states: &HashMap<PathBuf, TokenState>,
     session: &mut GnawSession,
 ) -> Vec<DisplayNodeWithSelection> {
     let mut visible = Vec::new();
     let search_active = !search_query.is_empty();
     let matcher = build_query_matcher(search_query);
-    collect_visible_nodes_recursive(nodes, &matcher, session, &mut visible, search_active);
+    collect_visible_nodes_recursive(
+        nodes,
+        &matcher,
+        size_filter,
+        token_states,
+        session,
+        &mut visible,
+        search_active,
+    );
     visible
 }
 
@@ -207,17 +218,34 @@ pub struct DisplayNodeWithSelection {
 fn collect_visible_nodes_recursive(
     nodes: &[DisplayFileNode],
     matcher: &QueryMatcher,
+    size_filter: Option<SizeFilter>,
+    token_states: &HashMap<PathBuf, TokenState>,
     session: &mut GnawSession,
     visible: &mut Vec<DisplayNodeWithSelection>,
     search_active: bool,
 ) {
     for node in nodes {
-        // Case-insensitive match on name or full path (with optional wildcards)
-        let matches_current = if matches!(matcher, QueryMatcher::MatchAll) {
+        let passes_name = if matches!(matcher, QueryMatcher::MatchAll) {
             true
         } else {
             matches(matcher, &node.name) || matches(matcher, &node.path.to_string_lossy())
         };
+
+        // Size filter: files judged by their Done token count; dirs always pass
+        // (their visibility comes from surviving descendants). A file with no count
+        // can't satisfy a size filter, so it's hidden while a filter is active.
+        let passes_size = match (size_filter, node.is_directory) {
+            (None, _) => true,
+            (Some(_), true) => true,
+            (Some(filter), false) => match token_states.get(&node.path) {
+                Some(TokenState::Done(n)) => match filter {
+                    SizeFilter::GreaterThan(t) => *n > t,
+                    SizeFilter::LessThan(t) => *n < t,
+                },
+                _ => false,
+            },
+        };
+        let matches_current = passes_name && passes_size;
 
         if search_active {
             // In search mode, traverse into directories regardless of expansion
@@ -227,6 +255,8 @@ fn collect_visible_nodes_recursive(
                 collect_visible_nodes_recursive(
                     &children,
                     matcher,
+                    size_filter,
+                    token_states,
                     session,
                     &mut child_results,
                     true,
@@ -276,6 +306,8 @@ fn collect_visible_nodes_recursive(
                     collect_visible_nodes_recursive(
                         &node.children,
                         matcher,
+                        size_filter,
+                        token_states,
                         session,
                         visible,
                         false,

@@ -666,7 +666,11 @@ impl TuiApp {
                 let text = if !model.status_message.is_empty() {
                     model.status_message.clone()
                 } else {
-                    ":q Quit | : Command | 1-5 Tabs | Tab/Shift+Tab Switch | / Search".to_string()
+                    let sort = match model.tree_sort_mode {
+                        crate::model::TreeSortMode::Path => "path",
+                        crate::model::TreeSortMode::TokenWeight => "tokens",
+                    };
+                    format!(":q Quit | :sort {sort} | 1-5 Tabs | Tab Switch | / Search")
                 };
                 (text, Color::Cyan)
             }
