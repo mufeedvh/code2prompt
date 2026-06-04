@@ -1,8 +1,5 @@
 Project Path: {{ absolute_code_path }}
 
-I want you to generate a high-quality well-crafted Github pull request description for this project.
-I will provide you with the source tree, git diff, git log, and pull request template.
-
 Source Tree:
 ```
 {{ source_tree }}
@@ -15,7 +12,6 @@ Git diff:
 ```
 {{/if}}
 
-
 {{#if git_log_branch}}
 Git log:
 ```
@@ -23,10 +19,11 @@ Git log:
 ```
 {{/if}}
 
+Based on the source tree, git diff, and git log above, generate a high-quality, well-crafted GitHub pull request description for this project.
 
-The Pull Request description should include the following template and adhere best practice:
+The pull request description should follow this template and adhere to best practice:
 ```
-Title: provide with concise and informative title.
+Title: provide a concise and informative title.
 
 # What is this?
 - Explain the motivation why this is needed and the expected outcome of implementing this.
@@ -53,6 +50,6 @@ For example:
 - N/A
 ```
 
-Please, analyze the git diff and git log to understand the changes. Do not output git log and git diff to the content.
+Analyze the git diff and git log to understand the changes. Do not output the git log and git diff in the content.
 Use your analysis of the code to generate accurate and helpful content, but also explain things clearly for users who may not be familiar with the implementation details.
 Write the content in Markdown format and follow the provided pull request template.
