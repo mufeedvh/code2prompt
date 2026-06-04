@@ -191,17 +191,23 @@ fn collapse_all(nodes: &mut [DisplayFileNode]) {
 }
 /// Recompute agg_tokens bottom-up: a file's weight is its Done count (else 0),
 /// a directory's is the sum of its children. Fills every node on the way up.
-fn recompute_agg(node: &mut DisplayFileNode, states: &HashMap<PathBuf, TokenState>) -> usize {
+fn recompute_agg(
+    node: &mut DisplayFileNode,
+    states: &HashMap<PathBuf, TokenState>,
+    session: &mut GnawSession,
+) -> usize {
     let total = if node.is_directory {
         node.children
             .iter_mut()
-            .map(|c| recompute_agg(c, states))
+            .map(|c| recompute_agg(c, states, session))
             .sum()
-    } else {
+    } else if session.is_file_selected(&node.path) {
         match states.get(&node.path) {
             Some(TokenState::Done(n)) => *n,
             _ => 0,
         }
+    } else {
+        0 // deselected leaves don't contribute, even if their count is still cached
     };
     node.agg_tokens = Some(total);
     total
@@ -472,7 +478,7 @@ impl Model {
         {
             let states = &self.token_states;
             for n in &mut self.file_tree_nodes {
-                recompute_agg(n, states);
+                recompute_agg(n, states, session);
             }
         }
 
