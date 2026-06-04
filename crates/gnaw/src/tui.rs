@@ -315,6 +315,8 @@ impl TuiApp {
                 }
                 KeyCode::Char('/') => Some(Message::EnterSearchMode),
                 KeyCode::Char('s') | KeyCode::Char('S') => Some(Message::EnterSearchMode),
+                KeyCode::Char('a') => Some(Message::SelectMatches),
+                KeyCode::Char('d') => Some(Message::DeselectMatches),
                 KeyCode::Char('r') | KeyCode::Char('R') => Some(Message::RefreshFileTree),
                 _ => None,
             }

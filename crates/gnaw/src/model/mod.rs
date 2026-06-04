@@ -288,6 +288,10 @@ pub enum Message {
     SearchHistoryPrev,
     UpdateSearchQuery(String),
     ToggleFileSelection(usize),
+    /// Select every visible (search-matched) leaf file.
+    SelectMatches,
+    /// Deselect every visible (search-matched) leaf file.
+    DeselectMatches,
     ExpandDirectory(usize),
     CollapseDirectory(usize),
     MoveTreeCursor(i32),
@@ -477,6 +481,7 @@ impl Model {
         // 1. Aggregates — disjoint field borrows (file_tree_nodes mut, token_states immut).
         {
             let states = &self.token_states;
+            let session = &mut self.session;
             for n in &mut self.file_tree_nodes {
                 recompute_agg(n, states, session);
             }
@@ -805,6 +810,84 @@ impl Model {
                 }
                 (new_model, Cmd::None)
             }
+
+            Message::SelectMatches | Message::DeselectMatches => {
+                let select = matches!(message, Message::SelectMatches);
+
+                let visible_nodes = crate::utils::get_visible_nodes(
+                    &new_model.file_tree_nodes,
+                    &new_model.search_query,
+                    new_model.size_filter,
+                    &new_model.token_states,
+                    &mut new_model.session,
+                );
+
+                // Visible *leaves* only. Never bulk-toggle a directory node — that would
+                // pull in its hidden, non-matching children, which is exactly the surprise
+                // we're trying to remove.
+                let leaves: Vec<PathBuf> = visible_nodes
+                    .iter()
+                    .filter(|d| !d.node.is_directory)
+                    .map(|d| d.node.path.clone())
+                    .collect();
+
+                let mut changed = 0usize;
+                let mut scheduled = false;
+
+                for path in &leaves {
+                    // session normalizes abs→rel internally, so the absolute path is fine.
+                    if new_model.session.is_file_selected(path) == select {
+                        continue; // already in the desired state
+                    }
+                    new_model.session.toggle_file_selection(path.clone());
+                    changed += 1;
+
+                    // Same dedup guard as ToggleFileSelection: only enqueue counts for
+                    // leaves not already done/counting/queued.
+                    if select
+                        && !matches!(
+                            new_model.token_states.get(path),
+                            Some(TokenState::Done(_))
+                                | Some(TokenState::Counting)
+                                | Some(TokenState::Pending)
+                        )
+                    {
+                        new_model
+                            .token_states
+                            .insert(path.clone(), TokenState::Pending);
+                        scheduled = true;
+                    }
+                }
+
+                new_model.status_message = if changed == 0 {
+                    format!(
+                        "No matching files to {}",
+                        if select { "select" } else { "deselect" }
+                    )
+                } else {
+                    let verb = if select { "Selected" } else { "Deselected" };
+                    format!("{verb} {changed} matching file(s)")
+                };
+
+                new_model.recompute_selected_token_total();
+
+                if scheduled {
+                    new_model.token_debounce_gen += 1;
+                    let debounce_gen = new_model.token_debounce_gen;
+                    return (new_model, Cmd::ScheduleTokenCount(debounce_gen));
+                }
+
+                // Deselect, or everything already counted: refresh now if nothing's in flight.
+                let busy = new_model
+                    .token_states
+                    .values()
+                    .any(|s| matches!(s, TokenState::Pending | TokenState::Counting));
+                if !busy {
+                    new_model.refresh_tree_aggregates_and_sort();
+                }
+                (new_model, Cmd::None)
+            }
+
             Message::FlushTokenQueue(debounce_gen) => {
                 // Stale flush from a superseded debounce — drop it.
                 if debounce_gen != new_model.token_debounce_gen {

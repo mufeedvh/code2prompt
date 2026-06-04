@@ -172,6 +172,24 @@ pub fn get_visible_nodes(
     visible
 }
 
+/// A directory's *display* selection is derived from its contents: it shows as
+/// selected when at least one leaf beneath it (over the already-loaded children)
+/// is selected. Folders carry no selection action of their own under per-file
+/// selection, so querying the engine for the directory path would always return
+/// the default — this keeps the checkbox honest after bulk/partial (de)selection.
+fn dir_is_selected(node: &DisplayFileNode, session: &mut GnawSession) -> bool {
+    for child in &node.children {
+        if child.is_directory {
+            if dir_is_selected(child, session) {
+                return true;
+            }
+        } else if session.is_file_selected(&child.path) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Matcher for the file-tree search box.
 /// - No glob metacharacters (`* ? {`) → case-insensitive substring (interactive default).
 /// - Any metacharacter → full glob dialect via the shared build_globset (braces, **, etc.),
@@ -271,7 +289,11 @@ fn collect_visible_nodes_recursive(
                 } else {
                     &node.path
                 };
-                let is_selected = session.is_file_selected(relative_path);
+                let is_selected = if node.is_directory {
+                    dir_is_selected(node, session)
+                } else {
+                    session.is_file_selected(relative_path)
+                };
 
                 // Show directories as expanded in search results for better context
                 let mut node_clone = node.clone();
@@ -294,7 +316,11 @@ fn collect_visible_nodes_recursive(
                 } else {
                     &node.path
                 };
-                let is_selected = session.is_file_selected(relative_path);
+                let is_selected = if node.is_directory {
+                    dir_is_selected(node, session)
+                } else {
+                    session.is_file_selected(relative_path)
+                };
 
                 visible.push(DisplayNodeWithSelection {
                     node: node.clone(),

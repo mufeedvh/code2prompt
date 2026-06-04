@@ -71,6 +71,25 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
         );
         let total_nodes = visible_nodes.len();
 
+        // How many selected leaves are actually on screen under the current search.
+        let visible_selected = visible_nodes
+            .iter()
+            .filter(|d| !d.node.is_directory && d.is_selected)
+            .count();
+
+        // Only meaningful while searching — with no query nothing is hidden.
+        let search_active = !self.model.search_query.trim().is_empty();
+        let hidden_selected = if search_active {
+            let total_selected = crate::utils::collect_selected_files_in_tree(
+                &self.model.file_tree_nodes,
+                &mut session_clone, // the clone already made above for get_visible_nodes
+            )
+            .len();
+            total_selected.saturating_sub(visible_selected)
+        } else {
+            0
+        };
+
         // Calculate viewport dimensions
         let tree_area = layout[0];
         let content_height = tree_area.height.saturating_sub(2).max(1) as usize; // Account for borders, keep >= 1
@@ -184,15 +203,25 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
             .collect();
 
         // Create title with scroll indicator
-        let scroll_indicator = if total_nodes > content_height {
-            let current_start = scroll_start + 1;
-            let current_end = scroll_end;
-            format!(
-                "Files ({}) | Showing {}-{} of {}",
-                total_nodes, current_start, current_end, total_nodes
-            )
-        } else {
-            format!("Files ({})", total_nodes)
+        let scroll_indicator = {
+            let base = if total_nodes > content_height {
+                format!(
+                    "Files ({}) | Showing {}-{} of {}",
+                    total_nodes,
+                    scroll_start + 1,
+                    scroll_end,
+                    total_nodes
+                )
+            } else {
+                format!("Files ({})", total_nodes)
+            };
+            if hidden_selected > 0 {
+                format!(
+                    "{base} | ⚠ {hidden_selected} selected hidden by search — still in analysis"
+                )
+            } else {
+                base
+            }
         };
 
         let tree_widget = List::new(items)
@@ -260,7 +289,7 @@ impl<'a> StatefulWidget for FileSelectionWidget<'a> {
 
         // Instructions
         let instructions = Paragraph::new(
-            "Enter: Run Analysis | ↑↓: Navigate | Space: Select/Deselect | ←→: Expand/Collapse | PgUp/PgDn: Scroll | S: Search Mode | Esc: Exit"
+            "Enter: Run | ↑↓: Navigate | Space: Toggle | a/d: Select/Deselect matches | ←→: Expand/Collapse | S: Search | Esc: Exit"
         )
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .style(Style::default().fg(Color::Gray));
