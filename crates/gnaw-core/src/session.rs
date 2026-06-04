@@ -141,26 +141,22 @@ impl GnawSession {
 
     /// User interaction: toggle file selection (delegates to SelectionEngine)
     pub fn toggle_file_selection(&mut self, path: PathBuf) -> &mut Self {
-        let relative_path = if path.is_absolute() {
-            path.strip_prefix(&self.config.path)
-                .unwrap_or(&path)
-                .to_path_buf()
-        } else {
-            path
+        let relative_path = match path.strip_prefix(&self.config.path) {
+            Ok(rel) => rel.to_path_buf(),
+            Err(_) => path,
         };
-
         self.selection_engine.toggle_file(relative_path);
         self
     }
 
     /// Check if a file is selected (delegates to SelectionEngine)
     pub fn is_file_selected(&mut self, path: &std::path::Path) -> bool {
-        let relative_path = if path.is_absolute() {
-            path.strip_prefix(&self.config.path).unwrap_or(path)
-        } else {
-            path
-        };
-
+        // Always normalize to a root-relative path. When `config.path` is itself
+        // relative (e.g. "." from `gnaw .`), walker paths look like
+        // "./crates/foo.rs" — still carrying a CurDir component — so the old
+        // `is_absolute()` guard left them un-stripped, and they failed to match
+        // selection actions recorded as "crates/foo.rs".
+        let relative_path = path.strip_prefix(&self.config.path).unwrap_or(path);
         self.selection_engine.is_selected(relative_path)
     }
 
