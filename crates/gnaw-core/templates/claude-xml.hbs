@@ -1,0 +1,33 @@
+<codebase>
+<directory>{{absolute_code_path}}</directory>
+
+<file_map>
+{{source_tree}}
+</file_map>
+
+<files>
+{{#each files}}
+{{#if code}}
+<file path="{{path}}">
+{{#unless ../no_codeblock}}```{{extension}}
+{{code}}
+```{{else}}
+{{code}}
+{{/unless}}
+</file>
+{{/if}}
+{{/each}}
+</files>
+{{#if git_diff}}
+
+<git_diff>
+{{git_diff}}
+</git_diff>
+{{/if}}
+</codebase>
+{{#if task}}
+
+<instructions>
+{{task}}
+</instructions>
+{{/if}}

@@ -25,6 +25,30 @@ impl BuiltinTemplates {
         TEMPLATES.get_or_init(|| {
             HashMap::from([
                 (
+                    "claude-xml",
+                    BuiltinTemplate {
+                        name: "Claude (XML, context-first)",
+                        content: include_str!("../templates/claude-xml.hbs"),
+                        description: "XML-tagged, context-first layout for Claude. Optional {{task}}.",
+                    },
+                ),
+                (
+                    "chatgpt-markdown",
+                    BuiltinTemplate {
+                        name: "ChatGPT (Markdown, context-first)",
+                        content: include_str!("../templates/chatgpt-md.hbs"),
+                        description: "Markdown-headered, context-first layout for GPT models. Optional {{task}}.",
+                    },
+                ),
+                (
+                    "gemini",
+                    BuiltinTemplate {
+                        name: "Gemini (context-first)",
+                        content: include_str!("../templates/gemini.hbs"),
+                        description: "Terse context/task split for Gemini. Optional {{task}}.",
+                    },
+                ),
+                (
                     "default-markdown",
                     BuiltinTemplate {
                         name: "Default (Markdown)",

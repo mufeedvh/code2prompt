@@ -1,0 +1,30 @@
+<context>
+<project>{{absolute_code_path}}</project>
+
+<structure>
+{{source_tree}}
+</structure>
+
+{{#each files}}
+{{#if code}}
+<file path="{{path}}">
+{{#unless ../no_codeblock}}```{{extension}}
+{{code}}
+```{{else}}
+{{code}}
+{{/unless}}
+</file>
+{{/if}}
+{{/each}}
+{{#if git_diff}}
+<git_diff>
+{{git_diff}}
+</git_diff>
+{{/if}}
+</context>
+{{#if task}}
+
+<task>
+{{task}}
+</task>
+{{/if}}

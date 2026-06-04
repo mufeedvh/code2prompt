@@ -1,0 +1,35 @@
+# Repository: {{absolute_code_path}}
+
+## Project structure
+
+````txt
+{{source_tree}}
+````
+
+## Files
+
+{{#each files}}
+{{#if code}}
+### `{{path}}`
+
+{{#unless ../no_codeblock}}```{{extension}}
+{{code}}
+```{{else}}
+{{code}}
+{{/unless}}
+{{/if}}
+{{/each}}
+{{#if git_diff}}
+
+## Git diff
+
+```diff
+{{git_diff}}
+```
+{{/if}}
+{{#if task}}
+
+## Task
+
+{{task}}
+{{/if}}
