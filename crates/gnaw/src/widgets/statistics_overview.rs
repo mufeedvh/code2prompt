@@ -130,16 +130,11 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
                     &self.model.session.config.token_format
                 )
             )));
-            if selected_count > 0 {
-                let avg_tokens = token_count / selected_count;
-                stats_items.push(ListItem::new(format!(
-                    "  • Avg per File: {}",
-                    StatisticsState::format_number(
-                        avg_tokens,
-                        &self.model.session.config.token_format
-                    )
-                )));
-            }
+            let avg_tokens = token_count / total_files.max(1); // Avoid division by zero
+            stats_items.push(ListItem::new(format!(
+                "  • Avg per File: {}",
+                StatisticsState::format_number(avg_tokens, &self.model.session.config.token_format)
+            )));
         } else {
             stats_items.push(ListItem::new("  • Total Tokens: Not calculated"));
         }
