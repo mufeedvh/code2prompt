@@ -29,9 +29,7 @@ impl Default for StatisticsState {
 
 impl StatisticsState {
     /// Count selected files using session-based approach
-    pub fn count_selected_files(
-        session: &mut gnaw_core::session::GnawSession,
-    ) -> usize {
+    pub fn count_selected_files(session: &mut gnaw_core::session::GnawSession) -> usize {
         session.get_selected_files().unwrap_or_default().len()
     }
 
@@ -48,10 +46,7 @@ impl StatisticsState {
     }
 
     /// Format number according to token format setting (moved from widget)
-    pub fn format_number(
-        num: usize,
-        token_format: &gnaw_core::tokenizer::TokenFormat,
-    ) -> String {
+    pub fn format_number(num: usize, token_format: &gnaw_core::tokenizer::TokenFormat) -> String {
         format_number(num, token_format)
     }
 
@@ -80,7 +75,7 @@ impl StatisticsState {
             .into_iter()
             .map(|(ext, (tokens, count))| (ext, tokens, count))
             .collect();
-        ext_vec.sort_by(|a, b| b.1.cmp(&a.1));
+        ext_vec.sort_by_key(|b| std::cmp::Reverse(b.1)); // Sort by tokens descending
         ext_vec
     }
 }

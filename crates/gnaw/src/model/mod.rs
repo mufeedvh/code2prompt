@@ -922,12 +922,14 @@ impl Model {
 
             Message::TokenCounted { path, tokens } => {
                 // Ignore results invalidated by an encoding change (key removed).
-                if new_model.token_states.contains_key(&path) {
+                if let std::collections::hash_map::Entry::Occupied(mut e) =
+                    new_model.token_states.entry(path)
+                {
                     let state = match tokens {
                         Some(n) => TokenState::Done(n),
                         None => TokenState::Failed,
                     };
-                    new_model.token_states.insert(path, state);
+                    e.insert(state);
                     new_model.recompute_selected_token_total();
 
                     // Quiescent (no Pending/Counting left)? The count set is now stable,
@@ -950,8 +952,10 @@ impl Model {
                 );
                 let mut scheduled = false;
                 for p in leaves {
-                    if !new_model.token_states.contains_key(&p) {
-                        new_model.token_states.insert(p, TokenState::Pending);
+                    if let std::collections::hash_map::Entry::Vacant(e) =
+                        new_model.token_states.entry(p)
+                    {
+                        e.insert(TokenState::Pending);
                         scheduled = true;
                     }
                 }

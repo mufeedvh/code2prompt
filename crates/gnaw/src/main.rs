@@ -16,8 +16,8 @@ use crate::utils::format_number;
 use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
-use gnaw_core::template::write_to_file;
 use colored::*;
+use gnaw_core::template::write_to_file;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
 use std::io::Write;
@@ -57,8 +57,8 @@ async fn main() -> Result<()> {
 
 /// Run the CLI mode with parsed arguments
 async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
-    use gnaw_core::configuration::OutputDestination;
     use config_loader::{get_default_output_destination, load_config};
+    use gnaw_core::configuration::OutputDestination;
 
     let quiet_mode = args.quiet;
 
@@ -232,7 +232,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // ~~~ Output to Stdout ~~~
     if output_to_stdout {
-        print!("{}", &rendered.prompt);
+        print!("{}", rendered.prompt);
         std::io::stdout()
             .flush()
             .context("Failed to flush stdout")?;

@@ -298,10 +298,8 @@ fn find_node_by_path<'a>(root: &'a TreeNode, path: &str) -> Option<&'a TreeNode>
     let mut current = root;
 
     for component in components {
-        match current.children.get(component) {
-            Some(child) => current = child,
-            None => return None,
-        }
+        let child = current.children.get(component)?;
+        current = child;
     }
 
     Some(current)
@@ -343,7 +341,7 @@ fn rebuild_filtered_tree(
         .collect();
 
     // Sort by tokens descending
-    filtered_children.sort_by(|a, b| b.1.tokens.cmp(&a.1.tokens));
+    filtered_children.sort_by_key(|b| std::cmp::Reverse(b.1.tokens));
 
     let child_count = filtered_children.len();
     for (i, (name, child)) in filtered_children.into_iter().enumerate() {
