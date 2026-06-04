@@ -11,15 +11,17 @@ use gnaw_core::session::GnawSession;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-/// Collect selected leaf files at or under a path (file → itself if selected;
-/// directory → walk, respecting ignore/hidden config). Paths are absolute.
-pub fn collect_selected_files_under(node_path: &Path, session: &mut GnawSession) -> Vec<PathBuf> {
+/// Collect every leaf file under `node_path`, regardless of selection state,
+/// honoring the same ignore/hidden rules as the rest of the walk. Used by the
+/// directory Space-toggle to drive a bulk select/deselect over the subtree.
+///
+/// We walk the filesystem rather than the display tree because a collapsed
+/// subtree may not have its children loaded yet.
+pub fn collect_files_under(node_path: &Path, session: &GnawSession) -> Vec<PathBuf> {
     let mut out = Vec::new();
 
     if node_path.is_file() {
-        if session.is_file_selected(node_path) {
-            out.push(node_path.to_path_buf());
-        }
+        out.push(node_path.to_path_buf());
         return out;
     }
 
@@ -31,7 +33,7 @@ pub fn collect_selected_files_under(node_path: &Path, session: &mut GnawSession)
 
     for entry in walker.flatten() {
         let p = entry.path();
-        if p.is_file() && session.is_file_selected(p) {
+        if p.is_file() {
             out.push(p.to_path_buf());
         }
     }

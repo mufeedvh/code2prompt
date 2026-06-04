@@ -751,44 +751,64 @@ impl Model {
                     let node_path = display_node.node.path.clone();
                     let name = display_node.node.name.clone();
                     let is_directory = display_node.node.is_directory;
-                    let current = display_node.is_selected;
 
-                    // Convert to relative path for session
-                    let relative_path =
-                        if let Ok(rel) = node_path.strip_prefix(&new_model.session.config.path) {
-                            rel.to_path_buf()
-                        } else {
-                            node_path.clone()
+                    // `display_node.is_selected` is the descendant-aware truth the user
+                    // sees (for a dir: "any child selected"). Move the subtree to the
+                    // opposite of that.
+                    let select = !display_node.is_selected;
+
+                    let mut scheduled = false;
+                    let mut changed = 0usize;
+
+                    // Toggle one leaf toward `select`, with the same Pending dedup guard
+                    // ToggleFileSelection/SelectMatches already use.
+                    let toggle_leaf =
+                        |path: PathBuf, model: &mut Model, scheduled: &mut bool| -> bool {
+                            if model.session.is_file_selected(&path) == select {
+                                return false; // already in desired state
+                            }
+                            model.session.toggle_file_selection(path.clone());
+                            if select
+                                && !matches!(
+                                    model.token_states.get(&path),
+                                    Some(TokenState::Done(_))
+                                        | Some(TokenState::Counting)
+                                        | Some(TokenState::Pending)
+                                )
+                            {
+                                model.token_states.insert(path, TokenState::Pending);
+                                *scheduled = true;
+                            }
+                            true
                         };
 
-                    // Update session selection state (single source of truth)
-                    new_model.session.toggle_file_selection(relative_path);
-
-                    let action = if current { "Deselected" } else { "Selected" };
-                    let extra = if is_directory { " (and contents)" } else { "" };
-                    new_model.status_message = format!("{} {}{}", action, name, extra);
-
-                    // Selected-only counting. On select, mark newly-selected leaves
-                    // Pending and (re)arm the debounce. On deselect, just refresh the %.
-                    let mut scheduled = false;
-                    if !current {
-                        let leaves = crate::utils::collect_selected_files_under(
-                            &node_path,
-                            &mut new_model.session,
-                        );
+                    if is_directory {
+                        // Operate on leaves, never on the directory path itself. A
+                        // directory-level action is LOWER specificity than the per-file
+                        // actions select-all/deselect-all stamp on every leaf, so it would
+                        // be silently overridden. Per-leaf actions are same-specificity and
+                        // more recent, so they win the precedence tie-break.
+                        let leaves =
+                            crate::utils::collect_files_under(&node_path, &new_model.session);
                         for p in leaves {
-                            // Skip anything already counted/counting/queued (dedup).
-                            if !matches!(
-                                new_model.token_states.get(&p),
-                                Some(TokenState::Done(_))
-                                    | Some(TokenState::Counting)
-                                    | Some(TokenState::Pending)
-                            ) {
-                                new_model.token_states.insert(p, TokenState::Pending);
-                                scheduled = true;
+                            if toggle_leaf(p, &mut new_model, &mut scheduled) {
+                                changed += 1;
                             }
                         }
+                    } else if toggle_leaf(node_path.clone(), &mut new_model, &mut scheduled) {
+                        changed = 1;
                     }
+
+                    let verb = if select { "Selected" } else { "Deselected" };
+                    let extra = if is_directory { " (and contents)" } else { "" };
+                    new_model.status_message = if changed == 0 {
+                        format!(
+                            "{name} already {}",
+                            if select { "selected" } else { "deselected" }
+                        )
+                    } else {
+                        format!("{verb} {name}{extra}")
+                    };
 
                     new_model.recompute_selected_token_total();
 
@@ -798,8 +818,6 @@ impl Model {
                         return (new_model, Cmd::ScheduleTokenCount(debounce_gen));
                     }
 
-                    // Deselect or all-already-counted: if nothing is in flight, the
-                    // aggregates/totals just changed, so refresh now.
                     let busy = new_model
                         .token_states
                         .values()
