@@ -148,6 +148,12 @@ pub struct Cli {
 
     #[arg(long, hide = true)]
     pub clipboard_daemon: bool,
+
+    /// Split output into multiple files, each capped at roughly this many tokens.
+    /// Requires --output-file as a base name (e.g. ctx.md -> ctx.part1.md, ctx.part2.md).
+    /// Mutually exclusive with --clipboard.
+    #[clap(long, value_name = "TOKENS", conflicts_with = "clipboard")]
+    pub split_size: Option<usize>,
 }
 
 /// Helper function to parse serde deserializable enum from string inputs.

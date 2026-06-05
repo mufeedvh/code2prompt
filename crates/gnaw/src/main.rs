@@ -282,6 +282,21 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         }
     }
 
+    // ~~~ Split Output ~~~
+    if let Some(budget) = args.split_size {
+        let base = args
+            .output_file
+            .as_deref()
+            .filter(|f| *f != "-")
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "--split-size requires --output-file as a base name \
+                 (e.g. -O ctx.md); it cannot write to stdout or the clipboard"
+                )
+            })?;
+        return write_split_output(&mut session, base, budget, quiet_mode);
+    }
+
     // ~~~ Output File ~~~
     if let Some(ref output_file) = args.output_file
         && output_file != "-"
@@ -367,4 +382,226 @@ fn output_prompt(
     }
 
     Ok(())
+}
+
+/// A group of files destined for one output part, plus its summed token count.
+struct FilePart {
+    indices: Vec<usize>,
+    token_count: usize,
+}
+
+/// Greedily packs files (in their existing, sorted order) into parts so that
+/// each part's summed token count stays at or below `budget`.
+///
+/// Order is preserved (determinism). A single file whose own token_count
+/// exceeds `budget` is placed alone in its own part; the caller is expected
+/// to warn, since we never drop or truncate content.
+fn group_files_by_budget(token_counts: &[usize], budget: usize) -> Vec<FilePart> {
+    // A zero/again-degenerate budget would loop forever or produce one file
+    // per part with no progress guarantee; treat <=0 as "everything in one part".
+    if budget == 0 {
+        return vec![FilePart {
+            indices: (0..token_counts.len()).collect(),
+            token_count: token_counts.iter().sum(),
+        }];
+    }
+
+    let mut parts: Vec<FilePart> = Vec::new();
+    let mut current = FilePart {
+        indices: Vec::new(),
+        token_count: 0,
+    };
+
+    for (idx, &tokens) in token_counts.iter().enumerate() {
+        let would_overflow = current.token_count + tokens > budget;
+        // Flush the current part before starting a new one, but only if it
+        // actually holds something — avoids emitting an empty leading part
+        // when the very first file already exceeds the budget.
+        if would_overflow && !current.indices.is_empty() {
+            parts.push(std::mem::replace(
+                &mut current,
+                FilePart {
+                    indices: Vec::new(),
+                    token_count: 0,
+                },
+            ));
+        }
+        current.indices.push(idx);
+        current.token_count += tokens;
+    }
+
+    if !current.indices.is_empty() {
+        parts.push(current);
+    }
+    parts
+}
+
+/// Renders and writes split output parts. Each part is a complete, independently
+/// pasteable document produced through the normal render path.
+fn write_split_output(
+    session: &mut gnaw_core::session::GnawSession,
+    base_path: &str,
+    budget: usize,
+    quiet: bool,
+) -> Result<()> {
+    use gnaw_core::path::FileEntry;
+
+    // Take ownership of the file list so we can render subsets without cloning
+    // the (potentially large) code bodies repeatedly. Restored at the end.
+    let all_files: Vec<FileEntry> = session.data.files.take().unwrap_or_default();
+
+    if all_files.is_empty() {
+        anyhow::bail!("Nothing to split: no files were selected");
+    }
+
+    let token_counts: Vec<usize> = all_files.iter().map(|f| f.token_count).collect();
+    let parts = group_files_by_budget(&token_counts, budget);
+
+    let (stem, ext) = split_base_path(base_path);
+    let total_parts = parts.len();
+
+    // Move files out by index so each FileEntry is relocated, not cloned.
+    let mut slots: Vec<Option<FileEntry>> = all_files.into_iter().map(Some).collect();
+
+    for (part_no, part) in parts.iter().enumerate() {
+        let part_files: Vec<FileEntry> = part
+            .indices
+            .iter()
+            .map(|&i| {
+                slots[i]
+                    .take()
+                    .expect("each index appears in exactly one part")
+            })
+            .collect();
+
+        if part.token_count > budget && part_files.len() == 1 && !quiet {
+            eprintln!(
+                "{}{}{} {}",
+                "[".bold().white(),
+                "!".bold().yellow(),
+                "]".bold().white(),
+                format!(
+                    "File '{}' alone is {} tokens, over the {}-token budget; \
+                     it gets its own part.",
+                    part_files[0].path, part.token_count, budget
+                )
+                .yellow()
+            );
+        }
+
+        // Swap this part's files into the session, render, then move them back out.
+        session.data.files = Some(part_files);
+        let data = session.build_template_data();
+        let rendered = session
+            .render_prompt(&data)
+            .map_err(|e| anyhow::anyhow!("Failed to render part {}: {}", part_no + 1, e))?;
+
+        // Reclaim the FileEntry vec for the next iteration (no clone).
+        if let Some(returned) = session.data.files.take() {
+            for (slot, file) in part.indices.iter().zip(returned) {
+                slots[*slot] = Some(file);
+            }
+        }
+
+        let part_path = format!("{}.part{}{}", stem, part_no + 1, ext);
+        gnaw_core::template::write_to_file(&part_path, &rendered.prompt)
+            .context(format!("Failed to write part file: {}", part_path))?;
+
+        if !quiet {
+            eprintln!(
+                "{}{}{} {}",
+                "[".bold().white(),
+                "✓".bold().green(),
+                "]".bold().white(),
+                format!(
+                    "Part {}/{} -> {} ({} tokens)",
+                    part_no + 1,
+                    total_parts,
+                    part_path,
+                    rendered.token_count
+                )
+                .green()
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Splits "ctx.md" into ("ctx", ".md") and "ctx" into ("ctx", "").
+/// Splits on the final dot of the file name only, leaving directory
+/// components untouched so "out/ctx.md" -> ("out/ctx", ".md").
+fn split_base_path(base: &str) -> (String, String) {
+    match std::path::Path::new(base).extension() {
+        Some(ext) => {
+            let ext = ext.to_string_lossy();
+            let stem_len = base.len() - ext.len() - 1; // -1 for the dot
+            (base[..stem_len].to_string(), format!(".{}", ext))
+        }
+        None => (base.to_string(), String::new()),
+    }
+}
+
+#[cfg(test)]
+mod split_tests {
+    use super::{group_files_by_budget, split_base_path};
+
+    #[test]
+    fn packs_files_under_budget() {
+        let parts = group_files_by_budget(&[40, 40, 40], 100);
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0].indices, vec![0, 1]); // 80 <= 100
+        assert_eq!(parts[1].indices, vec![2]);
+    }
+
+    #[test]
+    fn never_exceeds_budget_when_files_fit() {
+        let counts = [30usize, 30, 30, 30, 30];
+        let budget = 60;
+        for part in group_files_by_budget(&counts, budget) {
+            assert!(part.token_count <= budget, "part exceeded budget");
+        }
+    }
+
+    #[test]
+    fn oversized_single_file_gets_own_part() {
+        let parts = group_files_by_budget(&[10, 500, 10], 100);
+        // 10 | 500(alone) | 10
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[1].indices, vec![1]);
+        assert!(parts[1].token_count > 100);
+    }
+
+    #[test]
+    fn no_empty_leading_part_when_first_file_oversized() {
+        let parts = group_files_by_budget(&[500, 10], 100);
+        assert_eq!(parts.len(), 2);
+        assert!(!parts[0].indices.is_empty());
+    }
+
+    #[test]
+    fn every_index_appears_exactly_once() {
+        let counts = [10usize, 90, 5, 200, 1];
+        let parts = group_files_by_budget(&counts, 100);
+        let mut seen: Vec<usize> = parts.iter().flat_map(|p| p.indices.clone()).collect();
+        seen.sort_unstable();
+        assert_eq!(seen, (0..counts.len()).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn zero_budget_collapses_to_single_part() {
+        let parts = group_files_by_budget(&[10, 20, 30], 0);
+        assert_eq!(parts.len(), 1);
+        assert_eq!(parts[0].token_count, 60);
+    }
+
+    #[test]
+    fn base_path_splitting() {
+        assert_eq!(split_base_path("ctx.md"), ("ctx".into(), ".md".into()));
+        assert_eq!(
+            split_base_path("out/ctx.md"),
+            ("out/ctx".into(), ".md".into())
+        );
+        assert_eq!(split_base_path("ctx"), ("ctx".into(), "".into()));
+    }
 }
