@@ -235,10 +235,7 @@ pub fn parse_template(template_arg: &Option<PathBuf>) -> Result<(String, String)
 /// # Returns
 ///
 /// * `Result<()>` - An empty result indicating success or an error
-pub fn handle_undefined_variables(
-    session: &mut GnawSession,
-    template_content: &str,
-) -> Result<()> {
+pub fn handle_undefined_variables(session: &mut GnawSession, template_content: &str) -> Result<()> {
     let undefined_variables = extract_undefined_variables(template_content);
 
     for var in undefined_variables.iter() {
