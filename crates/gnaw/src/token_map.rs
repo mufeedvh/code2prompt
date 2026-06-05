@@ -9,6 +9,7 @@ use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
+use std::path::Component;
 use std::path::Path;
 use unicode_width::UnicodeWidthStr;
 
@@ -128,10 +129,16 @@ pub fn generate_token_map_with_limit(
 
         let path = Path::new(path_str);
 
-        // Skip the root component if it exists
-        let components: Vec<_> = path
+        // Keep only normal path segments. A FileEntry path may arrive with a
+        // leading RootDir ("/") or CurDir (".") component depending on how the
+        // root was given; without filtering, every file nests under a single
+        // "/" node and the whole tree collapses to one row.
+        let components: Vec<&str> = path
             .components()
-            .filter_map(|c| c.as_os_str().to_str())
+            .filter_map(|c| match c {
+                Component::Normal(s) => s.to_str(),
+                _ => None, // drop RootDir, CurDir, ParentDir, Prefix
+            })
             .collect();
 
         insert_path(&mut root, &components, tokens, String::new(), metadata);
@@ -152,20 +159,26 @@ pub fn generate_token_map_with_limit(
         true,
     );
 
-    // Add summary for hidden files if needed
+    // A displayed "leaf" is a shown node with no shown child: its bar already
+    // represents its entire subtree. Summing only leaves counts every covered
+    // token exactly once (no parent/child double counting), whether the leaf is
+    // a file or a directory whose children weren't selected. The old version
+    // counted files only, so a directory-heavy display dumped nearly everything
+    // into "(other files)".
     let displayed_tokens: usize = entries
         .iter()
-        .map(|e| {
-            if !e.metadata.is_dir {
-                e.tokens
-            } else {
-                // For directories, only count their direct file children to avoid double counting
-                0
-            }
+        .enumerate()
+        .filter_map(|(idx, e)| {
+            // entries are pre-order DFS, so a node's descendants immediately
+            // follow it with greater depth.
+            let is_leaf = entries
+                .get(idx + 1)
+                .is_none_or(|next| next.depth <= e.depth);
+            is_leaf.then_some(e.tokens)
         })
         .sum();
 
-    let hidden_tokens = calculate_file_tokens(&root) - displayed_tokens;
+    let hidden_tokens = total_tokens.saturating_sub(displayed_tokens);
     if hidden_tokens > 0 {
         entries.push(TokenMapEntry {
             path: "(other files)".to_string(),
@@ -179,14 +192,6 @@ pub fn generate_token_map_with_limit(
     }
 
     entries
-}
-
-fn calculate_file_tokens(node: &TreeNode) -> usize {
-    if node.metadata.is_some_and(|m| !m.is_dir) {
-        node.tokens
-    } else {
-        node.children.values().map(calculate_file_tokens).sum()
-    }
 }
 
 fn insert_path(
@@ -456,7 +461,9 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
 
         // Generate hierarchical bar
         let parent_bar = if entry.depth > 0 {
-            &parent_bars[entry.depth - 1]
+            // depth can exceed parent_bars in deep trees; clamp to the last slot
+            // rather than index out of bounds.
+            &parent_bars[(entry.depth - 1).min(parent_bars.len() - 1)]
         } else {
             &parent_bars[0]
         };
@@ -464,9 +471,8 @@ pub fn display_token_map(entries: &[TokenMapEntry], total_tokens: usize) {
         let bar = generate_hierarchical_bar(bar_width, parent_bar, entry.percentage, entry.depth);
 
         // Update parent bars
-        if entry.depth < parent_bars.len() {
-            parent_bars[entry.depth] = bar.clone();
-        }
+        let slot = entry.depth.min(parent_bars.len() - 1);
+        parent_bars[slot] = bar.clone();
 
         // Format percentage
         let percentage_str = format!("{:>4.0}%", entry.percentage);

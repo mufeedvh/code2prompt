@@ -17,6 +17,7 @@ use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
 use colored::*;
+use gnaw_core::path::FileEntry;
 use gnaw_core::template::write_to_file;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, error, info};
@@ -207,21 +208,35 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         if let Some(files) = session.data.files.as_ref() {
             // Calculate total tokens from individual file counts
             let total_from_files: usize = files.iter().map(|f| f.token_count).sum();
-
+            // The map should be rooted at the repo, not the filesystem. FileEntry paths
+            // can arrive canonicalized/absolute (gnaw . → canonicalize), which otherwise
+            // renders as a chain of single-child 100% rows (Users/zero/projects/...).
+            // Strip the configured root so the tree starts at the project.
+            let root = session
+                .config
+                .path
+                .canonicalize()
+                .unwrap_or_else(|_| session.config.path.clone());
+            let rel_files: Vec<FileEntry> = files
+                .iter()
+                .cloned()
+                .map(|mut f| {
+                    if let Ok(stripped) = std::path::Path::new(&f.path).strip_prefix(&root) {
+                        f.path = stripped.to_string_lossy().into_owned();
+                    }
+                    f
+                })
+                .collect();
             // Get max lines from command line or calculate from terminal height
             let max_lines = args.token_map_lines.unwrap_or_else(|| {
                 terminal_size::terminal_size()
-                    .map(|(_, terminal_size::Height(h))| {
-                        let height = h as usize;
-                        // Ensure minimum of 10 lines, subtract 10 for other output
-                        if height > 20 { height - 10 } else { 10 }
-                    })
-                    .unwrap_or(20) // Default to 20 lines if terminal size detection fails
+                    .map(|(_, terminal_size::Height(h))| (h as usize).saturating_sub(10).max(20))
+                    .unwrap_or(40)
             });
 
             // Use the sum of individual file tokens for the map with line limit
             let entries = generate_token_map_with_limit(
-                files,
+                &rel_files,
                 total_from_files,
                 Some(max_lines),
                 args.token_map_min_percent,
