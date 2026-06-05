@@ -42,22 +42,20 @@ pub fn build_session(
         configuration.path(args.path.clone());
     }
 
-    // Include/Exclude patterns:
-    // If CLI provides any patterns, they override config patterns completely (to avoid conflicts)
-    let use_cli_patterns = !args.include.is_empty() || !args.exclude.is_empty();
-    let (include_patterns, exclude_patterns) = if use_cli_patterns {
-        (
-            expand_comma_separated_patterns(&args.include),
-            expand_comma_separated_patterns(&args.exclude),
-        )
-    } else if let Some(c) = cfg {
-        (c.include_patterns.clone(), c.exclude_patterns.clone())
-    } else {
-        (
-            expand_comma_separated_patterns(&args.include),
-            expand_comma_separated_patterns(&args.exclude),
-        )
-    };
+    // Merge CLI patterns onto config patterns instead of replacing wholesale.
+    // A CLI --exclude should add to the configured ignores, not discard them
+    // (replacing made `--exclude=*.toml` drop every config ignore and pull
+    //  target/, lockfiles, etc. back in — inflating output instead of trimming it).
+    let (cfg_include, cfg_exclude) = cfg
+        .map(|c| (c.include_patterns.clone(), c.exclude_patterns.clone()))
+        .unwrap_or_default();
+
+    let mut include_patterns = cfg_include;
+    include_patterns.extend(expand_comma_separated_patterns(&args.include));
+
+    let mut exclude_patterns = cfg_exclude;
+    exclude_patterns.extend(expand_comma_separated_patterns(&args.exclude));
+
     configuration
         .include_patterns(include_patterns)
         .exclude_patterns(exclude_patterns);
