@@ -205,22 +205,37 @@ pub fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String
     }
 }
 
-/// Loads a template from a file path or returns default values.
+/// Resolves a template argument to its content, checking built-in templates by
+/// name before falling back to reading a custom template file from disk.
 ///
 /// # Arguments
 ///
-/// * `template_arg` - An optional path to a template file
+/// * `template_arg` - An optional built-in template name (e.g. `claude-xml`,
+///   `refactor`) or a path to a custom Handlebars template file
 ///
 /// # Returns
 ///
-/// * `Result<(String, String)>` - A tuple containing (template_content, template_name)
-///   where template_name is "custom" for user-provided templates or "default" otherwise
-pub fn parse_template(template_arg: &Option<PathBuf>) -> Result<(String, String)> {
+/// * `Result<(String, String)>` - A tuple of (template_content, template_name).
+///   The name is the built-in's key when matched, `"custom"` for a file loaded
+///   from disk, or `"default"` when no argument was given. Errors if the
+///   argument is neither a known built-in nor a readable file path.
+pub fn parse_template(template_arg: &Option<String>) -> Result<(String, String)> {
     match template_arg {
-        Some(path) => {
-            let template_str =
-                std::fs::read_to_string(path).context("Failed to load custom template file")?;
-            Ok((template_str, "custom".to_string()))
+        Some(arg) => {
+            // 1. Builtin by name takes precedence.
+            if let Some(t) = gnaw_core::builtin_templates::BuiltinTemplates::get_template(arg) {
+                return Ok((t.content.to_string(), arg.clone()));
+            }
+            // 2. Otherwise treat it as a path to a custom template file.
+            let content = std::fs::read_to_string(arg).with_context(|| {
+                let keys = gnaw_core::builtin_templates::BuiltinTemplates::get_template_keys();
+                format!(
+                    "'{arg}' is not a built-in template and no file exists at that path.\n\
+                     Available built-ins: {}",
+                    keys.join(", ")
+                )
+            })?;
+            Ok((content, "custom".to_string()))
         }
         None => Ok(("".to_string(), "default".to_string())),
     }

@@ -51,8 +51,8 @@ pub struct Cli {
     pub output_format: Option<OutputFormat>,
 
     /// Optional Path to a custom Handlebars template
-    #[clap(short, long, value_name = "TEMPLATE")]
-    pub template: Option<PathBuf>,
+    #[clap(short, long, value_name = "NAME_OR_PATH")]
+    pub template: Option<String>,
 
     /// List the full directory tree
     #[clap(long)]
