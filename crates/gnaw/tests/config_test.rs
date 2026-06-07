@@ -5,9 +5,9 @@
 
 mod common;
 
+use common::*;
 use gnaw_core::sort::FileSortMethod;
 use gnaw_core::template::OutputFormat;
-use common::*;
 use predicates::prelude::*;
 use predicates::str::contains;
 use std::fs;
@@ -170,31 +170,56 @@ fn test_clipboard_flag() {
 
 /// Test that CLI args override config files
 #[test]
-fn test_cli_args_override_config() {
+fn test_cli_patterns_merge_with_config() {
     let temp_dir = TempDir::new().expect("Should create temp dir");
     let config_path = temp_dir.path().join(".c2pconfig");
-
-    // Create a config that would normally exclude .py files
+    // Config excludes .log files. The CLI will add an include for .py — the
+    // merge must keep BOTH: .py included, .log still excluded.
     let toml_content = r#"
 default_output = "clipboard"
-exclude_patterns = ["*.py"]
+exclude_patterns = ["*.log"]
 "#;
-
     fs::write(&config_path, toml_content).expect("Should write config file");
-    fs::write(temp_dir.path().join("test.py"), "print('Hello')").expect("Should write test file");
+    fs::write(temp_dir.path().join("keep.py"), "print('keep')").expect("write py");
+    fs::write(temp_dir.path().join("drop.log"), "noise").expect("write log");
 
-    // CLI args should override config - include .py files despite config
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("gnaw");
     cmd.current_dir(temp_dir.path())
         .arg(".")
         .arg("-i")
-        .arg("*.py") // CLI override
+        .arg("*.py") // CLI include ADDS to config patterns
         .arg("-O")
-        .arg("-") // Force output to stdout to see the result
+        .arg("-")
         .assert()
         .success()
-        .stdout(contains("test.py"))
-        .stdout(contains("print('Hello')"));
+        // CLI include took effect:
+        .stdout(contains("keep.py"))
+        .stdout(contains("print('keep')"))
+        // ...AND config exclude survived the merge (the bug that inflated 290K):
+        .stdout(contains("drop.log").not());
+}
+
+#[test]
+fn test_config_exclude_beats_cli_include_on_collision() {
+    let temp_dir = TempDir::new().unwrap();
+    fs::write(
+        temp_dir.path().join(".c2pconfig"),
+        "exclude_patterns = [\"*.py\"]\n",
+    )
+    .unwrap();
+    fs::write(temp_dir.path().join("test.py"), "print('x')").unwrap();
+
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("gnaw");
+    cmd.current_dir(temp_dir.path())
+        .arg(".")
+        .arg("-i")
+        .arg("*.py")
+        .arg("-O")
+        .arg("-")
+        .assert()
+        .success()
+        // Same pattern excluded by config and included by CLI → exclude wins.
+        .stdout(contains("test.py").not());
 }
 
 /// Test configuration info messages
