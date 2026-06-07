@@ -88,6 +88,10 @@ pub struct GnawConfig {
 
     /// If true, starts with all files deselected.
     pub deselected: bool,
+
+    /// Syntax-aware compression. No-op without the `compression` feature or for
+    /// unsupported languages.
+    pub compression: CompressionOptions,
 }
 
 impl GnawConfig {
@@ -154,6 +158,9 @@ pub struct TomlConfig {
 
     /// Initial selection state
     pub deselected: bool,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compression: Option<CompressionOptions>,
 }
 
 impl TomlConfig {
@@ -215,7 +222,8 @@ impl TomlConfig {
         builder
             .user_variables(self.user_variables.clone())
             .token_map_enabled(self.token_map_enabled)
-            .deselected(self.deselected);
+            .deselected(self.deselected)
+            .compression(self.compression.unwrap_or_default());
 
         builder.build().unwrap_or_default()
     }
@@ -257,7 +265,93 @@ pub fn export_config_to_toml(config: &GnawConfig) -> Result<String, toml::ser::E
         user_variables: config.user_variables.clone(),
         token_map_enabled: config.token_map_enabled,
         deselected: config.deselected,
+        compression: if config.compression.any() {
+            Some(config.compression)
+        } else {
+            None
+        },
     };
 
     toml_config.to_string()
+}
+
+/// Independent, composable compression transforms. Presets resolve to a set of
+/// these at the CLI layer, so the core engine never needs to know about levels.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompressionOptions {
+    pub strip_test_modules: bool,
+    pub strip_fn_bodies: bool,
+    pub strip_doc_comments: bool,
+    pub strip_private_bodies: bool, // renamed from strip_private_items
+}
+
+impl CompressionOptions {
+    pub fn any(&self) -> bool {
+        self.strip_test_modules
+            || self.strip_fn_bodies
+            || self.strip_doc_comments
+            || self.strip_private_bodies
+    }
+}
+
+/// Named aggressiveness presets (not a quality ranking).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CompressionLevel {
+    Light,    // test modules only
+    Moderate, // + function/method bodies
+    Full,     // + doc comments (private-bodies is manual-only; subsumed by fn_bodies here)
+}
+
+impl CompressionLevel {
+    pub fn options(self) -> CompressionOptions {
+        match self {
+            CompressionLevel::Light => CompressionOptions {
+                strip_test_modules: true,
+                ..Default::default()
+            },
+            CompressionLevel::Moderate => CompressionOptions {
+                strip_test_modules: true,
+                strip_fn_bodies: true,
+                ..Default::default()
+            },
+            // Full strips ALL bodies (fn_bodies), so private_bodies is subsumed and
+            // intentionally left out — it's a manual-only lever for the public-API view.
+            CompressionLevel::Full => CompressionOptions {
+                strip_test_modules: true,
+                strip_fn_bodies: true,
+                strip_doc_comments: true,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+// bottom of crates/gnaw-core/src/configuration.rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compression_survives_toml_round_trip() {
+        let cfg = GnawConfig {
+            compression: CompressionOptions {
+                strip_fn_bodies: true,
+                strip_doc_comments: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let toml = export_config_to_toml(&cfg).unwrap();
+        let back = TomlConfig::from_toml_str(&toml).unwrap().to_gnaw_config();
+        assert_eq!(back.compression, cfg.compression);
+    }
+
+    #[test]
+    fn empty_compression_omitted_from_toml() {
+        // a no-compression config shouldn't emit a [compression] table
+        let cfg = GnawConfig::default();
+        let toml = export_config_to_toml(&cfg).unwrap();
+        assert!(!toml.contains("[compression]"));
+    }
 }

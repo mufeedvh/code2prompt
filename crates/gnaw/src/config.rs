@@ -6,7 +6,7 @@
 
 use anyhow::{Context, Result};
 use gnaw_core::{
-    configuration::GnawConfig,
+    configuration::{GnawConfig, TomlConfig},
     session::GnawSession,
     sort::FileSortMethod,
     template::{OutputFormat, extract_undefined_variables},
@@ -17,7 +17,9 @@ use log::error;
 use std::path::PathBuf;
 
 use crate::{args::Cli, config_loader::ConfigSource};
+use gnaw_core::configuration::CompressionOptions;
 
+const STRIP_TOKENS: [&str; 4] = ["tests", "fn-bodies", "doc-comments", "private-bodies"];
 /// Unified session builder that merges configuration layering in one place
 /// - base: Some(&ConfigSource) to use loaded config as defaults; None to use CLI defaults
 /// - args: CLI arguments
@@ -162,6 +164,8 @@ pub fn build_session(
     let cfg_token_map_enabled = cfg.map(|c| c.token_map_enabled).unwrap_or(false);
     let cfg_deselected = cfg.map(|c| c.deselected).unwrap_or(false);
 
+    configuration.compression(resolve_compression(args, cfg)?);
+
     configuration
         .diff_enabled(args.diff || cfg_diff_enabled)
         .diff_branches(diff_branches)
@@ -284,4 +288,69 @@ fn expand_comma_separated_patterns(patterns: &[String]) -> Vec<String> {
     }
 
     expanded
+}
+
+fn resolve_compression(args: &Cli, cfg: Option<&TomlConfig>) -> Result<CompressionOptions> {
+    // CLI preset wins; else config-file compression; else none. CSV overrides apply on top.
+    let base = match args.compress {
+        Some(level) => level.options(),
+        None => cfg.and_then(|c| c.compression).unwrap_or_default(),
+    };
+    match &args.compress_strip {
+        Some(csv) => apply_strip_overrides(base, csv),
+        None => Ok(base),
+    }
+}
+
+/// Apply CSV toggles over a baseline. Each token flips one flag; `no-` disables.
+/// Errors loudly on unknown tokens — a silently-ignored typo would misreport the
+/// token budget.
+fn apply_strip_overrides(mut o: CompressionOptions, csv: &str) -> Result<CompressionOptions> {
+    for raw in csv.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let (on, name) = match raw.strip_prefix("no-") {
+            Some(rest) => (false, rest),
+            None => (true, raw),
+        };
+        match name {
+            "tests" => o.strip_test_modules = on,
+            "fn-bodies" => o.strip_fn_bodies = on,
+            "doc-comments" => o.strip_doc_comments = on,
+            "private-bodies" => o.strip_private_bodies = on,
+            other => {
+                let hint = closest(other)
+                    .map(|s| format!(" — did you mean '{s}'?"))
+                    .unwrap_or_default();
+                anyhow::bail!(
+                    "unknown compression flag '{other}'{hint}\n  valid tokens: {} \
+                     (each optionally prefixed with `no-` to disable)",
+                    STRIP_TOKENS.join(", ")
+                );
+            }
+        }
+    }
+    Ok(o)
+}
+
+fn closest(input: &str) -> Option<&'static str> {
+    STRIP_TOKENS
+        .iter()
+        .map(|&t| (t, levenshtein(input, t)))
+        .filter(|(_, d)| *d <= 3)
+        .min_by_key(|(_, d)| *d)
+        .map(|(t, _)| t)
+}
+
+fn levenshtein(a: &str, b: &str) -> usize {
+    let (a, b): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut curr = vec![0usize; b.len() + 1];
+    for (i, ca) in a.iter().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let cost = usize::from(ca != cb);
+            curr[j + 1] = (prev[j + 1] + 1).min(curr[j] + 1).min(prev[j] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b.len()]
 }

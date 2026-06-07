@@ -246,6 +246,19 @@ fn process_single_file(file_info: &FileToProcess, config: &GnawConfig) -> Option
         }
     };
 
+    // Syntax-aware compression, applied before counting so token totals reflect
+    // the compressed output. No-op without the feature, when disabled, or for
+    // languages with no grammar.
+    #[cfg(feature = "compression")]
+    let code = if config.compression.any() {
+        match crate::compressor::compressor_for_extension(extension) {
+            Some(c) => c.compress(&code, &config.compression),
+            None => code,
+        }
+    } else {
+        code
+    };
+
     // Wrap code block
     let code_block = wrap_code_block(&code, config.line_numbers);
 

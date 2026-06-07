@@ -154,6 +154,16 @@ pub struct Cli {
     /// Mutually exclusive with --clipboard.
     #[clap(long, value_name = "TOKENS", conflicts_with = "clipboard")]
     pub split_size: Option<usize>,
+
+    /// Compression preset: light (tests), moderate (+ fn bodies), full (maximal)
+    #[clap(long, value_name = "light,moderate,full",
+           value_parser = ValueParser::new(parse_serde::<gnaw_core::configuration::CompressionLevel>))]
+    pub compress: Option<gnaw_core::configuration::CompressionLevel>,
+
+    /// Manual compression toggles (CSV), applied over --compress. Tokens:
+    /// tests, fn-bodies, doc-comments, private-bodies; prefix `no-` to disable.
+    #[clap(long, value_name = "CSV")]
+    pub compress_strip: Option<String>,
 }
 
 /// Helper function to parse serde deserializable enum from string inputs.

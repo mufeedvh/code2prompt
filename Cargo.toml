@@ -57,3 +57,5 @@ ratatui-textarea = "0.9.1"
 unicode-width = "0.2.2"
 walkdir = "2.5.0"
 winapi = { version = "0.3.9", features = ["errhandlingapi"] }
+tree-sitter = "0.26.9"
+tree-sitter-rust = "0.24.2"
