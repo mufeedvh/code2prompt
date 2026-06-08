@@ -1,0 +1,47 @@
+Project Path: {{ absolute_code_path }}
+
+Source Tree:
+```
+{{ source_tree }}
+```
+
+{{#if git_diff}}
+Uncommitted changes (full working-tree diff):
+```diff
+{{git_diff}}
+```
+{{/if}}
+
+Based on the diff above, propose how to split these changes into a sequence of
+small, logically atomic commits, then write a commit message for each. These
+changes are NOT yet staged — the result is a plan I will carry out manually with
+`git add -p`, committing one slice at a time in the order you give.
+
+First, partition the changes:
+- Group by intent, not by file. A single file's changes may span several
+  commits; one commit may touch several files.
+- Order the commits so each leaves the tree in a buildable state where possible
+  (e.g. a new helper before its first use).
+- If the changeset is already cohesive enough to be a single commit, say so
+  rather than inventing splits.
+- Call out any change you could not confidently attribute to a commit instead
+  of forcing it.
+
+Then, for each commit in order, provide:
+
+**Files / hunks:** the specific files — and where a file is split across
+commits, which hunks or functions — that belong to this commit.
+
+**Commit message**, adhering to:
+1. Concise subject under 50 characters.
+2. Optional body of 1–2 sentences, wrapped at 72 columns, explaining the *why*.
+3. Imperative mood ("Fix bug", not "Fixed bug").
+4. Capitalized subject.
+5. No period at the end of the subject.
+6. Blank line between subject and body if a body is used.
+7. Conventional Commits style: a type (feat, fix, docs, refactor, etc.) and
+   scope (component or file) in the subject, e.g. `fix(token-map): ...`.
+8. An appropriate gitmoji for the commit type.
+9. Use emojis where they add clarity, keeping it professional.
+
+Do not include the diff in your response.

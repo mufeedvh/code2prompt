@@ -153,6 +153,14 @@ impl BuiltinTemplates {
                     },
                 ),
                 (
+                    "write-git-changeset-commits",
+                    BuiltinTemplate {
+                        name: "Write Git Changeset Commits",
+                        content: include_str!("../templates/write-git-changeset-commits.hbs"),
+                        description: "Split an uncommitted changeset into a sequence of atomic commits, with a message for each. Needs --diff (use --diff-mode unstaged or all).",
+                    },
+                ),
+                (
                     "write-github-pull-request",
                     BuiltinTemplate {
                         name: "Write GitHub Pull Request",
