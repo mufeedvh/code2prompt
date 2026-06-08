@@ -47,7 +47,9 @@ pub fn get_git_diff(repo_path: &Path, mode: DiffMode) -> Result<String> {
                 .context("Failed to diff index to working tree (unstaged)")?
         }
         DiffMode::All => {
-            opts.include_untracked(true).recurse_untracked_dirs(true);
+            opts.include_untracked(true)
+                .recurse_untracked_dirs(true)
+                .show_untracked_content(true);
             repo.diff_tree_to_workdir(Some(&head_tree), Some(&mut opts))
                 .context("Failed to diff HEAD to working tree (all uncommitted)")?
         }
