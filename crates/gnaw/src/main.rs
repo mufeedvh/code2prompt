@@ -164,7 +164,12 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 
     // Handle undefined variables (modifies session.config.user_variables)
     let template_str_clone = session.config.template_str.clone();
-    config::handle_undefined_variables(&mut session, &template_str_clone)?;
+    match spinner.as_ref() {
+        Some(s) => {
+            s.suspend(|| config::handle_undefined_variables(&mut session, &template_str_clone))
+        }
+        None => config::handle_undefined_variables(&mut session, &template_str_clone),
+    }?;
 
     // Data - now build after handling undefined variables
     let data = session.build_template_data();
