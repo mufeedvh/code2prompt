@@ -1,3 +1,4 @@
+use gnaw_core::configuration::DiffMode;
 use gnaw_core::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 
 #[cfg(test)]
@@ -7,6 +8,81 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
+    fn repo_with_committed_file() -> (TempDir, Repository, std::path::PathBuf) {
+        let temp_dir = TempDir::new().expect("temp dir");
+        let repo_path = temp_dir.path().to_path_buf();
+        let repo = Repository::init(&repo_path).expect("init");
+        let file_path = repo_path.join("test_file.txt");
+        fs::write(&file_path, "Initial content").expect("write");
+
+        {
+            let mut index = repo.index().expect("index");
+            index
+                .add_path(file_path.strip_prefix(&repo_path).unwrap())
+                .expect("add");
+            index.write().expect("write index");
+            let tree = repo
+                .find_tree(index.write_tree().expect("tree"))
+                .expect("find tree");
+            let sig = Signature::now("Test", "test@example.com").expect("sig");
+            repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+                .expect("commit");
+        } // tree (and index, sig) dropped here, releasing the borrow on repo
+
+        (temp_dir, repo, file_path)
+    }
+
+    #[test]
+    fn staged_mode_shows_staged_changes() {
+        let (tmp, repo, file) = repo_with_committed_file();
+        fs::write(&file, "Modified content").expect("modify");
+        // stage the modification
+        let mut index = repo.index().unwrap();
+        index
+            .add_path(file.strip_prefix(tmp.path()).unwrap())
+            .unwrap();
+        index.write().unwrap();
+
+        let diff = get_git_diff(tmp.path(), DiffMode::Staged).expect("staged diff");
+        assert!(diff.contains("Modified content"));
+
+        // and unstaged should be empty, since the change is staged
+        let unstaged = get_git_diff(tmp.path(), DiffMode::Unstaged).expect("unstaged diff");
+        assert!(unstaged.contains("no unstaged"));
+    }
+
+    #[test]
+    fn unstaged_mode_shows_working_tree_changes() {
+        let (tmp, _repo, file) = repo_with_committed_file();
+        // modify WITHOUT staging
+        fs::write(&file, "Working tree content").expect("modify");
+
+        let diff = get_git_diff(tmp.path(), DiffMode::Unstaged).expect("unstaged diff");
+        assert!(diff.contains("Working tree content"));
+
+        // this is the regression guard: old code returned "no diff between HEAD and
+        // index" here because nothing was staged. Unstaged mode must NOT do that.
+        assert!(!diff.contains("no diff between HEAD and index"));
+    }
+
+    #[test]
+    fn all_mode_shows_staged_and_unstaged_together() {
+        let (tmp, repo, file) = repo_with_committed_file();
+        // staged change to one file
+        fs::write(&file, "Staged change").expect("modify");
+        let mut index = repo.index().unwrap();
+        index
+            .add_path(file.strip_prefix(tmp.path()).unwrap())
+            .unwrap();
+        index.write().unwrap();
+        // unstaged change to a different file
+        let other = tmp.path().join("other.txt");
+        fs::write(&other, "Unstaged new file").expect("write other");
+
+        let diff = get_git_diff(tmp.path(), DiffMode::All).expect("all diff");
+        assert!(diff.contains("Staged change"));
+        assert!(diff.contains("Unstaged new file"));
+    }
     #[test]
     fn test_get_git_diff() {
         // Create a temporary directory
@@ -53,7 +129,8 @@ mod tests {
         index.write().expect("Failed to write index");
 
         // Get the git diff using the function from the module
-        let diff = get_git_diff(repo_path).expect("Failed to get git diff");
+        let diff = get_git_diff(repo_path, gnaw_core::configuration::DiffMode::Staged)
+            .expect("Failed to get git diff");
 
         // Print the diff for debugging
         println!("Generated diff:\n{}", diff);
@@ -380,9 +457,11 @@ mod tests {
         let result = get_git_diff_between_branches(repo_path, "nonexistent_reference", "HEAD");
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Branch nonexistent_reference doesn't exist!"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Branch nonexistent_reference doesn't exist!")
+        );
     }
 }
