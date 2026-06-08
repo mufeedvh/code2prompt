@@ -168,6 +168,7 @@ pub fn build_session(
 
     configuration
         .diff_enabled(args.diff || cfg_diff_enabled)
+        .diff_mode(args.diff_mode.unwrap_or_default())
         .diff_branches(diff_branches)
         .log_branches(log_branches)
         .no_ignore(args.no_ignore)

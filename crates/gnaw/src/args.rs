@@ -7,7 +7,8 @@
 use anyhow::{Result, anyhow};
 use clap::{Parser, builder::ValueParser};
 use gnaw_core::{
-    sort::FileSortMethod, template::OutputFormat, tokenizer::TokenFormat, tokenizer::TokenizerType,
+    configuration::DiffMode, sort::FileSortMethod, template::OutputFormat, tokenizer::TokenFormat,
+    tokenizer::TokenizerType,
 };
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
@@ -77,6 +78,12 @@ pub struct Cli {
     /// Include git diff
     #[clap(short, long)]
     pub diff: bool,
+
+    /// Which changes to diff: staged (default), unstaged, or all uncommitted
+    #[clap(long, value_name = "staged,unstaged,all",
+           value_parser = ValueParser::new(parse_serde::<gnaw_core::configuration::DiffMode>),
+           requires = "diff")]
+    pub diff_mode: Option<DiffMode>,
 
     /// Generate git diff between two branches
     #[clap(long, value_name = "BRANCHES", num_args = 2, value_delimiter = ',')]
