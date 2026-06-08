@@ -92,12 +92,24 @@ pub struct GnawConfig {
     /// Syntax-aware compression. No-op without the `compression` feature or for
     /// unsupported languages.
     pub compression: CompressionOptions,
+
+    /// Which working-tree changes `load_git_diff` should show.
+    pub diff_mode: DiffMode,
 }
 
 impl GnawConfig {
     pub fn builder() -> GnawConfigBuilder {
         GnawConfigBuilder::default()
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum DiffMode {
+    #[default]
+    Staged, // HEAD vs index   (git diff --cached) — current behavior
+    Unstaged, // index vs worktree (git diff)        — your workflow
+    All,      // HEAD vs worktree (everything uncommitted)
 }
 
 /// Output destination for gnaw

@@ -200,7 +200,7 @@ impl GnawSession {
 
     /// Loads the Git diff into the session data.
     pub fn load_git_diff(&mut self) -> Result<()> {
-        let diff = get_git_diff(&self.config.path)?;
+        let diff = get_git_diff(&self.config.path, self.config.diff_mode)?;
         self.data.git_diff = Some(diff);
         Ok(())
     }

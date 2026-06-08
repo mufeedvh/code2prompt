@@ -1,81 +1,81 @@
 //! This module handles git operations.
 
+use crate::configuration::DiffMode;
 use anyhow::{Context, Result};
 use git2::{DiffOptions, Repository};
-use log::info;
+use log::debug;
 use std::path::Path;
 
-/// Generates a git diff for the repository at the provided path.
+/// Generates a git diff for the repository, selecting which changes to show.
 ///
-/// This function compares the repository's HEAD tree with the index to produce a diff of staged changes.
-/// It also checks for unstaged changes (differences between the index and the working directory) and,
-/// if found, appends a notification to the output.
-///
-/// If there are no staged changes, the function returns a message in the format:
-/// `"no diff between HEAD and index"`.
-///
-/// # Arguments
-///
-/// * `repo_path` - A reference to the path of the git repository.
-///
-/// # Returns
-///
-/// * `Result<String>` - On success, returns either the diff (with an appended note if unstaged changes exist)
-///   or a message indicating that there is no diff between the compared git objects.
-///   In case of error, returns an appropriate error.
-pub fn get_git_diff(repo_path: &Path) -> Result<String> {
-    info!("Opening repository at path: {:?}", repo_path);
+/// * `Staged`   — HEAD vs index (what `git diff --cached` shows)
+/// * `Unstaged` — index vs working tree (what `git diff` shows)
+/// * `All`      — HEAD vs working tree, staged and unstaged together
+pub fn get_git_diff(repo_path: &Path, mode: DiffMode) -> Result<String> {
+    debug!("Opening repository at path: {:?}", repo_path);
     let repo = Repository::open(repo_path).context("Failed to open repository")?;
 
-    let head = repo.head().context("Failed to get repository head")?;
-    let head_tree = head.peel_to_tree().context("Failed to peel to tree")?;
+    let head_tree = repo
+        .head()
+        .context("Failed to get repository head")?
+        .peel_to_tree()
+        .context("Failed to peel to tree")?;
 
-    // Generate diff for staged changes (HEAD vs. index)
-    let staged_diff = repo
-        .diff_tree_to_index(
-            Some(&head_tree),
-            None,
-            Some(DiffOptions::new().ignore_whitespace(true)),
-        )
-        .context("Failed to generate diff for staged changes")?;
+    let mut opts = DiffOptions::new();
 
-    let mut staged_diff_text = Vec::new();
-    staged_diff
-        .print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-            staged_diff_text.extend_from_slice(line.content());
-            true
-        })
-        .context("Failed to print staged diff")?;
-
-    let staged_diff_output = String::from_utf8_lossy(&staged_diff_text).into_owned();
-
-    // If there is no staged diff, return a message indicating so.
-    if staged_diff_output.trim().is_empty() {
-        return Ok("no diff between HEAD and index".to_string());
+    let statuses = repo.statuses(None).context("status")?;
+    for e in statuses.iter() {
+        debug!("git2 sees: {:?} status={:?}", e.path(), e.status());
     }
 
-    // Generate diff for unstaged changes (index vs. working directory)
-    let unstaged_diff = repo
-        .diff_index_to_workdir(None, Some(DiffOptions::new().ignore_whitespace(true)))
-        .context("Failed to generate diff for unstaged changes")?;
+    let diff = match mode {
+        DiffMode::Staged => {
+            let mut index = repo.index().context("Failed to read index")?;
+            index
+                .read(true)
+                .context("Failed to refresh index from disk")?;
+            repo.diff_tree_to_index(Some(&head_tree), Some(&index), Some(&mut opts))
+                .context("Failed to diff HEAD to index (staged)")?
+        }
+        DiffMode::Unstaged => {
+            // Match plain `git diff`: working tree vs index, including intent-to-add
+            // (`git add -N`) files, whose content lives in the worktree only.
+            opts.include_untracked(false); // git diff excludes pure untracked
+            let mut index = repo.index().context("Failed to read index")?;
+            index.read(true).context("Failed to refresh index")?; // re-read from disk, avoid stale state
+            repo.diff_index_to_workdir(Some(&index), Some(&mut opts))
+                .context("Failed to diff index to working tree (unstaged)")?
+        }
+        DiffMode::All => {
+            opts.include_untracked(true).recurse_untracked_dirs(true);
+            repo.diff_tree_to_workdir(Some(&head_tree), Some(&mut opts))
+                .context("Failed to diff HEAD to working tree (all uncommitted)")?
+        }
+    };
 
-    let mut unstaged_diff_text = Vec::new();
-    unstaged_diff
-        .print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-            unstaged_diff_text.extend_from_slice(line.content());
-            true
-        })
-        .context("Failed to print unstaged diff")?;
+    let mut buf = Vec::new();
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        buf.extend_from_slice(line.content());
+        true
+    })
+    .context("Failed to print diff")?;
+    debug!(
+        "diff produced {} deltas, {} bytes",
+        diff.deltas().len(),
+        buf.len()
+    );
 
-    let unstaged_diff_output = String::from_utf8_lossy(&unstaged_diff_text).into_owned();
-
-    let mut output = staged_diff_output;
-    if !unstaged_diff_output.trim().is_empty() {
-        output.push_str("\nNote: Some changes are not staged.");
+    let text = String::from_utf8_lossy(&buf).into_owned();
+    if text.trim().is_empty() {
+        // Honest per-mode empty message instead of the old HEAD/index-only one.
+        let what = match mode {
+            DiffMode::Staged => "staged changes (HEAD vs index)",
+            DiffMode::Unstaged => "unstaged changes (index vs working tree)",
+            DiffMode::All => "uncommitted changes",
+        };
+        return Ok(format!("no {what}"));
     }
-
-    info!("Generated git diff successfully");
-    Ok(output)
+    Ok(text)
 }
 
 /// Generates a git diff between two branches for the repository at the provided path
