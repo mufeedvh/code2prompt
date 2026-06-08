@@ -94,7 +94,7 @@ pub fn get_git_diff_between_branches(
     branch1: &str,
     branch2: &str,
 ) -> Result<String> {
-    info!("Opening repository at path: {:?}", repo_path);
+    debug!("Opening repository at path: {:?}", repo_path);
     let repo = Repository::open(repo_path).context("Failed to open repository")?;
 
     for branch in [branch1, branch2].iter() {
@@ -124,7 +124,7 @@ pub fn get_git_diff_between_branches(
     })
     .context("Failed to print diff")?;
 
-    info!("Generated git diff between branches successfully");
+    debug!("Generated git diff between branches successfully");
     Ok(String::from_utf8_lossy(&diff_text).into_owned())
 }
 
@@ -140,7 +140,7 @@ pub fn get_git_diff_between_branches(
 ///
 /// * `Result<String, git2::Error>` - The git log as a string or an error
 pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<String> {
-    info!("Opening repository at path: {:?}", repo_path);
+    debug!("Opening repository at path: {:?}", repo_path);
     let repo = Repository::open(repo_path).context("Failed to open repository")?;
 
     for branch in [branch1, branch2].iter() {
@@ -176,7 +176,7 @@ pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<Str
         ));
     }
 
-    info!("Retrieved git log successfully");
+    debug!("Retrieved git log successfully");
     Ok(log_text)
 }
 
