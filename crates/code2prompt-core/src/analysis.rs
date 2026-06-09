@@ -388,8 +388,7 @@ fn rebuild_filtered_tree(
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
         let name = path
             .split('/')
-            .filter(|s| !s.is_empty()) 
-            .next_back()
+            .rfind(|s| !s.is_empty())
             .unwrap_or(&path)
             .to_string();
         let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true });
