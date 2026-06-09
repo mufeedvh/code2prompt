@@ -7,7 +7,7 @@
 
 use crate::path::FileEntry;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
+use std::cmp::{Ordering,Reverse};
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::path::Path;
 
@@ -151,11 +151,10 @@ impl<'a> CodebaseAnalysis<'a> {
         let hidden_tokens = total_file_tokens.saturating_sub(displayed_file_tokens);
         if hidden_tokens > 0 {
             // Mark the previous last item as not last anymore
-            if let Some(last) = entries.last_mut() {
-                if last.depth == 0 {
+            if let Some(last) = entries.last_mut()
+                && last.depth == 0 {
                     last.is_last_child = false;
                 }
-            }
 
             entries.push(TokenMapEntry {
                 path: "(other files)".to_string(),
@@ -202,7 +201,7 @@ impl<'a> CodebaseAnalysis<'a> {
             })
             .collect();
 
-        result.sort_by_key(|b| std::cmp::Reverse(b.tokens));
+        result.sort_by_key(|b| Reverse(b.tokens));
         result
     }
 
@@ -387,7 +386,7 @@ fn rebuild_filtered_tree(
     // Check if this node should be included
     if !path.is_empty() && allowed_nodes.contains_key(&path) {
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
-        let name = path.split('/').last().unwrap_or(&path).to_string();
+        let name = path.split('/').next_back().unwrap_or(&path).to_string();
         let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true });
 
         // Check if this node has children that will be displayed
@@ -416,7 +415,7 @@ fn rebuild_filtered_tree(
         .collect();
 
     // Sort by tokens descending
-    filtered_children.sort_by(|a, b| b.1.tokens.cmp(&a.1.tokens));
+    filtered_children.sort_by_key(|b| Reverse(b.1.tokens));
 
     let child_count = filtered_children.len();
     for (i, (name, child)) in filtered_children.into_iter().enumerate() {
@@ -441,7 +440,7 @@ fn rebuild_filtered_tree(
 
 /// Calculate total tokens from FILES only (not directory aggregates)
 fn calculate_file_tokens(node: &TreeNode) -> usize {
-    if node.metadata.map_or(false, |m| !m.is_dir) {
+    if node.metadata.is_some_and(|m| !m.is_dir) {
         // This is a file - count its tokens
         node.tokens
     } else {
