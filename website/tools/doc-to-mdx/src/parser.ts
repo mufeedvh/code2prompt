@@ -16,6 +16,10 @@ export class RustDocParser {
   }
 
   extractPublicItems(): RustDocItem[] {
+    if (!this.docData) {
+      throw new Error('Parser not loaded. Call load() first.');
+    }
+    
     const items: RustDocItem[] = [];
     
     // ~~~ Process crate items ~~~
@@ -33,7 +37,7 @@ export class RustDocParser {
         docs: typedItem.docs,
         attrs: typedItem.attrs || [],
         visibility: typedItem.visibility,
-        span: typedItem.span
+        span: typedItem.span || { filename: 'unknown', begin: [0, 0], end: [0, 0] }
       });
     }
     
@@ -41,6 +45,10 @@ export class RustDocParser {
   }
 
   groupByModule(items: RustDocItem[]): Map<string, RustDocItem[]> {
+    if (!this.docData) {
+      throw new Error('Parser not loaded. Call load() first.');
+    }
+    
     const modules = new Map<string, RustDocItem[]>();
     
     for (const item of items) {
@@ -57,6 +65,9 @@ export class RustDocParser {
   }
 
   private extractModuleName(item: RustDocItem): string {
+    if (!item.span?.filename) {
+      return 'unknown';
+    }
     // Extract module name from span filename
     const filename = path.basename(item.span.filename, '.rs');
     return filename === 'lib' ? 'core' : filename;
