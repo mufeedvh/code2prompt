@@ -164,7 +164,7 @@ impl<'a> CodebaseAnalysis<'a> {
             })
             .collect();
 
-        result.sort_by(|a, b| b.tokens.cmp(&a.tokens));
+        result.sort_by_key(|b| std::cmp::Reverse(b.tokens));
         result
     }
 
@@ -379,7 +379,7 @@ fn flatten_tree(
         .filter(|c| keep_set.contains_key(&c.path))
         .collect();
 
-    children.sort_by(|a, b| b.token_sum.cmp(&a.token_sum));
+    children.sort_by_key(|b| std::cmp::Reverse(b.token_sum));
 
     let count = children.len();
     for (i, child) in children.into_iter().enumerate() {

@@ -10,6 +10,7 @@ use colored::Colorize;
 use unicode_width::UnicodeWidthStr;
 
 /// Color information for TUI rendering
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub enum TuiColor {
     White,
