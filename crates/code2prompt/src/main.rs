@@ -1,6 +1,6 @@
-//! code2prompt is a command-line tool to generate an LLM prompt from a codebase directory.
+//! code2prompt is a command-line tool to explore and analyze text repositories.
 //!
-//! Authors: Olivier D'Ancona (@ODAncona), Mufeed VH (@mufeedvh)
+//! Authors: Olivier D'Ancona (@ODAncona), Mufeed VH (@mufeedvh), and contributors
 mod args;
 mod clipboard;
 mod config;
