@@ -37,7 +37,18 @@ pub fn handlebars_setup(template_str: &str, template_name: &str) -> Result<Handl
 ///
 /// * `Vec<String>` - A vector of undefined variable names.
 pub fn extract_undefined_variables(template: &str) -> Vec<String> {
-    let registered_identifiers = ["path", "code", "git_diff"];
+    let registered_identifiers = [
+        "absolute_code_path",
+        "source_tree",
+        "files",
+        "path",
+        "code",
+        "extension",
+        "no_codeblock",
+        "git_diff",
+        "git_diff_branch",
+        "git_log_branch"
+    ];
     let re = Regex::new(r"\{\{\s*(?P<var>[a-zA-Z_][a-zA-Z_0-9]*)\s*\}\}").unwrap();
     re.captures_iter(template)
         .map(|cap| cap["var"].to_string())

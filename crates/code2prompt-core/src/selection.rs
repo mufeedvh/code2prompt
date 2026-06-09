@@ -37,15 +37,23 @@ pub struct SelectionEngine {
 
     /// Cache for performance
     cache: HashMap<PathBuf, bool>,
+
+    /// Default behavior when no patterns or user actions match
+    deselected_by_default: bool,
 }
 
 impl SelectionEngine {
     /// Create a new SelectionEngine with base patterns
-    pub fn new(include_patterns: Vec<String>, exclude_patterns: Vec<String>) -> Self {
+    pub fn new(
+        include_patterns: Vec<String>,
+        exclude_patterns: Vec<String>,
+        deselected_by_default: bool,
+    ) -> Self {
         Self {
             filter_engine: FilterEngine::new(&include_patterns, &exclude_patterns),
             user_actions: Vec::new(),
             cache: HashMap::new(),
+            deselected_by_default,
         }
     }
 
@@ -74,9 +82,12 @@ impl SelectionEngine {
             // If there are include patterns, use them
             self.filter_engine.matches_patterns(path)
         } else {
-            // No include patterns: default behavior is to include all files
-            // (unless excluded by exclude patterns)
-            !self.filter_engine.is_excluded(path)
+            // No include patterns: default behavior depends on deselected_by_default
+            if self.deselected_by_default {
+                false
+            } else {
+                !self.filter_engine.is_excluded(path)
+            }
         }
     }
 
@@ -241,6 +252,12 @@ impl SelectionEngine {
     pub fn filter_engine(&self) -> &FilterEngine {
         &self.filter_engine
     }
+
+    /// Set whether the engine should default to deselected
+    pub fn set_deselected_by_default(&mut self, value: bool) {
+        self.deselected_by_default = value;
+        self.cache.clear();
+    }
 }
 
 impl std::fmt::Debug for SelectionEngine {
@@ -249,6 +266,7 @@ impl std::fmt::Debug for SelectionEngine {
             .field("filter_engine", &self.filter_engine)
             .field("user_actions", &self.user_actions)
             .field("cache_size", &self.cache.len())
+            .field("deselected_by_default", &self.deselected_by_default)
             .finish()
     }
 }
@@ -259,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_specificity_calculation() {
-        let engine = SelectionEngine::new(vec![], vec![]);
+        let engine = SelectionEngine::new(vec![], vec![], false);
 
         assert_eq!(engine.calculate_specificity(Path::new("file.rs")), 1);
         assert_eq!(engine.calculate_specificity(Path::new("src/main.rs")), 2);
@@ -271,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_precedence_rules() {
-        let mut engine = SelectionEngine::new(vec![], vec![]);
+        let mut engine = SelectionEngine::new(vec![], vec![], false);
 
         // Add less specific action first
         engine.exclude_file(PathBuf::from("src"));
@@ -286,7 +304,7 @@ mod tests {
 
     #[test]
     fn test_recent_wins_over_old() {
-        let mut engine = SelectionEngine::new(vec![], vec![]);
+        let mut engine = SelectionEngine::new(vec![], vec![], false);
 
         // First action
         engine.exclude_file(PathBuf::from("main.rs"));
@@ -295,5 +313,19 @@ mod tests {
         // More recent action with same specificity
         engine.include_file(PathBuf::from("main.rs"));
         assert!(engine.is_selected(Path::new("main.rs")));
+    }
+
+    #[test]
+    fn test_deselected_by_default() {
+        let mut engine = SelectionEngine::new(vec![], vec![], true);
+
+        // By default everything is deselected
+        assert!(!engine.is_selected(Path::new("main.rs")));
+        assert!(!engine.is_selected(Path::new("src/lib.rs")));
+
+        // User action should still work
+        engine.include_file(PathBuf::from("main.rs"));
+        assert!(engine.is_selected(Path::new("main.rs")));
+        assert!(!engine.is_selected(Path::new("src/lib.rs")));
     }
 }

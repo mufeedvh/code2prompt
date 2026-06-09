@@ -63,6 +63,8 @@ pub struct TemplateContext<'a> {
 
     #[serde(flatten)]
     pub user_variables: &'a HashMap<String, String>,
+
+    pub no_codeblock: bool,
 }
 
 /// Encapsulates the final rendered prompt and some metadata
@@ -81,6 +83,7 @@ impl Code2PromptSession {
         let selection_engine = SelectionEngine::new(
             config.include_patterns.clone(),
             config.exclude_patterns.clone(),
+            config.deselected,
         );
 
         Self {
@@ -97,6 +100,7 @@ impl Code2PromptSession {
         self.selection_engine = SelectionEngine::new(
             self.config.include_patterns.clone(),
             self.config.exclude_patterns.clone(),
+            self.config.deselected,
         );
         self
     }
@@ -107,6 +111,7 @@ impl Code2PromptSession {
         self.selection_engine = SelectionEngine::new(
             self.config.include_patterns.clone(),
             self.config.exclude_patterns.clone(),
+            self.config.deselected,
         );
         self
     }
@@ -182,6 +187,13 @@ impl Code2PromptSession {
         self.selection_engine.has_user_actions()
     }
 
+    /// Set deselected by default and update selection engine
+    pub fn set_deselected(&mut self, value: bool) -> &mut Self {
+        self.config.deselected = value;
+        self.selection_engine.set_deselected_by_default(value);
+        self
+    }
+
     /// Loads the codebase data (source tree and file list) into the session.
     pub fn load_codebase(&mut self) -> Result<()> {
         let (tree, files) = traverse_directory(&self.config, Some(&mut self.selection_engine))
@@ -230,6 +242,7 @@ impl Code2PromptSession {
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
             user_variables: &self.config.user_variables,
+            no_codeblock: self.config.no_codeblock,
         }
     }
 
@@ -385,12 +398,7 @@ impl Code2PromptSession {
                 .iter()
                 .map(|file| {
                     // Create empty code block with same wrapping structure
-                    let empty_code_block = wrap_code_block(
-                        "",
-                        &file.extension,
-                        self.config.line_numbers,
-                        self.config.no_codeblock,
-                    );
+                    let empty_code_block = wrap_code_block("", self.config.line_numbers);
 
                     FileEntry {
                         path: file.path.clone(),
@@ -413,6 +421,7 @@ impl Code2PromptSession {
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
             user_variables: &self.config.user_variables,
+            no_codeblock: self.config.no_codeblock,
         };
 
         // Render skeleton template

@@ -50,7 +50,7 @@ name = "code2prompt"
 path = "src/main.rs"
 
 [dev-dependencies]
-tempfile = "3.20"
+tempfile = "3.24"
 assert_cmd = "2.1.1"
 predicates = "3.1"
 env_logger = "0.11.3"
