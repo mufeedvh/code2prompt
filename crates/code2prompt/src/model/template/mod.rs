@@ -150,7 +150,7 @@ impl TemplateState {
         self.editor.current_template_name = template_name.clone();
 
         // Create new TextArea with the content
-        self.editor.editor = tui_textarea::TextArea::from(content.lines());
+        self.editor.editor = ratatui_textarea::TextArea::from(content.lines());
 
         // Sync and validate
         self.editor.sync_content_from_textarea();

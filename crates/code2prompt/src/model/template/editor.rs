@@ -5,7 +5,7 @@
 
 use regex::Regex;
 use std::collections::HashSet;
-use tui_textarea::TextArea;
+use ratatui_textarea::{TextArea, CursorMove};
 
 /// State for the template editor component
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub struct EditorState {
 impl Clone for EditorState {
     fn clone(&self) -> Self {
         let mut new_editor = TextArea::from(self.editor.lines().iter().map(|s| s.as_str()));
-        new_editor.move_cursor(tui_textarea::CursorMove::Jump(
+        new_editor.move_cursor(CursorMove::Jump(
             self.editor.cursor().0.try_into().unwrap_or(0),
             self.editor.cursor().1.try_into().unwrap_or(0),
         ));
