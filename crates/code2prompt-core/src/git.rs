@@ -1,28 +1,35 @@
-//! This module handles git operations.
+//! Git repository integration for diff extraction and branch operations.
+//! 
+//! This module provides core git functionality for code2prompt, including:
+//! - Generating diffs between HEAD and index (staged changes)
+//! - Comparing branches for diff and log extraction
+//! - Repository validation and reference checking
 
 use anyhow::{Context, Result};
 use git2::{DiffOptions, Repository};
 use log::info;
 use std::path::Path;
 
-/// Generates a git diff for the repository at the provided path.
-///
-/// This function compares the repository's HEAD tree with the index to produce a diff of staged changes.
-/// It also checks for unstaged changes (differences between the index and the working directory) and,
-/// if found, appends a notification to the output.
-///
-/// If there are no staged changes, the function returns a message in the format:
-/// `"no diff between HEAD and index"`.
+/// Extract git diff for staged changes in repository.
+/// 
+/// Generates diff between HEAD and index to show staged changes, with additional
+/// notification if unstaged changes are present. This is the primary git integration
+/// point for code2prompt's diff functionality.
 ///
 /// # Arguments
 ///
-/// * `repo_path` - A reference to the path of the git repository.
+/// * `repo_path` - Path to git repository
 ///
 /// # Returns
 ///
-/// * `Result<String>` - On success, returns either the diff (with an appended note if unstaged changes exist)
-///   or a message indicating that there is no diff between the compared git objects.
-///   In case of error, returns an appropriate error.
+/// * `Result<String>` - Git diff output or "no diff between HEAD and index" if no changes
+///
+/// # Errors  
+/// 
+/// Returns error if:
+/// - Repository is invalid or cannot be opened
+/// - HEAD reference is missing or corrupt
+/// - Git operations fail during diff generation
 pub fn get_git_diff(repo_path: &Path) -> Result<String> {
     info!("Opening repository at path: {:?}", repo_path);
     let repo = Repository::open(repo_path).context("Failed to open repository")?;
