@@ -165,10 +165,11 @@ pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<Str
     for oid in revwalk {
         let oid = oid.context("Failed to get OID from revwalk")?;
         let commit = repo.find_commit(oid).context("Failed to find commit")?;
+        let summary = commit.summary().ok().flatten().unwrap_or("No commit message");
         log_text.push_str(&format!(
             "{} - {}\n",
             &commit.id().to_string()[..7],
-            commit.summary().unwrap_or("No commit message")
+            summary
         ));
     }
 

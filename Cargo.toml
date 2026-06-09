@@ -33,7 +33,7 @@ inquire = "0.9.1"
 log = "0.4"
 lscolors = { version = "0.21.0", features = ["ansi_term"] }
 ignore = "0.4.25"
-git2 = { version = "0.20.2", default-features = false, features = [
+git2 = { version = "0.21.0", default-features = false, features = [
     "https",
     "vendored-libgit2",
     "vendored-openssl",
