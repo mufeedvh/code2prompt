@@ -14,12 +14,34 @@ use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use crate::tokenizer::{TokenizerType, count_tokens};
 
-/// Represents a live session that orchestrates c2p workflow.
-///
-/// This struct acts as the high-level controller. It binds together:
-/// - Static Configuration (Code2PromptConfig)
-/// - Filtering Logic (SelectionEngine)
-/// - Codebase Data (SessionData)
+/// Main orchestrator for code prompt generation workflows.
+/// 
+/// Combines configuration, file processing, and template rendering into
+/// a cohesive session. Maintains state during processing and coordinates
+/// between filtering logic, codebase analysis, and output generation.
+/// 
+/// This struct acts as the high-level controller that binds together:
+/// - Static Configuration ([`Code2PromptConfig`])
+/// - Filtering Logic ([`SelectionEngine`])
+/// - Codebase Data ([`SessionData`])
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use code2prompt_core::{Code2PromptConfig, Code2PromptSession};
+/// 
+/// // Create configuration with project path
+/// let config = Code2PromptConfig::builder()
+///     .path("/path/to/project")
+///     .build()
+///     .unwrap();
+/// 
+/// // Create session and generate prompt
+/// let mut session = Code2PromptSession::new(config);
+/// let output = session.generate_prompt()?;
+/// println!("Generated {} tokens", output.token_count);
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 #[derive(Debug, Clone)]
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
@@ -78,7 +100,33 @@ pub struct RenderedPrompt {
 }
 
 impl Code2PromptSession {
-    /// Creates a new session with SelectionEngine for pattern-based and user-driven file selection
+    /// Create new session with configuration and selection engine.
+    /// 
+    /// Initializes a session with the provided configuration and creates
+    /// a selection engine for pattern-based and user-driven file filtering.
+    /// The project path is taken from the configuration.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `config` - Configuration object with path, filters and preferences
+    /// 
+    /// # Returns
+    /// 
+    /// A new `Code2PromptSession` ready for codebase processing.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use code2prompt_core::{Code2PromptConfig, Code2PromptSession};
+    /// 
+    /// let config = Code2PromptConfig::builder()
+    ///     .path("/path/to/project")
+    ///     .include_patterns(vec!["**/*.rs".to_string()])
+    ///     .build()
+    ///     .unwrap();
+    /// 
+    /// let session = Code2PromptSession::new(config);
+    /// ```
     pub fn new(config: Code2PromptConfig) -> Self {
         let selection_engine = SelectionEngine::new(
             config.include_patterns.clone(),
@@ -508,6 +556,43 @@ impl Code2PromptSession {
         }
     }
 
+    /// Process all files and generate final prompt output.
+    /// 
+    /// Orchestrates the complete workflow by loading codebase data, applying
+    /// filters, processing Git information if enabled, and rendering using
+    /// the specified template. This is the main entry point for generating
+    /// prompts from configured projects.
+    /// 
+    /// # Returns
+    /// 
+    /// [`RenderedPrompt`] containing generated content, metadata, and token counts.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns error if:
+    /// - Project path is not accessible
+    /// - File processing fails
+    /// - Template rendering fails
+    /// - Git operations fail (when enabled)
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use code2prompt_core::{Code2PromptConfig, Code2PromptSession};
+    /// 
+    /// let config = Code2PromptConfig::builder()
+    ///     .path("/path/to/project")
+    ///     .diff_enabled(true)
+    ///     .build()
+    ///     .unwrap();
+    /// 
+    /// let mut session = Code2PromptSession::new(config);
+    /// let output = session.generate_prompt()?;
+    /// 
+    /// println!("Generated prompt with {} tokens", output.token_count);
+    /// println!("Processed {} files", output.files.len());
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     pub fn generate_prompt(&mut self) -> Result<RenderedPrompt> {
         self.load_codebase()?;
 
