@@ -28,16 +28,26 @@ use crate::tokenizer::{TokenizerType, count_tokens};
 /// # Example
 /// 
 /// ```rust
-/// use code2prompt_core::{Code2PromptConfig, Code2PromptSession};
+/// use code2prompt_core::configuration::Code2PromptConfig;
+/// use code2prompt_core::session::Code2PromptSession;
+/// 
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// // Create a temporary directory for testing
+/// let temp_dir = std::env::temp_dir().join("code2prompt_test");
+/// std::fs::create_dir_all(&temp_dir)?;
+/// std::fs::write(temp_dir.join("test.rs"), "fn main() {}")?;
 /// 
 /// let config = Code2PromptConfig::builder()
-///     .path("/path/to/project")
-///     .build()
-///     .unwrap();
+///     .path(&temp_dir)
+///     .build()?;
 /// let mut session = Code2PromptSession::new(config);
 /// let output = session.generate_prompt()?;
 /// println!("Generated {} tokens", output.token_count);
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// 
+/// // Cleanup
+/// std::fs::remove_dir_all(&temp_dir).ok();
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, Clone)]
 pub struct Code2PromptSession {
@@ -114,15 +124,21 @@ impl Code2PromptSession {
     /// # Example
     /// 
     /// ```rust
-    /// use code2prompt_core::{Code2PromptConfig, Code2PromptSession};
+    /// use code2prompt_core::configuration::Code2PromptConfig;
+    /// use code2prompt_core::session::Code2PromptSession;
+    /// 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Use current directory for testing
+    /// let current_dir = std::env::current_dir()?;
     /// 
     /// let config = Code2PromptConfig::builder()
-    ///     .path("/path/to/project")
+    ///     .path(&current_dir)
     ///     .include_patterns(vec!["**/*.rs".to_string()])
-    ///     .build()
-    ///     .unwrap();
+    ///     .build()?;
     /// 
     /// let session = Code2PromptSession::new(config);
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn new(config: Code2PromptConfig) -> Self {
         let selection_engine = SelectionEngine::new(
@@ -575,20 +591,30 @@ impl Code2PromptSession {
     /// # Example
     /// 
     /// ```rust
-    /// use code2prompt_core::{Code2PromptConfig, Code2PromptSession};
+    /// use code2prompt_core::configuration::Code2PromptConfig;
+    /// use code2prompt_core::session::Code2PromptSession;
+    /// 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Create a temporary directory for testing
+    /// let temp_dir = std::env::temp_dir().join("code2prompt_generate_test");
+    /// std::fs::create_dir_all(&temp_dir)?;
+    /// std::fs::write(temp_dir.join("test.rs"), "fn main() { println!(\"Hello world!\"); }")?;
     /// 
     /// let config = Code2PromptConfig::builder()
-    ///     .path("/path/to/project")
-    ///     .diff_enabled(true)
-    ///     .build()
-    ///     .unwrap();
+    ///     .path(&temp_dir)
+    ///     .diff_enabled(false) // Disable git diff for test
+    ///     .build()?;
     /// 
     /// let mut session = Code2PromptSession::new(config);
     /// let output = session.generate_prompt()?;
     /// 
     /// println!("Generated prompt with {} tokens", output.token_count);
     /// println!("Processed {} files", output.files.len());
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// 
+    /// // Cleanup
+    /// std::fs::remove_dir_all(&temp_dir).ok();
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn generate_prompt(&mut self) -> Result<RenderedPrompt> {
         self.load_codebase()?;
