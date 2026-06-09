@@ -7,7 +7,7 @@
 
 use crate::path::FileEntry;
 use serde::{Deserialize, Serialize};
-use std::cmp::{Ordering,Reverse};
+use std::cmp::{Ordering, Reverse};
 use std::collections::{BTreeMap, BinaryHeap, HashMap};
 use std::path::Path;
 
@@ -86,7 +86,7 @@ impl<'a> CodebaseAnalysis<'a> {
     pub fn token_map(&self, options: TokenMapOptions) -> Vec<TokenMapEntry> {
         // 1. Find common path prefix to strip (for absolute paths)
         let common_prefix = find_common_path_prefix(self.files);
-        
+
         // 2. Build the tree structure
         let mut root = TreeNode::new(String::new());
         root.tokens = self.total_tokens;
@@ -94,14 +94,14 @@ impl<'a> CodebaseAnalysis<'a> {
         // Insert all files into the tree
         for file in self.files {
             let path = Path::new(&file.path);
-            
+
             // Strip common prefix if present
             let path_to_use = if let Some(prefix) = &common_prefix {
                 path.strip_prefix(prefix).unwrap_or(path)
             } else {
                 path
             };
-            
+
             let components: Vec<&str> = path_to_use
                 .components()
                 .filter_map(|c| c.as_os_str().to_str())
@@ -122,8 +122,7 @@ impl<'a> CodebaseAnalysis<'a> {
         }
 
         // 2. Select nodes to display using priority queue (dust algorithm)
-        let allowed_nodes =
-            select_nodes_to_display(&root, self.total_tokens, &options);
+        let allowed_nodes = select_nodes_to_display(&root, self.total_tokens, &options);
 
         // 3. Flatten the tree to entries, respecting the selection
         let mut entries = Vec::new();
@@ -152,9 +151,10 @@ impl<'a> CodebaseAnalysis<'a> {
         if hidden_tokens > 0 {
             // Mark the previous last item as not last anymore
             if let Some(last) = entries.last_mut()
-                && last.depth == 0 {
-                    last.is_last_child = false;
-                }
+                && last.depth == 0
+            {
+                last.is_last_child = false;
+            }
 
             entries.push(TokenMapEntry {
                 path: "(other files)".to_string(),
@@ -386,7 +386,12 @@ fn rebuild_filtered_tree(
     // Check if this node should be included
     if !path.is_empty() && allowed_nodes.contains_key(&path) {
         let percentage = (node.tokens as f64 / total_tokens as f64) * 100.0;
-        let name = path.split('/').next_back().unwrap_or(&path).to_string();
+        let name = path
+            .split('/')
+            .filter(|s| !s.is_empty()) 
+            .next_back()
+            .unwrap_or(&path)
+            .to_string();
         let metadata = node.metadata.unwrap_or(EntryMetadata { is_dir: true });
 
         // Check if this node has children that will be displayed
@@ -459,21 +464,21 @@ fn find_common_path_prefix(files: &[FileEntry]) -> Option<std::path::PathBuf> {
 
     // Get the first file's path components as a starting point
     let first_path = Path::new(&files[0].path);
-    
+
     // Only strip prefix for absolute paths
     if !first_path.is_absolute() {
         return None;
     }
-    
+
     let first_components: Vec<_> = first_path.components().collect();
 
     // Find the longest common prefix across all file paths
     let mut common_len = first_components.len();
-    
+
     for file in files.iter().skip(1) {
         let path = Path::new(&file.path);
         let components: Vec<_> = path.components().collect();
-        
+
         // Find how many components match with our current common prefix
         let mut matching = 0;
         for (a, b) in first_components.iter().zip(components.iter()) {
@@ -483,9 +488,9 @@ fn find_common_path_prefix(files: &[FileEntry]) -> Option<std::path::PathBuf> {
                 break;
             }
         }
-        
+
         common_len = common_len.min(matching);
-        
+
         if common_len == 0 {
             return None; // No common prefix
         }
