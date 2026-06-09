@@ -8,7 +8,11 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "jest",
+    "update-api-docs": "node update-docs.cjs",
+    "docs:api": "cd tools/doc-to-mdx && npm run build && npm start",
+    "docs:full": "npm run update-api-docs && npm run build"
   },
   "dependencies": {
     "@astrojs/markdoc": "0.15.10",
@@ -33,9 +37,11 @@
   },
   "devDependencies": {
     "dlx": "^0.2.1",
+    "jest": "30.4.2",
     "prettier-plugin-astro": "^0.14.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
+
   "packageManager": "pnpm@10.18.0"
 }
