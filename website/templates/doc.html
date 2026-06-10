@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% import "macros/nav.html" as nav %}
+
+{% block body %}
+<div class="page">
+  <aside class="sidebar" id="sidebar" aria-label="Site navigation">
+    {{ nav::sidebar(current=current_path) }}
+  </aside>
+  <div class="main-frame">
+    <main class="content prose">
+      {% block doc_main %}{% endblock doc_main %}
+    </main>
+    <aside class="toc" aria-label="On this page">
+      {% block toc %}{% endblock toc %}
+    </aside>
+  </div>
+</div>
+{% endblock body %}

@@ -1,0 +1,31 @@
+{% extends "doc.html" %}
+
+{% block title %}{{ page.title }} · {{ config.title }}{% endblock title %}
+{% block description %}{{ page.description | default(value=config.description) }}{% endblock description %}
+
+{% block doc_main %}
+<article>
+  <h1>{{ page.title }}</h1>
+  {{ page.content | safe }}
+</article>
+{% endblock doc_main %}
+
+{% block toc %}
+{% if page.toc %}
+<nav class="toc-nav">
+  <p class="toc-title">On this page</p>
+  <ul>
+    {% for h in page.toc %}
+    <li>
+      <a href="#{{ h.id }}">{{ h.title }}</a>
+      {% if h.children %}
+      <ul>
+        {% for c in h.children %}<li><a href="#{{ c.id }}">{{ c.title }}</a></li>{% endfor %}
+      </ul>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock toc %}

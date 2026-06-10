@@ -1,0 +1,39 @@
+base_url = "https://gnaw.gitbadger.com"
+title = "gnaw"
+description = "Turn a codebase into an LLM-ready prompt, trimmed to a token budget."
+default_language = "en"
+
+compile_sass = true
+build_search_index = true
+generate_feeds = false
+minify_html = false
+
+[markdown]
+smart_punctuation = false
+
+# Zola >= 0.22 highlights via Giallo; config lives in [markdown.highlighting]
+# and a theme is now required. Dual themes with inline style emit CSS
+# light-dark() values, which we drive from `color-scheme` in main.scss so code
+# colors follow the manual theme toggle. Verify these theme names against
+# Giallo's built-in list: https://github.com/getzola/giallo#built-in
+[markdown.highlighting]
+style = "inline"
+light_theme = "github-light"
+dark_theme = "github-dark"
+
+[extra]
+github = "https://github.com/gitbadger-clan/gnaw"
+
+# Sidebar groups — same shape as Starlight's `sidebar`:
+#   - a group with explicit `items` (title + url), or
+#   - a group with `auto = "<section>"` to list every page in that section.
+[[extra.sidebar]]
+title = "Guides"
+
+[[extra.sidebar.items]]
+title = "Example Guide"
+url = "/guides/example/"
+
+[[extra.sidebar]]
+title = "Reference"
+auto = "reference"

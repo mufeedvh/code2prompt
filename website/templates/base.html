@@ -1,0 +1,56 @@
+{% import "macros/icons.html" as ic %}
+<!DOCTYPE html>
+<html lang="{{ lang | default(value=config.default_language) }}" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ config.title }}{% endblock title %}</title>
+  <meta name="description" content="{% block description %}{{ config.description }}{% endblock description %}">
+  <link rel="stylesheet" href="{{ get_url(path='main.css', trailing_slash=false) }}">
+  <script>
+    // Set the theme before first paint to avoid a flash.
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <button class="icon-btn menu-btn" aria-label="Toggle navigation" aria-expanded="false">{{ ic::icon(name="menu") }}</button>
+    <a class="site-title" href="{{ get_url(path='/') }}">{{ config.title }}</a>
+
+    {% if config.build_search_index %}
+    <div class="search">
+      <label class="search-box">
+        {{ ic::icon(name="search") }}
+        <input type="search" id="search" placeholder="Search" autocomplete="off" spellcheck="false" aria-label="Search">
+      </label>
+      <div class="search-results" id="search-results" hidden></div>
+    </div>
+    {% endif %}
+
+    <div class="header-end">
+      {% if config.extra.github %}
+      <a class="icon-btn" href="{{ config.extra.github }}" aria-label="GitHub" rel="noopener">{{ ic::icon(name="github") }}</a>
+      {% endif %}
+      <button class="icon-btn theme-toggle" aria-label="Toggle color theme">
+        <span class="when-dark">{{ ic::icon(name="sun") }}</span>
+        <span class="when-light">{{ ic::icon(name="moon") }}</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="scrim" hidden></div>
+
+  {% block body %}{% endblock body %}
+
+  {% if config.build_search_index %}
+  <script src="{{ get_url(path='search_index.en.js', trailing_slash=false) }}" defer></script>
+  {% endif %}
+  <script src="{{ get_url(path='js/theme.js', trailing_slash=false) }}" defer></script>
+</body>
+</html>

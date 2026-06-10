@@ -1,0 +1,21 @@
+{% macro sidebar(current) %}
+<nav class="sidebar-nav">
+  {% for group in config.extra.sidebar %}
+  <details class="sidebar-group" open>
+    <summary>{{ group.title }}</summary>
+    <ul>
+      {% if group.items is defined %}
+        {% for item in group.items %}
+        <li><a href="{{ item.url }}"{% if current == item.url %} class="active" aria-current="page"{% endif %}>{{ item.title }}</a></li>
+        {% endfor %}
+      {% elif group.auto is defined %}
+        {% set sec = get_section(path = group.auto ~ "/_index.md") %}
+        {% for p in sec.pages %}
+        <li><a href="{{ p.path }}"{% if current == p.path %} class="active" aria-current="page"{% endif %}>{{ p.title }}</a></li>
+        {% endfor %}
+      {% endif %}
+    </ul>
+  </details>
+  {% endfor %}
+</nav>
+{% endmacro sidebar %}

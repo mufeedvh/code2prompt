@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% import "macros/icons.html" as ic %}
+
+{% block title %}{{ config.title }}{% endblock title %}
+
+{% block body %}
+{% set hero = section.extra.hero | default(value=false) %}
+<main class="splash">
+  {% if hero %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>{{ hero.title | default(value=config.title) }}</h1>
+      <p class="tagline">{{ hero.tagline }}</p>
+      {% if hero.actions is defined %}
+      <div class="hero-actions">
+        {% for a in hero.actions %}
+        <a class="btn {{ a.variant | default(value='primary') }}" href="{{ a.link }}">
+          <span>{{ a.text }}</span>{% if a.icon %}{{ ic::icon(name=a.icon) }}{% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% if hero.image is defined %}
+    <div class="hero-image"><img src="{{ get_url(path=hero.image, trailing_slash=false) }}" alt=""></div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if section.content %}
+  <div class="content prose splash-content">
+    {{ section.content | safe }}
+  </div>
+  {% endif %}
+
+  {% if section.extra.cards is defined %}
+  <div class="card-grid stagger">
+    {% for c in section.extra.cards %}
+    <article class="card">
+      <p class="card-title">{% if c.icon %}<span class="card-icon">{{ ic::icon(name=c.icon) }}</span>{% endif %}{{ c.title }}</p>
+      <div class="card-body">{{ c.body | markdown(inline=true) | safe }}</div>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+</main>
+{% endblock body %}

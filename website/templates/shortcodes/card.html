@@ -1,0 +1,5 @@
+{% import "macros/icons.html" as ic %}
+<article class="card">
+  <p class="card-title">{% if icon %}<span class="card-icon">{{ ic::icon(name=icon) }}</span>{% endif %}{{ title }}</p>
+  <div class="card-body">{{ body | markdown | safe }}</div>
+</article>

@@ -1,0 +1,17 @@
+{% extends "doc.html" %}
+
+{% block title %}{{ section.title }} · {{ config.title }}{% endblock title %}
+
+{% block doc_main %}
+<article>
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+  {% if section.pages %}
+  <ul class="page-list">
+    {% for p in section.pages %}
+    <li><a href="{{ p.path }}">{{ p.title }}</a>{% if p.description %} — {{ p.description }}{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</article>
+{% endblock doc_main %}
