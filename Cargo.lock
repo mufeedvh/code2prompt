@@ -1091,7 +1091,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gnaw"
+name = "gnaw-ctx"
 version = "0.1.0"
 dependencies = [
  "ansi_term",

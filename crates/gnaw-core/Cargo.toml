@@ -1,5 +1,5 @@
 [package]
-name = "gnaw_core"
+name = "gnaw-core"
 version = "0.1.0"
 authors = [
     "gitbadger <me@gitbadger.com>",
