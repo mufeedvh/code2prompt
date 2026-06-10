@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://code2prompt.dev">
+  <a href="https://gnaw.gitbadger.com">
     <img align="center" width="550px" src="https://github.com/mufeedvh/code2prompt/blob/main/.assets/logo_dark_v0.0.2.svg?raw=true" alt="Code2prompt"/>
   </a>
   <br>

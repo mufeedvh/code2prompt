@@ -1,5 +1,5 @@
 # Run tests for code2prompt
-name: Code2prompt Continuous Integration
+name: Gnaw Continuous Integration
 
 on:
   push:

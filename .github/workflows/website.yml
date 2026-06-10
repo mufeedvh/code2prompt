@@ -1,4 +1,4 @@
-name: Code2prompt Website
+name: Gnaw Website
 
 on:
   # Trigger the workflow every time you push to the `main` branch
