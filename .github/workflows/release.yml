@@ -1,15 +1,39 @@
-# Build and publish release on tags push
+# Tag push -> create a GitHub Release with binaries, then publish to crates.io.
 
-name: Code2prompt Release
+name: Gnaw Release
 
 on:
   push:
     tags:
       - 'v[0-9]*.[0-9]*.[0-9]*'
 
+permissions:
+  contents: write          # needed to create the release / attach binaries
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
+  # ---- 1. Quality gate — must pass before anything ships ----
+  gate:
+    name: Format, clippy, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy -p gnaw-core -p gnaw-ctx --all-targets -- -D warnings
+      - run: cargo test  -p gnaw-core -p gnaw-ctx
+
+  # ---- 2. Build a release binary per target ----
   build:
+    name: Build ${{ matrix.target }}
+    needs: gate
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -21,39 +45,20 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
-    outputs:
-      asset-path: ${{ steps.set_asset.outputs.asset-path }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
       - name: Set up Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
+          targets: ${{ matrix.target }}      # NB: "targets" (plural); "target" is silently ignored
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v5
+      - uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.target }}-cargo-
+          key: ${{ matrix.target }}
 
-      - name: Install extra dependencies on Ubuntu
-        if: runner.os == 'Linux'
-        run: |
-          if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
-            sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
-          fi
-
+      # libclang for any C-binding deps on Windows (kept from your original;
+      # remove if the Windows build is green without it).
       - name: Cache LLVM on Windows
         if: runner.os == 'Windows'
         id: cache-llvm
@@ -61,76 +66,68 @@ jobs:
         with:
           path: C:\Program Files\LLVM
           key: windows-llvm-latest
-          
       - name: Install LLVM on Windows
         if: runner.os == 'Windows' && steps.cache-llvm.outputs.cache-hit != 'true'
-        run: |
-          choco install llvm
+        run: choco install llvm
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release -p gnaw-ctx --target ${{ matrix.target }}
 
-      # Packaging for Windows (PowerShell)
-      - name: Package Binary (Windows)
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/gnaw" "dist/gnaw-${{ matrix.target }}"
+
+      - name: Package (Windows)
         if: runner.os == 'Windows'
-        id: package_windows
         shell: pwsh
         run: |
-          $BIN_DIR = "target/${{ matrix.target }}/release"
-          $BIN_NAME = "code2prompt"
-          New-Item -ItemType Directory -Force -Path release | Out-Null
-          Copy-Item "$BIN_DIR\$BIN_NAME.exe" "release/${BIN_NAME}-${{ matrix.target }}.exe"
-          # Enregistrer le chemin de l'artefact dans un fichier
-          Set-Content -Path asset_windows.txt -Value "release/${BIN_NAME}-${{ matrix.target }}.exe"
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/gnaw.exe" "dist/gnaw-${{ matrix.target }}.exe"
 
-      # Packaging for Linux/macOS (bash)
-      - name: Package Binary (Unix)
-        if: runner.os != 'Windows'
-        id: package_unix
-        shell: bash
-        run: |
-          BIN_DIR=target/${{ matrix.target }}/release
-          BIN_NAME=code2prompt
-          mkdir -p release
-          cp "$BIN_DIR/$BIN_NAME" "release/${BIN_NAME}-${{ matrix.target }}"
-          echo "release/${BIN_NAME}-${{ matrix.target }}" > asset_unix.txt
-
-      # Get Artifact's path according to OS and defines it as output
-      - name: Set asset output
-        id: set_asset
-        shell: bash
-        run: |
-          if [ -f asset_windows.txt ]; then
-            ASSET_PATH=$(cat asset_windows.txt)
-          else
-            ASSET_PATH=$(cat asset_unix.txt)
-          fi
-          echo "Asset path: $ASSET_PATH"
-          echo "::set-output name=asset-path::$ASSET_PATH"
-
-      - name: Upload Artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v6
         with:
-          name: asset-${{ matrix.target }}
-          path: ${{ steps.set_asset.outputs.asset-path }}
+          name: gnaw-${{ matrix.target }}
+          path: dist/*
 
+  # ---- 3. Create the GitHub Release with all binaries ----
   release:
+    name: Create GitHub release
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
+      - name: Download all binaries
         uses: actions/download-artifact@v7
         with:
-          path: artifacts
+          path: dist
+          merge-multiple: true          # flatten every matrix artifact into ./dist
 
-      - name: Create GitHub Release and upload assets
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create release and attach binaries
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref }}
-          name: Release ${{ github.ref }}
-          body: "Automatically generated release for ${{ github.ref }}"
-          files: |
-            artifacts/**
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dist/*
         env:
-          GITHUB_TOKEN: ${{ secrets.C2P_RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # built-in; no PAT needed
+
+  # ---- 4. Publish crates, only after the release exists ----
+  publish-crates:
+    name: Publish to crates.io
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # gnaw-ctx depends on gnaw-core, so core must reach the index first.
+      # cargo (>=1.66) waits for the new version to appear before returning,
+      # so the second publish resolves the dependency cleanly.
+      - run: cargo publish -p gnaw-core
+      - run: cargo publish -p gnaw-ctx
