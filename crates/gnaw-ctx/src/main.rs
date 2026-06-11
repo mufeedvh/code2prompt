@@ -2,6 +2,7 @@
 //!
 //! Authors: Olivier D'Ancona (@ODAncona), Mufeed VH (@mufeedvh)
 mod args;
+mod banner;
 mod clipboard;
 mod config;
 mod config_loader;
@@ -95,6 +96,10 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
             OutputDestination::File => false,
         }
     };
+
+    if !output_to_stdout {
+        banner::print_cli(quiet_mode);
+    }
 
     // ~~~ Create Session ~~~
     let spinner = if !quiet_mode {
