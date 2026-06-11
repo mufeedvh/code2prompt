@@ -4,8 +4,8 @@
 //! with proper priority handling and informational messages.
 
 use anyhow::{Context, Result};
-use gnaw_core::configuration::{OutputDestination, TomlConfig};
 use colored::*;
+use gnaw_core::configuration::{OutputDestination, TomlConfig};
 use log::{debug, info};
 use std::path::Path;
 

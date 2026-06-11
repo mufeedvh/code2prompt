@@ -3,11 +3,11 @@
 //! Tests for path traversal, directory structure handling, and file processing.
 //! Uses rstest for parameterized testing and fixtures for test environment setup.
 
+use git2::Repository;
 use gnaw_core::{
     configuration::GnawConfig,
     path::{EntryMetadata, FileEntry, traverse_directory},
 };
-use git2::Repository;
 use rstest::*;
 use std::{
     fs::{self},

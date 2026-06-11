@@ -76,8 +76,8 @@ pub fn serve_clipboard_daemon() -> Result<()> {
 /// * `Result<()>` - Returns Ok if the daemon process was spawned and the content was sent successfully,
 ///   or an error if the process could not be launched or written to.
 pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
-    use std::process::{Command, Stdio};
     use log::info;
+    use std::process::{Command, Stdio};
 
     // ~~~ Setting up the command to run the daemon ~~~
     let current_exe: std::path::PathBuf =
