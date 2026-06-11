@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://gnaw.gitbadger.com">
-    <img align="center" width="550px" src="website/static/logo-wordmark.svg" alt="gnaw"/>
+    <img align="center" width="550px" src="website/static/assets/logo-wordmark.svg" alt="gnaw"/>
   </a>
   <br>
   <h3>Convert your codebase into a single LLM prompt.</h3>
@@ -14,7 +14,7 @@
 
 <div align="center">
 
-[![License](https://img.shields.io/github/license/gitbadger/gnaw.svg?style=flat-square)](https://github.com/gitbadger/gnaw/blob/main/LICENSE)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg?style=flat-square)](https://github.com/gitbadger/gnaw#-license)
 [![CI](https://github.com/gitbadger/gnaw/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/gitbadger/gnaw/actions)
 [![GitHub Stars](https://img.shields.io/github/stars/gitbadger/gnaw?style=social)](https://github.com/gitbadger/gnaw)
 
