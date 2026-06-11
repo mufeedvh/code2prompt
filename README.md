@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://gnaw.gitbadger.com">
-    <img align="center" width="550px" src="website/static/assets/logo-wordmark.svg" alt="gnaw"/>
+    <img align="center" width="550px" src="website/static/assets/logo-wordmark-dark-ember.svg" alt="gnaw"/>
   </a>
   <br>
   <h3>Convert your codebase into a single LLM prompt.</h3>
