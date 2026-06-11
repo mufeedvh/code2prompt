@@ -16,8 +16,8 @@
 
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg?style=flat-square)](https://github.com/gitbadger-clan/gnaw#-license)
 [![CI](https://github.com/gitbadger-clan/gnaw/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/gitbadger-clan/gnaw/actions)
-[![Release](https://github.com/gitbadger/gnaw/actions/workflows/release.yml/badge.svg)](https://github.com/gitbadger/gnaw/actions/workflows/release.yml)
-[![Website](https://github.com/gitbadger/gnaw/actions/workflows/website.yml/badge.svg)](https://github.com/gitbadger/gnaw/actions/workflows/website.yml)
+[![Release](https://github.com/gitbadger-clan/gnaw/actions/workflows/release.yml/badge.svg)](https://github.com/gitbadger/gnaw/actions/workflows/release.yml)
+[![Website](https://github.com/gitbadger-clan/gnaw/actions/workflows/website.yml/badge.svg)](https://github.com/gitbadger/gnaw/actions/workflows/website.yml)
 [![GitHub Stars](https://img.shields.io/github/stars/gitbadger-clan/gnaw?style=social)](https://github.com/gitbadger-clan/gnaw)
 
 </div>
