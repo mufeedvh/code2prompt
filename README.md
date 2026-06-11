@@ -135,11 +135,22 @@ gnaw began as a fork of [code2prompt](https://github.com/mufeedvh/code2prompt) b
 - **REST interface** *(planned)* — an axum surface so browser extensions and other clients can request context over HTTP
 - **MCP server** *(planned)* — expose gnaw as a tool for agentic applications
 
-The original code2prompt is MIT licensed; gnaw preserves that license and its copyright notice. See [LICENSE](https://github.com/gitbadger/gnaw/blob/main/LICENSE) for details.
+The original code2prompt is MIT licensed. gnaw is dual-licensed under MIT OR Apache-2.0; portions derived from code2prompt remain under the upstream MIT license, whose copyright notice is preserved. See [License](#-license) for details.
 
 ## 📜 License
 
-Licensed under the MIT License, see [LICENSE](https://github.com/gitbadger/gnaw/blob/main/LICENSE) for more information.
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/gitbadger/gnaw/blob/main/LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](https://github.com/gitbadger/gnaw/blob/main/LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+
+at your option.
+
+Portions of this project are derived from [code2prompt](https://github.com/mufeedvh/code2prompt) and remain under its original MIT license; that copyright notice is retained in [LICENSE-MIT](https://github.com/gitbadger/gnaw/blob/main/LICENSE-MIT).
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ## Liked the project?
 
