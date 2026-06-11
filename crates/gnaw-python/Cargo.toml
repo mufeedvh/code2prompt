@@ -9,5 +9,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 serde_json = { workspace = true }
-gnaw_core = { path = "../gnaw-core" }
+gnaw-core = { path = "../gnaw-core" }
 pyo3 = { workspace = true }

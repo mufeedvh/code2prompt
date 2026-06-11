@@ -1091,58 +1091,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gnaw-ctx"
-version = "0.1.0"
-dependencies = [
- "ansi_term",
- "anyhow",
- "arboard",
- "assert_cmd",
- "bracoxide",
- "chrono",
- "clap",
- "colored",
- "crossterm",
- "dirs",
- "env_logger",
- "git2",
- "globset",
- "gnaw_core",
- "handlebars",
- "ignore",
- "indicatif",
- "inquire",
- "log",
- "lscolors",
- "predicates",
- "ratatui",
- "ratatui-textarea",
- "regex",
- "rstest",
- "serde",
- "serde_json",
- "tempfile",
- "terminal_size",
- "tiktoken-rs",
- "tokio",
- "toml",
- "tui-tree-widget",
- "unicode-width",
- "walkdir",
- "winapi",
-]
-
-[[package]]
-name = "gnaw-python"
-version = "0.1.0"
-dependencies = [
- "gnaw_core",
- "pyo3",
- "serde_json",
-]
-
-[[package]]
-name = "gnaw_core"
+name = "gnaw-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1174,6 +1123,57 @@ dependencies = [
  "toml",
  "tree-sitter",
  "tree-sitter-rust",
+]
+
+[[package]]
+name = "gnaw-ctx"
+version = "0.1.0"
+dependencies = [
+ "ansi_term",
+ "anyhow",
+ "arboard",
+ "assert_cmd",
+ "bracoxide",
+ "chrono",
+ "clap",
+ "colored",
+ "crossterm",
+ "dirs",
+ "env_logger",
+ "git2",
+ "globset",
+ "gnaw-core",
+ "handlebars",
+ "ignore",
+ "indicatif",
+ "inquire",
+ "log",
+ "lscolors",
+ "predicates",
+ "ratatui",
+ "ratatui-textarea",
+ "regex",
+ "rstest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "terminal_size",
+ "tiktoken-rs",
+ "tokio",
+ "toml",
+ "tui-tree-widget",
+ "unicode-width",
+ "walkdir",
+ "winapi",
+]
+
+[[package]]
+name = "gnaw-python"
+version = "0.1.0"
+dependencies = [
+ "gnaw-core",
+ "pyo3",
+ "serde_json",
 ]
 
 [[package]]

@@ -53,7 +53,7 @@ crate-type = ["rlib"]
 
 [package.metadata.deb]
 section = "utility"
-assets = [["target/release/gnaw_core", "/usr/bin/", "755"]]
+assets = [["target/release/gnaw-core", "/usr/bin/", "755"]]
 
 [dev-dependencies]
 tempfile = "3.27"

@@ -2,10 +2,10 @@
 resolver = "2"
 members = [
     "crates/gnaw-core",
-    "crates/gnaw",
+    "crates/gnaw-ctx",
     "crates/gnaw-python",
 ]
-default-members = ["crates/gnaw-core", "crates/gnaw"]
+default-members = ["crates/gnaw-core", "crates/gnaw-ctx"]
 
 [profile.release]
 lto = "thin"
