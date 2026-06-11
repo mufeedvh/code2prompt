@@ -7,6 +7,7 @@ sort_by = "weight"
 title = "gnaw"
 tagline = "Turn a codebase into an LLM-ready prompt, trimmed to a token budget."
 # image = "houston.webp"   # drop a file in static/ and uncomment
+image = "logo-dark.svg"
 [[extra.hero.actions]]
 text = "Example Guide"
 link = "/guides/example/"

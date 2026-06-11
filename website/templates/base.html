@@ -21,7 +21,7 @@
 <body>
   <header class="site-header">
     <button class="icon-btn menu-btn" aria-label="Toggle navigation" aria-expanded="false">{{ ic::icon(name="menu") }}</button>
-    <a class="site-title" href="{{ get_url(path='/') }}">{{ config.title }}</a>
+    <a class="site-title" href="{{ get_url(path='/') }}"><img class="site-logo" src="{{ get_url(path='assets/logo.svg', trailing_slash=false) }}" alt="">{{ config.title }}</a>
 
     {% if config.build_search_index %}
     <div class="search">

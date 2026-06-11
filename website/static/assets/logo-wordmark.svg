@@ -1,0 +1,22 @@
+<svg viewBox="0 0 620 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="gnaw">
+  <defs>
+    <linearGradient id="emberw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9A4D"/><stop offset="0.55" stop-color="#FF6B2C"/><stop offset="1" stop-color="#E23C0A"/>
+    </linearGradient>
+    <clipPath id="headw"><path d="M120 128 L189.4 97.1 A76 76 0 1 0 189.4 158.9 Z"/></clipPath>
+  </defs>
+  <g transform="translate(18,22) scale(0.61)">
+    <rect x="10" y="10" width="236" height="236" rx="58" fill="url(#emberw)"/>
+    <g clip-path="url(#headw)">
+      <path d="M120 128 L189.4 97.1 A76 76 0 1 0 189.4 158.9 Z" fill="#FFF3E3"/>
+      <path d="M122 56 L148 140" fill="none" stroke="#2A1A10" stroke-width="32" stroke-linecap="round"/>
+    </g>
+    <circle cx="135" cy="97" r="8.5" fill="#FFF3E3"/>
+    <path d="M151.8 113.9 L164.6 108.2 L163.1 122 Z" fill="#FFF3E3"/>
+    <path d="M172.6 104.6 L185.4 98.9 L183.9 112.7 Z" fill="#FFF3E3"/>
+    <path d="M151.8 142.1 L164.6 147.8 L163.1 134 Z" fill="#FFF3E3"/>
+    <path d="M172.6 151.4 L185.4 157.1 L183.9 143.3 Z" fill="#FFF3E3"/>
+  </g>
+  <text x="196" y="138" font-family="Poppins, Futura, 'Century Gothic', 'Trebuchet MS', system-ui, sans-serif"
+        font-size="132" font-weight="700" letter-spacing="-4" fill="#2A1A10">gnaw</text>
+</svg>
