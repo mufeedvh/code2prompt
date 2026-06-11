@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://gnaw.gitbadger.com">
-    <img align="center" width="550px" src="website/static/wordmark.svg" alt="gnaw"/>
+    <img align="center" width="550px" src="website/static/logo-wordmark.svg" alt="gnaw"/>
   </a>
   <br>
   <h3>Convert your codebase into a single LLM prompt.</h3>
@@ -111,14 +111,14 @@ Refer to the [documentation](https://gnaw.gitbadger.com/how-to/install/) for det
 
 ### Binary releases
 
-Download the latest binary for your OS from [Releases](https://github.com/gitbadger/gnaw/releases).
+Download the latest binary for your OS from [Releases](https://github.com/gitbadger-clan/gnaw/releases).
 
 ### Source build
 
 Requires [Git](https://git-scm.com/downloads), [Rust](https://www.rust-lang.org/tools/install) and `Cargo`.
 
 ```sh
-git clone https://github.com/gitbadger/gnaw.git
+git clone https://github.com/gitbadger-clan/gnaw.git
 cd gnaw/
 cargo install --path crates/gnaw
 ```
