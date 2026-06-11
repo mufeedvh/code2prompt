@@ -14,9 +14,9 @@
 
 <div align="center">
 
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg?style=flat-square)](https://github.com/gitbadger/gnaw#-license)
-[![CI](https://github.com/gitbadger/gnaw/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/gitbadger/gnaw/actions)
-[![GitHub Stars](https://img.shields.io/github/stars/gitbadger/gnaw?style=social)](https://github.com/gitbadger/gnaw)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg?style=flat-square)](https://github.com/gitbadger-clan/gnaw#-license)
+[![CI](https://github.com/gitbadger-clan/gnaw/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/gitbadger-clan/gnaw/actions)
+[![GitHub Stars](https://img.shields.io/github/stars/gitbadger/gnaw?style=social)](https://github.com/gitbadger-clan/gnaw)
 
 </div>
 
