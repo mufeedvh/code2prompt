@@ -24,16 +24,28 @@ dark_theme = "github-dark"
 [extra]
 github = "https://github.com/gitbadger-clan/gnaw"
 
-# Sidebar groups — same shape as Starlight's `sidebar`:
-#   - a group with explicit `items` (title + url), or
-#   - a group with `auto = "<section>"` to list every page in that section.
+# Sidebar groups — items can be:
+#   - a leaf:               { title, url }
+#   - an explicit subgroup: { title, items = [leaves] }
+#   - an auto subgroup:     { title, auto = "<section>" }  (lists that section's pages)
+# A top-level group may also use `auto` directly instead of `items`.
 [[extra.sidebar]]
-title = "Guides"
-
+title = "Documentation 🚀"
 [[extra.sidebar.items]]
-title = "Example Guide"
-url = "/guides/example/"
+title = "Tutorials"
+auto = "tutorials"
+[[extra.sidebar.items]]
+title = "Explanations"
+auto = "explanations"
+[[extra.sidebar.items]]
+title = "How-To Guides"
+auto = "how-to"
 
 [[extra.sidebar]]
-title = "Reference"
-auto = "reference"
+title = "Overview"
+[[extra.sidebar.items]]
+title = "Welcome 👋"
+url = "/"
+[[extra.sidebar.items]]
+title = "Vision 🔮"
+url = "/vision/"

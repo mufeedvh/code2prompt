@@ -1,3 +1,14 @@
+{% macro leaf(item, current) %}
+<li><a href="{{ item.url }}"{% if current == item.url %} class="active" aria-current="page"{% endif %}>{{ item.title }}</a></li>
+{% endmacro leaf %}
+
+{% macro auto_leaves(section_path, current) %}
+{% set sec = get_section(path = section_path ~ "/_index.md") %}
+{% for p in sec.pages %}
+<li><a href="{{ p.path }}"{% if current == p.path %} class="active" aria-current="page"{% endif %}>{{ p.title }}</a></li>
+{% endfor %}
+{% endmacro auto_leaves %}
+
 {% macro sidebar(current) %}
 <nav class="sidebar-nav">
   {% for group in config.extra.sidebar %}
@@ -6,13 +17,25 @@
     <ul>
       {% if group.items is defined %}
         {% for item in group.items %}
-        <li><a href="{{ item.url }}"{% if current == item.url %} class="active" aria-current="page"{% endif %}>{{ item.title }}</a></li>
+          {% if item.url is defined %}
+            {{ self::leaf(item=item, current=current) }}
+          {% else %}
+            <li>
+              <details class="sidebar-subgroup" open>
+                <summary>{{ item.title }}</summary>
+                <ul>
+                  {% if item.items is defined %}
+                    {% for sub in item.items %}{{ self::leaf(item=sub, current=current) }}{% endfor %}
+                  {% elif item.auto is defined %}
+                    {{ self::auto_leaves(section_path=item.auto, current=current) }}
+                  {% endif %}
+                </ul>
+              </details>
+            </li>
+          {% endif %}
         {% endfor %}
       {% elif group.auto is defined %}
-        {% set sec = get_section(path = group.auto ~ "/_index.md") %}
-        {% for p in sec.pages %}
-        <li><a href="{{ p.path }}"{% if current == p.path %} class="active" aria-current="page"{% endif %}>{{ p.title }}</a></li>
-        {% endfor %}
+        {{ self::auto_leaves(section_path=group.auto, current=current) }}
       {% endif %}
     </ul>
   </details>
