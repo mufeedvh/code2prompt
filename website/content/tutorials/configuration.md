@@ -1,12 +1,12 @@
 +++
 title = "Configuration"
-description = "Learn how to use .c2pconfig to automate your prompt generation workflow and ensure team consistency."
+description = "Learn how to use .gnawconfig to automate your prompt generation workflow and ensure team consistency."
 weight = 4
 +++
 
 {% aside(kind="note", title="Tutorial Overview") %}
 Manually typing long exclude patterns or specific tokenizer settings every time
-can be tedious. This tutorial shows you **how to use a `.c2pconfig`
+can be tedious. This tutorial shows you **how to use a `.gnawconfig`
 configuration file** to "set and forget" your project settings.
 {% end %}
 
@@ -15,9 +15,9 @@ configuration file** to "set and forget" your project settings.
 Ensure you have `gnaw` installed. Familiarity with
 [TOML syntax](https://toml.io/en/) is helpful but not required.
 
-## What is .c2pconfig?
+## What is .gnawconfig?
 
-The `.c2pconfig` file is a configuration file written in **TOML** format. When
+The `.gnawconfig` file is a configuration file written in **TOML** format. When
 you run `gnaw`, it automatically searches for this file in your current working
 directory.
 
@@ -29,9 +29,9 @@ It allows you to define:
 
 ## Quick Start
 
-Create a file named `.c2pconfig` at the root of your project:
+Create a file named `.gnawconfig` at the root of your project:
 
-{% code(title=".c2pconfig") %}
+{% code(title=".gnawconfig") %}
 ```toml
 default_output = "stdout" # Options: stdout, clipboard, file
 include_patterns = ["src/**/*.rs", "Cargo.toml"]
@@ -65,7 +65,7 @@ author = "Developer"
 
 {% aside(kind="tip", title="Priority Order") %}
 **CLI Arguments > Configuration File > Default Settings.**
-Arguments passed directly via the CLI override values defined in `.c2pconfig`,
+Arguments passed directly via the CLI override values defined in `.gnawconfig`,
 and CLI include/exclude patterns are merged onto config-file patterns. This
 lets you maintain a "base" config while remaining flexible for one-off
 commands.
@@ -73,7 +73,7 @@ commands.
 
 ## Example: The "Review-Ready" Config
 
-{% code(title=".c2pconfig") %}
+{% code(title=".gnawconfig") %}
 ```toml
 default_output = "clipboard"
 line_numbers = true

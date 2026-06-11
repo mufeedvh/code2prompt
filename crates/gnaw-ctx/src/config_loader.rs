@@ -17,8 +17,8 @@ pub struct ConfigSource {
 
 /// Load configuration with proper priority handling
 pub fn load_config(quiet: bool) -> Result<ConfigSource> {
-    // Check for local config first (.c2pconfig in current directory)
-    let local_config_path = std::env::current_dir()?.join(".c2pconfig");
+    // Check for local config first (.gnawconfig in current directory)
+    let local_config_path = std::env::current_dir()?.join(".gnawconfig");
     if local_config_path.exists() {
         match load_config_from_file(&local_config_path) {
             Ok(config) => {
@@ -40,9 +40,9 @@ pub fn load_config(quiet: bool) -> Result<ConfigSource> {
         }
     }
 
-    // Check for global config (~/.config/gnaw/.c2pconfig)
+    // Check for global config (~/.config/gnaw/.gnawconfig)
     if let Some(config_dir) = dirs::config_dir() {
-        let global_config_path = config_dir.join("gnaw").join(".c2pconfig");
+        let global_config_path = config_dir.join("gnaw").join(".gnawconfig");
         if global_config_path.exists() {
             match load_config_from_file(&global_config_path) {
                 Ok(config) => {

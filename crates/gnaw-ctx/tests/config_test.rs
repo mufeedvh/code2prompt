@@ -111,7 +111,7 @@ fn test_toml_config_export() {
 #[test]
 fn test_local_config_file_loading() {
     let temp_dir = TempDir::new().expect("Should create temp dir");
-    let config_path = temp_dir.path().join(".c2pconfig");
+    let config_path = temp_dir.path().join(".gnawconfig");
 
     let toml_content = r#"
 default_output = "stdout"
@@ -172,7 +172,7 @@ fn test_clipboard_flag() {
 #[test]
 fn test_cli_patterns_merge_with_config() {
     let temp_dir = TempDir::new().expect("Should create temp dir");
-    let config_path = temp_dir.path().join(".c2pconfig");
+    let config_path = temp_dir.path().join(".gnawconfig");
     // Config excludes .log files. The CLI will add an include for .py — the
     // merge must keep BOTH: .py included, .log still excluded.
     let toml_content = r#"
@@ -203,7 +203,7 @@ exclude_patterns = ["*.log"]
 fn test_config_exclude_beats_cli_include_on_collision() {
     let temp_dir = TempDir::new().unwrap();
     fs::write(
-        temp_dir.path().join(".c2pconfig"),
+        temp_dir.path().join(".gnawconfig"),
         "exclude_patterns = [\"*.py\"]\n",
     )
     .unwrap();
@@ -226,7 +226,7 @@ fn test_config_exclude_beats_cli_include_on_collision() {
 #[test]
 fn test_config_info_messages() {
     let temp_dir = TempDir::new().expect("Should create temp dir");
-    let config_path = temp_dir.path().join(".c2pconfig");
+    let config_path = temp_dir.path().join(".gnawconfig");
 
     let toml_content = r#"
 default_output = "stdout"
