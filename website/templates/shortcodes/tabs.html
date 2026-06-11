@@ -1,0 +1,30 @@
+{#
+  Usage:
+  {% tabs() %}
+  === Core
+  A core rust library for code ingestion.
+  === CLI
+  Command line interface for humans.
+  {% end %}
+  Note: don't use a line starting with === inside tab content.
+#}
+{% set chunks = body | trim | split(pat="===") %}
+<div class="tabs">
+  <div class="tabs-list" role="tablist">
+    {%- for chunk in chunks -%}
+      {%- if chunk | trim -%}
+        {%- set lines = chunk | trim | split(pat="\n") -%}
+        <button class="tab-btn" role="tab" type="button">{{ lines | first | trim }}</button>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+  {%- for chunk in chunks -%}
+    {%- if chunk | trim -%}
+      {%- set lines = chunk | trim | split(pat="\n") -%}
+      <div class="tab-panel" role="tabpanel">
+        {{ lines | slice(start=1) | join(sep="
+") | markdown | safe }}
+      </div>
+    {%- endif -%}
+  {%- endfor -%}
+</div>

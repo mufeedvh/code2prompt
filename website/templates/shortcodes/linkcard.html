@@ -1,0 +1,8 @@
+{% import "macros/icons.html" as ic %}
+<a class="link-card" href="{{ href }}">
+  <span class="link-card-text">
+    <span class="link-card-title">{{ title }}</span>
+    {% if description %}<span class="link-card-desc">{{ description }}</span>{% endif %}
+  </span>
+  {{ ic::icon(name="right-arrow") }}
+</a>

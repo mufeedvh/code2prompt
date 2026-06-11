@@ -283,8 +283,13 @@ a:hover { text-decoration: underline; }
   padding: 1.25rem 1.5rem; background: color-mix(in srgb, var(--sl-color-gray-6) 50%, transparent);
 }
 .card-title { display: flex; align-items: center; gap: 0.6rem; margin: 0 0 0.5rem; font-weight: 600; color: var(--sl-color-heading); font-size: 1.0625rem; }
-.card-icon { display: inline-flex; color: var(--sl-color-accent-high); }
-.card-icon .icon { width: 1.4rem; height: 1.4rem; }
+.card-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border-radius: 0.5rem;
+  color: var(--sl-color-accent-high);
+  background: color-mix(in srgb, var(--sl-color-accent) 20%, transparent);
+}
+.card-icon .icon { width: 1.2rem; height: 1.2rem; }
 .card-body { color: var(--sl-color-gray-2); }
 .card-body :first-child { margin-top: 0; }
 .card-body :last-child { margin-bottom: 0; }
@@ -295,3 +300,104 @@ a:hover { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) {
   .card-grid.stagger > .card { transform: none; }
 }
+
+/* ---------------------------------------------------------- link cards -- */
+.link-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1rem 1.25rem; margin: 0.75rem 0;
+  border: 1px solid var(--sl-color-hairline); border-radius: var(--sl-radius);
+  color: var(--sl-color-heading); text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.link-card:hover {
+  text-decoration: none; border-color: var(--sl-color-accent);
+  background: color-mix(in srgb, var(--sl-color-accent) 7%, var(--sl-color-bg));
+}
+.link-card-title { font-weight: 600; font-size: 1.0625rem; }
+.link-card-desc { display: block; margin-top: 0.15rem; color: var(--sl-color-gray-3); font-size: 0.9375rem; }
+.link-card .icon { flex: none; color: var(--sl-color-gray-3); transition: transform 0.15s ease, color 0.15s ease; }
+.link-card:hover .icon { color: var(--sl-color-accent); transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) {
+  .link-card, .link-card .icon { transition: none; }
+  .link-card:hover .icon { transform: none; }
+}
+
+/* -------------------------------------------------------------- asides -- */
+.aside {
+  margin: 1.5rem 0; padding: 1rem 1.25rem; border-radius: var(--sl-radius);
+  border-inline-start: 0.25rem solid var(--aside-accent, var(--sl-color-accent));
+  background: color-mix(in srgb, var(--aside-accent, var(--sl-color-accent)) 8%, var(--sl-color-bg));
+}
+.aside-title {
+  margin: 0 0 0.5rem; font-weight: 600; font-size: 0.9375rem;
+  text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--aside-accent, var(--sl-color-accent));
+}
+.aside-body :first-child { margin-top: 0; }
+.aside-body :last-child { margin-bottom: 0; }
+.aside-note    { --aside-accent: #5b73e8; }
+.aside-tip     { --aside-accent: #2fa56a; }
+.aside-caution { --aside-accent: #d99e00; }
+.aside-danger  { --aside-accent: #e5484d; }
+
+/* --------------------------------------------------------- code frames -- */
+.code-frame {
+  margin: 1.5rem 0; border: 1px solid var(--sl-color-hairline);
+  border-radius: var(--sl-radius); overflow: hidden;
+}
+.code-frame-bar {
+  display: flex; align-items: center; gap: 1rem; padding: 0.55rem 0.9rem;
+  background: color-mix(in srgb, var(--sl-color-gray-6) 75%, var(--sl-color-bg));
+  border-bottom: 1px solid var(--sl-color-hairline);
+}
+/* three traffic-light dots drawn from one element via box-shadow */
+.code-frame-dots {
+  flex: none; width: 0.66rem; height: 0.66rem; border-radius: 50%;
+  background: #ff5f56; box-shadow: 1rem 0 0 #ffbd2e, 2rem 0 0 #27c93f;
+  margin-right: 1.5rem;
+}
+.code-frame-name { font-family: var(--sl-font-mono); font-size: 0.8125rem; color: var(--sl-color-gray-3); }
+/* the framed <pre> sits flush inside the figure (frame supplies border/radius) */
+.prose .code-frame pre { margin: 0; border: 0; border-radius: 0; }
+
+/* ---------------------------------------------------------------- tabs --- */
+.tabs { margin: 1.5rem 0; }
+.tabs-list {
+  display: flex; gap: 0.25rem; flex-wrap: wrap;
+  border-bottom: 1px solid var(--sl-color-hairline); margin-bottom: 1rem;
+}
+.tab-btn {
+  font: inherit; font-size: 0.9375rem; font-weight: 500;
+  color: var(--sl-color-gray-3); background: transparent; border: 0; cursor: pointer;
+  padding: 0.5rem 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--sl-color-heading); }
+.tab-btn.active { color: var(--sl-color-heading); border-bottom-color: var(--sl-color-accent); }
+.tab-panel > :first-child { margin-top: 0; }
+.tab-panel > :last-child { margin-bottom: 0; }
+
+/* --------------------------------------------------- sidebar subgroups --- */
+.sidebar-subgroup > summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 0.375rem 0.75rem; font-size: 0.9375rem; font-weight: 600;
+  color: var(--sl-color-heading); border-radius: var(--sl-radius);
+}
+.sidebar-subgroup > summary:hover { background: var(--sl-color-gray-6); }
+.sidebar-subgroup > summary::-webkit-details-marker { display: none; }
+.sidebar-subgroup > summary::after {
+  content: ""; flex: none; width: 0.4rem; height: 0.4rem; margin-right: 0.15rem;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg); transition: transform 0.15s ease; opacity: 0.6;
+}
+.sidebar-subgroup[open] > summary::after { transform: rotate(45deg); }
+.sidebar-subgroup > ul {
+  list-style: none; margin: 0.125rem 0 0.25rem; padding-left: 0.75rem;
+  border-left: 1px solid var(--sl-color-hairline); margin-left: 0.75rem;
+}
+@media (prefers-reduced-motion: reduce) { .sidebar-subgroup > summary::after { transition: none; } }
+
+/* -------------------------------------------------- header logo + hero --- */
+.site-logo { width: 1.75rem; height: 1.75rem; display: block; }
+.site-title { display: inline-flex; align-items: center; gap: 0.6rem; }
+.hero-image img { max-width: min(100%, 17rem); display: block; margin-inline: auto; }

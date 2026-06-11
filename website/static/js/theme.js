@@ -63,3 +63,27 @@
     if (!results.contains(e.target) && e.target !== input) results.hidden = true;
   });
 })();
+
+// ---- tabs ------------------------------------------------------------------
+(function () {
+  document.querySelectorAll('.tabs').forEach(function (tabs) {
+    var btns = Array.prototype.slice.call(tabs.querySelectorAll(':scope > .tabs-list > .tab-btn'));
+    var panels = Array.prototype.slice.call(tabs.querySelectorAll(':scope > .tab-panel'));
+    function select(i) {
+      btns.forEach(function (b, j) {
+        b.classList.toggle('active', i === j);
+        b.setAttribute('aria-selected', String(i === j));
+        b.tabIndex = i === j ? 0 : -1;
+      });
+      panels.forEach(function (p, j) { p.hidden = i !== j; });
+    }
+    btns.forEach(function (b, i) {
+      b.addEventListener('click', function () { select(i); });
+      b.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') { select((i + 1) % btns.length); btns[(i + 1) % btns.length].focus(); }
+        if (e.key === 'ArrowLeft') { select((i - 1 + btns.length) % btns.length); btns[(i - 1 + btns.length) % btns.length].focus(); }
+      });
+    });
+    select(0);
+  });
+})();

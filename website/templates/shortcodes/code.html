@@ -1,0 +1,7 @@
+<figure class="code-frame">
+  <div class="code-frame-bar">
+    <span class="code-frame-dots" aria-hidden="true"></span>
+    {% if title %}<span class="code-frame-name">{{ title }}</span>{% endif %}
+  </div>
+  {{ body | markdown | safe }}
+</figure>

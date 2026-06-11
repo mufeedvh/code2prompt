@@ -1,0 +1,5 @@
+{% set k = kind | default(value="note") %}
+<aside class="aside aside-{{ k }}">
+  <p class="aside-title">{{ title | default(value=k | capitalize) }}</p>
+  <div class="aside-body">{{ body | markdown | safe }}</div>
+</aside>
