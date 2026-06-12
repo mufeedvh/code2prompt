@@ -36,8 +36,8 @@ Throughout the explanation we use the usual set notation:
 | `A ≠ ∅` | `B ≠ ∅` | `A \ B` |
 
 1. **No include list, no exclude list** — if no patterns are specified, all files are kept (`Ω`).
-2. **Exclude list only** — gnaw acts as a blacklist, removing files that match the excluded patterns (`Ω \ B = ¬B`).
-3. **Include list only** — gnaw acts as a whitelist, keeping only files that match the included patterns (`A`).
+2. **Exclude list only** — gnaw acts as a denylist, removing files that match the excluded patterns (`Ω \ B = ¬B`).
+3. **Include list only** — gnaw acts as an allowlist, keeping only files that match the included patterns (`A`).
 4. **Include *and* exclude lists** — gnaw keeps files that match the include patterns, but removes those that match the exclude patterns (`A \ B`).
 
 ## 3. More on the Overlap
@@ -66,6 +66,6 @@ same result as having only an include list (case 3).
 
 This design keeps the mental model simple:
 
-- The include list is a whitelist as soon as it exists.
-- The exclude list is a blacklist layered on top.
+- The include list is an allowlist as soon as it exists.
+- The exclude list is a denylist layered on top.
 - The overlap is discarded by default.
