@@ -40,6 +40,9 @@ auto = "explanations"
 [[extra.sidebar.items]]
 title = "How-To Guides"
 auto = "how-to"
+[[extra.sidebar.items]]
+title = "Reference"
+auto = "reference"
 
 [[extra.sidebar]]
 title = "Overview"
