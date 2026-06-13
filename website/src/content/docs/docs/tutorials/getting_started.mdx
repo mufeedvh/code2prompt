@@ -6,44 +6,56 @@ description: A comprehensive tutorial introducing Code2Prompt's core functionali
 import { Aside } from "@astrojs/starlight/components";
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import { Card, CardGrid } from "@astrojs/starlight/components";
+import { LinkCard } from "@astrojs/starlight/components";
 
 <Card title="Tutorial Overview">
-  Welcome to Code2Prompt! This tutorial provides a comprehensive introduction to
+  Welcome to Code2Prompt! This tutorial provides an introduction to
   using Code2Prompt to generate AI-ready prompts from your codebases. We'll
   explore its core functionality and demonstrate its usage across different
-  integration methods: Command Line Interface (CLI), Software Development Kit
-  (SDK), and Model Context Protocol (MCP).
+  integration methods.
 </Card>
 
 ## What is Code2Prompt?
 
-Code2Prompt is a versatile tool designed to bridge the gap between your codebase and Large Language Models (LLMs). It intelligently extracts relevant code snippets, applies powerful filtering, and formats the information into structured prompts optimized for LLM consumption. This simplifies tasks like code documentation, bug detection, refactoring, and more.
+`Code2Prompt` is a system tool designed to extract codebase informations for LLMs. It extracts relevant code snippets, applies filtering, and formats the information into structured prompts optimized for LLM. This simplifies tasks like code documentation, bug detection, refactoring, and more.
 
-Code2Prompt offers different integration points:
+Code2Prompt offers different flavors to suit various use cases:
 
 <Tabs>
   <TabItem label="Core" icon="seti:rust">
+    <Card>
     A core rust library that provides the foundation for code ingestion and
     prompt
+    </Card>
   </TabItem>
   <TabItem label="CLI" icon="seti:powershell">
+    <Card>
     A user-friendly command-line interface for quick prompt generation. Ideal
     for interactive use and one-off tasks.
+    </Card>
   </TabItem>
   <TabItem label="SDK" icon="seti:python">
+    <Card>
     A powerful Software Development Kit (SDK) for seamless integration into your
     Python projects. Perfect for automating prompt generation within larger
     workflows.
+    </Card>
   </TabItem>
   <TabItem label="MCP" icon="seti:db">
-    A Model Context Protocol (MCP) server for advanced integration with LLM
+    <Card>
+    A Model Context Protocol (MCP) server for integration with LLM
     agents. Enables sophisticated, real-time interactions with your codebase.
+    </Card>
   </TabItem>
 </Tabs>
 
 ## 📥 Installation
 
-For detailed installation instructions for all methods (CLI, SDK, MCP), please refer to the comprehensive [Installation Guide](/docs/how_to/install).
+For detailed installation instructions for all methods (CLI, SDK, MCP), please refer to the  
+<LinkCard
+  title="Installation Guide"
+  href="/docs/how_to/install"
+/>
 
 ## 🏁 Generating Prompts: A CLI Example
 
@@ -68,7 +80,20 @@ This copies a prompt to your clipboard. You can customize this:
 - **JSON Output:** `code2prompt my_project -O json` (structured JSON output)
 - **Custom Templates:** `code2prompt my_project -t my_template.hbs` (requires creating `my_template.hbs`)
 
-See the [Learn Context Filtering](/docs/tutorials/learn_filters) and [Learn Handlebar Templates](/docs/tutorials/learn_templates) tutorials to learn more advanced usages.
+To learn more about `code2prompt`, check out the following tutorials:
+<LinkCard
+  title="Learn about Context Filtering"
+  href="/docs/tutorials/learn_filters"
+/>
+<LinkCard
+  title="Learn about Templating with Handlebars"
+  href="/docs/tutorials/learn_templates"
+/>
+<LinkCard
+  title="Learn More about CLI Usage Examples"
+  href="/docs/how_to/cli"
+/>
+
 
 ## 🐍 SDK Integration (Python)
 
@@ -90,11 +115,7 @@ print(prompt)
 
 This requires installing the SDK (`pip install code2prompt_rs`). Refer to the SDK documentation for more details.
 
-## 🤖 MCP Server Integration (Advanced)
+## 🤖 Harness Integration
 
-For advanced integration with LLM agents, run the `code2prompt` MCP server (see the installation guide for details). This allows agents to request code context dynamically. This is an advanced feature, and further documentation is available on the project's website.
+To reduce token usage of your harness, you can let your agent run `code2prompt` as a MCP server or as a skill. This allows agents to request code context dynamically in a way that replaces multiple `find`, `glob` and `grep` calls.
 
-<Card title="Next Steps">
-  Explore the advanced tutorials and documentation to master Code2Prompt's
-  capabilities and integrate it into your workflows.
-</Card>

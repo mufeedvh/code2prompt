@@ -1,0 +1,78 @@
+---
+title: Create a `.c2pconfig` File
+description: A step-by-step guide to creating a .c2pconfig file to automate your prompt generation workflow.
+---
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from '@astrojs/starlight/components';
+
+<Card title="Guide Overview">
+  In this guide, you'll learn how to create and use a `.c2pconfig` file to automate your prompt generation workflow.
+</Card>
+
+Manually typing long exclude patterns, tokenizer settings, or custom variables every time you run Code2Prompt can become tedious. By creating a `.c2pconfig` configuration file, you can "set and forget" your project preferences. Code2Prompt will automatically look for this file in your current working directory and apply your rules seamlessly.
+
+Here is a step-by-step guide to setting up your first configuration file.
+
+---
+
+## Initialize your Configuration File
+
+Navigate to the root directory of your project using your terminal and create a file named `.c2pconfig`.
+
+```bash
+cd path/to/your/project
+touch .c2pconfig
+
+```
+
+---
+
+## Step 2: Define your Base Behavior (TOML Format)
+
+Open the `.c2pconfig` file in your preferred text editor. The file uses **TOML** syntax. Paste the following baseline configuration into the file:
+
+```toml
+# Default behavior configuration
+default_output = "clipboard"    # Options: stdout, clipboard, file
+output_format = "xml"           # Options: markdown, json, xml
+line_numbers = false            # Adds line numbers to your code blocks
+encoding = "o200k"              # Matches the tokenizer to your target LLM
+
+# Global filtering rules
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = [
+    "**/node_modules/**", 
+    "**/target/**", 
+    "tests/fixtures/**",
+    "package-lock.json"
+]
+
+```
+<Aside type="tip">
+**Keep Context Clean:** Excluding heavy directories like `node_modules` or build artifacts (like `target/`) ensures your LLM receives a filtered, high-quality context without hitting token limits unnecessarily.
+</Aside>
+
+---
+
+## Step 3: Run with Zero Arguments
+
+Once your `.c2pconfig` file is saved at the root of your codebase, you no longer need to pass complex flags. Simply run the tool:
+
+```bash
+code2prompt .
+
+```
+
+Code2Prompt will automatically read your `.c2pconfig`, filter your files using your glob patterns, attach line numbers, and format the output based on your choices.
+
+
+---
+
+## Next Steps
+
+To dive deeper into setting up advanced workflows, variables, and default configuration keys:
+<LinkCard
+  title="Configuration Tutorial"
+  href="/docs/tutorials/configuration"
+/>

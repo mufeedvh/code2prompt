@@ -4,38 +4,38 @@ description: Learn how to exclude or include files in your LLM prompts using pow
 ---
 
 import { Card } from "@astrojs/starlight/components";
+import { LinkCard } from "@astrojs/starlight/components";
 
 <Card title="Tutorial Overview">
   This tutorial demonstrates how to use the **glob pattern tool** in
   `code2prompt` CLI to filter and manage files based on include and exclude
-  patterns.
+  patterns. It will drive you through a small playground to practice different filtering scenarios.
 </Card>
-
-Glob patterns work similarly to tools like `tree` or `grep`,
-providing powerful filtering capabilities. Check out the [detailed
-explanation](/docs/explanations/glob_patterns) for more information.
 
 ---
 
 ## Prerequisites
 
-Ensure you have `code2prompt` installed. If you haven't installed it yet, refer to the [Installation Guide](/docs/how_to/install).
+Ensure you have `code2prompt` installed. If you haven't installed it yet, refer to the
+<LinkCard 
+title="Installation Guide" 
+href="/docs/how_to/install"
+/>
 
----
+Glob patterns work similarly to tools like `tree` or `grep`,
+providing powerful filtering capabilities. If you never heard about what is a glob pattern, check out the
 
-## Understanding Include and Exclude Patterns
-
-Glob patterns allow you to specify rules for filtering files and directories.
-
-- **Include Patterns** (`--include`): Specify files and directories you want to include.
-- **Exclude Patterns** (`--exclude`): Specify files and directories you want to exclude.
-- **Priority** (`--include-priority`): Resolves conflicts between include and exclude patterns.
+<LinkCard
+title="Detailed Glob Pattern Explanation"
+href="/docs/explanations/glob_patterns"
+/>
+for more informations.
 
 ---
 
 ## Setting Up the Environment
 
-To practice with glob patterns, let's create a sample folder structure with some files.
+To practice with glob patterns, let's create a sample folder structure with some files as a playground.
 
 ### Generate Test Structure
 
@@ -106,7 +106,18 @@ By default, `code2prompt` includes all files in the specified directory respecti
 
 ## Filtering Files with Include and Exclude Patterns
 
-The `-e` for `--exclude` and `-i` for `--include` options allow you to filter files dynamically based on glob patterns.
+The Include and Exclude options allow you to filter files dynamically based on glob patterns.
+
+Glob patterns allow you to specify rules for filtering files and directories.
+
+- **Include Patterns** (`--include` or `-i`): Specify files and directories you want to include.
+- **Exclude Patterns** (`--exclude` or `-e`): Specify files and directories you want to exclude.
+
+If you want to learn more about the internals you can check out the
+<LinkCard
+title="How the Glob Pattern Tool Works"
+href="/docs/explanations/glob_pattern_filter"
+/>
 
 ### Case 1: Default Behavior (No Filters)
 

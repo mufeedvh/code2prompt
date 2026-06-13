@@ -3,7 +3,7 @@ title: Tokenization in Code2Prompt
 description: Learn about tokenization and how Code2Prompt processes text for LLMs.
 ---
 
-When working with language models, text needs to be transformed into a format that the model can understand—**tokens**, which are sequences of numbers. This transformation is handled by a **tokenizer**.
+When working with language models, text needs to be transformed into a format that the model can understand : **tokens**, which are sequences of numbers. This transformation is handled by a **tokenizer**.
 
 ---
 
@@ -16,9 +16,17 @@ You can explore its functionality in the official repository
 
 👉 [tiktoken GitHub Repository](https://github.com/openai/tiktoken)
 
+If you want to see a tokenizer in action and play with it, check out the
+
+👉 [Tiktokenizer](https://tiktokenizer.vercel.app/)
+
 If you want to learn more about tokenizer in general, check out the
 
-👉 [Mistral Tokenization Guide](https://docs.mistral.ai/guides/tokenization/).
+👉 [Mistral Tokenization Guide](https://docs.mistral.ai/guides/tokenization/)
+
+If you want a technical deep dive into tokenizers, check out Andrej Karpathy's blog post on building your own tokenizer.
+
+👉 [Build Your Own Tokenizer](https://www.fast.ai/posts/2025-10-16-karpathy-tokenizers)
 
 ## Implementation in `code2prompt`
 

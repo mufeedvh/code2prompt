@@ -1,7 +1,16 @@
 //! # Code2Prompt Core Library
 //!
-//! Pure Rust library for converting codebases into LLM-optimized prompts.
+//! Pure Rust library for consolidating multi-file repositories
+//! and source trees into a single, structured, LLM-optimized prompt payload.
 //! Provides file filtering, template processing, and git integration.
+//!
+//! ---
+//!
+//! ## 📘 Documentation & Integration Guides
+//!
+//! For high-level concepts (Diataxis framework), step-by-step onboarding, and workflows:
+//! * **Main Portal:** [code2prompt.dev](https://code2prompt.dev)
+//! * **Tutorials & Guides:** [code2prompt.dev/docs/welcome](https://code2prompt.dev/docs/welcome)
 //!
 //! ## Quick Start
 //!

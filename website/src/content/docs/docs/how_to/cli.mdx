@@ -1,15 +1,39 @@
 ---
-title: Filtering Files in Code2Prompt
-description: A step-by-step guide to including or excluding files using different filtering methods.
+title: Code2Prompt basic usage
+description: This guides covers the basic usage of Code2Prompt CLI
 ---
 
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+
+<Card title="Guide Overview">
+  Welcome to the `Code2Prompt` usage guide.
+</Card>
 
 ## Usage
 
-Generate a prompt from a codebase directory:
+Generate a prompt from a codebase:
 
 ```sh
 code2prompt path/to/codebase
+```
+
+Generate a prompt and copy it to the clipboard:
+
+```sh
+code2prompt path/to/codebase -c
+```
+
+Launch the interactive TUI:
+```sh
+code2prompt path/to/codebase --tui
+```
+
+Display the token-map 
+
+```sh
+code2prompt path/to/codebase --token-map
 ```
 
 Use a custom Handlebars template file:
@@ -49,19 +73,20 @@ code2prompt path/to/codebase --tokens --encoding=p50k
 ```
 
 Supported tokenizers: `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
-> [!NOTE]  
-> See [Tokenizers](#tokenizers) for more details.
+<Aside type="note">
+See [Tokenizers](#tokenizers) for more details.
+</Aside>
 
 Save the generated prompt to an output file:
 
 ```sh
-code2prompt path/to/codebase --output=output.txt
+code2prompt path/to/codebase -O output.txt
 ```
 
-Print output as JSON:
+Print output as XML:
 
 ```sh
-code2prompt path/to/codebase --json
+code2prompt path/to/codebase -F JSON
 ```
 
 The JSON output will have the following structure:
@@ -100,9 +125,9 @@ Disable wrapping code inside markdown code blocks:
 code2prompt path/to/codebase --no-codeblock
 ```
 
+
+Code2prompt is a nice way to generate prompts in a token efficient way. It can be practical for a variety of use cases, such as:
 - Rewrite the code to another language.
 - Find bugs/security vulnerabilities.
 - Document the code.
 - Implement new features.
-
-> I initially wrote this for personal use to utilize Claude 3.0's 200K context window and it has proven to be pretty useful so I decided to open-source it!

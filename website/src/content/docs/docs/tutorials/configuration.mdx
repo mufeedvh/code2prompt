@@ -129,13 +129,6 @@ Arguments passed directly via the CLI will always override values defined in `.c
 
 </Aside>
 
-### Advanced Filtering Logic
-
-The engine uses a tiered selection system:
-
-* **Static (A/B):** Defined in your `.c2pconfig` (Include/Exclude).
-* **Dynamic (A'/B'):** If you use **Interactive Mode**, your manual toggle selections override the static patterns for that specific session.
-
 ---
 
 ## Example: The "Review-Ready" Config
@@ -144,26 +137,16 @@ Use this setup if your primary goal is generating prompts for code reviews.
 
 ```toml
 default_output = "clipboard"
-line_numbers = true
-token_map_enabled = true
-
-exclude_patterns = [
-    "tests/**",
-    "**/migrations/**",
-    "*.md"
-]
+include_patterns = ["*.rs"]
+exclude_patterns = ["**/test*","**code2prompt-python*"]
+line_numbers = false
+absolute_path = true
 
 [user_variables]
-review_focus = "Check for DRY principle violations and complexity."
+project = "code2prompt"
 
 ```
 
 ---
 
 ## Next Steps
-
-<Card title="Level Up your Workflow">
-
-* **Master Templates:** Explore [Custom Templates](/docs/tutorials/learn_templates) to see how to use `user_variables` effectively.
-* **Refine Filtering:** Check the [Filtering Guide](/docs/tutorials/learn_filters) for advanced glob pattern syntax.
-</Card>
