@@ -29,7 +29,7 @@ use tui::run_tui;
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
+    info!("Args: {:?}", std::env::args().collect::<Vec<_>>());
 
     let args: Cli = Cli::parse();
 
@@ -54,12 +54,12 @@ async fn main() -> Result<()> {
         });
         run_tui(session).await
     } else {
-        run_cli(args).await
+        run_cli(args)
     }
 }
 
 /// Run the CLI mode with parsed arguments
-async fn run_cli(args: Cli) -> Result<()> {
+fn run_cli(args: Cli) -> Result<()> {
     use config_loader::{get_default_output_destination, load_config};
 
     let quiet_mode = args.quiet;
@@ -121,52 +121,34 @@ fn determine_output_targets(args: &Cli, default_output: &OutputDestination) -> (
 
 /// Loads codebase and git data into the session, driving the loading spinner.
 fn gather_session_data(session: &mut Code2PromptSession, quiet: bool) -> Result<()> {
-    let spinner = if !quiet {
-        Some(setup_spinner("Traversing directory and building tree..."))
-    } else {
-        None
+    let spinner = (!quiet).then(|| setup_spinner("Traversing directory and building tree..."));
+
+    let fail_spinner = |e| {
+        if let Some(s) = spinner.as_ref() {
+            s.finish_with_message("Failed!".red().to_string());
+        }
+        e
     };
 
-    session.load_codebase().map_err(|e| {
-        if let Some(s) = spinner.as_ref() {
-            s.finish_with_message("Failed!".red().to_string())
-        }
-        error!("Failed to build directory tree: \n{}", e);
-        anyhow::anyhow!("Failed to build directory tree: {}", e)
-    })?;
+    session.load_codebase()
+        .map_err(fail_spinner)
+        .context("Failed to build directory tree")?;
 
-    if let Some(s) = spinner.as_ref() {
-        s.set_message("Proceeding…")
-    }
+    if let Some(s) = spinner.as_ref() { s.set_message("Proceeding…") }
 
     if session.config.diff_enabled {
-        if let Some(s) = spinner.as_ref() {
-            s.set_message("Generating git diff...")
-        }
-        if let Err(e) = session.load_git_diff() {
-            if let Some(s) = spinner.as_ref() { s.finish_with_message("Failed!".red().to_string()) }
-            return Err(anyhow::anyhow!("Failed to generate git diff: {}", e));
-        }
+        if let Some(s) = spinner.as_ref() { s.set_message("Generating git diff...") }
+        session.load_git_diff().map_err(fail_spinner).context("Failed to generate git diff")?;
     }
 
     if session.config.diff_branches.is_some() {
-        if let Some(s) = spinner.as_ref() {
-            s.set_message("Generating git diff between two branches...")
-        }
-        if let Err(e) = session.load_git_diff_between_branches() {
-            if let Some(s) = spinner.as_ref() { s.finish_with_message("Failed!".red().to_string()) }
-            return Err(anyhow::anyhow!("Failed to generate git diff: {}", e));
-        }
+        if let Some(s) = spinner.as_ref() { s.set_message("Generating git branch diff...") }
+        session.load_git_diff_between_branches().map_err(fail_spinner).context("Failed to generate git branch diff")?;
     }
 
     if session.config.log_branches.is_some() {
-        if let Some(ref s) = spinner {
-            s.set_message("Generating git log between two branches...");
-        }
-        if let Err(e) = session.load_git_log_between_branches() {
-            if let Some(ref s) = spinner { s.finish_with_message("Failed!".red().to_string()); }
-            return Err(anyhow::anyhow!("Failed to generate git log: {}", e));
-        }
+        if let Some(s) = spinner.as_ref() { s.set_message("Generating git branch log...") }
+        session.load_git_log_between_branches().map_err(fail_spinner).context("Failed to generate git branch log")?;
     }
 
     if let Some(s) = spinner {
@@ -189,7 +171,8 @@ fn render_session_template(session: &mut Code2PromptSession) -> Result<RenderedP
         !session.config.user_variables.is_empty()
     );
 
-    let rendered = session.render_prompt(&data)
+    let rendered = session
+        .render_prompt(&data)
         .context("Failed to render prompt")?;
 
     Ok(rendered)
