@@ -1,0 +1,101 @@
+---
+title: Utilisation de l'interface en terminal (TUI)
+description: Maîtrisez l'interface utilisateur en terminal interactive de Code2Prompt pour sélectionner des fichiers, ajuster les paramètres et générer des prompts visuellement.
+---
+
+import { Card, CardGrid, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Aperçu du tutoriel">
+`Code2prompt` dispose d'une interface utilisateur en terminal (TUI) entièrement interactive. Ce guide vous accompagne dans le lancement du TUI et la maîtrise de ses cinq onglets principaux.
+</Card>
+
+---
+
+## Lancer le TUI
+
+Pour ouvrir l'interface interactive, ajoutez simplement le flag `--tui` à votre commande avec le chemin de votre projet :
+
+```bash
+code2prompt chemin/vers/votre/base-de-code --tui
+
+```
+
+---
+
+## 1. Onglet Sélection (Arborescence de fichiers)
+
+L'onglet **Sélection** est l'endroit où vous organisez le contexte exact que vous souhaitez envoyer au LLM. Il affiche une vue hiérarchique de votre projet, respectant vos règles `.gitignore` et `.c2pconfig`.
+
+* **Navigation :** Utilisez `↑` / `↓` pour déplacer le curseur, et `←` / `→` pour développer ou réduire les répertoires.
+* **Sélection :** Appuyez sur `Espace` pour sélectionner ou désélectionner un fichier ou un répertoire entier.
+* **Mode recherche :** Appuyez sur `s` ou `/` pour entrer en mode recherche.
+* Vous pouvez taper du texte ou utiliser des caractères génériques (`*`, `?`) pour filtrer instantanément l'arborescence.
+* Appuyez sur `Entrée` ou `Échap` pour quitter le mode recherche et revenir à la navigation normale.
+
+
+<img
+  src="/assets/images/tui1.png"
+  alt="Onglet Sélection du TUI Code2Prompt"
+  style="width: 100%;"
+/>
+
+---
+
+## 2. Onglet Paramètres
+
+Besoin d'ajuster la façon dont la sortie est formatée avant la génération ? L'onglet **Paramètres** vous offre des cases à cocher visuelles et des menus déroulants pour votre session active.
+
+<img
+  src="/assets/images/tui2.png"
+  alt="Onglet Paramètres du TUI Code2Prompt"
+  style="width: 100%;"
+/>
+
+
+---
+
+## 3. Onglet Statistiques
+
+Avant de dépenser de l'argent en envoyant un prompt massif à un LLM, utilisez l'onglet **Statistiques** pour comprendre votre budget de tokens.
+
+Utilisez `←` / `→` pour basculer entre trois vues puissantes :
+
+<img
+  src="/assets/images/tui3.png"
+  alt="Onglet Statistiques du TUI Code2Prompt"
+  style="width: 100%;"
+/>
+
+---
+
+## 4. Onglet Template
+
+L'onglet **Template** est l'endroit où la magie opère. Il dispose d'une mise en page multi-colonnes responsive pour vous aider à créer le template Handlebars parfait.
+
+Lorsque vous êtes dans l'onglet Template, vous pouvez instantanément déplacer votre focus entre trois sous-panneaux à l'aide de raccourcis clavier :
+
+<img
+  src="/assets/images/tui4.png"
+  alt="Onglet Template du TUI Code2Prompt"
+  style="width: 100%;"
+/>
+
+---
+
+## 5. Onglet Sortie
+
+Une fois que vous avez sélectionné vos fichiers, ajusté vos paramètres et choisi votre template, appuyez sur `Entrée` pour générer la sortie finale.
+
+L'onglet **Sortie** affiche le prompt final exactement tel qu'il sera envoyé au LLM.
+
+* **Défiler :** Utilisez `↑` / `↓`, `PgUp` ou `PgDn` pour parcourir le texte généré.
+* **Copier :** Appuyez sur `c` pour copier instantanément l'intégralité du prompt dans votre presse-papiers système.
+* **Sauvegarder :** Appuyez sur `s` pour enregistrer le prompt directement dans un fichier Markdown local (par exemple, `prompt_20260613_204753.md`).
+
+Si vous réalisez que vous avez manqué un fichier, appuyez simplement sur `1` pour revenir à l'onglet Sélection, cochez le fichier et appuyez sur `Entrée` pour régénérer la sortie en temps réel.
+
+<img
+  src="/assets/images/tui5.png"
+  alt="Onglet Sortie du TUI Code2Prompt"
+  style="width: 100%;"
+/>
