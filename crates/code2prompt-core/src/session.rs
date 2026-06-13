@@ -113,14 +113,6 @@ impl Code2PromptSession {
     /// a selection engine for pattern-based and user-driven file filtering.
     /// The project path is taken from the configuration.
     /// 
-    /// # Arguments
-    /// 
-    /// * `config` - Configuration object with path, filters and preferences
-    /// 
-    /// # Returns
-    /// 
-    /// A new `Code2PromptSession` ready for codebase processing.
-    /// 
     /// # Example
     /// 
     /// ```rust

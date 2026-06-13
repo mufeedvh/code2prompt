@@ -24,12 +24,6 @@ use std::path::PathBuf;
 ///     .build()?;
 /// ```
 ///
-/// ## Code2PromptConfigBuilder
-/// 
-/// Builder for `Code2PromptConfig` with validation and defaults.
-/// 
-/// Provides a fluent interface for configuration construction. All setters
-/// return `Self` for method chaining.
 /// 
 /// # Errors
 /// `build()` returns `ConfigError` if validation fails.
