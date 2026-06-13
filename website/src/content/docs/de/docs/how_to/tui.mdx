@@ -1,0 +1,97 @@
+---
+title: Verwendung der Code2Prompt Terminal‑Benutzeroberfläche (TUI)
+description: Eine Anleitung zur Nutzung der interaktiven Terminal‑Benutzeroberfläche (TUI) von Code2Prompt für Prompt‑Generierung und Dateiauswahl.
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Übersicht der Anleitung">
+  `Code2Prompt` bietet eine vollständig interaktive Terminal‑Benutzeroberfläche (TUI). Diese Anleitung führt Sie durch das Starten der TUI und das Beherrschen ihrer fünf Hauptregisterkarten.
+</Card>
+
+---
+
+## TUI starten
+
+Um die interaktive Oberfläche zu öffnen, fügen Sie einfach die Option `--tui` zu Ihrem Befehl zusammen mit dem Pfad zu Ihrem Projekt hinzu:
+
+```sh
+code2prompt pfad/zu/ihrem/codebase --tui
+```
+
+---
+
+## 1. Registerkarte **Auswahl** (Dateibaum)
+
+Die Registerkarte **Auswahl** ist dort, wo Sie den genauen Kontext zusammenstellen, den Sie an das LLM senden möchten. Sie zeigt eine hierarchische Ansicht Ihres Projekts und respektiert dabei Ihre `.gitignore`‑ und `.c2pconfig`‑Regeln.
+
+* **Navigation:** Verwenden Sie `↑` / `↓`, um den Cursor zu bewegen, und `←` / `→`, um Verzeichnisse zu erweitern oder zu reduzieren.  
+* **Auswahl:** Drücken Sie die Leertaste, um eine Datei oder ein ganzes Verzeichnis auszuwählen bzw. abzuwählen.  
+* **Suche:** Drücken Sie `s` oder `/`, um in den Suchmodus zu wechseln. Sie können Text eingeben oder Platzhalter (`*`, `?`) nutzen, um den Baum sofort zu filtern.  
+* Drücken Sie `Enter` oder `Esc`, um den Suchmodus zu verlassen und zur normalen Navigation zurückzukehren.
+
+<img
+  src="/assets/images/tui1.png"
+  alt="Auswahl‑Registerkarte der Code2Prompt TUI"
+  style="width: 100%;"
+/>
+
+---
+
+## 2. Registerkarte **Einstellungen**
+
+Möchten Sie anpassen, wie die Ausgabe formatiert wird, bevor Sie sie generieren? Die Registerkarte **Einstellungen** bietet visuelle Kontrollkästchen und Dropdown‑Menüs für Ihre aktuelle Sitzung.
+
+<img
+  src="/assets/images/tui2.png"
+  alt="Einstellungen‑Registerkarte der Code2Prompt TUI"
+  style="width: 100%;"
+/>
+
+---
+
+## 3. Registerkarte **Statistiken**
+
+Bevor Sie Geld ausgeben, um ein großes Prompt an ein LLM zu senden, nutzen Sie die Registerkarte **Statistiken**, um Ihr Token‑Budget zu verstehen.
+
+Verwenden Sie `←` / `→`, um zwischen drei leistungsstarken Ansichten zu wechseln:
+
+<img
+  src="/assets/images/tui3.png"
+  alt="Statistiken‑Registerkarte der Code2Prompt TUI"
+  style="width: 100%;"
+/>
+
+---
+
+## 4. Registerkarte **Vorlage**
+
+Die Registerkarte **Vorlage** ist dort, wo die Magie passiert. Sie präsentiert ein mehrspaltiges, anpassbares Layout, das Ihnen hilft, die perfekte Handlebars‑Vorlage zu erstellen.
+
+Wenn Sie sich in der Registerkarte **Vorlage** befinden, können Sie mit Tastenkombinationen sofort zwischen drei Unterpanels wechseln:
+
+<img
+  src="/assets/images/tui4.png"
+  alt="Vorlage‑Registerkarte der Code2Prompt TUI"
+  style="width: 100%;"
+/>
+
+---
+
+## 5. Registerkarte **Ausgabe**
+
+Nachdem Sie Ihre Dateien ausgewählt, die Einstellungen angepasst und die Vorlage gewählt haben, drücken Sie `Enter`, um die endgültige Ausgabe zu erzeugen.
+
+Die Registerkarte **Ausgabe** zeigt das Prompt exakt so, wie es an das LLM gesendet wird.
+
+* **Scrollen:** Verwenden Sie `↑` / `↓`, `PgUp` oder `PgDn`, um den generierten Text zu prüfen.  
+* **Kopieren:** Drücken Sie `c`, um das gesamte Prompt sofort in Ihre System‑Zwischenablage zu kopieren.  
+* **Speichern:** Drücken Sie `s`, um das Prompt direkt in einer lokalen Markdown‑Datei zu speichern (z. B. `prompt_20260613_204753.md`).
+
+Falls Ihnen ein Datei fehlt, drücken Sie einfach `1`, um zurück zur Registerkarte **Auswahl** zu springen, markieren Sie die Datei und drücken Sie `Enter`, um die Ausgabe in Echtzeit neu zu generieren.
+
+<img
+  src="/assets/images/tui5.png"
+  alt="Ausgabe‑Registerkarte der Code2Prompt TUI"
+  style="width: 100%;"
+/>

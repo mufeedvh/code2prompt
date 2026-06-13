@@ -255,17 +255,26 @@ pub fn format_number(num: usize, format: &code2prompt_core::tokenizer::TokenForm
     match format {
         TokenFormat::Raw => num.to_string(),
         TokenFormat::Format => {
-            let s = num.to_string();
-            let chars: Vec<char> = s.chars().collect();
-            let mut result = String::new();
+            // let s = num.to_string();
+            // let chars: Vec<char> = s.chars().collect();
+            // let mut result = String::new();
 
-            for (i, c) in chars.iter().enumerate() {
-                if i > 0 && (chars.len() - i).is_multiple_of(3) {
-                    result.push(',');
-                }
-                result.push(*c);
+            // for (i, c) in chars.iter().enumerate() {
+            //     if i > 0 && (chars.len() - i).is_multiple_of(3) {
+            //         result.push(',');
+            //     }
+            //     result.push(*c);
+            // }
+            // result
+            if num >= 1_000_000 {
+                let millions = (num + 500_000) / 1_000_000;
+                format!("{}M", millions)
+            } else if num >= 1_000 {
+                let thousands = (num + 500) / 1_000;
+                format!("{}K", thousands)
+            } else {
+                format!("{}", num)
             }
-            result
         }
     }
 }

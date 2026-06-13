@@ -1,0 +1,75 @@
+---
+title: 创建 `.c2pconfig` 文件
+description: 分步指南，帮助您创建 `.c2pconfig` 文件，以自动化 Prompt 生成工作流。
+---
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from '@astrojs/starlight/components';
+
+<Card title="指南概览">
+  本指南将教您如何创建并使用 `.c2pconfig` 文件，以自动化 Prompt 生成工作流。
+</Card>
+
+手动为每次运行 Code2Prompt 编写冗长的排除模式、Tokenizer 设置或自定义变量会非常繁琐。通过创建 `.c2pconfig` 配置文件，您可以“一键配置，忘记它”。Code2Prompt 会在当前工作目录自动查找此文件并无缝应用您的规则。
+
+以下是设置首个配置文件的步骤。
+
+---
+
+## 初始化配置文件
+
+在终端中进入项目根目录并创建名为 `.c2pconfig` 的文件：
+
+```bash
+cd path/to/your/project
+touch .c2pconfig
+```
+
+---
+
+## 步骤 2：使用 TOML 格式定义基础行为
+
+打开 `.c2pconfig`，它使用 **TOML** 语法。粘贴以下基础配置：
+
+```toml
+# 默认行为配置
+default_output = "clipboard"    # 选项: stdout, clipboard, file
+output_format = "xml"           # 选项: markdown, json, xml
+line_numbers = false            # 为代码块添加行号
+encoding = "o200k"              # 与目标 LLM 的 tokenizer 对应
+
+# 全局过滤规则
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = [
+    "**/node_modules/**",
+    "**/target/**",
+    "tests/fixtures/**",
+    "package-lock.json"
+]
+```
+
+<Aside type="tip">
+**保持上下文干净：** 排除 `node_modules` 或 `target/` 等大型目录，可确保 LLM 接收到过滤后的高质量上下文，避免不必要的 token 限制。
+</Aside>
+
+---
+
+## 步骤 3：无需参数直接运行
+
+将 `.c2pconfig` 保存到代码库根目录后，您无需再传递复杂的标志。直接运行：
+
+```bash
+code2prompt .
+```
+
+Code2Prompt 将自动读取 `.c2pconfig`，根据您的 glob 模式过滤文件，添加行号，并根据您的选择格式化输出。
+
+---
+
+## 后续步骤
+
+若想进一步探索高级工作流、变量和默认配置键，请参考以下教程：
+<LinkCard
+  title="配置教程"
+  href="/docs/tutorials/configuration"
+/>

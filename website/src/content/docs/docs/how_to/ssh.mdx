@@ -2,10 +2,15 @@
 title: Use Code2prompt CLI with SSH
 description: A guide to using Code2Prompt CLI with SSH for remote codebase analysis.
 ---
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="Guide Overview">
+  Welcome to the how to use `Code2Prompt` with SSH guide.
+</Card>
 
 ## Why it doesn't work?
 
-When you try to run the `code2prompt` CLI on a remote server via SSH, the command is unable to find the clipboard. This is because the `code2prompt` CLI uses the clipboard to copy the generated prompt, and SSH sessions typically do not have access to the local clipboard.
+When you try to run the `code2prompt . -c` with the CLI on a remote server via SSH, the command is unable to find the clipboard. This is because the `code2prompt` CLI uses the clipboard to copy the generated prompt, and SSH sessions typically do not have access to the local clipboard.
 
 ## Solution
 

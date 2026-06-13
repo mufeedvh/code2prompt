@@ -1,30 +1,7 @@
+//! Clipboard management for Code2Prompt
+//!
+//! This module handles copying generated prompts to the system clipboard, with special handling for Linux platforms where clipboard content is tied to the owning process. On Linux, a background daemon process is spawned to maintain clipboard content after the main application exits. On other platforms, a simple one-shot copy operation is performed.
 use anyhow::{Context, Result};
-
-#[cfg(not(target_os = "linux"))]
-/// Copies the provided text to the system clipboard.
-///
-/// This is a simple, one-shot copy operation suitable for non-Linux platforms
-/// or scenarios where maintaining the clipboard content is not required.
-///
-/// # Arguments
-///
-/// * `text` - The text content to be copied.
-///
-/// # Returns
-///
-/// * `Result<()>` - Returns Ok on success, or an error if the clipboard could not be accessed.
-pub fn copy_text_to_clipboard(text: &str) -> Result<()> {
-    use arboard::Clipboard;
-    match Clipboard::new() {
-        Ok(mut clipboard) => {
-            clipboard
-                .set_text(text.to_string())
-                .context("Failed to copy to clipboard")?;
-            Ok(())
-        }
-        Err(e) => Err(anyhow::anyhow!("Failed to initialize clipboard: {}", e)),
-    }
-}
 
 #[cfg(target_os = "linux")]
 /// Entry point for the clipboard daemon process on Linux.
@@ -108,14 +85,46 @@ pub fn spawn_clipboard_daemon(content: &str) -> Result<()> {
     Ok(())
 }
 
-/// Copy text to clipboard
+#[cfg(target_os = "linux")]
+/// Copies the provided text to the system clipboard.
+///
+/// This is a cross-platform function that abstracts away the platform-specific details of clipboard management.
+///
+/// # Arguments
+///
+/// * `text` - The text content to be copied.
+///
+/// # Returns
+///
+/// * `Result<()>` - Returns Ok on success, or an error if the clipboard could not be accessed.
 pub fn copy_to_clipboard(text: &str) -> Result<()> {
-    #[cfg(target_os = "linux")]
     {
         spawn_clipboard_daemon(text)
     }
-    #[cfg(not(target_os = "linux"))]
-    {
-        copy_text_to_clipboard(text)
+}
+
+#[cfg(not(target_os = "linux"))]
+/// Copies the provided text to the system clipboard.
+///
+/// This is a simple, one-shot copy operation suitable for non-Linux platforms
+/// or scenarios where maintaining the clipboard content is not required.
+///
+/// # Arguments
+///
+/// * `text` - The text content to be copied.
+///
+/// # Returns
+///
+/// * `Result<()>` - Returns Ok on success, or an error if the clipboard could not be accessed.
+pub fn copy_to_clipboard(text: &str) -> Result<()> {
+    use arboard::Clipboard;
+    match Clipboard::new() {
+        Ok(mut clipboard) => {
+            clipboard
+                .set_text(text.to_string())
+                .context("Failed to copy to clipboard")?;
+            Ok(())
+        }
+        Err(e) => Err(anyhow::anyhow!("Failed to initialize clipboard: {}", e)),
     }
 }

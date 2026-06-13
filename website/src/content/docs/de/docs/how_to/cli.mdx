@@ -1,0 +1,131 @@
+---
+title: Code2Prompt Grundlegende Nutzung
+description: Diese Anleitung deckt die grundlegende Nutzung der Code2Prompt CLI ab
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+<Card title="Übersicht der Anleitung">
+  Willkommen zur `Code2Prompt`-Nutzungsanleitung.
+</Card>
+
+## Nutzung
+
+Prompt aus einem Code‑Basisverzeichnis generieren:
+
+```sh
+code2prompt pfad/zur/codebase
+```
+
+Prompt generieren und in die Zwischenablage kopieren:
+
+```sh
+code2prompt pfad/zur/codebase -c
+```
+
+Interaktive TUI starten:
+```sh
+code2prompt pfad/zur/codebase --tui
+```
+
+Token‑Map anzeigen:
+
+```sh
+code2prompt pfad/zur/codebase --token-map
+```
+
+Eigenes Handlebars‑Template verwenden:
+
+```sh
+code2prompt pfad/zur/codebase -t pfad/zum/template.hbs
+```
+
+Dateien mit Glob‑Mustern filtern:
+
+```sh
+code2prompt pfad/zur/codebase --include="*.rs,*.toml"
+```
+
+Dateien mit Glob‑Mustern ausschließen:
+
+```sh
+code2prompt pfad/zur/codebase --exclude="*.txt,*.md"
+```
+
+Dateien/Ordner im Quellbaum anhand von Ausschlussmustern entfernen:
+
+```sh
+code2prompt pfad/zur/codebase --exclude="*.npy,*.wav" --exclude-from-tree
+```
+
+Token‑Anzahl des generierten Prompts anzeigen:
+
+```sh
+code2prompt pfad/zur/codebase --tokens
+```
+
+Tokenizer für die Token‑Zählung angeben:
+
+```sh
+code2prompt pfad/zur/codebase --tokens --encoding=p50k
+```
+
+Unterstützte Tokenizer: `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
+<Aside type="note">
+Siehe [Tokenizer](#tokenizers) für weitere Details.
+</Aside>
+
+Prompt in eine Ausgabedatei schreiben:
+
+```sh
+code2prompt pfad/zur/codebase -O ausgabe.txt
+```
+
+Ausgabe als JSON ausgeben:
+
+```sh
+code2prompt pfad/zur/codebase -F JSON
+```
+
+Die JSON‑Ausgabe hat folgendes Format:
+
+```json
+{
+  "prompt": "<Generierter Prompt>",
+  "directory_name": "codebase",
+  "token_count": 1234,
+  "model_info": "ChatGPT‑Modelle, text-embedding-ada-002",
+  "files": []
+}
+```
+
+Git‑Commit‑Nachricht generieren (für gestagte Dateien):
+
+```sh
+code2prompt pfad/zur/codebase --diff -t templates/write-git-commit.hbs
+```
+
+Pull‑Request mit Branch‑Vergleich generieren (für gestagte Dateien):
+
+```sh
+code2prompt pfad/zur/codebase --git-diff-branch 'main, development' --git-log-branch 'main, development' -t templates/write-github-pull-request.hbs
+```
+
+Zeilennummern zu Quellcode‑Blöcken hinzufügen:
+
+```sh
+code2prompt pfad/zur/codebase --line-number
+```
+
+Code‑Block‑Umhüllung in Markdown‑Blöcken deaktivieren:
+
+```sh
+code2prompt pfad/zur/codebase --no-codeblock
+```
+
+Code2Prompt ist ein hervorragendes Werkzeug, um effizient token‑optimierte Prompts zu erzeugen. Es ist nützlich für verschiedene Anwendungsfälle, z. B.:
+- Code in eine andere Sprache umschreiben.
+- Fehler bzw. Sicherheitslücken finden.
+- Code dokumentieren.
+- Neue Funktionen implementieren.

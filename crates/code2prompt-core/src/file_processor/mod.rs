@@ -50,9 +50,15 @@ pub trait FileProcessor: Send + Sync {
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```rs
+/// use std::path::Path;
+/// use code2prompt_core::file_processor::get_processor_for_extension;
+///
 /// let processor = get_processor_for_extension("csv");
-/// let result = processor.process(&bytes, path)?;
+/// let bytes = b"column1,column2\nvalue1,value2";
+/// let path = Path::new("fake_file.csv");
+/// 
+/// let result = processor.process(bytes, path).unwrap(); 
 /// ```
 pub fn get_processor_for_extension(extension: &str) -> Box<dyn FileProcessor> {
     match extension.to_lowercase().as_str() {

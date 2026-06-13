@@ -1,0 +1,101 @@
+---
+title: Uso de la interfaz de terminal (TUI)
+description: Domine la interfaz de usuario de terminal interactiva de Code2Prompt para seleccionar archivos, ajustar configuraciones y generar prompts visualmente.
+---
+
+import { Card, CardGrid, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Descripción general del tutorial">
+`Code2prompt` cuenta con una interfaz de usuario de terminal (TUI) completamente interactiva. Esta guía le guía a través del lanzamiento de la TUI y el dominio de sus cinco pestañas principales.
+</Card>
+
+---
+
+## Lanzar la TUI
+
+Para abrir la interfaz interactiva, simplemente agregue la bandera `--tui` a su comando junto con la ruta de su proyecto:
+
+```bash
+code2prompt ruta/a/su/código-base --tui
+
+```
+
+---
+
+## 1. Pestaña de Selección (Árbol de archivos)
+
+La pestaña de **Selección** es donde organiza el contexto exacto que desea enviar al LLM. Muestra una vista jerárquica de su proyecto, respetando sus reglas `.gitignore` y `.c2pconfig`.
+
+* **Navegación:** Use `↑` / `↓` para mover el cursor, y `←` / `→` para expandir o contraer directorios.
+* **Selección:** Presione `Espacio` para seleccionar o deseleccionar un archivo o un directorio completo.
+* **Modo de búsqueda:** Presione `s` o `/` para ingresar al modo de búsqueda.
+* Puede escribir texto o usar comodines (`*`, `?`) para filtrar instantáneamente el árbol.
+* Presione `Enter` o `Esc` para salir del modo de búsqueda y volver a la navegación normal.
+
+
+<img
+  src="/assets/images/tui1.png"
+  alt="Pestaña de Selección de TUI de Code2Prompt"
+  style="width: 100%;"
+/>
+
+---
+
+## 2. Pestaña de Configuración
+
+¿Necesita ajustar cómo se formatea la salida antes de generar? La pestaña de **Configuración** le ofrece casillas de verificación visuales y menús desplegables para su sesión activa.
+
+<img
+  src="/assets/images/tui2.png"
+  alt="Pestaña de Configuración de TUI de Code2Prompt"
+  style="width: 100%;"
+/>
+
+
+---
+
+## 3. Pestaña de Estadísticas
+
+Antes de gastar dinero enviando un prompt masivo a un LLM, use la pestaña de **Estadísticas** para comprender su presupuesto de tokens.
+
+Use `←` / `→` para cambiar entre tres vistas potentes:
+
+<img
+  src="/assets/images/tui3.png"
+  alt="Pestaña de Estadísticas de TUI de Code2Prompt"
+  style="width: 100%;"
+/>
+
+---
+
+## 4. Pestaña de Plantilla
+
+La pestaña de **Plantilla** es donde ocurre la magia. Presenta un diseño de varias columnas adaptable para ayudarle a crear la plantilla Handlebars perfecta.
+
+Cuando está en la pestaña de Plantilla, puede cambiar instantáneamente su enfoque entre tres subpaneles usando atajos de teclado:
+
+<img
+  src="/assets/images/tui4.png"
+  alt="Pestaña de Plantilla de TUI de Code2Prompt"
+  style="width: 100%;"
+/>
+
+---
+
+## 5. Pestaña de Salida
+
+Una vez que haya seleccionado sus archivos, ajustado su configuración y elegido su plantilla, presione `Enter` para generar la salida final.
+
+La pestaña de **Salida** muestra el prompt final exactamente como se enviará al LLM.
+
+* **Desplazar:** Use `↑` / `↓`, `PgUp` o `PgDn` para revisar el texto generado.
+* **Copiar:** Presione `c` para copiar instantáneamente todo el prompt a su portapapeles del sistema.
+* **Guardar:** Presione `s` para guardar el prompt directamente en un archivo Markdown local (por ejemplo, `prompt_20260613_204753.md`).
+
+Si se da cuenta de que olvidó un archivo, simplemente presione `1` para volver a la pestaña de Selección, marque el archivo y presione `Enter` para regenerar la salida en tiempo real.
+
+<img
+  src="/assets/images/tui5.png"
+  alt="Pestaña de Salida de TUI de Code2Prompt"
+  style="width: 100%;"
+/>

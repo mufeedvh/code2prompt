@@ -36,7 +36,7 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
         let title = "🗂️  Token Map";
 
         if self.model.statistics.token_map_entries.is_empty() {
-            let placeholder_text = if self.model.prompt_output.generated_prompt.is_some() {
+            let placeholder_text = if self.model.prompt_output.result.is_some() {
                 "\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
                 "\nRun analysis first to see token distribution.\n\nPress Enter to run analysis."
@@ -60,12 +60,19 @@ impl<'a> StatefulWidget for StatisticsTokenMapWidget<'a> {
         }
 
         // Use the shared token map formatting logic from token_map.rs with adaptive layout
-        let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
+        let total_tokens = self
+            .model
+            .prompt_output
+            .result
+            .as_ref()
+            .map(|r| r.token_count)
+            .unwrap_or(0);
         let terminal_width = area.width as usize;
         let formatted_lines = format_token_map_for_tui(
             &self.model.statistics.token_map_entries,
             total_tokens,
             terminal_width,
+            &self.model.session.config.token_format,
         );
 
         // Calculate viewport for scrolling - read directly from Model

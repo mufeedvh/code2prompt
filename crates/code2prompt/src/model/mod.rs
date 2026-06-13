@@ -492,17 +492,16 @@ impl Model {
 
             Message::AnalysisComplete(results) => {
                 new_model.prompt_output.analysis_in_progress = false;
-                new_model.prompt_output.generated_prompt = Some(results.generated_prompt);
-                new_model.prompt_output.token_count = results.token_count;
-                new_model.prompt_output.file_count = results.file_count;
+                // Store the complete RenderedPrompt from the Core (Single Source of Truth)
+                new_model.prompt_output.result = Some(results.rendered.clone());
+                new_model.statistics.token_map_entries = results.token_map_entries;
                 // Reset output scroll so the new content starts at the top.
                 new_model.prompt_output.output_scroll = 0;
-                new_model.statistics.token_map_entries = results.token_map_entries;
-                let tokens = results.token_count.unwrap_or(0);
-                new_model.status_message = format!(
-                    "Analysis complete! {} tokens, {} files",
-                    tokens, results.file_count
-                );
+
+                let tokens = results.rendered.token_count;
+                let file_count = results.rendered.files.len();
+                new_model.status_message =
+                    format!("Analysis complete! {} tokens, {} files", tokens, file_count);
                 (new_model, Cmd::None)
             }
 
@@ -514,8 +513,8 @@ impl Model {
             }
 
             Message::CopyToClipboard => {
-                if let Some(prompt) = &new_model.prompt_output.generated_prompt {
-                    let cmd = Cmd::CopyToClipboard(prompt.clone());
+                if let Some(result) = &new_model.prompt_output.result {
+                    let cmd = Cmd::CopyToClipboard(result.prompt.clone());
                     (new_model, cmd)
                 } else {
                     new_model.status_message = "No prompt to copy".to_string();
@@ -524,10 +523,10 @@ impl Model {
             }
 
             Message::SaveToFile(filename) => {
-                if let Some(prompt) = &new_model.prompt_output.generated_prompt {
+                if let Some(result) = &new_model.prompt_output.result {
                     let cmd = Cmd::SaveToFile {
                         filename,
-                        content: prompt.clone(),
+                        content: result.prompt.clone(),
                     };
                     (new_model, cmd)
                 } else {

@@ -1,6 +1,7 @@
 //! Statistics by extension widget for displaying extension-based histogram.
 
 use crate::model::{Model, StatisticsState};
+use crate::utils::format_number;
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
@@ -35,7 +36,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let title = "📁 By Extension";
 
         if self.model.statistics.token_map_entries.is_empty() {
-            let placeholder_text = if self.model.prompt_output.generated_prompt.is_some() {
+            let placeholder_text = if self.model.prompt_output.result.is_some() {
                 "\nNo token map data available.\n\nPress Enter to re-run analysis."
             } else {
                 "\nRun analysis first to see token breakdown by file extension.\n\nPress Enter to run analysis."
@@ -58,9 +59,25 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
             return;
         }
 
-        // Use business logic from Model - pure Elm/Redux pattern
-        let ext_vec = self.model.statistics.aggregate_by_extension();
-        let total_tokens = self.model.prompt_output.token_count.unwrap_or(0);
+        // Use contextual analysis for accurate stats (post-generation context)
+        let ext_vec = if let Some(rendered) = &self.model.prompt_output.result {
+            self.model
+                .session
+                .contextual_analysis(rendered)
+                .map(|analysis| StatisticsState::aggregate_by_extension(&analysis))
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        // Get total_tokens from the real RenderedPrompt for percentage calculations
+        let total_tokens = self
+            .model
+            .prompt_output
+            .result
+            .as_ref()
+            .map(|r| r.token_count)
+            .unwrap_or(0);
 
         // Calculate viewport for scrolling - read directly from Model
         let content_height = layout[0].height.saturating_sub(2).max(1) as usize;
@@ -83,8 +100,7 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
         let max_tokens_width = ext_vec
             .iter()
             .map(|(_, tokens, _)| {
-                StatisticsState::format_number(*tokens, &self.model.session.config.token_format)
-                    .len()
+                format_number(*tokens, &self.model.session.config.token_format).len()
             })
             .max()
             .unwrap_or(6)
@@ -148,10 +164,8 @@ impl<'a> StatefulWidget for StatisticsByExtensionWidget<'a> {
                 };
 
                 // Format with dynamic column widths
-                let formatted_tokens = StatisticsState::format_number(
-                    *tokens,
-                    &self.model.session.config.token_format,
-                );
+                let formatted_tokens =
+                    format_number(*tokens, &self.model.session.config.token_format);
                 let content = format!(
                     "{:<width_ext$} │{}│ {:>width_tokens$} ({:>4.1}%) | {:>width_count$} files",
                     extension,

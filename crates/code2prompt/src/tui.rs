@@ -24,12 +24,12 @@ use crate::model::{
     AnalysisResults, Cmd, FileTreeInputMode, Message, Model, StatisticsView, Tab, TemplateState,
     template::{FocusMode, TemplateFocus, VariableCategory},
 };
-use crate::token_map::generate_token_map_with_limit;
 use crate::utils::{save_template_to_custom_dir, save_to_file};
 use crate::widgets::{
     FileSelectionWidget, OutputWidget, SettingsWidget, StatisticsByExtensionWidget,
     StatisticsOverviewWidget, StatisticsTokenMapWidget, TemplateWidget,
 };
+use code2prompt_core::analysis::TokenMapOptions;
 
 use crate::utils::build_file_tree_from_session;
 
@@ -508,26 +508,18 @@ impl TuiApp {
 
                     match session.generate_prompt() {
                         Ok(rendered) => {
-                            // Convert to AnalysisResults format expected by TUI
-                            let token_map_entries = if rendered.token_count > 0 {
-                                if let Some(files) = session.data.files.as_ref() {
-                                    generate_token_map_with_limit(
-                                        files,
-                                        rendered.token_count,
-                                        Some(50),
-                                        Some(0.5),
-                                    )
-                                } else {
-                                    Vec::new()
-                                }
-                            } else {
-                                Vec::new()
-                            };
+                            let token_map_entries = session
+                                .contextual_analysis(&rendered)
+                                .map(|analysis| {
+                                    analysis.token_map(TokenMapOptions {
+                                        max_lines: 50,
+                                        min_percent: 0.5,
+                                    })
+                                })
+                                .unwrap_or_default();
 
                             let result = AnalysisResults {
-                                file_count: rendered.files.len(),
-                                token_count: Some(rendered.token_count),
-                                generated_prompt: rendered.prompt,
+                                rendered,
                                 token_map_entries,
                             };
                             let _ = tx.send(Message::AnalysisComplete(result));

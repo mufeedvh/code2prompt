@@ -1,0 +1,152 @@
+---
+title: Configuration de Code2Prompt 📖
+description: Apprenez à utiliser .c2pconfig pour automatiser votre flux de travail de génération de prompts et assurer la cohérence de l'équipe.
+---
+
+import { Card, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Aperçu du tutoriel">
+  Taper manuellement de longs motifs d'exclusion ou des paramètres de tokenizer spécifiques à chaque fois peut être fastidieux. Par conséquent, ce tutoriel vous montre **comment utiliser un fichier de configuration `.c2pconfig`** pour "configurer et oublier" vos paramètres de projet.
+</Card>
+
+---
+
+## Prérequis
+
+Assurez-vous d'avoir `code2prompt` installé. Si vous ne l'avez pas encore installé, consultez le [Guide d'installation](/docs/how_to/install). Une connaissance de la [syntaxe TOML](https://toml.io/en/) est utile mais non requise.
+
+---
+
+## Qu'est-ce que .c2pconfig ?
+
+Le fichier `.c2pconfig` est un fichier de configuration écrit au format **TOML**. Lorsque vous exécutez `code2prompt`, il recherche automatiquement ce fichier dans votre répertoire de travail actuel. 
+
+Il vous permet de définir :
+* **Règles de filtrage :** Motifs d'inclusion/exclusion persistants.
+* **Formats de sortie :** Par défaut JSON, Markdown ou XML.
+* **Contexte de template :** Prédéfinir des variables pour vos templates Handlebars.
+
+---
+
+## Démarrage rapide
+
+Créez un fichier nommé `.c2pconfig` à la racine de votre projet pour définir votre comportement de base.
+
+```toml
+# Exemple de .c2pconfig
+default_output = "stdout" # Options : stdout, clipboard, file
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = ["**/target/**", "tests/fixtures/**"]
+line_numbers = true
+output_format = "markdown"
+
+[user_variables]
+project_name = "MonProjetGénial"
+author = "Développeur"
+
+```
+
+---
+
+## Référence de configuration
+
+Le tableau suivant décrit les clés disponibles dans le fichier de configuration.
+
+| Clé | Type | Description |
+| --- | --- | --- |
+| `path` | String | Chemin par défaut vers la base de code (généralement `.`). |
+| `include_patterns` | Array | Motifs glob des fichiers à inclure. |
+| `exclude_patterns` | Array | Motifs glob des fichiers à exclure. |
+| `line_numbers` | Boolean | Si `true`, ajoute des numéros de ligne aux blocs de code. |
+| `absolute_path` | Boolean | Utiliser des chemins absolus au lieu de chemins relatifs. |
+| `full_directory_tree` | Boolean | Générer l'arborescence complète même pour les fichiers exclus. |
+| `output_format` | String | `markdown`, `json` ou `xml`. |
+| `sort_method` | String | `name_asc`, `name_desc`, `date_asc`, `date_desc`. |
+| `encoding` | String | Tokenizer : `cl100k`, `p50k`, `o200k`. |
+| `diff_enabled` | Boolean | Inclure le diff git (HEAD vs Index). |
+| `token_map_enabled` | Boolean | Afficher une carte hiérarchique d'utilisation des tokens. |
+
+---
+
+## Guide d'implémentation
+
+Suivez ces étapes pour intégrer un fichier de configuration dans votre flux de travail.
+
+<Steps>
+
+1. **Initialiser votre configuration**
+        Naviguez vers la racine de votre projet et créez le fichier de configuration :
+        ```bash
+        touch .c2pconfig
+
+        ```
+
+2. **Définir votre source de vérité**
+        Excluez les répertoires lourds comme `node_modules` ou les artefacts de build pour garder le contexte du LLM propre.
+        ```toml
+        exclude_patterns = [
+        "**/node_modules/**",
+        "package-lock.json",
+        "dist/**"
+        ]
+
+        ```
+
+3. **Définir l'encodage de votre modèle**
+        Faites correspondre le tokenizer à votre LLM cible. Utilisez `o200k` pour GPT-4o, ou `cl100k` pour Claude et GPT-4.
+        ```toml
+        encoding = "o200k"
+
+        ```
+
+4. **Injecter du contexte personnalisé**
+        Utilisez la section `[user_variables]` pour transmettre des données dans vos [templates Handlebars](/docs/learn/templates).
+        ```toml
+        [user_variables]
+        project_goal = "Refactoriser le module d'authentification pour une meilleure sécurité."
+
+        ```
+
+5. **Exécuter sans arguments**
+        Exécutez simplement l'outil. Il respectera maintenant toutes vos règles prédéfinies sans flags CLI supplémentaires.
+        ```bash
+        code2prompt .
+
+        ```
+
+</Steps>
+
+---
+
+## Comprendre la priorité
+
+Il est important de comprendre comment `code2prompt` décide quels paramètres utiliser lorsque plusieurs sources entrent en conflit.
+
+<Aside type="tip" title="Ordre de priorité">
+**Arguments CLI > Fichier de configuration > Paramètres par défaut**
+
+Les arguments passés directement via le CLI remplaceront toujours les valeurs définies dans `.c2pconfig`. Cela vous permet de maintenir une configuration "de base" tout en restant flexible pour des commandes ponctuelles.
+
+</Aside>
+
+---
+
+## Exemple : La configuration "Prêt pour la revue"
+
+Utilisez cette configuration si votre objectif principal est de générer des prompts pour les revues de code.
+
+```toml
+default_output = "clipboard"
+include_patterns = ["*.rs"]
+exclude_patterns = ["**/test*","**code2prompt-python*"]
+line_numbers = false
+absolute_path = true
+
+[user_variables]
+project = "code2prompt"
+
+```
+
+---
+
+## Prochaines étapes

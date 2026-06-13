@@ -109,7 +109,7 @@ jobs:
           echo "::set-output name=asset-path::$ASSET_PATH"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: asset-${{ matrix.target }}
           path: ${{ steps.set_asset.outputs.asset-path }}
@@ -119,13 +119,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
       - name: Create GitHub Release and upload assets
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ github.ref }}

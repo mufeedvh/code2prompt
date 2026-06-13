@@ -1,0 +1,133 @@
+---
+title: Utilisation de base de Code2Prompt
+description: Ce guide couvre l'utilisation de base du CLI Code2Prompt
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+
+<Card title="Aperçu du guide">
+  Bienvenue dans le guide d'utilisation de `Code2Prompt`.
+</Card>
+
+## Utilisation
+
+Générer un prompt à partir d'une base de code :
+
+```sh
+code2prompt chemin/vers/base-de-code
+```
+
+Générer un prompt et le copier dans le presse-papiers :
+
+```sh
+code2prompt chemin/vers/base-de-code -c
+```
+
+Lancer le TUI interactif :
+```sh
+code2prompt chemin/vers/base-de-code --tui
+```
+
+Afficher la carte des tokens
+
+```sh
+code2prompt chemin/vers/base-de-code --token-map
+```
+
+Utiliser un fichier de template Handlebars personnalisé :
+
+```sh
+code2prompt chemin/vers/base-de-code -t chemin/vers/template.hbs
+```
+
+Filtrer les fichiers en utilisant des motifs glob :
+
+```sh
+code2prompt chemin/vers/base-de-code --include="*.rs,*.toml"
+```
+
+Exclure des fichiers en utilisant des motifs glob :
+
+```sh
+code2prompt chemin/vers/base-de-code --exclude="*.txt,*.md"
+```
+
+Exclure des fichiers/dossiers de l'arborescence source en fonction des motifs d'exclusion :
+
+```sh
+code2prompt chemin/vers/base-de-code --exclude="*.npy,*.wav" --exclude-from-tree
+```
+
+Afficher le nombre de tokens du prompt généré :
+
+```sh
+code2prompt chemin/vers/base-de-code --tokens
+```
+
+Spécifier un tokenizer pour le comptage des tokens :
+
+```sh
+code2prompt chemin/vers/base-de-code --tokens --encoding=p50k
+```
+
+Tokenizers supportés : `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
+<Aside type="note">
+Voir [Tokenizers](#tokenizers) pour plus de détails.
+</Aside>
+
+Sauvegarder le prompt généré dans un fichier de sortie :
+
+```sh
+code2prompt chemin/vers/base-de-code -O output.txt
+```
+
+Afficher la sortie au format JSON :
+
+```sh
+code2prompt chemin/vers/base-de-code -F JSON
+```
+
+La sortie JSON aura la structure suivante :
+
+```json
+{
+  "prompt": "<Prompt généré>", 
+  "directory_name": "codebase",
+  "token_count": 1234,
+  "model_info": "ChatGPT models, text-embedding-ada-002",
+  "files": []
+}
+```
+
+Générer un message de commit Git (pour les fichiers en staging) :
+
+```sh
+code2prompt chemin/vers/base-de-code --diff -t templates/write-git-commit.hbs
+```
+
+Générer une Pull Request avec comparaison de branches (pour les fichiers en staging) :
+
+```sh
+code2prompt chemin/vers/base-de-code --git-diff-branch 'main, development' --git-log-branch 'main, development' -t templates/write-github-pull-request.hbs
+```
+
+Ajouter des numéros de ligne aux blocs de code source :
+
+```sh
+code2prompt chemin/vers/base-de-code --line-number
+```
+
+Désactiver l'encapsulation du code dans des blocs de code markdown :
+
+```sh
+code2prompt chemin/vers/base-de-code --no-codeblock
+```
+
+
+Code2prompt est un excellent moyen de générer des prompts de manière efficace en termes de tokens. Il peut être pratique pour une variété de cas d'utilisation, tels que :
+- Réécrire le code dans un autre langage.
+- Trouver des bugs/vulnérabilités de sécurité.
+- Documenter le code.
+- Implémenter de nouvelles fonctionnalités.

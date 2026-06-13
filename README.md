@@ -74,7 +74,7 @@ code2prompt .
 **Save to file**:
 
 ```sh
-code2prompt path/to/project --output prompt.txt
+code2prompt path/to/project --output-file prompt.txt
 ```
 
 ## 🌐 Ecosystem

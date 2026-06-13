@@ -5,7 +5,8 @@
 
 use regex::Regex;
 use std::collections::HashSet;
-use tui_textarea::TextArea;
+use ratatui_textarea::{TextArea, CursorMove};
+use anyhow::{Result, anyhow};
 
 /// State for the template editor component
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub struct EditorState {
 impl Clone for EditorState {
     fn clone(&self) -> Self {
         let mut new_editor = TextArea::from(self.editor.lines().iter().map(|s| s.as_str()));
-        new_editor.move_cursor(tui_textarea::CursorMove::Jump(
+        new_editor.move_cursor(CursorMove::Jump(
             self.editor.cursor().0.try_into().unwrap_or(0),
             self.editor.cursor().1.try_into().unwrap_or(0),
         ));
@@ -120,16 +121,14 @@ impl EditorState {
     }
 
     /// Attempt to compile the template to check for syntax errors
-    fn compile_template(&self) -> Result<(), String> {
+    fn compile_template(&self) -> Result<()> {
         let mut handlebars = handlebars::Handlebars::new();
+        handlebars.set_strict_mode(false); 
 
-        // Set strict mode to catch undefined variables
-        handlebars.set_strict_mode(false); // Allow undefined variables for now
-
-        match handlebars.register_template_string("test", &self.content) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("{}", e)),
-        }
+        handlebars.register_template_string("test", &self.content)
+            .map_err(|e| anyhow!("Failed to compile template: {}", e))?;
+            
+        Ok(())
     }
 
     /// Get current template content

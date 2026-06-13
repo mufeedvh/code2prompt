@@ -20,6 +20,7 @@ import { LinkCard } from "@astrojs/starlight/components";
 
 <LinkCard title="Getting Started 🚀" href="/docs/tutorials/getting_started" />
 <LinkCard title="Installation 📥" href="/docs/how_to/install" />
+<LinkCard title="API Reference" href="/docs/how_to/install" />
 <LinkCard title="Learn Filtering 🔍" href="/docs/tutorials/learn_filters" />
 <LinkCard title="Learn Templating 📝" href="/docs/tutorials/learn_templates" />
 <LinkCard title="Vision 🔮" href="/docs/vision" />
@@ -59,38 +60,25 @@ You can use `code2prompt` the following ways:
 
 ## Why `code2prompt`?
 
-1. **Save Time**:
+Instead of just blindly concatenating files together, `code2prompt` is built to curate the perfect context window for your LLM, saving you money and preventing model hallucination.
 
-   - Automates the process of traversing a codebase and formatting files for LLMs.
-   - Avoids repetitive copy-pasting of code.
+1. **Smart Data Extraction**: Stop blowing up your token limits on raw data. When `code2prompt` encounters a .csv, .tsv, .jsonl, or Jupyter Notebook (.ipynb), it intelligently extracts only the structural schema and sample rows/cells, giving the LLM the context it needs without the bloat.
 
-2. **Improve Productivity**:
+2. **Precision Context Filtering**: It natively respects your .gitignore and uses an advanced glob pattern engine (--include and --exclude) so you can isolate exactly which modules you want to send.
 
-   - Provides a structured and consistent format for code analysis.
-   - Helps identify bugs, refactor code, and write documentation faster.
+3. **Zero-Overhead Token Math**: It uses native Tiktoken encodings (like o200k and cl100k) to calculate exact token counts locally before you send a massive payload to an API.
 
-3. **Handle Large Codebases**:
+4. **Template-Driven Workflows**: Use powerful Handlebars templates to automatically inject your project's directory tree, git diffs, and source code into specialized, repeatable prompts.
 
-   - Designed to work seamlessly with large codebases, respecting context limits of LLMs.
-
-4. **Customizable Workflows**:
-   - Flexible options for filtering files, using templates, and generating targeted prompts.
+5. **Built for Any Environment**: Navigate visually with the built-in TUI, automate tasks via the CLI, or give LLM agents direct repository access using the MCP server.
 
 ---
 
 ## Example Use Cases
+- **One-Shot PR & Commit Generation**: Leverage built-in Git integration to compare branch diffs and let your LLM write highly detailed, context-aware PR descriptions automatically.
 
-- **Code Documentation**:
-  Automatically generate documentation for public functions, methods, and classes.
+- **CTF & Security Analysis**: Use built-in templates explicitly designed for Web, Cryptography, or Binary Exploitation CTF solving, handing the LLM the exact file constraints it needs to spot vulnerabilities.
 
-- **Bug Detection**:
-  Find potential bugs and vulnerabilities by analyzing your codebase with LLMs.
+- **Architectural Refactoring**: Feed a specific module—along with the visual directory tree—into a cleanup template to get refactoring suggestions that respect your project's overall structure.
 
-- **Refactoring**:
-  Simplify and optimize code by generating prompts for code quality improvements.
-
-- **Learning and Exploration**:
-  Understand new codebases by generating summaries and detailed breakdowns.
-
-- **Git Commit and PR Descriptions**:
-  Generate meaningful commit messages and pull request descriptions from Git diffs.
+- **Instant Onboarding & Documentation**: Generate a full repository token map and structural overview to quickly understand massive new codebases, or auto-generate robust README.md files.

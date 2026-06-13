@@ -1,6 +1,6 @@
 # Code2Prompt MCP Server Installation Guide
 
-This guide is specifically designed for AI agents like Cline to install and configure the Repomix MCP server for use with LLM applications like Claude Desktop, Cursor, Roo Code, and Cline.
+This guide is specifically designed for AI agents like Cline to install and configure the Code2prompt MCP server for use with LLM applications like Claude Desktop, Cursor, Roo Code, and Cline.
 
 ## Overview of code2prompt-mcp
 
@@ -13,7 +13,6 @@ code2prompt-mcp leverages the high-performance [code2prompt-rs](https://github.c
 Before installation, you need:
 
 1. Install rye for dependency management. `curl -sSf https://rye.astral.sh/get | bash` on linux or macOS. Make sure to select to add rye to your PATH when prompted.
-
 
 ## Installation and Configuration
 
@@ -71,10 +70,10 @@ To verify the installation is working:
 
 1. Restart your LLM application (Cline, Claude Desktop, etc.)
 2. Test the connection by running a simple command like:
+
    ```
    Please get context from /path/to/project for AI analysis using Code2Prompt.
    ```
-
 
 ## Usage Examples
 
@@ -85,7 +84,6 @@ Here are some examples of how to use Code2Prompt MCP server with AI assistants:
 ```
 Can you analyze the code in my project at /path/to/project? Please use Code2prompt MCP to get the context.
 ```
-
 
 ### Specific File Types Analysis
 
