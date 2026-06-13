@@ -1,6 +1,5 @@
-//! code2prompt is a command-line tool to explore and analyze text repositories.
-//!
-//! Authors: Olivier D'Ancona (@ODAncona), Mufeed VH (@mufeedvh), and contributors
+//! code2prompt is a command-line and TUI tool based on the code2prompt-core library to explore and analyze text repositories.
+
 mod args;
 mod clipboard;
 mod config;
@@ -18,6 +17,8 @@ use anyhow::{Context, Result};
 use args::Cli;
 use clap::Parser;
 use code2prompt_core::analysis::TokenMapOptions;
+use code2prompt_core::configuration::OutputDestination;
+use code2prompt_core::session::{Code2PromptSession, RenderedPrompt};
 use code2prompt_core::template::write_to_file;
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -53,35 +54,53 @@ async fn main() -> Result<()> {
         });
         run_tui(session).await
     } else {
-        run_cli_mode_with_args(args).await
+        run_cli(args).await
     }
 }
 
 /// Run the CLI mode with parsed arguments
-async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
-    use code2prompt_core::configuration::OutputDestination;
+async fn run_cli(args: Cli) -> Result<()> {
     use config_loader::{get_default_output_destination, load_config};
 
     let quiet_mode = args.quiet;
 
     // ~~~ Load Configuration ~~~
-    let config_source = load_config(quiet_mode)?; // load config files first (local > global), then apply CLI args on top
-
-    // ~~~ Build Session with config + CLI args ~~~
+    let config_source = load_config(quiet_mode)?;
     let mut session = config::build_session(Some(&config_source), &args, false)?;
 
     // ~~~ Determine Output Behavior ~~~
     let default_output = get_default_output_destination(&config_source);
+    let (output_to_clipboard, output_to_stdout) = determine_output_targets(&args, &default_output);
 
-    // Determine final output destinations (Solution B: Unix-style behavior)
+    // ~~~ Gather Repository Data ~~~
+    gather_session_data(&mut session, quiet_mode)?;
+
+    // ~~~ Template ~~~
+    let rendered = render_session_template(&mut session)?;
+
+    // ~~~ Emit Results ~~~
+    emit_cli_results(
+        rendered,
+        &session,
+        &args,
+        output_to_stdout,
+        output_to_clipboard,
+    )?;
+
+    Ok(())
+}
+
+// ============================================================================
+// Pipeline Helper Functions
+// ============================================================================
+
+/// Determines whether to output to clipboard, stdout, or both based on args and config.
+fn determine_output_targets(args: &Cli, default_output: &OutputDestination) -> (bool, bool) {
     let output_to_clipboard = if args.clipboard {
-        // Explicit clipboard flag - ONLY clipboard, no stdout
         true
     } else if args.output_file.is_some() {
-        // Output file specified, don't use clipboard unless explicitly requested
         false
     } else {
-        // Use config default
         matches!(default_output, OutputDestination::Clipboard)
     };
 
@@ -97,14 +116,17 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         }
     };
 
-    // ~~~ Create Session ~~~
-    let spinner = if !quiet_mode {
+    (output_to_clipboard, output_to_stdout)
+}
+
+/// Loads codebase and git data into the session, driving the loading spinner.
+fn gather_session_data(session: &mut Code2PromptSession, quiet: bool) -> Result<()> {
+    let spinner = if !quiet {
         Some(setup_spinner("Traversing directory and building tree..."))
     } else {
         None
     };
 
-    // ~~~ Gather Repository Data ~~~
     session.load_codebase().map_err(|e| {
         if let Some(s) = spinner.as_ref() {
             s.finish_with_message("Failed!".red().to_string())
@@ -112,62 +134,53 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         error!("Failed to build directory tree: \n{}", e);
         anyhow::anyhow!("Failed to build directory tree: {}", e)
     })?;
+
     if let Some(s) = spinner.as_ref() {
         s.set_message("Proceeding…")
     }
 
-    // ~~~ Git Related ~~~
-    // Git Diff
     if session.config.diff_enabled {
         if let Some(s) = spinner.as_ref() {
             s.set_message("Generating git diff...")
         }
-        session.load_git_diff().unwrap_or_else(|e| {
-            if let Some(s) = spinner.as_ref() {
-                s.finish_with_message("Failed!".red().to_string())
-            }
-            error!("Failed to generate git diff: {}", e);
-            std::process::exit(1);
-        });
+        if let Err(e) = session.load_git_diff() {
+            if let Some(s) = spinner.as_ref() { s.finish_with_message("Failed!".red().to_string()) }
+            return Err(anyhow::anyhow!("Failed to generate git diff: {}", e));
+        }
     }
 
-    // Load Git diff between branches if provided
     if session.config.diff_branches.is_some() {
         if let Some(s) = spinner.as_ref() {
             s.set_message("Generating git diff between two branches...")
         }
-        session
-            .load_git_diff_between_branches()
-            .unwrap_or_else(|e| {
-                if let Some(s) = spinner.as_ref() {
-                    s.finish_with_message("Failed!".red().to_string())
-                }
-                error!("Failed to generate git diff: {}", e);
-                std::process::exit(1);
-            });
+        if let Err(e) = session.load_git_diff_between_branches() {
+            if let Some(s) = spinner.as_ref() { s.finish_with_message("Failed!".red().to_string()) }
+            return Err(anyhow::anyhow!("Failed to generate git diff: {}", e));
+        }
     }
 
-    // Load Git log between branches if provided
     if session.config.log_branches.is_some() {
         if let Some(ref s) = spinner {
             s.set_message("Generating git log between two branches...");
         }
-        session.load_git_log_between_branches().unwrap_or_else(|e| {
-            if let Some(ref s) = spinner {
-                s.finish_with_message("Failed!".red().to_string());
-            }
-            error!("Failed to generate git log: {}", e);
-            std::process::exit(1);
-        });
+        if let Err(e) = session.load_git_log_between_branches() {
+            if let Some(ref s) = spinner { s.finish_with_message("Failed!".red().to_string()); }
+            return Err(anyhow::anyhow!("Failed to generate git log: {}", e));
+        }
     }
 
-    // ~~~ Template ~~~
+    if let Some(s) = spinner {
+        s.finish_with_message("Codebase Traversal Done!".green().to_string());
+    }
 
-    // Handle undefined variables (modifies session.config.user_variables)
+    Ok(())
+}
+
+/// Handles undefined variables and invokes the template renderer.
+fn render_session_template(session: &mut Code2PromptSession) -> Result<RenderedPrompt> {
     let template_str_clone = session.config.template_str.clone();
-    config::handle_undefined_variables(&mut session, &template_str_clone)?;
+    config::handle_undefined_variables(session, &template_str_clone)?;
 
-    // Data - now build after handling undefined variables
     let data = session.build_template_data();
     debug!(
         "Template Context: absolute_code_path={}, files_count={}, has_user_vars={}",
@@ -176,15 +189,20 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         !session.config.user_variables.is_empty()
     );
 
-    // Render
-    let rendered = session.render_prompt(&data).unwrap_or_else(|e| {
-        error!("Failed to render prompt: {}", e);
-        std::process::exit(1);
-    });
+    let rendered = session.render_prompt(&data)
+        .context("Failed to render prompt")?;
 
-    if let Some(ref s) = spinner {
-        s.finish_with_message("Codebase Traversal Done!".green().to_string());
-    }
+    Ok(rendered)
+}
+/// Dispatches the final rendered output to stdout, file, clipboard, and prints UI stats.
+fn emit_cli_results(
+    rendered: RenderedPrompt,
+    session: &Code2PromptSession,
+    args: &Cli,
+    output_to_stdout: bool,
+    output_to_clipboard: bool,
+) -> Result<()> {
+    let quiet_mode = args.quiet;
 
     // ~~~ Token Count ~~~
     let token_count = rendered.token_count;
@@ -267,8 +285,8 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     if let Some(ref output_file) = args.output_file
         && output_file != "-"
     {
-        output_prompt(
-            Some(std::path::Path::new(output_file)),
+        write_prompt_to_file(
+            std::path::Path::new(output_file),
             &rendered.prompt,
             quiet_mode,
         )?;
@@ -278,14 +296,6 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
 }
 
 /// Sets up a progress spinner with a given message
-///
-/// # Arguments
-///
-/// * `message` - A message to display with the spinner
-///
-/// # Returns
-///
-/// * `ProgressBar` - The configured progress spinner
 fn setup_spinner(message: &str) -> ProgressBar {
     let spinner = ProgressBar::new_spinner();
     spinner.enable_steady_tick(std::time::Duration::from_millis(220));
@@ -313,38 +323,20 @@ fn setup_spinner(message: &str) -> ProgressBar {
     spinner
 }
 
-// ~~~ Output to file or stdout ~~~
-fn output_prompt(
-    effective_output: Option<&std::path::Path>,
-    rendered: &str,
-    quiet: bool,
-) -> Result<()> {
-    let output_path = match effective_output {
-        Some(path) => path,
-        None => return Ok(()), // nothing to do
-    };
-
+// ~~~ Output to file ~~~
+fn write_prompt_to_file(output_path: &std::path::Path, rendered: &str, quiet: bool) -> Result<()> {
     let path_str = output_path.to_string_lossy();
-    if path_str == "-" {
-        // stdout
-        print!("{}", rendered);
-        std::io::stdout()
-            .flush()
-            .context("Failed to flush stdout")?;
-    } else {
-        // file
-        write_to_file(&path_str, rendered)
-            .context(format!("Failed to write to file: {}", path_str))?;
 
-        if !quiet {
-            eprintln!(
-                "{}{}{} {}",
-                "[".bold().white(),
-                "✓".bold().green(),
-                "]".bold().white(),
-                format!("Prompt written to file: {}", path_str).green()
-            );
-        }
+    write_to_file(&path_str, rendered).context(format!("Failed to write to file: {}", path_str))?;
+
+    if !quiet {
+        eprintln!(
+            "{}{}{} {}",
+            "[".bold().white(),
+            "✓".bold().green(),
+            "]".bold().white(),
+            format!("Prompt written to file: {}", path_str).green()
+        );
     }
 
     Ok(())

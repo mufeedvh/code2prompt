@@ -6,6 +6,10 @@ description = "Command-line interface for code2prompt"
 license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
 readme = "../../README.md"
+authors = [
+    "Olivier D'Ancona <olivier_dancona@hotmail.com>",
+    "Mufeed VH <mufeed@lyminal.space>",
+]
 
 [features]
 wayland = ["arboard/wayland-data-control"]
