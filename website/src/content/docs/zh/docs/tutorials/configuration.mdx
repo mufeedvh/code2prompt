@@ -1,0 +1,120 @@
+---
+title: Code2Prompt 配置 📖
+description: 学习如何使用 `.c2pconfig` 自动化 Prompt 生成工作流，并确保团队配置的一致性。
+---
+import { Card, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="教程概览">
+手动编写冗长的排除模式或特定的 tokenizer 设置会非常繁琐。本教程将展示 **如何使用 `.c2pconfig` 配置文件** 来实现“一键配置，忘记它”的项目设置。
+</Card>
+
+## 前置条件
+
+确保已安装 `code2prompt`。如果尚未安装，请参阅 [安装指南](/docs/how_to/install)。了解 [TOML 语法](https://toml.io/en/) 会有帮助，但不是必需的。
+
+## 什么是 `.c2pconfig`？
+
+`.c2pconfig` 是一个 **TOML** 格式的配置文件。运行 `code2prompt` 时，它会自动在当前工作目录查找此文件并应用其中的设置。
+
+您可以使用它来定义：
+* **过滤规则：** 持久化的 include / exclude 模式。  
+* **输出格式：** 默认支持 JSON、Markdown 或 XML。  
+* **模板上下文：** 为 Handlebars 模板预定义变量。
+
+## 快速入门
+
+在项目根目录创建 `.c2pconfig`，并设置基础行为。
+
+```toml
+# 基础行为配置
+default_output = "stdout"   # 选项: stdout, clipboard, file
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = ["**/target/**", "tests/fixtures/**"]
+line_numbers = true
+output_format = "markdown"
+
+[user_variables]
+project_name = "MyAwesomeProject"
+author = "Developer"
+```
+
+## 配置参考
+
+以下表格列出了 `.c2pconfig` 中可用的键：
+
+| 键 | 类型 | 描述 |
+| --- | --- | --- |
+| `path` | String | 代码库的默认路径（通常为 `.`） |
+| `include_patterns` | Array | 包含的文件 glob 模式 |
+| `exclude_patterns` | Array | 排除的文件 glob 模式 |
+| `line_numbers` | Boolean | 为代码块添加行号 |
+| `absolute_path` | Boolean | 使用绝对路径而非相对路径 |
+| `full_directory_tree` | Boolean | 即使是被排除的文件也生成完整目录树 |
+| `output_format` | String | `markdown`, `json`, `xml` |
+| `sort_method` | String | `name_asc`, `name_desc`, `date_asc`, `date_desc` |
+| `encoding` | String | Tokenizer: `cl100k`, `p50k`, `o200k` |
+| `diff_enabled` | Boolean | 包含 Git diff（HEAD 与 Index） |
+| `token_map_enabled` | Boolean | 显示 token 使用的层次图 |
+
+## 实施步骤
+
+<Steps>
+1. **初始化配置**  
+   ```bash
+   touch .c2pconfig
+   ```
+
+2. **设置全局过滤**  
+   排除 `node_modules`、构建产物等大型目录，以保持 LLM 上下文的干净。  
+   ```toml
+   exclude_patterns = [
+     "**/node_modules/**",
+     "package-lock.json",
+     "dist/**"
+   ]
+   ```
+
+3. **选择 Tokenizer**  
+   根据目标 LLM 选择 tokenizer。GPT‑4o 使用 `o200k`，Claude 与 GPT‑4 使用 `cl100k`。  
+   ```toml
+   encoding = "o200k"
+   ```
+
+4. **添加用户变量**  
+   在 `[user_variables]` 部分定义将在 Handlebars 模板中使用的自定义变量。  
+   ```toml
+   [user_variables]
+   project_goal = "重构认证模块以提升安全性"
+   ```
+
+5. **无需额外标志运行**  
+   ```bash
+   code2prompt .
+   ```
+</Steps>
+
+## 理解优先级
+
+CLI 参数 > `.c2pconfig` > 默认设置。这样您可以保留基础配置，同时在需要时通过 CLI 临时覆盖。
+
+<Aside type="tip" title="优先级顺序">
+**CLI 参数 > 配置文件 > 默认**  
+直接在 CLI 中提供的选项始终会覆盖 `.c2pconfig` 中的对应值。
+</Aside>
+
+## “审查准备” 示例配置
+
+如果您的主要目标是为代码审查生成 Prompt，请使用以下配置：
+
+```toml
+default_output = "clipboard"
+include_patterns = ["*.rs"]
+exclude_patterns = ["**/test*","**code2prompt-python*"]
+line_numbers = false
+absolute_path = true
+
+[user_variables]
+project = "code2prompt"
+```
+
+## 接下来的步骤

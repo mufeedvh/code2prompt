@@ -1,0 +1,75 @@
+---
+title: .c2pconfig ファイルの作成
+description: .c2pconfig ファイルを作成し、プロンプト生成ワークフローを自動化するためのステップバイステップガイド
+---
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from '@astrojs/starlight/components';
+
+<Card title="ガイド概要">
+  このガイドでは、`.c2pconfig` ファイルを作成・使用して、プロンプト生成ワークフローを自動化する方法を学びます。
+</Card>
+
+手動で長い除外パターンやトークナイザー設定、カスタム変数を書き込むのは面倒です。`.c2pconfig` 設定ファイルを作成すれば、プロジェクトの設定を「一度設定して忘れる」ことができます。Code2Prompt は作業ディレクトリでこのファイルを自動的に探し、設定をシームレスに適用します。
+
+以下に、最初の設定ファイルを作成する手順を示します。
+
+---
+
+## 1. 設定ファイルの初期化
+
+ターミナルでプロジェクトのルートディレクトリに移動し、`.c2pconfig` という名前のファイルを作成します。
+
+```bash
+cd path/to/your/project
+touch .c2pconfig
+```
+
+---
+
+## 2. 基本設定を TOML 形式で記述
+
+エディタで `.c2pconfig` を開き、以下の内容を貼り付けます（TOML 形式です）。
+
+```toml
+# デフォルトの動作設定
+default_output = "clipboard"    # オプション: stdout, clipboard, file
+output_format = "xml"           # オプション: markdown, json, xml
+line_numbers = false            # コードブロックに行番号を付与するか
+encoding = "o200k"              # 使用するトークナイザーを LLM に合わせる
+
+# グローバルなフィルタリングルール
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = [
+    "**/node_modules/**",
+    "**/target/**",
+    "tests/fixtures/**",
+    "package-lock.json"
+]
+```
+
+<Aside type="tip">
+**クリーンなコンテキスト:** `node_modules` や `target/` のような重いディレクトリを除外することで、LLM が高品質なコンテキストを受け取り、トークン上限に達しにくくなります。
+</Aside>
+
+---
+
+## 3. 引数なしで実行
+
+`.c2pconfig` をプロジェクトのルートに保存したら、フラグを付けずに実行できます。
+
+```bash
+code2prompt .
+```
+
+Code2Prompt は自動的に `.c2pconfig` を読み込み、指定したグロブパターンでファイルをフィルタリングし、行番号を付与し、設定に従って出力形式を整えます。
+
+---
+
+## 次のステップ
+
+高度なワークフローや変数、デフォルト設定キーをさらに深く掘り下げるには、以下のチュートリアルをご覧ください:
+<LinkCard
+  title="設定チュートリアル"
+  href="/docs/tutorials/configuration"
+/>

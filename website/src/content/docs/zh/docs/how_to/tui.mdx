@@ -1,0 +1,63 @@
+---
+title: 使用 Code2Prompt 终端 UI (TUI)
+description: 本指南介绍如何使用 Code2Prompt 的交互式终端 UI (TUI) 进行 Prompt 生成和文件选择。
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="指南概览">
+`Code2Prompt` 提供了完整的交互式终端用户界面 (TUI)。本指南将带您了解如何启动 TUI 并掌握其五个核心标签页。
+</Card>
+
+## 启动 TUI
+
+在命令中添加 `--tui` 标志并指定项目路径，即可打开交互式界面：
+
+```sh
+code2prompt path/to/codebase --tui
+```
+
+## 1. 选择标签页（文件树）
+
+此标签页用于构建要发送给 LLM 的精确上下文。它显示项目的层次结构，并遵循 `.gitignore` 与 `.c2pconfig` 规则。
+
+- **导航:** 使用 `↑` / `↓` 移动光标，`←` / `→` 展开或折叠目录。  
+- **选择:** 按空格键选择或取消选择单个文件或整个目录。  
+- **搜索:** 按 `s` 或 `/` 进入搜索模式，输入文本或通配符 (`*`, `?`) 即时过滤树。  
+- **退出:** 按 `Enter` 或 `Esc` 退出搜索模式，返回常规导航。
+
+<img src="/assets/images/tui1.png" alt="选择标签页" style="width: 100%;" />
+
+## 2. 设置标签页
+
+在生成之前，您可以通过此标签页的可视化复选框和下拉菜单调整输出格式。
+
+<img src="/assets/images/tui2.png" alt="设置标签页" style="width: 100%;" />
+
+## 3. 统计标签页
+
+在将大型 Prompt 发送给 LLM 之前，使用此标签页了解您的 token 预算。
+
+使用 `←` / `→` 在三个强大的视图之间切换：
+
+<img src="/assets/images/tui3.png" alt="统计标签页" style="width: 100%;" />
+
+## 4. 模板标签页
+
+此标签页是魔法发生的地方。它提供了一个多列自适应布局，帮助您创建完美的 Handlebars 模板。
+
+在模板标签页中，使用键盘快捷键可在三个子面板之间快速切换：
+
+<img src="/assets/images/tui4.png" alt="模板标签页" style="width: 100%;" />
+
+## 5. 输出标签页
+
+完成文件选择、设置调整和模板选择后，按 `Enter` 生成最终输出。
+
+- **滚动:** 使用 `↑` / `↓`、`PgUp` 或 `PgDn` 查看生成的文本。  
+- **复制:** 按 `c` 将整个 Prompt 复制到系统剪贴板。  
+- **保存:** 按 `s` 将 Prompt 保存为本地 Markdown 文件（例如 `prompt_20260613_204753.md`）。
+
+如果发现遗漏的文件，只需按 `1` 返回选择标签页，标记文件后再次按 `Enter` 即可实时重新生成。
+
+<img src="/assets/images/tui5.png" alt="输出标签页" style="width: 100%;" />

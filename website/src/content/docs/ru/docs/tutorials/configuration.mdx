@@ -1,0 +1,119 @@
+---
+title: Конфигурация Code2Prompt 📖
+description: Узнайте, как использовать `.c2pconfig` для автоматизации рабочего процесса генерации промптов и обеспечения согласованности в команде.
+---
+import { Card, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Обзор учебника">
+  Ручное написание длинных шаблонов исключения или специфических настроек токенизатора каждый раз может быть утомительным. Этот учебник покажет, как использовать файл конфигурации `.c2pconfig` для «настройки и забывания» настроек проекта.
+</Card>
+
+## Предварительные требования
+
+Убедитесь, что `code2prompt` установлен. Если нет, см. [руководство по установке](/docs/how_to/install). Знание синтаксиса TOML полезно, но не обязательно.
+
+## Что такое `.c2pconfig`?
+
+`.c2pconfig` — это файл конфигурации в формате **TOML**. При запуске `code2prompt` он автоматически ищет этот файл в текущем рабочем каталоге и применяет настройки.
+
+Вы можете определить:
+* **Правила фильтрации:** Постоянные include/exclude шаблоны.
+* **Форматы вывода:** По умолчанию JSON, Markdown или XML.
+* **Контекст шаблона:** Предопределённые переменные для ваших Handlebars‑шаблонов.
+
+## Быстрый старт
+
+Создайте файл `.c2pconfig` в корне проекта и задайте базовое поведение.
+
+```toml
+# Базовые настройки
+default_output = "stdout"   # варианты: stdout, clipboard, file
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = ["**/target/**", "tests/fixtures/**"]
+line_numbers = true
+output_format = "markdown"
+
+[user_variables]
+project_name = "MyAwesomeProject"
+author = "Developer"
+```
+
+## Справочник конфигурации
+
+| Ключ | Тип | Описание |
+| --- | --- | --- |
+| `path` | String | Путь к кодовой базе (обычно `.`) |
+| `include_patterns` | Array | Glob‑шаблоны файлов для включения |
+| `exclude_patterns` | Array | Glob‑шаблоны файлов для исключения |
+| `line_numbers` | Boolean | Добавлять номера строк к блокам кода |
+| `absolute_path` | Boolean | Использовать абсолютные пути |
+| `full_directory_tree` | Boolean | Генерировать полный дерево даже для исключённых файлов |
+| `output_format` | String | `markdown`, `json`, `xml` |
+| `sort_method` | String | `name_asc`, `name_desc`, `date_asc`, `date_desc` |
+| `encoding` | String | Токенизатор: `cl100k`, `p50k`, `o200k` |
+| `diff_enabled` | Boolean | Включать Git‑diff (HEAD vs Index) |
+| `token_map_enabled` | Boolean | Показать карту использования токенов |
+
+## Пошаговое внедрение
+
+<Steps>
+1. **Создание конфигурации**  
+   ```bash
+   touch .c2pconfig
+   ```
+
+2. **Определение глобальных фильтров**  
+   Исключите тяжёлые каталоги (`node_modules`, `target/`) для чистого контекста LLM.  
+   ```toml
+   exclude_patterns = [
+     "**/node_modules/**",
+     "package-lock.json",
+     "dist/**"
+   ]
+   ```
+
+3. **Выбор токенизатора**  
+   Подберите токенизатор под целевую LLM. Для GPT‑4o используйте `o200k`, для Claude и GPT‑4 — `cl100k`.  
+   ```toml
+   encoding = "o200k"
+   ```
+
+4. **Добавление пользовательских переменных**  
+   В разделе `[user_variables]` задайте переменные, которые будут доступны в ваших Handlebars‑шаблонах.  
+   ```toml
+   [user_variables]
+   project_goal = "Рефакторинг модуля аутентификации для повышения безопасности."
+   ```
+
+5. **Запуск без дополнительных флагов**  
+   После сохранения `.c2pconfig` просто выполните:
+   ```bash
+   code2prompt .
+   ```
+</Steps>
+
+## Понимание приоритетов
+
+CLI‑аргументы > `.c2pconfig` > настройки по умолчанию. Это позволяет иметь базовую конфигурацию и при необходимости переопределять её в командной строке.
+
+<Aside type="tip" title="Приоритет">
+**CLI‑аргументы > Конфигурационный файл > Значения по умолчанию**  
+Аргументы, переданные напрямую в CLI, всегда переопределяют параметры из `.c2pconfig`.
+</Aside>
+
+## Пример «готовый к ревью»
+
+Эта конфигурация оптимизирована для генерации промптов, пригодных для обзора кода.
+
+```toml
+default_output = "clipboard"
+include_patterns = ["*.rs"]
+exclude_patterns = ["**/test*","**code2prompt-python*"]
+line_numbers = false
+absolute_path = true
+
+[user_variables]
+project = "code2prompt"
+```
+
+## Следующие шаги

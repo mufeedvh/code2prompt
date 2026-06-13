@@ -1,0 +1,119 @@
+---
+title: Code2Prompt の設定 📖
+description: .c2pconfig を使用してプロンプト生成ワークフローを自動化し、チーム全体で設定を統一する方法を学びます。
+---
+
+import { Card, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="チュートリアル概要">
+  手動で長い除外パターンやトークナイザー設定を書くのは面倒です。このチュートリアルでは、**`.c2pconfig` 設定ファイル** を使用して「一度設定して忘れる」方式でプロジェクト設定を管理する方法を紹介します。
+</Card>
+
+## 前提条件
+
+`code2prompt` がインストールされていることを確認してください。未インストールの場合は、[インストールガイド](/docs/how_to/install) を参照してください。TOML の基本構文は知っておくと便利ですが必須ではありません。
+
+## `.c2pconfig` とは？
+
+`.c2pconfig` は **TOML** 形式の設定ファイルです。`code2prompt` は実行時に自動的にこのファイルを探し、設定を適用します。
+
+- **フィルタリング:** 永続的な include / exclude パターン  
+- **出力形式:** デフォルトで JSON、Markdown、XML のいずれかを選択  
+- **テンプレートコンテキスト:** Handlebars テンプレートに渡す変数を事前定義
+
+## クイックスタート
+
+プロジェクトのルートに `.c2pconfig` を作成し、基本設定を書き込みます。
+
+```toml
+# デフォルト設定
+default_output = "stdout"   # オプション: stdout, clipboard, file
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = ["**/target/**", "tests/fixtures/**"]
+line_numbers = true
+output_format = "markdown"
+
+[user_variables]
+project_name = "MyAwesomeProject"
+author = "Developer"
+```
+
+## 設定項目リファレンス
+
+| キー | 型 | 説明 |
+| --- | --- | --- |
+| `path` | String | デフォルトのコードベースパス（通常 `.`） |
+| `include_patterns` | Array | 取り込むファイルの glob パターン |
+| `exclude_patterns` | Array | 除外するファイルの glob パターン |
+| `line_numbers` | Boolean | `true` の場合、コードブロックに行番号を付与 |
+| `absolute_path` | Boolean | 絶対パスを使用するか |
+| `full_directory_tree` | Boolean | 除外ファイルでもディレクトリツリーを完全に生成 |
+| `output_format` | String | `markdown`, `json`, `xml` のいずれか |
+| `sort_method` | String | `name_asc`, `name_desc`, `date_asc`, `date_desc` |
+| `encoding` | String | 使用するトークナイザー (`cl100k`, `p50k`, `o200k`) |
+| `diff_enabled` | Boolean | Git diff (HEAD vs Index) を含める |
+| `token_map_enabled` | Boolean | トークン使用マップを表示 |
+
+## 実装手順
+
+<Steps>
+1. **設定ファイルの作成**  
+   ```bash
+   touch .c2pconfig
+   ```
+
+2. **グローバルフィルタの設定**  
+   `node_modules` やビルド成果物を除外して、LLM にクリーンなコンテキストを提供します。  
+   ```toml
+   exclude_patterns = [
+     "**/node_modules/**",
+     "package-lock.json",
+     "dist/**"
+   ]
+   ```
+
+3. **トークナイザーの選択**  
+   使用する LLM に合わせてトークナイザーを設定します。GPT‑4o なら `o200k`、Claude や GPT‑4 なら `cl100k`。  
+   ```toml
+   encoding = "o200k"
+   ```
+
+4. **ユーザー変数の追加**  
+   Handlebars テンプレートで使用するカスタム変数を `[user_variables]` に定義します。  
+   ```toml
+   [user_variables]
+   project_goal = "セキュリティ向上のための認証モジュールのリファクタリング"
+   ```
+
+5. **フラグなしで実行**  
+   すべての設定が `.c2pconfig` に保存されたら、シンプルに実行します。  
+   ```bash
+   code2prompt .
+   ```
+</Steps>
+
+## 優先順位の理解
+
+CLI 引数 > `.c2pconfig` > デフォルト設定 の順に優先されます。CLI で一時的にオーバーライドしたい場合に便利です。
+
+<Aside type="tip" title="優先順位">
+**CLI 引数 > 設定ファイル > デフォルト**  
+CLI で直接指定したオプションは常に設定ファイルの値を上書きします。
+</Aside>
+
+## 「レビュー向け」設定例
+
+コードレビュー用に最適化された設定例です。
+
+```toml
+default_output = "clipboard"
+include_patterns = ["*.rs"]
+exclude_patterns = ["**/test*","**code2prompt-python*"]
+line_numbers = false
+absolute_path = true
+
+[user_variables]
+project = "code2prompt"
+```
+
+## 次のステップ

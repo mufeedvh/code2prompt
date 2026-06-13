@@ -1,0 +1,132 @@
+---
+title: Code2Prompt 基本的な使い方
+description: Code2Prompt CLI の基本的な使用方法を解説します
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+<Card title="ガイド概要">
+  `Code2Prompt` の使用方法へようこそ。
+</Card>
+
+## 使用方法
+
+コードベースからプロンプトを生成する:
+
+```sh
+code2prompt path/to/codebase
+```
+
+プロンプトを生成し、クリップボードにコピーする:
+
+```sh
+code2prompt path/to/codebase -c
+```
+
+インタラクティブな TUI を起動する:
+```sh
+code2prompt path/to/codebase --tui
+```
+
+トークンマップを表示する:
+
+```sh
+code2prompt path/to/codebase --token-map
+```
+
+カスタム Handlebars テンプレートを使用する:
+
+```sh
+code2prompt path/to/codebase -t path/to/template.hbs
+```
+
+Glob パターンでファイルをフィルタリングする:
+
+```sh
+code2prompt path/to/codebase --include="*.rs,*.toml"
+```
+
+Glob パターンでファイルを除外する:
+
+```sh
+code2prompt path/to/codebase --exclude="*.txt,*.md"
+```
+
+除外パターンに基づいてソースツリーからファイル/フォルダを除外する:
+
+```sh
+code2prompt path/to/codebase --exclude="*.npy,*.wav" --exclude-from-tree
+```
+
+生成されたプロンプトのトークン数を表示する:
+
+```sh
+code2prompt path/to/codebase --tokens
+```
+
+トークン数計算に使用するトークナイザーを指定する:
+
+```sh
+code2prompt path/to/codebase --tokens --encoding=p50k
+```
+
+サポートされているトークナイザー: `cl100k`, `p50k`, `p50k_edit`, `r50k_bas`.
+
+<Aside type="note">
+詳細は [トークナイザー](#tokenizers) を参照してください。
+</Aside>
+
+生成されたプロンプトを出力ファイルに保存する:
+
+```sh
+code2prompt path/to/codebase -O output.txt
+```
+
+出力を JSON 形式で表示する:
+
+```sh
+code2prompt path/to/codebase -F JSON
+```
+
+JSON の出力例:
+
+```json
+{
+  "prompt": "<生成されたプロンプト>",
+  "directory_name": "codebase",
+  "token_count": 1234,
+  "model_info": "ChatGPT モデル, text-embedding-ada-002",
+  "files": []
+}
+```
+
+ステージされたファイル用に Git コミットメッセージを生成する:
+
+```sh
+code2prompt path/to/codebase --diff -t templates/write-git-commit.hbs
+```
+
+ステージされたファイル用にブランチ比較のプルリクエストを生成する:
+
+```sh
+code2prompt path/to/codebase --git-diff-branch 'main, development' --git-log-branch 'main, development' -t templates/write-github-pull-request.hbs
+```
+
+コードブロックに行番号を付与する:
+
+```sh
+code2prompt path/to/codebase --line-number
+```
+
+Markdown のコードブロック内でコードのラップを無効にする:
+
+```sh
+code2prompt path/to/codebase --no-codeblock
+```
+
+Code2Prompt はトークン効率の良いプロンプトを生成する優れたツールです。以下のような様々なユースケースに活用できます:
+- コードを別の言語に変換する
+- バグやセキュリティ脆弱性を検出する
+- コードをドキュメント化する
+- 新機能を実装する

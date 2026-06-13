@@ -1,0 +1,132 @@
+---
+title: Code2Prompt 基本使用
+description: 本指南涵盖 Code2Prompt CLI 的基本使用方法
+---
+
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from "@astrojs/starlight/components";
+
+<Card title="指南概览">
+  欢迎使用 `Code2Prompt`。
+</Card>
+
+## 使用方法
+
+从代码库生成提示：
+
+```sh
+code2prompt path/to/codebase
+```
+
+生成提示并复制到剪贴板：
+
+```sh
+code2prompt path/to/codebase -c
+```
+
+启动交互式 TUI：
+```sh
+code2prompt path/to/codebase --tui
+```
+
+显示 token‑map：
+
+```sh
+code2prompt path/to/codebase --token-map
+```
+
+使用自定义 Handlebars 模板：
+
+```sh
+code2prompt path/to/codebase -t path/to/template.hbs
+```
+
+使用 glob 模式过滤文件：
+
+```sh
+code2prompt path/to/codebase --include="*.rs,*.toml"
+```
+
+使用 glob 模式排除文件：
+
+```sh
+code2prompt path/to/codebase --exclude="*.txt,*.md"
+```
+
+根据排除模式从源树中排除文件/文件夹：
+
+```sh
+code2prompt path/to/codebase --exclude="*.npy,*.wav" --exclude-from-tree
+```
+
+显示生成提示的 token 数量：
+
+```sh
+code2prompt path/to/codebase --tokens
+```
+
+指定用于 token 计数的 tokenizer：
+
+```sh
+code2prompt path/to/codebase --tokens --encoding=p50k
+```
+
+支持的 tokenizer：`cl100k`、`p50k`、`p50k_edit`、`r50k_bas`。
+
+<Aside type="note">
+更多细节请参阅 [Tokenizer](#tokenizers)。
+</Aside>
+
+将生成的提示保存到输出文件：
+
+```sh
+code2prompt path/to/codebase -O output.txt
+```
+
+以 JSON 格式输出：
+
+```sh
+code2prompt path/to/codebase -F JSON
+```
+
+JSON 输出示例：
+
+```json
+{
+  "prompt": "<生成的提示>",
+  "directory_name": "codebase",
+  "token_count": 1234,
+  "model_info": "ChatGPT 模型, text-embedding-ada-002",
+  "files": []
+}
+```
+
+为已暂存的文件生成 Git 提交信息：
+
+```sh
+code2prompt path/to/codebase --diff -t templates/write-git-commit.hbs
+```
+
+为已暂存的文件生成分支比较的 Pull Request：
+
+```sh
+code2prompt path/to/codebase --git-diff-branch 'main, development' --git-log-branch 'main, development' -t templates/write-github-pull-request.hbs
+```
+
+为源码块添加行号：
+
+```sh
+code2prompt path/to/codebase --line-number
+```
+
+在 Markdown 代码块中禁用代码包装：
+
+```sh
+code2prompt path/to/codebase --no-codeblock
+```
+
+Code2Prompt 是一个出色的工具，可高效生成 token‑优化的提示。它适用于多种场景，例如：
+- 将代码转换为其他语言
+- 查找错误/安全漏洞
+- 为代码编写文档
+- 实现新功能
