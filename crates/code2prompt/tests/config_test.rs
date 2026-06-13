@@ -160,7 +160,8 @@ fn test_clipboard_flag() {
     let test_env = StdoutTestEnv::new();
 
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
-    cmd.arg(test_env.path())
+    cmd.current_dir(test_env.path())
+        .arg(".")
         .arg("-c") // New clipboard flag
         .assert()
         .success()
@@ -242,7 +243,7 @@ fn test_cli_args_message() {
 
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
     cmd.current_dir(test_env.path())
-    .arg(test_env.path())
+        .arg(".")
         .arg("-i")
         .arg("*.py")
         .assert()

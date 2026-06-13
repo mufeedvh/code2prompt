@@ -6,6 +6,7 @@
 use regex::Regex;
 use std::collections::HashSet;
 use ratatui_textarea::{TextArea, CursorMove};
+use anyhow::{Result, anyhow};
 
 /// State for the template editor component
 #[derive(Debug)]
@@ -120,16 +121,14 @@ impl EditorState {
     }
 
     /// Attempt to compile the template to check for syntax errors
-    fn compile_template(&self) -> Result<(), String> {
+    fn compile_template(&self) -> Result<()> {
         let mut handlebars = handlebars::Handlebars::new();
+        handlebars.set_strict_mode(false); 
 
-        // Set strict mode to catch undefined variables
-        handlebars.set_strict_mode(false); // Allow undefined variables for now
-
-        match handlebars.register_template_string("test", &self.content) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("{}", e)),
-        }
+        handlebars.register_template_string("test", &self.content)
+            .map_err(|e| anyhow!("Failed to compile template: {}", e))?;
+            
+        Ok(())
     }
 
     /// Get current template content

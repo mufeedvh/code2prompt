@@ -67,10 +67,7 @@ fn run_cli(args: Cli) -> Result<()> {
     // ~~~ Load Configuration ~~~
     let config_source = load_config(quiet_mode)?;
     let mut session = config::build_session(Some(&config_source), &args, false)?;
-
-    // ~~~ Determine Output Behavior ~~~
     let default_output = get_default_output_destination(&config_source);
-    let (output_to_clipboard, output_to_stdout) = determine_output_targets(&args, &default_output);
 
     // ~~~ Gather Repository Data ~~~
     gather_session_data(&mut session, quiet_mode)?;
@@ -79,44 +76,9 @@ fn run_cli(args: Cli) -> Result<()> {
     let rendered = render_session_template(&mut session)?;
 
     // ~~~ Emit Results ~~~
-    emit_cli_results(
-        rendered,
-        &session,
-        &args,
-        output_to_stdout,
-        output_to_clipboard,
-    )?;
+    emit_cli_results(rendered, &session, &args, &default_output)?;
 
     Ok(())
-}
-
-// ============================================================================
-// Pipeline Helper Functions
-// ============================================================================
-
-/// Determines whether to output to clipboard, stdout, or both based on args and config.
-fn determine_output_targets(args: &Cli, default_output: &OutputDestination) -> (bool, bool) {
-    let output_to_clipboard = if args.clipboard {
-        true
-    } else if args.output_file.is_some() {
-        false
-    } else {
-        matches!(default_output, OutputDestination::Clipboard)
-    };
-
-    let output_to_stdout = if args.clipboard {
-        false
-    } else if let Some(ref output_file) = args.output_file {
-        output_file == "-"
-    } else {
-        match default_output {
-            OutputDestination::Stdout => true,
-            OutputDestination::Clipboard => false,
-            OutputDestination::File => false,
-        }
-    };
-
-    (output_to_clipboard, output_to_stdout)
 }
 
 /// Loads codebase and git data into the session, driving the loading spinner.
@@ -177,17 +139,17 @@ fn render_session_template(session: &mut Code2PromptSession) -> Result<RenderedP
 
     Ok(rendered)
 }
+
 /// Dispatches the final rendered output to stdout, file, clipboard, and prints UI stats.
 fn emit_cli_results(
     rendered: RenderedPrompt,
     session: &Code2PromptSession,
     args: &Cli,
-    output_to_stdout: bool,
-    output_to_clipboard: bool,
+    default_output: &OutputDestination,
 ) -> Result<()> {
     let quiet_mode = args.quiet;
 
-    // ~~~ Token Count ~~~
+    // ~~~ Token Count & Map Display ~~~ 
     let token_count = rendered.token_count;
     let formatted_token_count = format_number(token_count, &session.config.token_format);
     let model_info = rendered.model_info;
@@ -227,16 +189,31 @@ fn emit_cli_results(
         display_token_map(&token_map_entries, rendered.token_count);
     }
 
-    // ~~~ Output to Stdout ~~~
-    if output_to_stdout {
+    // ~~~ Output Routing ~~~
+    let is_stdout_explicit = args.output_file.as_deref() == Some("-");
+    let has_file_target = args.output_file.is_some() && !is_stdout_explicit;
+
+    // ~~~ File Output ~~~
+    if has_file_target {
+        write_prompt_to_file(
+            std::path::Path::new(args.output_file.as_ref().unwrap()),
+            &rendered.prompt,
+            quiet_mode,
+        )?;
+    }
+
+    // ~~~ Stdout Output ~~~
+    let to_stdout = is_stdout_explicit || (!args.clipboard && !has_file_target && matches!(default_output, OutputDestination::Stdout));
+    if to_stdout {
         print!("{}", &rendered.prompt);
         std::io::stdout()
             .flush()
             .context("Failed to flush stdout")?;
     }
 
-    // ~~~ Copy to Clipboard ~~~
-    if output_to_clipboard {
+    // ~~~ Clipboard Output ~~~
+    let to_clipboard = args.clipboard || (!has_file_target && !is_stdout_explicit && matches!(default_output, OutputDestination::Clipboard));
+    if to_clipboard {
         use crate::clipboard::copy_to_clipboard;
         match copy_to_clipboard(&rendered.prompt) {
             Ok(_) => {
@@ -262,17 +239,6 @@ fn emit_cli_results(
                 }
             }
         }
-    }
-
-    // ~~~ Output File ~~~
-    if let Some(ref output_file) = args.output_file
-        && output_file != "-"
-    {
-        write_prompt_to_file(
-            std::path::Path::new(output_file),
-            &rendered.prompt,
-            quiet_mode,
-        )?;
     }
 
     Ok(())

@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use crate::analysis::CodebaseAnalysis;
 use crate::configuration::Code2PromptConfig;
@@ -62,7 +63,7 @@ pub struct Code2PromptSession {
 pub struct SessionData {
     pub absolute_code_path: Option<String>,
     pub source_tree: Option<String>,
-    pub files: Option<Vec<FileEntry>>,
+    pub files: Option<Arc<Vec<FileEntry>>>,
     pub stats: Option<serde_json::Value>,
     pub git_diff: Option<String>,
     pub git_diff_branch: Option<String>,
@@ -255,7 +256,7 @@ impl Code2PromptSession {
         // Store absolute_code_path as Single Source of Truth
         self.data.absolute_code_path = Some(display_name(&self.config.path));
         self.data.source_tree = Some(tree);
-        self.data.files = Some(files);
+        self.data.files = Some(Arc::new(files));
 
         Ok(())
     }
@@ -290,7 +291,7 @@ impl Code2PromptSession {
         TemplateContext {
             absolute_code_path: self.data.absolute_code_path.as_deref().unwrap_or("unknown"),
             source_tree: &self.data.source_tree,
-            files: self.data.files.as_deref(),
+            files: self.data.files.as_deref().map(|v| v.as_slice()),
             git_diff: &self.data.git_diff,
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
