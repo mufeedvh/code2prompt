@@ -102,6 +102,10 @@ export default defineConfig({
                   label: "Learn Configuration", 
                   link: "docs/tutorials/configuration"
                 },
+                {
+                  label: "Learn TUI",
+                  link: "docs/tutorials/tui"
+                }
               ],
             },
             {
@@ -148,7 +152,7 @@ export default defineConfig({
           authors: {
             ODAncona: {
               name: "Olivier D'Ancona",
-              title: "Data Scientist",
+              title: "ML Engineer",
               picture: "assets/images/odancona.png",
               url: "https://www.linkedin.com/in/odancona/",
             },

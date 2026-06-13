@@ -1,0 +1,101 @@
+---
+title: Using the Terminal UI (TUI)
+description: Master Code2Prompt's interactive Terminal User Interface to select files, tweak settings, and generate prompts visually.
+---
+
+import { Card, CardGrid, Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+<Card title="Tutorial Overview">
+`Code2prompt` features a fully interactive Terminal User Interface (TUI). This guide walks you through launching the TUI and mastering its five core tabs.
+</Card>
+
+---
+
+## Launching the TUI
+
+To open the interactive interface, simply append the `--tui` flag to your command alongside your project path:
+
+```bash
+code2prompt path/to/your/codebase --tui
+
+```
+
+---
+
+## 1. Selection Tab (File Tree)
+
+The **Selection** tab is where you curate the exact context you want to send to the LLM. It displays a hierarchical view of your project, respecting your `.gitignore` and `.c2pconfig` rules.
+
+* **Navigation:** Use `↑` / `↓` to move the cursor, and `←` / `→` to expand or collapse directories.
+* **Selection:** Press `Space` to select or deselect a file or an entire directory.
+* **Search Mode:** Press `s` or `/` to enter Search Mode.
+* You can type text or use wildcards (`*`, `?`) to instantly filter the tree.
+* Press `Enter` or `Esc` to exit Search Mode and return to normal navigation.
+
+
+<img
+  src="/assets/images/tui1.png"
+  alt="Code2Prompt TUI Selection Tab"
+  style="width: 100%;"
+/>
+
+---
+
+## 2. Settings Tab
+
+Need to tweak how the output is formatted before generating? The **Settings** tab gives you visual checkboxes and dropdowns for your active session.
+
+<img
+  src="/assets/images/tui2.png"
+  alt="Code2Prompt TUI Settings Tab"
+  style="width: 100%;"
+/>
+
+
+---
+
+## 3. Statistics Tab
+
+Before you spend money sending a massive prompt to an LLM, use the **Statistics** tab to understand your token budget.
+
+Use `←` / `→` to switch between three powerful views:
+
+<img
+  src="/assets/images/tui3.png"
+  alt="Code2Prompt TUI Statistics Tab"
+  style="width: 100%;"
+/>
+
+---
+
+## 4. Template Tab
+
+The **Template** tab is where the magic happens. It features a responsive multi-column layout to help you craft the perfect Handlebars template.
+
+When you are in the Template tab, you can instantly snap your focus between three sub-panels using keyboard shortcuts:
+
+<img
+  src="/assets/images/tui4.png"
+  alt="Code2Prompt TUI Template Tab"
+  style="width: 100%;"
+/>
+
+---
+
+## 5. Output Tab
+
+Once you've selected your files, tweaked your settings, and chosen your template, press `Enter` to generate the final output.
+
+The **Output** tab displays the final prompt exactly as it will be sent to the LLM.
+
+* **Scroll:** Use `↑` / `↓`, `PgUp`, or `PgDn` to review the generated text.
+* **Copy:** Press `c` to instantly copy the entire prompt to your system clipboard.
+* **Save:** Press `s` to save the prompt directly to a local Markdown file (e.g., `prompt_20260613_204753.md`).
+
+If you realize you missed a file, simply press `1` to jump back to the Selection tab, check the file, and press `Enter` to regenerate the output in real-time.
+
+<img
+  src="/assets/images/tui5.png"
+  alt="Code2Prompt TUI Output Tab"
+  style="width: 100%;"
+/>
