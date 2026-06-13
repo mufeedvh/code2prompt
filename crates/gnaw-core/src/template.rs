@@ -177,12 +177,16 @@ pub fn write_to_file(output_path: &str, rendered: &str) -> Result<()> {
 }
 
 /// Enum to represent the output format.
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
     #[default]
+    #[cfg_attr(feature = "clap", value(name = "markdown"))]
     Markdown,
+    #[cfg_attr(feature = "clap", value(name = "json"))]
     Json,
+    #[cfg_attr(feature = "clap", value(name = "xml"))]
     Xml,
 }
 

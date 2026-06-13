@@ -16,7 +16,8 @@ mod widgets;
 use crate::utils::format_number;
 use anyhow::{Context, Result};
 use args::Cli;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::CompleteEnv;
 use colored::*;
 use gnaw_core::path::FileEntry;
 use gnaw_core::template::write_to_file;
@@ -27,6 +28,9 @@ use tui::run_tui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    CompleteEnv::with_factory(Cli::command)
+        .bin("gnaw")
+        .complete(); // first line; see prior note
     env_logger::init();
     info! {"Args: {:?}", std::env::args().collect::<Vec<_>>()};
 

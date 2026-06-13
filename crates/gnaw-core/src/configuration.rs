@@ -103,13 +103,17 @@ impl GnawConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum DiffMode {
+    #[cfg_attr(feature = "clap", value(name = "staged"))]
+    Staged,
     #[default]
-    Staged, // HEAD vs index   (git diff --cached) — current behavior
-    Unstaged, // index vs worktree (git diff)        — your workflow
-    All,      // HEAD vs worktree (everything uncommitted)
+    #[cfg_attr(feature = "clap", value(name = "unstaged"))]
+    Unstaged,
+    #[cfg_attr(feature = "clap", value(name = "all"))]
+    All,
 }
 
 /// Output destination for gnaw
@@ -307,12 +311,16 @@ impl CompressionOptions {
 }
 
 /// Named aggressiveness presets (not a quality ranking).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum CompressionLevel {
-    Light,    // test modules only
-    Moderate, // + function/method bodies
-    Full,     // + doc comments (private-bodies is manual-only; subsumed by fn_bodies here)
+    #[cfg_attr(feature = "clap", value(name = "light"))]
+    Light,
+    #[cfg_attr(feature = "clap", value(name = "moderate"))]
+    Moderate,
+    #[cfg_attr(feature = "clap", value(name = "full"))]
+    Full,
 }
 
 impl CompressionLevel {

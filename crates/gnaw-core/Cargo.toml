@@ -19,12 +19,14 @@ readme = "../../README.md"
 [features]
 default = []
 compression = ["dep:tree-sitter", "dep:tree-sitter-rust"]
+clap = ["dep:clap"]
 
 [dependencies]
 anyhow = { workspace = true }
 bracoxide = { workspace = true }
 colored = { workspace = true }
 content_inspector = { workspace = true }
+clap = { workspace = true, optional = true, features = ["std", "derive"] }
 csv = { workspace = true }
 derive_builder = { workspace = true }
 encoding_rs = { workspace = true }

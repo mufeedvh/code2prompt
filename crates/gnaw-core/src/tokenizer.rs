@@ -5,11 +5,15 @@ use std::fmt;
 use std::sync::OnceLock;
 use tiktoken_rs::{CoreBPE, cl100k_base, o200k_base, p50k_base, p50k_edit, r50k_base};
 
+// gnaw-core/src/tokenizer.rs — TokenFormat
 #[derive(Default, Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "lowercase")]
 pub enum TokenFormat {
     #[default]
+    #[cfg_attr(feature = "clap", value(name = "raw"))]
     Raw,
+    #[cfg_attr(feature = "clap", value(name = "format"))]
     Format,
 }
 
@@ -22,19 +26,27 @@ impl fmt::Display for TokenFormat {
     }
 }
 
-/// Tokenizer types supported by tiktoken.
+// I kept the serde aliases AND added the matching ValueEnum names so the CLI
+// completes the short forms. Note I also pinned o200k — the enum has five
+// variants, and an un-named O200kBase would default to the ugly "o200k-base".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum TokenizerType {
     #[serde(alias = "o200k")]
+    #[cfg_attr(feature = "clap", value(name = "o200k"))]
     O200kBase,
     #[default]
     #[serde(alias = "cl100k")]
+    #[cfg_attr(feature = "clap", value(name = "cl100k"))]
     Cl100kBase,
     #[serde(alias = "p50k")]
+    #[cfg_attr(feature = "clap", value(name = "p50k"))]
     P50kBase,
     #[serde(alias = "p50k_edit")]
+    #[cfg_attr(feature = "clap", value(name = "p50k_edit"))]
     P50kEdit,
     #[serde(alias = "r50k")]
+    #[cfg_attr(feature = "clap", value(name = "r50k"))]
     R50kBase,
 }
 

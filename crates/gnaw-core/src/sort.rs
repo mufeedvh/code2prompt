@@ -5,17 +5,18 @@ use serde::{self, Deserialize, Serialize};
 use std::fmt;
 use termtree::Tree;
 
-// Define the available sort methods.
+// gnaw-core — FileSortMethod's module (snake_case; needs explicit names)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "snake_case")]
 pub enum FileSortMethod {
-    /// Sort files by name (A → Z)
+    #[cfg_attr(feature = "clap", value(name = "name_asc"))]
     NameAsc,
-    /// Sort files by name (Z → A)
+    #[cfg_attr(feature = "clap", value(name = "name_desc"))]
     NameDesc,
-    /// Sort files by modification date (oldest first)
+    #[cfg_attr(feature = "clap", value(name = "date_asc"))]
     DateAsc,
-    /// Sort files by modification date (newest first)
+    #[cfg_attr(feature = "clap", value(name = "date_desc"))]
     DateDesc,
 }
 

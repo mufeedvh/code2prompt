@@ -21,7 +21,8 @@ colored = "3.1.1"
 csv = "1.4.0"
 chrono = { version = "0.4", features = ["serde"] }
 chardetng = { version = "1.0.0" }
-clap = { version = "4.6", features = ["derive"] }
+clap = { version = "4.6.1", features = ["derive"] }
+clap_complete = { version = "4.6.5", features = ["unstable-dynamic"] }
 content_inspector = "0.2.4"
 crossterm = "0.29.0"
 dirs = "6.0.0"

@@ -321,8 +321,15 @@ fn resolve_compression(args: &Cli, cfg: Option<&TomlConfig>) -> Result<Compressi
 /// Apply CSV toggles over a baseline. Each token flips one flag; `no-` disables.
 /// Errors loudly on unknown tokens — a silently-ignored typo would misreport the
 /// token budget.
-fn apply_strip_overrides(mut o: CompressionOptions, csv: &str) -> Result<CompressionOptions> {
-    for raw in csv.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+fn apply_strip_overrides(
+    mut o: CompressionOptions,
+    tokens: &[String],
+) -> Result<CompressionOptions> {
+    for raw in tokens {
+        let raw = raw.trim();
+        if raw.is_empty() {
+            continue;
+        }
         let (on, name) = match raw.strip_prefix("no-") {
             Some(rest) => (false, rest),
             None => (true, raw),

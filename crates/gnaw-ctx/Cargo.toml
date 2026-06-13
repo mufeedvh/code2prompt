@@ -11,8 +11,9 @@ readme = "../../README.md"
 wayland = ["arboard/wayland-data-control"]
 
 [dependencies]
-gnaw-core = { path = "../gnaw-core", version = "0.1.0" }
+gnaw-core = { path = "../gnaw-core", version = "0.1.0", features = ["clap"] }
 clap = { workspace = true }
+clap_complete = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
 anyhow = { workspace = true }

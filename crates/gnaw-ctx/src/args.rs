@@ -5,7 +5,8 @@
 //! comprehensive configuration options for file selection, output formatting,
 //! tokenization, and git integration.
 use anyhow::{Result, anyhow};
-use clap::{Parser, builder::ValueParser};
+use clap::{Parser, ValueHint};
+use clap_complete::engine::{ArgValueCandidates, CompletionCandidate};
 use gnaw_core::{
     configuration::DiffMode, sort::FileSortMethod, template::OutputFormat, tokenizer::TokenFormat,
     tokenizer::TokenizerType,
@@ -16,18 +17,18 @@ use std::path::PathBuf;
 // ~~~ CLI Arguments ~~~
 #[derive(Parser, Debug)]
 #[clap(
-    name = env!("CARGO_PKG_NAME"),
+    name = "gnaw",
     version = env!("CARGO_PKG_VERSION"),
     author = env!("CARGO_PKG_AUTHORS")
 )]
 #[command(arg_required_else_help = true)]
 pub struct Cli {
     /// Path to the codebase directory
-    #[arg(value_name = "PATH_TO_ANALYZE", default_value = ".")]
+    #[arg(value_name = "PATH_TO_ANALYZE", default_value = ".", value_hint = ValueHint::AnyPath)]
     pub path: PathBuf,
 
     /// Optional output file (use "-" for stdout)
-    #[arg(short = 'O', long = "output-file", value_name = "FILE")]
+    #[arg(short = 'O', long = "output-file", value_name = "FILE", value_hint = ValueHint::FilePath)]
     pub output_file: Option<String>,
 
     /// Launch the Terminal User Interface
@@ -43,16 +44,12 @@ pub struct Cli {
     pub exclude: Vec<String>,
 
     /// Output format
-    #[clap(
-        short = 'F',
-        long = "output-format",
-        value_name = "markdown, json, xml",
-        value_parser = ValueParser::new(parse_serde::<OutputFormat>)
-    )]
+    #[clap(short = 'F', long = "output-format", value_enum)]
     pub output_format: Option<OutputFormat>,
 
     /// Optional Path to a custom Handlebars template
-    #[clap(short, long, value_name = "NAME_OR_PATH")]
+    #[clap(short, long, value_name = "NAME_OR_PATH", value_hint = ValueHint::FilePath,
+       add = ArgValueCandidates::new(template_candidates))]
     pub template: Option<String>,
 
     /// List the full directory tree
@@ -60,19 +57,11 @@ pub struct Cli {
     pub full_directory_tree: bool,
 
     /// Token encoding to use for token count
-    #[clap(
-        long,
-        value_name = "cl100k, p50k, p50k_edit, r50k",
-        value_parser = ValueParser::new(parse_serde::<TokenizerType>),
-    )]
+    #[clap(long, value_enum)]
     pub encoding: Option<TokenizerType>,
 
     /// Display the token count of the generated prompt. Accepts a format: "raw" (machine parsable) or "format" (human readable)
-    #[clap(
-        long,
-        value_name = "raw,format",
-        value_parser = ValueParser::new(parse_serde::<TokenFormat>),
-    )]
+    #[clap(long, value_enum)]
     pub token_format: Option<TokenFormat>,
 
     /// Include git diff
@@ -80,9 +69,7 @@ pub struct Cli {
     pub diff: bool,
 
     /// Which changes to diff: staged (default), unstaged, or all uncommitted
-    #[clap(long, value_name = "staged,unstaged,all",
-           value_parser = ValueParser::new(parse_serde::<gnaw_core::configuration::DiffMode>),
-           requires = "diff")]
+    #[clap(long, value_enum, requires = "diff")]
     pub diff_mode: Option<DiffMode>,
 
     /// Generate git diff between two branches
@@ -126,11 +113,7 @@ pub struct Cli {
     pub no_ignore: bool,
 
     /// Sort order for files
-    #[clap(
-        long,
-        value_name = "name_asc, name_desc, date_asc, date_desc",
-        value_parser = ValueParser::new(parse_serde::<FileSortMethod>),
-    )]
+    #[clap(long, value_enum)]
     pub sort: Option<FileSortMethod>,
 
     /// Suppress progress and success messages
@@ -163,18 +146,33 @@ pub struct Cli {
     pub split_size: Option<usize>,
 
     /// Compression preset: light (tests), moderate (+ fn bodies), full (maximal)
-    #[clap(long, value_name = "light,moderate,full",
-           value_parser = ValueParser::new(parse_serde::<gnaw_core::configuration::CompressionLevel>))]
+    #[clap(long, value_enum)]
     pub compress: Option<gnaw_core::configuration::CompressionLevel>,
 
     /// Manual compression toggles (CSV), applied over --compress. Tokens:
     /// tests, fn-bodies, doc-comments, private-bodies; prefix `no-` to disable.
-    #[clap(long, value_name = "CSV")]
-    pub compress_strip: Option<String>,
+    #[clap(long, value_name = "TOKENS", value_delimiter = ',',
+       add = ArgValueCandidates::new(compress_strip_candidates))]
+    pub compress_strip: Option<Vec<String>>,
 }
 
-/// Helper function to parse serde deserializable enum from string inputs.
-fn parse_serde<T: DeserializeOwned>(s: &str) -> Result<T> {
-    serde_json::from_value(serde_json::Value::String(s.to_string()))
-        .map_err(|e| anyhow!("Failed to parse value: {}", e))
+/// Built-in template names for `--template` completion. Must be `'static`.
+fn template_candidates() -> Vec<CompletionCandidate> {
+    gnaw_core::builtin_templates::BuiltinTemplates::get_all() // swap for your real accessor
+        .iter()
+        .map(|(key, tpl)| CompletionCandidate::new(*key).help(Some(tpl.description.into())))
+        .collect()
+}
+
+/// Valid `--compress-strip` tokens plus their `no-` negations.
+fn compress_strip_candidates() -> Vec<CompletionCandidate> {
+    ["tests", "fn-bodies", "doc-comments", "private-bodies"]
+        .iter()
+        .flat_map(|t| {
+            [
+                CompletionCandidate::new(*t),
+                CompletionCandidate::new(format!("no-{t}")),
+            ]
+        })
+        .collect()
 }
