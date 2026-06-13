@@ -102,6 +102,10 @@ export default defineConfig({
                   label: "Learn Configuration", 
                   link: "docs/tutorials/configuration"
                 },
+                {
+                  label: "Learn TUI",
+                  link: "docs/tutorials/tui"
+                }
               ],
             },
             {
@@ -124,10 +128,17 @@ export default defineConfig({
             {
               label: "How-To Guides",
               items: [
-                { label: "Install Code2Prompt", link: "docs/how_to/install" },
-                { label: "Filter Files", link: "docs/how_to/filter_files" },
+                { label: "Install Code2prompt", link: "docs/how_to/install" },
+                { label: "Basic Usage", link: "docs/how_to/cli" },
+                { label: "Configuration File", link: "docs/how_to/config" },
+                { label: "Use with SSH", link: "docs/how_to/ssh" },
               ],
             },
+            {
+              label: "Reference",
+              items: [
+                { label: 'API Rust Docs', link: 'https://docs.rs/code2prompt_core' },
+              ]},
           ],
         },
         { label: "Welcome 👋", link: "docs/welcome" },
@@ -141,7 +152,7 @@ export default defineConfig({
           authors: {
             ODAncona: {
               name: "Olivier D'Ancona",
-              title: "Data Scientist",
+              title: "ML Engineer",
               picture: "assets/images/odancona.png",
               url: "https://www.linkedin.com/in/odancona/",
             },

@@ -5,7 +5,9 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use crate::analysis::CodebaseAnalysis;
 use crate::configuration::Code2PromptConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{FileEntry, display_name, traverse_directory, wrap_code_block};
@@ -13,8 +15,41 @@ use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use crate::tokenizer::{TokenizerType, count_tokens};
 
-/// Represents a live session that holds stateful data about the user's codebase,
-/// including which files have been added or removed, or other data that evolves over time.
+/// Main orchestrator for code prompt generation workflows.
+/// 
+/// Combines configuration, file processing, and template rendering into
+/// a cohesive session. Maintains state during processing and coordinates
+/// between filtering logic, codebase analysis, and output generation.
+/// 
+/// This struct acts as the high-level controller that binds together:
+/// - Static Configuration ([`Code2PromptConfig`])
+/// - Filtering Logic ([`SelectionEngine`])
+/// - Codebase Data ([`SessionData`])
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use code2prompt_core::configuration::Code2PromptConfig;
+/// use code2prompt_core::session::Code2PromptSession;
+/// 
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// // Create a temporary directory for testing
+/// let temp_dir = std::env::temp_dir().join("code2prompt_test");
+/// std::fs::create_dir_all(&temp_dir)?;
+/// std::fs::write(temp_dir.join("test.rs"), "fn main() {}")?;
+/// 
+/// let config = Code2PromptConfig::builder()
+///     .path(&temp_dir)
+///     .build()?;
+/// let mut session = Code2PromptSession::new(config);
+/// let output = session.generate_prompt()?;
+/// println!("Generated {} tokens", output.token_count);
+/// 
+/// // Cleanup
+/// std::fs::remove_dir_all(&temp_dir).ok();
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Code2PromptSession {
     pub config: Code2PromptConfig,
@@ -23,20 +58,20 @@ pub struct Code2PromptSession {
 }
 
 /// Represents the collected data about the code (tree + files) and optional Git info.
-/// The session loads these pieces separately, so you can manage them step by step.
+/// It acts as a "Single Source of Truth" and persists throughout the session.
 #[derive(Debug, Default, Clone)]
 pub struct SessionData {
     pub absolute_code_path: Option<String>,
     pub source_tree: Option<String>,
-    pub files: Option<Vec<FileEntry>>,
+    pub files: Option<Arc<Vec<FileEntry>>>,
     pub stats: Option<serde_json::Value>,
     pub git_diff: Option<String>,
     pub git_diff_branch: Option<String>,
     pub git_log_branch: Option<String>,
 }
 
-/// Zero-copy template context for rendering
-/// Uses references to avoid deep copying of heavy data
+/// Represents a transient, zero-copy data view for template rendering
+/// Created on-the-fly, it borrows references (`&'a`) from `SessionData` to avoid cloning heavy file content.
 #[derive(Serialize)]
 pub struct TemplateContext<'a> {
     pub absolute_code_path: &'a str,
@@ -58,10 +93,12 @@ pub struct TemplateContext<'a> {
 
     #[serde(flatten)]
     pub user_variables: &'a HashMap<String, String>,
+
+    pub no_codeblock: bool,
 }
 
 /// Encapsulates the final rendered prompt and some metadata
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RenderedPrompt {
     pub prompt: String,
     pub directory_name: String,
@@ -71,7 +108,31 @@ pub struct RenderedPrompt {
 }
 
 impl Code2PromptSession {
-    /// Creates a new session with SelectionEngine for pattern-based and user-driven file selection
+    /// Create new session with configuration and selection engine.
+    /// 
+    /// Initializes a session with the provided configuration and creates
+    /// a selection engine for pattern-based and user-driven file filtering.
+    /// The project path is taken from the configuration.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use code2prompt_core::configuration::Code2PromptConfig;
+    /// use code2prompt_core::session::Code2PromptSession;
+    /// 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Use current directory for testing
+    /// let current_dir = std::env::current_dir()?;
+    /// 
+    /// let config = Code2PromptConfig::builder()
+    ///     .path(&current_dir)
+    ///     .include_patterns(vec!["**/*.rs".to_string()])
+    ///     .build()?;
+    /// 
+    /// let session = Code2PromptSession::new(config);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn new(config: Code2PromptConfig) -> Self {
         let selection_engine = SelectionEngine::new(
             config.include_patterns.clone(),
@@ -195,7 +256,7 @@ impl Code2PromptSession {
         // Store absolute_code_path as Single Source of Truth
         self.data.absolute_code_path = Some(display_name(&self.config.path));
         self.data.source_tree = Some(tree);
-        self.data.files = Some(files);
+        self.data.files = Some(Arc::new(files));
 
         Ok(())
     }
@@ -230,12 +291,53 @@ impl Code2PromptSession {
         TemplateContext {
             absolute_code_path: self.data.absolute_code_path.as_deref().unwrap_or("unknown"),
             source_tree: &self.data.source_tree,
-            files: self.data.files.as_deref(),
+            files: self.data.files.as_deref().map(|v| v.as_slice()),
             git_diff: &self.data.git_diff,
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
             user_variables: &self.config.user_variables,
+            no_codeblock: self.config.no_codeblock,
         }
+    }
+
+    /// Create a "raw" (intrinsic) analysis of the loaded codebase
+    ///
+    /// This analysis uses the sum of per-file token counts (Σ FileEntry.token_count)
+    /// without including template structural overhead.
+    ///
+    /// **Use case**: Before prompt generation, for cost estimation, or for
+    /// pure codebase statistics exploration (e.g., in TUI Statistics tab).
+    ///
+    /// # Returns
+    ///
+    /// * `Option<CodebaseAnalysis>` - Analysis facade if files are loaded, None otherwise
+    pub fn raw_analysis(&self) -> Option<CodebaseAnalysis<'_>> {
+        self.data.files.as_ref().map(|files| {
+            let raw_token_sum: usize = files.iter().map(|f| f.token_count).sum();
+            CodebaseAnalysis::new(files.as_slice(), raw_token_sum)
+        })
+    }
+
+    /// Create a "contextual" (post-generation) analysis based on a rendered prompt
+    ///
+    /// This analysis uses the token count from a RenderedPrompt, which includes
+    /// both file content tokens AND template structural overhead (tree, git info, etc.).
+    ///
+    /// **Use case**: After `generate_prompt()`, when you need analysis in the context
+    /// of the actual rendered output (e.g., token map showing real percentages).
+    ///
+    /// # Arguments
+    ///
+    /// * `prompt` - A RenderedPrompt containing the contextual token count
+    ///
+    /// # Returns
+    ///
+    /// * `Option<CodebaseAnalysis>` - Analysis facade if files are loaded, None otherwise
+    pub fn contextual_analysis(&self, prompt: &RenderedPrompt) -> Option<CodebaseAnalysis<'_>> {
+        self.data
+            .files
+            .as_ref()
+            .map(|files| CodebaseAnalysis::new(files.as_slice(), prompt.token_count))
     }
 
     /// Renders the final prompt given a template context. Returns both
@@ -264,7 +366,6 @@ impl Code2PromptSession {
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
         // Always use the cached calculation: Σ(FileTokens) + TemplateOverhead
-        // This avoids re-tokenizing the entire rendered output (sequential bottleneck)
         let token_count = self.calculate_token_count_from_cache(&tokenizer_type);
 
         let model_info = tokenizer_type.description();
@@ -351,12 +452,7 @@ impl Code2PromptSession {
                 .iter()
                 .map(|file| {
                     // Create empty code block with same wrapping structure
-                    let empty_code_block = wrap_code_block(
-                        "",
-                        &file.extension,
-                        self.config.line_numbers,
-                        self.config.no_codeblock,
-                    );
+                    let empty_code_block = wrap_code_block("", self.config.line_numbers);
 
                     FileEntry {
                         path: file.path.clone(),
@@ -379,6 +475,7 @@ impl Code2PromptSession {
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
             user_variables: &self.config.user_variables,
+            no_codeblock: self.config.no_codeblock,
         };
 
         // Render skeleton template
@@ -465,6 +562,53 @@ impl Code2PromptSession {
         }
     }
 
+    /// Process all files and generate final prompt output.
+    /// 
+    /// Orchestrates the complete workflow by loading codebase data, applying
+    /// filters, processing Git information if enabled, and rendering using
+    /// the specified template. This is the main entry point for generating
+    /// prompts from configured projects.
+    /// 
+    /// # Returns
+    /// 
+    /// [`RenderedPrompt`] containing generated content, metadata, and token counts.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns error if:
+    /// - Project path is not accessible
+    /// - File processing fails
+    /// - Template rendering fails
+    /// - Git operations fail (when enabled)
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use code2prompt_core::configuration::Code2PromptConfig;
+    /// use code2prompt_core::session::Code2PromptSession;
+    /// 
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Create a temporary directory for testing
+    /// let temp_dir = std::env::temp_dir().join("code2prompt_generate_test");
+    /// std::fs::create_dir_all(&temp_dir)?;
+    /// std::fs::write(temp_dir.join("test.rs"), "fn main() { println!(\"Hello world!\"); }")?;
+    /// 
+    /// let config = Code2PromptConfig::builder()
+    ///     .path(&temp_dir)
+    ///     .diff_enabled(false) // Disable git diff for test
+    ///     .build()?;
+    /// 
+    /// let mut session = Code2PromptSession::new(config);
+    /// let output = session.generate_prompt()?;
+    /// 
+    /// println!("Generated prompt with {} tokens", output.token_count);
+    /// println!("Processed {} files", output.files.len());
+    /// 
+    /// // Cleanup
+    /// std::fs::remove_dir_all(&temp_dir).ok();
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn generate_prompt(&mut self) -> Result<RenderedPrompt> {
         self.load_codebase()?;
 

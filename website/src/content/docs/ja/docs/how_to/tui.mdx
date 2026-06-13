@@ -1,0 +1,55 @@
+---
+title: Code2Prompt ターミナル UI (TUI) の使用
+description: Code2Prompt のインタラクティブなターミナル UI (TUI) を使用して、ファイル選択、設定調整、プロンプト生成を行う方法を解説します。
+---
+
+import { Card } from "@astrojs/starlight/components";
+
+<Card title="ガイド概要">
+  `Code2Prompt` のインタラクティブなターミナル UI (TUI) を使用する方法をご紹介します。
+</Card>
+
+## TUI の起動
+
+以下のように `--tui` フラグを付けてコマンドを実行すると、TUI が起動します。
+
+```sh
+code2prompt path/to/codebase --tui
+```
+
+## 1. 選択タブ (ファイルツリー)
+
+このタブでは、LLM に送信する正確なコンテキストを選択できます。`.gitignore` と `.c2pconfig` のルールが適用された階層ビューが表示されます。
+
+- **ナビゲーション:** `↑` / `↓` でカーソルを移動、`←` / `→` でディレクトリを展開/縮小  
+- **選択:** `Space` でファイルまたはディレクトリ全体を選択/解除  
+- **検索:** `s` または `/` で検索モードに入り、テキストやワイルドカード (`*`, `?`) を入力して即座にフィルタリング  
+- **終了:** `Enter` または `Esc` で検索モードを抜け、通常のナビゲーションに戻ります
+
+<img src="/assets/images/tui1.png" alt="選択タブ" style="width: 100%;" />
+
+## 2. 設定タブ
+
+出力形式やトークナイザーなど、生成前に調整したい設定を視覚的に変更できます。
+
+<img src="/assets/images/tui2.png" alt="設定タブ" style="width: 100%;" />
+
+## 3. 統計タブ
+
+トークン使用量を確認し、LLM に送信する前にコストを把握できます。
+
+`←` / `→` で 3 つのビューを切り替えます。
+
+<img src="/assets/images/tui3.png" alt="統計タブ" style="width: 100%;" />
+
+## 4. テンプレートタブ
+
+ここで Handlebars テンプレートを作成・編集できます。複数列レイアウトで直感的にテンプレートを構築できます。
+
+<img src="/assets/images/tui4.png" alt="テンプレートタブ" style="width: 100%;" />
+
+## 5. 出力タブ
+
+最終的なプロンプトが表示されます。`c` でクリップボードにコピー、`s` でローカルの Markdown ファイルに保存できます。
+
+<img src="/assets/images/tui5.png" alt="出力タブ" style="width: 100%;" />

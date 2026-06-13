@@ -1,0 +1,78 @@
+---
+title: Crear un archivo `.c2pconfig`
+description: Una guía paso a paso para crear un archivo .c2pconfig para automatizar su flujo de trabajo de generación de prompts.
+---
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from '@astrojs/starlight/components';
+
+<Card title="Descripción general de la guía">
+  En esta guía, aprenderá cómo crear y usar un archivo `.c2pconfig` para automatizar su flujo de trabajo de generación de prompts.
+</Card>
+
+Escribir manualmente patrones de exclusión largos, configuraciones de tokenizador o variables personalizadas cada vez que ejecuta Code2Prompt puede volverse tedioso. Al crear un archivo de configuración `.c2pconfig`, puede "configurar y olvidar" las preferencias de su proyecto. Code2Prompt buscará automáticamente este archivo en su directorio de trabajo actual y aplicará sus reglas sin problemas.
+
+Aquí hay una guía paso a paso para configurar su primer archivo de configuración.
+
+---
+
+## Inicializar su archivo de configuración
+
+Navegue al directorio raíz de su proyecto usando su terminal y cree un archivo llamado `.c2pconfig`.
+
+```bash
+cd ruta/a/su/proyecto
+touch .c2pconfig
+
+```
+
+---
+
+## Paso 2: Definir su comportamiento base (formato TOML)
+
+Abra el archivo `.c2pconfig` en su editor de texto preferido. El archivo usa sintaxis **TOML**. Pegue la siguiente configuración base en el archivo:
+
+```toml
+# Configuración de comportamiento predeterminado
+default_output = "clipboard"    # Opciones: stdout, clipboard, file
+output_format = "xml"           # Opciones: markdown, json, xml
+line_numbers = false            # Agrega números de línea a sus bloques de código
+encoding = "o200k"              # Coincide con el tokenizador de su LLM objetivo
+
+# Reglas de filtrado globales
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = [
+    "**/node_modules/**", 
+    "**/target/**", 
+    "tests/fixtures/**",
+    "package-lock.json"
+]
+
+```
+<Aside type="tip">
+**Mantenga el contexto limpio:** Excluir directorios pesados como `node_modules` o artefactos de compilación (como `target/`) garantiza que su LLM reciba un contexto filtrado y de alta calidad sin alcanzar innecesariamente los límites de tokens.
+</Aside>
+
+---
+
+## Paso 3: Ejecutar sin argumentos
+
+Una vez que su archivo `.c2pconfig` esté guardado en la raíz de su código base, ya no necesita pasar banderas complejas. Simplemente ejecute la herramienta:
+
+```bash
+code2prompt .
+
+```
+
+Code2Prompt leerá automáticamente su `.c2pconfig`, filtrará sus archivos usando sus patrones glob, agregará números de línea y formateará la salida según sus elecciones.
+
+
+---
+
+## Próximos pasos
+
+Para profundizar en la configuración de flujos de trabajo avanzados, variables y claves de configuración predeterminadas:
+<LinkCard
+  title="Tutorial de configuración"
+  href="/docs/tutorials/configuration"
+/>

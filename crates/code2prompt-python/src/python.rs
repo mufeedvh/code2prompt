@@ -8,7 +8,7 @@ use code2prompt_core::sort::FileSortMethod;
 use code2prompt_core::template::OutputFormat;
 use code2prompt_core::tokenizer::{TokenFormat, TokenizerType};
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PyCode2PromptSession {
     inner: Code2PromptSession,

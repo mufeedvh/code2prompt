@@ -9,6 +9,7 @@ pub mod editor;
 pub mod picker;
 pub mod variable;
 
+use anyhow::{Context, Result, anyhow, bail};
 pub use editor::EditorState;
 pub use picker::{ActiveList, PickerState};
 pub use variable::{VariableCategory, VariableInfo, VariableState};
@@ -115,7 +116,7 @@ impl TemplateState {
     }
 
     /// Load the currently selected template from the picker
-    pub fn load_selected_template(&mut self) -> Result<String, String> {
+    pub fn load_selected_template(&mut self) -> Result<String> {
         let selected_template = self.get_selected_template()?;
 
         // Load template content based on type
@@ -136,12 +137,12 @@ impl TemplateState {
                     builtin_template.name.to_string(),
                 )
             } else {
-                return Err(format!("Built-in template '{}' not found", template_key));
+                bail!("Built-in template '{}' not found", template_key);
             }
         } else {
             // Load template from file
             let content = std::fs::read_to_string(&selected_template.path)
-                .map_err(|e| format!("Failed to read template file: {}", e))?;
+                .context("Failed to read template file")?;
             (content, selected_template.name.clone())
         };
 
@@ -150,7 +151,7 @@ impl TemplateState {
         self.editor.current_template_name = template_name.clone();
 
         // Create new TextArea with the content
-        self.editor.editor = tui_textarea::TextArea::from(content.lines());
+        self.editor.editor = ratatui_textarea::TextArea::from(content.lines());
 
         // Sync and validate
         self.editor.sync_content_from_textarea();
@@ -160,18 +161,18 @@ impl TemplateState {
     }
 
     /// Get the currently selected template from the picker
-    fn get_selected_template(&self) -> Result<&picker::TemplateFile, String> {
+    fn get_selected_template(&self) -> Result<&picker::TemplateFile> {
         match self.picker.active_list {
             ActiveList::Default => self
                 .picker
                 .default_templates
                 .get(self.picker.default_cursor)
-                .ok_or_else(|| "No default template selected".to_string()),
+                .ok_or_else(|| anyhow!("No default template selected")),
             ActiveList::Custom => self
                 .picker
                 .custom_templates
                 .get(self.picker.custom_cursor)
-                .ok_or_else(|| "No custom template selected".to_string()),
+                .ok_or_else(|| anyhow!("No custom template selected")),
         }
     }
 }

@@ -1,0 +1,75 @@
+---
+title: Erstellen einer `.c2pconfig`‑Datei
+description: Eine Schritt‑für‑Schritt‑Anleitung zum Erstellen einer `.c2pconfig`‑Datei, um Ihren Prompt‑Generierungs‑Workflow zu automatisieren.
+---
+import { Card } from "@astrojs/starlight/components";
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from '@astrojs/starlight/components';
+
+<Card title="Übersicht der Anleitung">
+  In dieser Anleitung lernen Sie, wie Sie eine `.c2pconfig`‑Datei erstellen und verwenden, um Ihren Prompt‑Generierungs‑Workflow zu automatisieren.
+</Card>
+
+Manuelles Schreiben langer Ausschluss‑Muster, Tokenizer‑Einstellungen oder benutzerdefinierter Variablen bei jedem Aufruf von Code2Prompt kann mühsam werden. Durch das Erstellen einer `.c2pconfig`‑Konfigurationsdatei können Sie „einmal konfigurieren und vergessen“ die Präferenzen Ihres Projekts. Code2Prompt sucht automatisch nach dieser Datei im aktuellen Arbeitsverzeichnis und wendet Ihre Regeln nahtlos an.
+
+Hier finden Sie eine Schritt‑für‑Schritt‑Anleitung zur Einrichtung Ihrer ersten Konfigurationsdatei.
+
+---
+
+## Initialisieren Ihrer Konfigurationsdatei
+
+Navigieren Sie im Terminal zum Stammverzeichnis Ihres Projekts und erstellen Sie eine Datei namens `.c2pconfig`.
+
+```bash
+cd pfad/zu/ihrem/projekt
+touch .c2pconfig
+```
+
+---
+
+## Schritt 2: Definieren Sie Ihr Basis‑Verhalten (TOML‑Format)
+
+Öffnen Sie die Datei `.c2pconfig` in Ihrem bevorzugten Texteditor. Die Datei verwendet die **TOML**‑Syntax. Fügen Sie die folgende Grundkonfiguration in die Datei ein:
+
+```toml
+# Standard‑Verhalten
+default_output = "clipboard"    # Optionen: stdout, clipboard, file
+output_format = "xml"           # Optionen: markdown, json, xml
+line_numbers = false            # Fügt Zeilennummern zu Ihren Code‑Blöcken hinzu
+encoding = "o200k"              # Passt den Tokenizer an Ihr Ziel‑LLM an
+
+# Globale Filterregeln
+include_patterns = ["src/**/*.rs", "Cargo.toml"]
+exclude_patterns = [
+    "**/node_modules/**",
+    "**/target/**",
+    "tests/fixtures/**",
+    "package-lock.json"
+]
+```
+
+<Aside type="tip">
+**Sauberer Kontext:** Das Ausschließen schwerer Verzeichnisse wie `node_modules` oder Build‑Artefakte (wie `target/`) stellt sicher, dass Ihr LLM einen gefilterten, hochwertigen Kontext erhält, ohne unnötig Token‑Limits zu erreichen.
+</Aside>
+
+---
+
+## Schritt 3: Ohne Argumente ausführen
+
+Sobald Ihre `.c2pconfig`‑Datei im Stammverzeichnis Ihrer Code‑Basis gespeichert ist, müssen Sie keine komplexen Flags mehr übergeben. Führen Sie einfach das Tool aus:
+
+```bash
+code2prompt .
+```
+
+Code2Prompt liest automatisch Ihre `.c2pconfig`, filtert Ihre Dateien anhand Ihrer Glob‑Muster, fügt Zeilennummern hinzu und formatiert die Ausgabe gemäß Ihren Einstellungen.
+
+---
+
+## Nächste Schritte
+
+Um fortgeschrittene Workflows, Variablen und Standard‑Konfigurations‑Schlüssel zu erkunden:
+<LinkCard
+  title="Konfigurations‑Tutorial"
+  href="/docs/tutorials/configuration"
+/>

@@ -6,7 +6,7 @@
 
 use super::FileProcessor;
 use anyhow::Result;
-use chardetng::EncodingDetector;
+use chardetng::{EncodingDetector, Iso2022JpDetection, Utf8Detection};
 use std::path::Path;
 
 /// Default processor that converts bytes to UTF-8 string.
@@ -18,11 +18,11 @@ pub struct DefaultTextProcessor;
 
 impl FileProcessor for DefaultTextProcessor {
     fn process(&self, content: &[u8], _path: &Path) -> Result<String> {
-        let mut detector = EncodingDetector::new();
+        let mut detector = EncodingDetector::new(Iso2022JpDetection::Deny);
         detector.feed(content, true);
 
         // Guess the encoding; if none is found, default to UTF-8
-        let encoding = detector.guess(None, true);
+        let encoding = detector.guess(None, Utf8Detection::Allow);
 
         let (cow, _encoding_used, _had_errors) = encoding.decode(content);
 

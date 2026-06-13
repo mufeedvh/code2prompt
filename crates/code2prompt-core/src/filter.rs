@@ -109,7 +109,10 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
     }
 }
 
-/// Determines whether a file should be included based on the provided glob patterns.
+/// Apply file filters based on glob patterns.
+/// 
+/// Processes include/exclude patterns to determine if a file should be included.
+/// This is the core filtering logic that handles pattern matching precedence.
 ///
 /// Note: The `path` argument must be a relative path (i.e. relative to the base directory)
 /// for the patterns to match as expected. Absolute paths will not yield correct matching.
@@ -128,6 +131,7 @@ pub fn build_globset(patterns: &[String]) -> GlobSet {
 /// # Behavior
 ///
 /// When both include and exclude patterns match, exclude patterns take precedence.
+/// Returns filtered decision for path processing pipeline.
 pub fn should_include_file(
     path: &Path,
     include_globset: &GlobSet,

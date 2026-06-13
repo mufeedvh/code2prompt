@@ -38,7 +38,7 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
             "Generating prompt...".to_string()
         } else if let Some(error) = &self.model.prompt_output.analysis_error {
             format!("Generation failed: {}", error)
-        } else if self.model.prompt_output.generated_prompt.is_some() {
+        } else if self.model.prompt_output.result.is_some() {
             "✓ Prompt ready! Copy (C) or Save (S)".to_string()
         } else {
             "Press Enter to generate prompt from selected files".to_string()
@@ -62,34 +62,33 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
         // Prompt content
         let content = if self.model.prompt_output.analysis_in_progress {
             "Generating prompt...".to_string()
-        } else if let Some(prompt) = &self.model.prompt_output.generated_prompt {
-            prompt.clone()
+        } else if let Some(result) = &self.model.prompt_output.result {
+            result.prompt.clone()
         } else {
             "Press <Enter> to run analysis and generate prompt.\n\nSelected files will be processed according to your settings.".to_string()
         };
 
         // Compute viewport-aware scroll
         let content_height = layout[1].height.saturating_sub(2).max(1) as usize; // borders
-        let (display_scroll, scroll_info) =
-            if let Some(prompt) = &self.model.prompt_output.generated_prompt {
-                let total_lines = prompt.lines().count();
-                let max_scroll = total_lines.saturating_sub(content_height);
-                let ds = self
-                    .model
-                    .prompt_output
-                    .output_scroll
-                    .min(max_scroll as u16);
-                let current_line = ds as usize + 1;
-                (
-                    ds,
-                    format!("Generated Prompt (Line {}/{})", current_line, total_lines),
-                )
-            } else {
-                (
-                    self.model.prompt_output.output_scroll,
-                    "Generated Prompt".to_string(),
-                )
-            };
+        let (display_scroll, scroll_info) = if let Some(result) = &self.model.prompt_output.result {
+            let total_lines = result.prompt.lines().count();
+            let max_scroll = total_lines.saturating_sub(content_height);
+            let ds = self
+                .model
+                .prompt_output
+                .output_scroll
+                .min(max_scroll as u16);
+            let current_line = ds as usize + 1;
+            (
+                ds,
+                format!("Generated Prompt (Line {}/{})", current_line, total_lines),
+            )
+        } else {
+            (
+                self.model.prompt_output.output_scroll,
+                "Generated Prompt".to_string(),
+            )
+        };
 
         let prompt_widget = Paragraph::new(content)
             .block(Block::default().borders(Borders::ALL).title(scroll_info))
@@ -98,7 +97,7 @@ impl<'a> StatefulWidget for OutputWidget<'a> {
         Widget::render(prompt_widget, layout[1], buf);
 
         // Controls
-        let controls_text = if self.model.prompt_output.generated_prompt.is_some() {
+        let controls_text = if self.model.prompt_output.result.is_some() {
             "↑↓/PgUp/PgDn: Scroll | C: Copy | S: Save | Enter: Re-run"
         } else {
             "Enter: Run Analysis"

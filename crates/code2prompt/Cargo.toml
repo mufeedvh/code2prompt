@@ -1,17 +1,21 @@
 [package]
 name = "code2prompt"
-version = "4.2.0"
+version = "4.3.0"
 edition = "2024"
 description = "Command-line interface for code2prompt"
 license = "MIT"
 repository = "https://github.com/mufeedvh/code2prompt"
 readme = "../../README.md"
+authors = [
+    "Olivier D'Ancona <olivier_dancona@hotmail.com>",
+    "Mufeed VH <mufeed@lyminal.space>",
+]
 
 [features]
 wayland = ["arboard/wayland-data-control"]
 
 [dependencies]
-code2prompt_core = { path = "../code2prompt-core", version = "4.2.0" }
+code2prompt_core = { path = "../code2prompt-core", version = "4.3.0" }
 clap = { workspace = true }
 env_logger = { workspace = true }
 arboard = { workspace = true }
@@ -30,7 +34,7 @@ ratatui = { workspace = true }
 crossterm = { workspace = true }
 tokio = { workspace = true }
 tui-tree-widget = { workspace = true }
-tui-textarea = { workspace = true }
+ratatui-textarea= { workspace = true }
 walkdir = { workspace = true }
 unicode-width = { workspace = true }
 bracoxide = { workspace = true }

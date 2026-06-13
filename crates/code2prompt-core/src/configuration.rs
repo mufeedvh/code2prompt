@@ -10,9 +10,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// A stateless configuration object describing all the preferences and filters
-/// applied when generating a code prompt. It does not store any mutable data,
-/// so it can be cloned freely or shared across multiple sessions.
+/// Configuration object defining preferences and filters for code prompt generation.
+/// 
+/// This stateless object can be cloned freely and shared across multiple sessions.
+/// Use `Code2PromptConfigBuilder` for construction with validation.
+/// 
+/// # Example
+/// ```
+/// use code2prompt_core::configuration::Code2PromptConfig;
+/// 
+/// let config = Code2PromptConfig::builder()
+///     .hidden(true)
+///     .build()
+///     .unwrap();
+/// ```
+///
+/// 
+/// # Errors
+/// `build()` returns `ConfigError` if validation fails.
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(setter(into), default)]
 pub struct Code2PromptConfig {
@@ -40,7 +55,9 @@ pub struct Code2PromptConfig {
     /// If true, symbolic links will be followed during traversal.
     pub follow_symlinks: bool,
 
-    /// If true, hidden files and directories will be included.
+    /// Include hidden files and directories in processing.
+    /// 
+    /// Default: `false`
     pub hidden: bool,
 
     /// If true, .gitignore rules will be ignored.
@@ -52,7 +69,12 @@ pub struct Code2PromptConfig {
     /// Determines the output format of the final prompt.
     pub output_format: OutputFormat,
 
-    /// An optional custom Handlebars template string.
+    /// Set custom template content for prompt generation.
+    /// 
+    /// Overrides default template. Template must be valid Handlebars format.
+    /// 
+    /// # Errors
+    /// Returns error during `build()` if template syntax is invalid.
     pub custom_template: Option<String>,
 
     /// The tokenizer encoding to use for counting tokens.
