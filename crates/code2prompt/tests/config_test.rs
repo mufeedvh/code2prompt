@@ -241,7 +241,8 @@ fn test_cli_args_message() {
     let test_env = StdoutTestEnv::new();
 
     let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("code2prompt");
-    cmd.arg(test_env.path())
+    cmd.current_dir(test_env.path())
+    .arg(test_env.path())
         .arg("-i")
         .arg("*.py")
         .assert()

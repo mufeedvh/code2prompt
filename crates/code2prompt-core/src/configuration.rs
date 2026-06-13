@@ -21,7 +21,8 @@ use std::path::PathBuf;
 /// 
 /// let config = Code2PromptConfig::builder()
 ///     .hidden(true)
-///     .build()?;
+///     .build()
+///     .unwrap();
 /// ```
 ///
 /// 
