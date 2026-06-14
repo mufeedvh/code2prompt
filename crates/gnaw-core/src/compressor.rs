@@ -5,6 +5,7 @@
 //! compressed output. Pure text transform; no cross-file state.
 
 use crate::configuration::CompressionOptions;
+use std::cmp::Reverse;
 use tree_sitter::{Language, Node, Parser, Query, QueryCursor, StreamingIterator};
 
 const BODY_PLACEHOLDER: &str = "{ /* ... */ }";
@@ -91,14 +92,14 @@ fn private_fn_body_edits(lang: &Language, root: Node, source: &str) -> Vec<Edit>
             .iter()
             .find(|c| c.index == body_cap)
             .map(|c| c.node);
-        if let (Some(fn_node), Some(body)) = (fn_node, body) {
-            if !is_public_fn(fn_node) {
-                edits.push(Edit {
-                    start: body.start_byte(),
-                    end: body.end_byte(),
-                    replacement: BODY_PLACEHOLDER,
-                });
-            }
+        if let (Some(fn_node), Some(body)) = (fn_node, body)
+            && !is_public_fn(fn_node)
+        {
+            edits.push(Edit {
+                start: body.start_byte(),
+                end: body.end_byte(),
+                replacement: BODY_PLACEHOLDER,
+            });
         }
     }
     edits
@@ -263,7 +264,7 @@ fn splice(source: &str, mut edits: Vec<Edit>) -> String {
         }
     }
     // Right-to-left application.
-    keep.sort_by(|a, b| b.start.cmp(&a.start));
+    keep.sort_by_key(|e| Reverse(e.start));
     let mut out = source.to_string();
     for e in keep {
         out.replace_range(e.start..e.end, e.replacement);
