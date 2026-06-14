@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn detects_and_redacts_github_pat() {
         let s = RegexRuleScanner::with_defaults();
-        let text = "token = ghp_0123456789abcdefABCDEF0123456789abcdef";
+        let text = "token = ghp_abcdefghijklmnopqrstuvwxyz0123456789";
         let (out, findings) = s.scrub(text, SecretPolicy::Redact);
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, "github-pat");
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn warn_leaves_content_intact() {
         let s = RegexRuleScanner::with_defaults();
-        let text = "ghp_0123456789abcdefABCDEF0123456789abcdef";
+        let text = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
         let (out, findings) = s.scrub(text, SecretPolicy::Warn);
         assert_eq!(out, text);
         assert_eq!(findings.len(), 1);
