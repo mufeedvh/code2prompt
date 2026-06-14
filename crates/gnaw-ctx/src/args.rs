@@ -4,14 +4,13 @@
 //! and options for the gnaw tool. It supports both TUI and CLI modes with
 //! comprehensive configuration options for file selection, output formatting,
 //! tokenization, and git integration.
-use anyhow::{Result, anyhow};
 use clap::{Parser, ValueHint};
 use clap_complete::engine::{ArgValueCandidates, CompletionCandidate};
+use gnaw_core::secret_scan::SecretPolicy;
 use gnaw_core::{
     configuration::DiffMode, sort::FileSortMethod, template::OutputFormat, tokenizer::TokenFormat,
     tokenizer::TokenizerType,
 };
-use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 
 // ~~~ CLI Arguments ~~~
@@ -154,6 +153,14 @@ pub struct Cli {
     #[clap(long, value_name = "TOKENS", value_delimiter = ',',
        add = ArgValueCandidates::new(compress_strip_candidates))]
     pub compress_strip: Option<Vec<String>>,
+
+    #[clap(long, value_enum, default_value = "warn")]
+    pub secret_scan: Option<SecretPolicy>,
+
+    /// Paths (substrings) to skip during secret scanning, e.g. tests/ fixtures/.
+    /// Overrides the config file's secret_scan_allow_paths.
+    #[clap(long = "secret-scan-allow", value_name = "FRAGMENT")]
+    pub secret_scan_allow: Vec<String>,
 }
 
 /// Built-in template names for `--template` completion. Must be `'static`.

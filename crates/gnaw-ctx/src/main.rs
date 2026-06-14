@@ -124,6 +124,25 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         s.set_message("Proceeding…")
     }
 
+    if session.config.secret_scan == gnaw_core::secret_scan::SecretPolicy::Block
+        && !session.data.secret_findings.is_empty()
+    {
+        if let Some(s) = spinner.as_ref() {
+            s.finish_with_message("Blocked!".red().to_string());
+        }
+        let detail: Vec<String> = session
+            .data
+            .secret_findings
+            .iter()
+            .map(|(p, f)| format!("{p}:{} [{}]", f.line, f.rule_id))
+            .collect();
+        anyhow::bail!(
+            "secret scan: {} finding(s) with --secret-scan=block; aborting\n  {}",
+            session.data.secret_findings.len(),
+            detail.join("\n  ")
+        );
+    }
+
     // ~~~ Git Related ~~~
     // Git Diff
     if session.config.diff_enabled {
@@ -213,6 +232,26 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
             formatted_token_count,
             model_info
         );
+    }
+
+    if !rendered.secret_findings.is_empty() {
+        eprintln!(
+            "{}{}{} {}",
+            "[".bold().white(),
+            "!".bold().yellow(),
+            "]".bold().white(),
+            format!(
+                "secret scan: {} potential secret(s)",
+                rendered.secret_findings.len()
+            )
+            .yellow()
+        );
+        for (path, f) in &rendered.secret_findings {
+            eprintln!(
+                "    {}:{}  [{}]  {}  (entropy {:.1})",
+                path, f.line, f.rule_id, f.preview, f.entropy
+            );
+        }
     }
 
     // ~~~ Token Map Display ~~~

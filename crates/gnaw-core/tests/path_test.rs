@@ -6,7 +6,7 @@
 use git2::Repository;
 use gnaw_core::{
     configuration::GnawConfig,
-    path::{EntryMetadata, FileEntry, traverse_directory},
+    path::{EntryMetadata, FileEntry, Traversal, traverse_directory},
 };
 use rstest::*;
 use std::{
@@ -97,7 +97,11 @@ mod tests {
     #[rstest]
     fn test_basic_traversal(simple_dir_structure: TempDir) {
         let config = base_config(simple_dir_structure.path());
-        let (tree_str, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: tree_str,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Check tree contains all files
         assert!(tree_str.contains("file1.txt"));
@@ -121,7 +125,11 @@ mod tests {
             .build()
             .unwrap();
 
-        let (_, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: _,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Verify target/ files are excluded
         assert!(!file_exists(&files, "target/debug/app"));
@@ -139,7 +147,11 @@ mod tests {
             .build()
             .unwrap();
 
-        let (_, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: _,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         assert!(file_exists(&files, "src/main.rs"));
         assert!(file_exists(&files, "README.md"));
@@ -153,7 +165,11 @@ mod tests {
         fs::write(simple_dir_structure.path().join(".hidden"), "secret").unwrap();
 
         let config = base_config(simple_dir_structure.path());
-        let (tree_str, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: tree_str,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Hidden file should not appear
         assert!(!tree_str.contains(".hidden"));
@@ -171,7 +187,11 @@ mod tests {
             .build()
             .unwrap();
 
-        let (tree_str, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: tree_str,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Hidden file should appear
         assert!(tree_str.contains(".hidden"));
@@ -187,7 +207,11 @@ mod tests {
             .build()
             .unwrap();
 
-        let (_, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: _,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Find file1.txt and check its content
         if let Some(file) = files.iter().find(|f| f.path.contains("file1.txt")) {
@@ -204,7 +228,11 @@ mod tests {
     #[rstest]
     fn test_file_metadata(simple_dir_structure: TempDir) {
         let config = base_config(simple_dir_structure.path());
-        let (_, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: _,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Check metadata for file1.txt
         if let Some(metadata) = get_metadata(&files, "file1.txt") {
@@ -220,7 +248,11 @@ mod tests {
     #[rstest]
     fn test_relative_paths_by_default(simple_dir_structure: TempDir) {
         let config = base_config(simple_dir_structure.path());
-        let (_, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: _,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Paths should be relative by default
         assert!(files.iter().all(|file| !file.path.starts_with('/')));
@@ -234,7 +266,11 @@ mod tests {
             .build()
             .unwrap();
 
-        let (_, files) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: _,
+            files,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Paths should be absolute when enabled
         let abs_path = simple_dir_structure.path().canonicalize().unwrap();
@@ -302,7 +338,11 @@ mod tests {
             .build()
             .unwrap();
 
-        let (tree_str, _) = traverse_directory(&config, None).unwrap();
+        let Traversal {
+            tree: tree_str,
+            files: _,
+            findings: _,
+        } = traverse_directory(&config, None).unwrap();
 
         // Symlink should be followed when enabled
         #[cfg(unix)]

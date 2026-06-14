@@ -1,7 +1,7 @@
 //! This module defines the `GnawConfig` struct and its Builder for configuring the behavior
 //! of gnaw in a stateless manner. It includes all parameters needed for file traversal,
 //! code filtering, token counting, and more.
-
+use crate::secret_scan::SecretPolicy;
 use crate::template::OutputFormat;
 use crate::tokenizer::TokenizerType;
 use crate::{sort::FileSortMethod, tokenizer::TokenFormat};
@@ -95,6 +95,11 @@ pub struct GnawConfig {
 
     /// Which working-tree changes `load_git_diff` should show.
     pub diff_mode: DiffMode,
+
+    pub secret_scan: SecretPolicy,
+
+    #[builder(default)]
+    pub secret_scan_allow_paths: Vec<String>,
 }
 
 impl GnawConfig {
@@ -127,7 +132,7 @@ pub enum OutputDestination {
 }
 
 /// TOML configuration structure that can be serialized/deserialized
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Builder)]
 #[serde(default)]
 pub struct TomlConfig {
     /// Default output behavior: "stdout", "clipboard", or "file"
@@ -177,6 +182,11 @@ pub struct TomlConfig {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compression: Option<CompressionOptions>,
+
+    pub secret_scan: Option<SecretPolicy>,
+
+    #[builder(default)]
+    pub secret_scan_allow_paths: Vec<String>,
 }
 
 impl TomlConfig {
@@ -286,6 +296,12 @@ pub fn export_config_to_toml(config: &GnawConfig) -> Result<String, toml::ser::E
         } else {
             None
         },
+        secret_scan: if config.secret_scan == SecretPolicy::default() {
+            None
+        } else {
+            Some(config.secret_scan)
+        },
+        secret_scan_allow_paths: config.secret_scan_allow_paths.clone(),
     };
 
     toml_config.to_string()

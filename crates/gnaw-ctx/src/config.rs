@@ -164,6 +164,21 @@ pub fn build_session(
     let cfg_token_map_enabled = cfg.map(|c| c.token_map_enabled).unwrap_or(false);
     let cfg_deselected = cfg.map(|c| c.deselected).unwrap_or(false);
 
+    let policy = args
+        .secret_scan
+        .or_else(|| cfg.and_then(|c| c.secret_scan))
+        .unwrap_or_default(); // Warn
+    configuration.secret_scan(policy);
+
+    // CLI list wins if non-empty; else config list; else empty (→ path.rs defaults)
+    let allow_paths = if !args.secret_scan_allow.is_empty() {
+        args.secret_scan_allow.clone()
+    } else {
+        cfg.map(|c| c.secret_scan_allow_paths.clone())
+            .unwrap_or_default()
+    };
+    configuration.secret_scan_allow_paths(allow_paths);
+
     configuration.compression(resolve_compression(args, cfg)?);
 
     configuration

@@ -7,6 +7,7 @@ pub mod file_processor;
 pub mod filter;
 pub mod git;
 pub mod path;
+pub mod secret_scan;
 pub mod selection;
 pub mod session;
 pub mod sort;

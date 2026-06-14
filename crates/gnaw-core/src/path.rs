@@ -2,6 +2,7 @@
 use crate::configuration::GnawConfig;
 use crate::file_processor;
 use crate::filter::{build_globset, should_include_file};
+use crate::secret_scan::{Finding, SCANNER, SecretPolicy, SecretScanner};
 use crate::sort::{FileSortMethod, sort_files, sort_tree};
 use crate::tokenizer::count_tokens;
 use crate::util::strip_utf8_bom;
@@ -30,7 +31,12 @@ impl From<&std::fs::Metadata> for EntryMetadata {
         }
     }
 }
-
+pub type SecretFinding = (String, Finding);
+pub struct Traversal {
+    pub tree: String,
+    pub files: Vec<FileEntry>,
+    pub findings: Vec<SecretFinding>,
+}
 /// Represents a file entry with all its metadata and content
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileEntry {
@@ -71,15 +77,20 @@ struct FileToProcess {
 pub fn traverse_directory(
     config: &GnawConfig,
     selection_engine: Option<&mut crate::selection::SelectionEngine>,
-) -> Result<(String, Vec<FileEntry>)> {
+) -> Result<Traversal> {
     // Phase 1: Discovery - Build tree and collect files to process
     let (tree, files_to_process) = discover_files(config, selection_engine)?;
 
     // Phase 2: Processing - Process files in parallel
-    let mut files = process_files_parallel(files_to_process, config)?;
+    let (mut files, findings) = process_files_parallel(files_to_process, config)?;
 
     // Phase 3: Assembly - Sort and return results
-    assemble_results(tree, &mut files, config)
+    let (tree_str, files) = assemble_results(tree, &mut files, config)?;
+    Ok(Traversal {
+        tree: tree_str,
+        files,
+        findings,
+    })
 }
 
 /// Phase 1: Discovery - Walk directories, build tree, and collect files that need processing
@@ -168,15 +179,28 @@ fn discover_files(
 fn process_files_parallel(
     files_to_process: Vec<FileToProcess>,
     config: &GnawConfig,
-) -> Result<Vec<FileEntry>> {
+) -> Result<(Vec<FileEntry>, Vec<SecretFinding>)> {
     // Process files in parallel with rayon
-    let files: Vec<Option<FileEntry>> = files_to_process
+    let results: Vec<(Option<FileEntry>, Vec<SecretFinding>)> = files_to_process
         .par_iter()
-        .map(|file_info| process_single_file(file_info, config))
-        .collect();
+        .map(|fi| process_single_file(fi, config))
+        .collect(); // order-preserving, lock-free
 
-    // Filter out None values (files that failed to process or were empty)
-    Ok(files.into_iter().flatten().collect())
+    let mut files = Vec::new();
+    let mut findings = Vec::new();
+    for (entry, fnds) in results {
+        if let Some(e) = entry {
+            files.push(e);
+        }
+        findings.extend(fnds);
+    }
+    // deterministic for snapshots
+    findings.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then(a.1.line.cmp(&b.1.line))
+            .then(a.1.rule_id.cmp(b.1.rule_id))
+    });
+    Ok((files, findings))
 }
 
 /// Read file with single-pass binary detection
@@ -209,21 +233,44 @@ fn read_file_with_binary_check(path: &Path, file_size: u64) -> std::io::Result<O
     Ok(Some(buffer))
 }
 
+/// True when `path` matches any of the configured secret-scan allowlist
+/// fragments — a simple substring match, so "tests/" skips anything with that
+/// segment. Empty list falls back to a sensible built-in set.
+fn path_is_allowlisted(path: &str, allow_paths: &[String]) -> bool {
+    const DEFAULTS: &[&str] = &[
+        "/tests/",
+        "/test/",
+        "/fixtures/",
+        "/testdata/",
+        "/__tests__/",
+        "_test.",
+    ];
+    if allow_paths.is_empty() {
+        DEFAULTS.iter().any(|frag| path.contains(frag))
+    } else {
+        allow_paths.iter().any(|frag| path.contains(frag.as_str()))
+    }
+}
+
 /// Process a single file and return its FileEntry representation
-fn process_single_file(file_info: &FileToProcess, config: &GnawConfig) -> Option<FileEntry> {
+fn process_single_file(
+    file_info: &FileToProcess,
+    config: &GnawConfig,
+) -> (Option<FileEntry>, Vec<(String, Finding)>) {
     let path = &file_info.absolute_path;
     let relative_path = &file_info.relative_path;
     let metadata = &file_info.metadata;
+    let no_findings: Vec<(String, Finding)> = Vec::new();
 
     let code_bytes = match read_file_with_binary_check(path, metadata.len()) {
         Ok(Some(bytes)) => bytes,
         Ok(None) => {
             debug!("Skipped binary file: {}", path.display());
-            return None;
+            return (None, no_findings.clone());
         }
         Err(e) => {
             debug!("Failed to read file {}: {}", path.display(), e);
-            return None;
+            return (None, no_findings.clone());
         }
     };
 
@@ -259,13 +306,10 @@ fn process_single_file(file_info: &FileToProcess, config: &GnawConfig) -> Option
         code
     };
 
-    // Wrap code block
-    let code_block = wrap_code_block(&code, config.line_numbers);
-
     // Filter empty or invalid files
     if code.trim().is_empty() || code.contains(char::REPLACEMENT_CHARACTER) {
         debug!("Excluded file (empty or invalid UTF-8): {}", path.display());
-        return None;
+        return (None, no_findings.clone());
     }
 
     // Build filepath
@@ -274,6 +318,25 @@ fn process_single_file(file_info: &FileToProcess, config: &GnawConfig) -> Option
     } else {
         relative_path.to_string_lossy().to_string()
     };
+
+    let (code, findings): (String, Vec<(String, Finding)>) = if config.secret_scan
+        != SecretPolicy::Off
+        && !path_is_allowlisted(&file_path, &config.secret_scan_allow_paths)
+    {
+        let (scrubbed, found) = SCANNER.scrub(&code, config.secret_scan);
+        let tagged: Vec<(String, Finding)> =
+            found.into_iter().map(|f| (file_path.clone(), f)).collect();
+        if config.secret_scan == SecretPolicy::Block && tagged.is_empty() {
+            // drop content, but keep findings so the caller can fail loudly
+            return (None, tagged);
+        }
+        (scrubbed, tagged)
+    } else {
+        (code, Vec::new())
+    };
+
+    // Wrap code block
+    let code_block = wrap_code_block(&code, config.line_numbers);
 
     // Always calculate token count in parallel (amortized by I/O wait time)
     // This enables zero-overhead token counting regardless of display preferences
@@ -296,14 +359,17 @@ fn process_single_file(file_info: &FileToProcess, config: &GnawConfig) -> Option
 
     debug!(target: "included_files", "Included file: {}", file_path);
 
-    Some(FileEntry {
-        path: file_path,
-        extension: extension.to_string(),
-        code: code_block,
-        token_count,
-        metadata: EntryMetadata::from(metadata),
-        mod_time,
-    })
+    (
+        Some(FileEntry {
+            path: file_path,
+            extension: extension.to_string(),
+            code: code_block,
+            token_count,
+            metadata: EntryMetadata::from(metadata),
+            mod_time,
+        }),
+        findings,
+    )
 }
 
 /// Count tokens for a single file using the same pipeline as full analysis

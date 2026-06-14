@@ -1,7 +1,7 @@
 //! Tests for binary file detection using content_inspector
 
 use gnaw_core::configuration::GnawConfig;
-use gnaw_core::path::traverse_directory;
+use gnaw_core::path::{Traversal, traverse_directory};
 use std::fs;
 use tempfile::TempDir;
 
@@ -61,7 +61,11 @@ fn test_binary_files_are_skipped() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // Should only include text files, not binary files
     let file_paths: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
@@ -95,7 +99,11 @@ fn test_empty_file_handling() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // Empty files should be excluded (existing behavior)
     assert_eq!(files.len(), 0);
@@ -115,7 +123,11 @@ fn test_small_binary_file() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // Small binary file should still be detected and excluded
     assert_eq!(files.len(), 0);
@@ -138,7 +150,11 @@ fn test_text_file_with_unicode() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // Unicode text should be detected as text and included
     assert_eq!(files.len(), 1);
@@ -168,7 +184,11 @@ fn test_mixed_directory_structure() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // Should only have 2 text files from src/
     assert_eq!(files.len(), 2);
@@ -194,7 +214,11 @@ fn test_large_text_file() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // Large text file should be detected and included
     assert_eq!(files.len(), 1);
@@ -218,7 +242,11 @@ fn test_pdf_detection() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // PDF should be detected as binary and excluded
     assert_eq!(files.len(), 0);
@@ -241,7 +269,11 @@ fn test_various_text_formats() {
         .build()
         .unwrap();
 
-    let (_, files) = traverse_directory(&config, None).unwrap();
+    let Traversal {
+        tree: _,
+        files,
+        findings: _,
+    } = traverse_directory(&config, None).unwrap();
 
     // All text formats should be included
     assert_eq!(files.len(), 5);

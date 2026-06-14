@@ -1,8 +1,12 @@
 default_output = "clipboard"
 include_patterns = ["*.rs", "*.hbs"]
-exclude_patterns = ["**/test*"]
+exclude_patterns = []
 line_numbers = false
 absolute_path = true
+
+[secret_scan]
+policy = "redact"
+allow_paths = ["tests/", "fixtures/", "examples/"]
 
 [user_variables]
 project = "gnaw"

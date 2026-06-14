@@ -8,7 +8,9 @@ repository = "https://github.com/gitbadger-clan/gnaw.git"
 readme = "../../README.md"
 
 [features]
+default = ["compression"]   # see the recommendation below
 wayland = ["arboard/wayland-data-control"]
+compression = ["gnaw-core/compression"]
 
 [dependencies]
 gnaw-core = { path = "../gnaw-core", version = "0.1.0", features = ["clap"] }

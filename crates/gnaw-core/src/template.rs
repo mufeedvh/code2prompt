@@ -3,7 +3,7 @@
 use anyhow::{Result, anyhow};
 use handlebars::template::{Parameter, Template, TemplateElement};
 use handlebars::{Handlebars, no_escape};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashSet;
 use std::io::Write;
 

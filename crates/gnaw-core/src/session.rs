@@ -8,7 +8,9 @@ use std::path::PathBuf;
 
 use crate::configuration::GnawConfig;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
+use crate::path::Traversal;
 use crate::path::{FileEntry, display_name, traverse_directory, wrap_code_block};
+use crate::secret_scan::SecretPolicy;
 use crate::selection::SelectionEngine;
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use crate::tokenizer::{TokenizerType, count_tokens};
@@ -33,6 +35,7 @@ pub struct SessionData {
     pub git_diff: Option<String>,
     pub git_diff_branch: Option<String>,
     pub git_log_branch: Option<String>,
+    pub secret_findings: Vec<(String, crate::secret_scan::Finding)>, // (path, finding)
 }
 
 /// Zero-copy template context for rendering
@@ -70,6 +73,7 @@ pub struct RenderedPrompt {
     pub token_count: usize,
     pub model_info: &'static str,
     pub files: Vec<String>,
+    pub secret_findings: Vec<(String, crate::secret_scan::Finding)>,
 }
 
 impl GnawSession {
@@ -187,14 +191,17 @@ impl GnawSession {
 
     /// Loads the codebase data (source tree and file list) into the session.
     pub fn load_codebase(&mut self) -> Result<()> {
-        let (tree, files) = traverse_directory(&self.config, Some(&mut self.selection_engine))
+        let Traversal {
+            tree,
+            files,
+            findings,
+        } = traverse_directory(&self.config, Some(&mut self.selection_engine))
             .with_context(|| "Failed to traverse directory")?;
 
-        // Store absolute_code_path as Single Source of Truth
         self.data.absolute_code_path = Some(display_name(&self.config.path));
         self.data.source_tree = Some(tree);
         self.data.files = Some(files);
-
+        self.data.secret_findings = findings;
         Ok(())
     }
 
@@ -296,6 +303,7 @@ impl GnawSession {
             token_count,
             model_info,
             files,
+            secret_findings: self.data.secret_findings.clone(),
         })
     }
 
@@ -462,6 +470,13 @@ impl GnawSession {
 
     pub fn generate_prompt(&mut self) -> Result<RenderedPrompt> {
         self.load_codebase()?;
+
+        if self.config.secret_scan == SecretPolicy::Block && !self.data.secret_findings.is_empty() {
+            anyhow::bail!(
+                "secret scan: {} finding(s) with --secret-scan=block; aborting",
+                self.data.secret_findings.len()
+            );
+        }
 
         // ~~~~ Load Git info ~~~
         if self.config.diff_enabled {
