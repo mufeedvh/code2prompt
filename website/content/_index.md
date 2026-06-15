@@ -57,6 +57,7 @@ REST interface for browser-extension integration (planned)
 - **Glob Pattern Filtering**: Include or exclude specific files and directories using glob patterns.
 - **Customizable Templates**: Tailor prompt generation with Handlebars templates.
 - **Token Counting**: Analyze token usage and optimize for LLMs with varying context windows.
+- **[Secret Scanning](/how-to/scan-for-secrets/)**: Catch API keys, tokens, and private keys before they leak into a prompt — warn, redact, or block.
 - **Git Integration**: Include Git diffs and commit messages in prompts for code reviews.
 - **Respects `.gitignore`**: Automatically ignores files listed in `.gitignore` to streamline prompt generation.
 
@@ -74,3 +75,4 @@ REST interface for browser-extension integration (planned)
 - **Refactoring**: Simplify and optimize code by generating prompts for code quality improvements.
 - **Learning and Exploration**: Understand new codebases by generating summaries and detailed breakdowns.
 - **Git Commit and PR Descriptions**: Generate meaningful commit messages and pull request descriptions from Git diffs.
+- **Safe Sharing**: Scrub secrets out of context before pasting it into a chat, so credentials never leave your machine.
