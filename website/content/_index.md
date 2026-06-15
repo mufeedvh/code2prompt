@@ -60,6 +60,7 @@ REST interface for browser-extension integration (planned)
 - **[Secret Scanning](/how-to/scan-for-secrets/)**: Catch API keys, tokens, and private keys before they leak into a prompt — warn, redact, or block.
 - **Git Integration**: Include Git diffs and commit messages in prompts for code reviews.
 - **Respects `.gitignore`**: Automatically ignores files listed in `.gitignore` to streamline prompt generation.
+- **[Shell Completion](/how-to/shell-completion/)**: Tab-complete flags, values, and template names in bash, zsh, and fish.
 
 ## Why `gnaw`?
 
