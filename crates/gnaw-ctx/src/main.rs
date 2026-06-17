@@ -113,13 +113,21 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     };
 
     // ~~~ Gather Repository Data ~~~
-    session.load_codebase().map_err(|e| {
-        if let Some(s) = spinner.as_ref() {
-            s.finish_with_message("Failed!".red().to_string())
-        }
-        error!("Failed to build directory tree: \n{}", e);
-        anyhow::anyhow!("Failed to build directory tree: {}", e)
-    })?;
+    // THROWAWAY demand-gate (migration prerequisite #1): a changed-files run
+    // (--git-diff-shas) renders only `changed_files`, so it must NOT walk the
+    // working tree. Loading it here pulls in the whole repo and inflates the
+    // token count (load is unconditional, consumption is conditional — the exact
+    // smell the pipeline migration kills). Step 5 deletes this in favor of
+    // spec-driven source selection.
+    if session.config.diff_shas.is_none() {
+        session.load_codebase().map_err(|e| {
+            if let Some(s) = spinner.as_ref() {
+                s.finish_with_message("Failed!".red().to_string())
+            }
+            error!("Failed to build directory tree: \n{}", e);
+            anyhow::anyhow!("Failed to build directory tree: {}", e)
+        })?;
+    }
     if session.config.diff_shas.is_some() {
         if let Some(s) = spinner.as_ref() {
             s.set_message("Reading changed files between revisions...")
