@@ -7,7 +7,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::configuration::GnawConfig;
-use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
+use crate::git::{
+    ChangedFile, get_changed_files_with_contents, get_git_diff, get_git_diff_between_branches,
+    get_git_log,
+};
 use crate::path::Traversal;
 use crate::path::{FileEntry, display_name, traverse_directory, wrap_code_block};
 use crate::secret_scan::SecretPolicy;
@@ -36,6 +39,7 @@ pub struct SessionData {
     pub git_diff_branch: Option<String>,
     pub git_log_branch: Option<String>,
     pub secret_findings: Vec<(String, crate::secret_scan::Finding)>, // (path, finding)
+    pub changed_files: Option<Vec<ChangedFile>>,
 }
 
 /// Zero-copy template context for rendering
@@ -58,6 +62,9 @@ pub struct TemplateContext<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub git_log_branch: &'a Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub changed_files: Option<&'a [ChangedFile]>,
 
     #[serde(flatten)]
     pub user_variables: &'a HashMap<String, String>,
@@ -230,6 +237,21 @@ impl GnawSession {
         Ok(())
     }
 
+    /// Loads the contents of files changed between two refs into the session.
+    pub fn load_changed_files(&mut self) -> Result<()> {
+        if let Some((a, b)) = &self.config.diff_shas {
+            let files = get_changed_files_with_contents(
+                &self.config.path,
+                a,
+                b,
+                self.config.diff_shas_content,
+                self.config.diff_shas_max_bytes,
+            )?;
+            self.data.changed_files = Some(files);
+        }
+        Ok(())
+    }
+
     /// Constructs a zero-copy template context for rendering.
     pub fn build_template_data(&self) -> TemplateContext<'_> {
         TemplateContext {
@@ -239,6 +261,7 @@ impl GnawSession {
             git_diff: &self.data.git_diff,
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
+            changed_files: self.data.changed_files.as_deref(),
             user_variables: &self.config.user_variables,
             no_codeblock: self.config.no_codeblock,
         }
@@ -380,6 +403,7 @@ impl GnawSession {
             git_diff: &self.data.git_diff,
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
+            changed_files: self.data.changed_files.as_deref(),
             user_variables: &self.config.user_variables,
             no_codeblock: self.config.no_codeblock,
         };

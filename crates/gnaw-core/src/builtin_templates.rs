@@ -176,6 +176,14 @@ impl BuiltinTemplates {
                         description: "Template for generating GitHub README files",
                     },
                 ),
+                (
+                    "git-diff-shas",
+                    BuiltinTemplate {
+                        name: "Git Diff (SHAs, changed file contents)",
+                        content: include_str!("../templates/git-diff-shas.hbs"),
+                        description: "Per-file changes between two refs. Use with --git-diff-shas <ref1>,<ref2>.",
+                    },
+                ),
             ])
         })
     }

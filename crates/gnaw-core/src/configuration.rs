@@ -67,6 +67,13 @@ pub struct GnawConfig {
     /// If set, contains two branch names for which gnaw will generate a git diff.
     pub diff_branches: Option<(String, String)>,
 
+    /// (ref1, ref2) for changed-file before/after extraction (`--git-diff-shas`).
+    pub diff_shas: Option<(String, String)>,
+    /// What `--git-diff-shas` emits per file.
+    pub diff_shas_content: DiffShaContent,
+    /// Skip files larger than this many bytes (0 = no limit).
+    pub diff_shas_max_bytes: usize,
+
     /// If set, contains two branch names for which gnaw will retrieve the git log.
     pub log_branches: Option<(String, String)>,
 
@@ -106,6 +113,20 @@ impl GnawConfig {
     pub fn builder() -> GnawConfigBuilder {
         GnawConfigBuilder::default()
     }
+}
+
+/// What `--git-diff-shas` emits per changed file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, clap::ValueEnum, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DiffShaContent {
+    /// Patch only; full `after` body for additions. ~1x changed content.
+    Patch,
+    #[default]
+    AfterPatch, // full after for every file + patch; no before  ← the lean+useful one
+    /// Full before + after, no patch. ~2x.
+    Full,
+    /// Full before + after plus the patch. Heaviest.
+    FullPatch,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize, Default)]

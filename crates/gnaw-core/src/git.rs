@@ -1,9 +1,10 @@
 //! This module handles git operations.
 
-use crate::configuration::DiffMode;
+use crate::configuration::{DiffMode, DiffShaContent};
 use anyhow::{Context, Result};
-use git2::{DiffOptions, Repository};
+use git2::{Delta, DiffOptions, Oid, Patch, Repository};
 use log::debug;
+use serde::Serialize;
 use std::path::Path;
 
 /// Generates a git diff for the repository, selecting which changes to show.
@@ -128,6 +129,180 @@ pub fn get_git_diff_between_branches(
 
     debug!("Generated git diff between branches successfully");
     Ok(String::from_utf8_lossy(&diff_text).into_owned())
+}
+
+/// One file changed between two refs, with selected content.
+#[derive(Debug, Clone, Serialize)]
+pub struct ChangedFile {
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub old_path: Option<String>, // Some only on rename
+    pub status: &'static str, // added | deleted | modified | renamed | copied | other
+    pub binary: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub before: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub after: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub patch: Option<String>,
+}
+
+enum BlobRead {
+    Text(String),
+    Binary,
+    Skip, // absent (zero oid) or over the size cap
+}
+
+fn read_blob(repo: &Repository, oid: Oid, max_bytes: usize) -> BlobRead {
+    if oid.is_zero() {
+        return BlobRead::Skip;
+    }
+    let Ok(blob) = repo.find_blob(oid) else {
+        return BlobRead::Skip;
+    };
+    if blob.is_binary() {
+        return BlobRead::Binary;
+    }
+    if max_bytes != 0 && blob.content().len() > max_bytes {
+        return BlobRead::Skip;
+    }
+    BlobRead::Text(String::from_utf8_lossy(blob.content()).into_owned())
+}
+
+/// Files changed between two refs, each with the content selected by `mode`.
+///
+/// `max_file_bytes` caps per-file content (0 = no cap); oversized or binary
+/// files are reported with content left `None`.
+pub fn get_changed_files_with_contents(
+    repo_path: &Path,
+    ref1: &str,
+    ref2: &str,
+    mode: DiffShaContent,
+    max_file_bytes: usize,
+) -> Result<Vec<ChangedFile>> {
+    debug!("Opening repository at path: {:?}", repo_path);
+    debug!(
+        "diff-shas: repo={:?} ref1={} ref2={}",
+        repo_path, ref1, ref2
+    );
+    let repo = Repository::open(repo_path).context("Failed to open repository")?;
+
+    let tree1 = repo
+        .revparse_single(ref1)
+        .with_context(|| format!("Cannot resolve revision {ref1}"))?
+        .peel_to_tree()
+        .with_context(|| format!("{ref1} does not point to a tree"))?;
+    let tree2 = repo
+        .revparse_single(ref2)
+        .with_context(|| format!("Cannot resolve revision {ref2}"))?
+        .peel_to_tree()
+        .with_context(|| format!("{ref2} does not point to a tree"))?;
+
+    // Whole-blob reads here, so do NOT ignore_whitespace (unlike the branch diff).
+    let mut diff = repo
+        .diff_tree_to_tree(Some(&tree1), Some(&tree2), Some(&mut DiffOptions::new()))
+        .context("Failed to diff the two trees")?;
+    diff.find_similar(None).context("Rename detection failed")?;
+
+    debug!("diff-shas: resolved {} deltas", diff.deltas().len());
+
+    let want_patch = matches!(
+        mode,
+        DiffShaContent::Patch | DiffShaContent::AfterPatch | DiffShaContent::FullPatch
+    );
+
+    let mut out = Vec::with_capacity(diff.deltas().len());
+    for (idx, delta) in diff.deltas().enumerate() {
+        let is_add = delta.status() == Delta::Added;
+        let status = match delta.status() {
+            Delta::Added => "added",
+            Delta::Deleted => "deleted",
+            Delta::Modified => "modified",
+            Delta::Renamed => "renamed",
+            Delta::Copied => "copied",
+            _ => "other",
+        };
+
+        let new_path = delta
+            .new_file()
+            .path()
+            .map(|p| p.to_string_lossy().into_owned());
+        let old_path = delta
+            .old_file()
+            .path()
+            .map(|p| p.to_string_lossy().into_owned());
+        let path = new_path
+            .clone()
+            .or_else(|| old_path.clone())
+            .unwrap_or_else(|| "<unknown>".to_string());
+
+        let mut binary = delta.old_file().is_binary() || delta.new_file().is_binary();
+
+        // What to read depends on the mode (and, in Patch mode, the status).
+        let (do_before, do_after) = match mode {
+            DiffShaContent::Full | DiffShaContent::FullPatch => (true, true),
+            DiffShaContent::AfterPatch => (false, true), // full current file, no before
+            DiffShaContent::Patch => (false, is_add),    // lean: patch carries the rest
+        };
+
+        let before = if do_before && !binary {
+            match read_blob(&repo, delta.old_file().id(), max_file_bytes) {
+                BlobRead::Text(t) => Some(t),
+                BlobRead::Binary => {
+                    binary = true;
+                    None
+                }
+                BlobRead::Skip => None,
+            }
+        } else {
+            None
+        };
+        let after = if do_after && !binary {
+            match read_blob(&repo, delta.new_file().id(), max_file_bytes) {
+                BlobRead::Text(t) => Some(t),
+                BlobRead::Binary => {
+                    binary = true;
+                    None
+                }
+                BlobRead::Skip => None,
+            }
+        } else {
+            None
+        };
+
+        // No patch for adds (redundant with `after`) or binaries.
+        let patch = if want_patch && !is_add && !binary {
+            Patch::from_diff(&diff, idx)
+                .ok()
+                .flatten()
+                .and_then(|mut p| p.to_buf().ok())
+                .map(|b| String::from_utf8_lossy(&b).into_owned())
+        } else {
+            None
+        };
+
+        out.push(ChangedFile {
+            path,
+            old_path: if delta.status() == Delta::Renamed {
+                old_path
+            } else {
+                None
+            },
+            status,
+            binary,
+            before,
+            after,
+            patch,
+        });
+    }
+
+    debug!(
+        "changed-files: {} entries between {} and {}",
+        out.len(),
+        ref1,
+        ref2
+    );
+    Ok(out)
 }
 
 /// Retrieves the git log between two branches for the repository at the provided path

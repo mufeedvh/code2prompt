@@ -8,7 +8,10 @@ use clap::{Parser, ValueHint};
 use clap_complete::engine::{ArgValueCandidates, CompletionCandidate};
 use gnaw_core::secret_scan::SecretPolicy;
 use gnaw_core::{
-    configuration::DiffMode, sort::FileSortMethod, template::OutputFormat, tokenizer::TokenFormat,
+    configuration::{DiffMode, DiffShaContent},
+    sort::FileSortMethod,
+    template::OutputFormat,
+    tokenizer::TokenFormat,
     tokenizer::TokenizerType,
 };
 use std::path::PathBuf;
@@ -78,6 +81,28 @@ pub struct Cli {
     /// Retrieve git log between two branches
     #[clap(long, value_name = "BRANCHES", num_args = 2, value_delimiter = ',')]
     pub git_log_branch: Option<Vec<String>>,
+
+    /// Files changed between two refs. Accepts `ref1..ref2`, `ref1,ref2`, or `ref1 ref2`
+    #[clap(long, value_name = "REF1..REF2", num_args = 1..=2)]
+    pub git_diff_shas: Option<Vec<String>>,
+
+    /// What to emit per changed file: patch (lean, default), full, or full-patch
+    #[clap(
+        long,
+        value_enum,
+        default_value = "after-patch",
+        requires = "git_diff_shas"
+    )]
+    pub git_diff_shas_content: DiffShaContent,
+
+    /// With --git-diff-shas, skip files larger than this many bytes (0 = no limit)
+    #[clap(
+        long,
+        value_name = "BYTES",
+        default_value_t = 0,
+        requires = "git_diff_shas"
+    )]
+    pub git_diff_shas_max_bytes: usize,
 
     /// Add line numbers to the source code
     #[clap(short, long)]

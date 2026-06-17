@@ -1,0 +1,35 @@
+Project Path: {{ absolute_code_path }}
+
+Source Tree:
+```
+{{ source_tree }}
+```
+
+Files changed between the two revisions:
+
+{{#each changed_files}}
+## {{path}} — {{status}}{{#if old_path}} (renamed from `{{old_path}}`){{/if}}
+
+{{#if binary}}
+_Binary file; contents omitted._
+{{else}}
+{{#if patch}}
+```diff
+{{patch}}
+```
+{{/if}}
+{{#if before}}
+### Before
+```
+{{before}}
+```
+{{/if}}
+{{#if after}}
+### After
+```
+{{after}}
+```
+{{/if}}
+{{/if}}
+
+{{/each}}

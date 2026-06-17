@@ -1,11 +1,14 @@
-use gnaw_core::configuration::DiffMode;
-use gnaw_core::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
+use gnaw_core::configuration::{DiffMode, DiffShaContent};
+use gnaw_core::git::{
+    get_changed_files_with_contents, get_git_diff, get_git_diff_between_branches, get_git_log,
+};
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use git2::{Repository, RepositoryInitOptions, Signature};
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
 
     fn repo_with_committed_file() -> (TempDir, Repository, std::path::PathBuf) {
@@ -463,5 +466,58 @@ mod tests {
                 .to_string()
                 .contains("Branch nonexistent_reference doesn't exist!")
         );
+    }
+
+    #[test]
+    fn test_changed_files_patch_mode() {
+        let temp = TempDir::new().expect("tmp");
+        let repo_path = temp.path();
+        let repo = Repository::init(repo_path).expect("init");
+        let sig = Signature::now("T", "t@e.com").expect("sig");
+
+        // commit 1: one file
+        fs::write(repo_path.join("a.txt"), "line1\nline2\n").unwrap();
+        let mut idx = repo.index().unwrap();
+        idx.add_path(Path::new("a.txt")).unwrap();
+        idx.write().unwrap();
+        let tree1 = repo.find_tree(idx.write_tree().unwrap()).unwrap();
+        let c1 = repo
+            .commit(Some("HEAD"), &sig, &sig, "c1", &tree1, &[])
+            .unwrap();
+        let c1 = repo.find_commit(c1).unwrap();
+
+        // commit 2: modify a.txt, add b.txt
+        fs::write(repo_path.join("a.txt"), "line1\nCHANGED\n").unwrap();
+        fs::write(repo_path.join("b.txt"), "new file\n").unwrap();
+        let mut idx = repo.index().unwrap();
+        idx.add_path(Path::new("a.txt")).unwrap();
+        idx.add_path(Path::new("b.txt")).unwrap();
+        idx.write().unwrap();
+        let tree2 = repo.find_tree(idx.write_tree().unwrap()).unwrap();
+        let c2 = repo
+            .commit(Some("HEAD"), &sig, &sig, "c2", &tree2, &[&c1])
+            .unwrap();
+
+        let files = get_changed_files_with_contents(
+            repo_path,
+            &c1.id().to_string(),
+            &c2.to_string(),
+            DiffShaContent::Patch,
+            0,
+        )
+        .expect("producer");
+
+        let a = files.iter().find(|f| f.path == "a.txt").expect("a.txt");
+        assert_eq!(a.status, "modified");
+        assert!(a.patch.as_deref().unwrap().contains("CHANGED"));
+        assert!(
+            a.before.is_none() && a.after.is_none(),
+            "patch mode skips blobs for modified"
+        );
+
+        let b = files.iter().find(|f| f.path == "b.txt").expect("b.txt");
+        assert_eq!(b.status, "added");
+        assert!(b.patch.is_none(), "no patch for adds");
+        assert_eq!(b.after.as_deref(), Some("new file\n"));
     }
 }

@@ -120,6 +120,18 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         error!("Failed to build directory tree: \n{}", e);
         anyhow::anyhow!("Failed to build directory tree: {}", e)
     })?;
+    if session.config.diff_shas.is_some() {
+        if let Some(s) = spinner.as_ref() {
+            s.set_message("Reading changed files between revisions...")
+        }
+        session.load_changed_files().unwrap_or_else(|e| {
+            if let Some(s) = spinner.as_ref() {
+                s.finish_with_message("Failed!".red().to_string())
+            }
+            error!("Failed to read changed files: {}", e);
+            std::process::exit(1);
+        });
+    }
     if let Some(s) = spinner.as_ref() {
         s.set_message("Proceeding…")
     }

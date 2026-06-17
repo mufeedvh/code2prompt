@@ -40,6 +40,13 @@ const PROVIDED_IDENTIFIERS: &[&str] = &[
     "git_diff",
     "git_diff_branch",
     "git_log_branch",
+    "changed_files",
+    "status",
+    "old_path",
+    "before",
+    "after",
+    "patch",
+    "binary",
     "no_codeblock",
     // per-file (FileEntry) fields, in scope within {{#each files}}
     "path",

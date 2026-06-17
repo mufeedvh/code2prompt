@@ -160,6 +160,8 @@ pub fn build_session(
         })
     });
 
+    let diff_shas = parse_ref_range(&args.git_diff_shas);
+
     let cfg_diff_enabled = cfg.map(|c| c.diff_enabled).unwrap_or(false);
     let cfg_token_map_enabled = cfg.map(|c| c.token_map_enabled).unwrap_or(false);
     let cfg_deselected = cfg.map(|c| c.deselected).unwrap_or(false);
@@ -186,6 +188,9 @@ pub fn build_session(
         .diff_mode(args.diff_mode.unwrap_or_default())
         .diff_branches(diff_branches)
         .log_branches(log_branches)
+        .diff_shas(diff_shas)
+        .diff_shas_content(args.git_diff_shas_content)
+        .diff_shas_max_bytes(args.git_diff_shas_max_bytes)
         .no_ignore(args.no_ignore)
         .hidden(args.hidden)
         .no_codeblock(args.no_codeblock)
@@ -217,6 +222,26 @@ pub fn build_session(
 pub fn parse_branch_argument(branch_arg: &Option<Vec<String>>) -> Option<(String, String)> {
     match branch_arg {
         Some(branches) if branches.len() == 2 => Some((branches[0].clone(), branches[1].clone())),
+        _ => None,
+    }
+}
+
+/// Parse a ref range from CLI: one token split on `..` or `,`, or two tokens.
+pub fn parse_ref_range(arg: &Option<Vec<String>>) -> Option<(String, String)> {
+    let parts = arg.as_ref()?;
+    match parts.as_slice() {
+        // Two space-separated tokens: --git-diff-shas a b
+        [a, b] => Some((a.clone(), b.clone())),
+        // One token: split on `..` (preferred) or `,`
+        [single] => {
+            let (a, b) = single.split_once("..").or_else(|| single.split_once(','))?;
+            let (a, b) = (a.trim(), b.trim());
+            if a.is_empty() || b.is_empty() {
+                None
+            } else {
+                Some((a.to_string(), b.to_string()))
+            }
+        }
         _ => None,
     }
 }
