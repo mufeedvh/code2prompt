@@ -41,6 +41,7 @@ regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 termtree = { workspace = true }
+thiserror = { workspace = true }
 tiktoken-rs = { workspace = true }
 toml = { workspace = true }
 rayon = { workspace = true }

@@ -1132,6 +1132,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "termtree 1.0.0",
+ "thiserror 2.0.18",
  "tiktoken-rs",
  "toml",
  "tree-sitter",
