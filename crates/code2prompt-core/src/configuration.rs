@@ -55,6 +55,14 @@ pub struct Code2PromptConfig {
     /// If true, symbolic links will be followed during traversal.
     pub follow_symlinks: bool,
 
+    /// If true, extract an entity-level code map (functions, classes, ...) for
+    /// each file via sem-core, exposed to templates as `FileEntry.entities` and a
+    /// top-level `code_map`. Requires the `entity-map` build feature; without it
+    /// this flag has no effect.
+    ///
+    /// Default: `false`
+    pub entity_map: bool,
+
     /// Include hidden files and directories in processing.
     /// 
     /// Default: `false`

@@ -46,6 +46,7 @@
 pub mod analysis;
 pub mod builtin_templates;
 pub mod configuration;
+pub mod entity_map;
 pub mod file_processor;
 pub mod filter;
 pub mod git;

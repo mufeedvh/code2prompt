@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::analysis::CodebaseAnalysis;
 use crate::configuration::Code2PromptConfig;
+use crate::entity_map::FileCodeMap;
 use crate::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
 use crate::path::{FileEntry, display_name, traverse_directory, wrap_code_block};
 use crate::selection::SelectionEngine;
@@ -90,6 +91,12 @@ pub struct TemplateContext<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub git_log_branch: &'a Option<String>,
+
+    /// Top-level entity-level code map: one entry per file that has extracted
+    /// entities. Present only when the `entity-map` feature is enabled and the
+    /// user opted in. Per-file entities are also available via `files[].entities`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_map: Option<Vec<FileCodeMap>>,
 
     #[serde(flatten)]
     pub user_variables: &'a HashMap<String, String>,
@@ -286,6 +293,23 @@ impl Code2PromptSession {
         Ok(())
     }
 
+    /// Builds the top-level `code_map` aggregate from the loaded files, including
+    /// only files that have extracted entities. Returns `None` when no file has
+    /// any (e.g. entity extraction was disabled), so the template variable is
+    /// simply absent rather than empty.
+    fn build_code_map(&self) -> Option<Vec<FileCodeMap>> {
+        let files = self.data.files.as_deref()?;
+        let map: Vec<FileCodeMap> = files
+            .iter()
+            .filter(|f| !f.entities.is_empty())
+            .map(|f| FileCodeMap {
+                path: f.path.clone(),
+                entities: f.entities.clone(),
+            })
+            .collect();
+        (!map.is_empty()).then_some(map)
+    }
+
     /// Constructs a zero-copy template context for rendering.
     pub fn build_template_data(&self) -> TemplateContext<'_> {
         TemplateContext {
@@ -295,6 +319,7 @@ impl Code2PromptSession {
             git_diff: &self.data.git_diff,
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
+            code_map: self.build_code_map(),
             user_variables: &self.config.user_variables,
             no_codeblock: self.config.no_codeblock,
         }
@@ -386,6 +411,7 @@ impl Code2PromptSession {
                     "token_count": token_count,
                     "model_info": model_info,
                     "files": files.clone(),
+                    "code_map": self.build_code_map(),
                 });
                 serde_json::to_string_pretty(&json_data)?
             }
@@ -461,6 +487,9 @@ impl Code2PromptSession {
                         token_count: 0, // Not used in skeleton
                         metadata: file.metadata,
                         mod_time: file.mod_time,
+                        // Keep entities so the code map is counted in the
+                        // structural token total.
+                        entities: file.entities.clone(),
                     }
                 })
                 .collect()
@@ -474,6 +503,7 @@ impl Code2PromptSession {
             git_diff: &self.data.git_diff,
             git_diff_branch: &self.data.git_diff_branch,
             git_log_branch: &self.data.git_log_branch,
+            code_map: self.build_code_map(),
             user_variables: &self.config.user_variables,
             no_codeblock: self.config.no_codeblock,
         };
