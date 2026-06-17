@@ -116,7 +116,8 @@ impl GnawConfig {
 }
 
 /// What `--git-diff-shas` emits per changed file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, clap::ValueEnum, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[serde(rename_all = "kebab-case")]
 pub enum DiffShaContent {
     /// Patch only; full `after` body for additions. ~1x changed content.
