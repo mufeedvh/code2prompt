@@ -31,6 +31,9 @@ Then, for each commit in order, provide:
 
 **Files / hunks:** the specific files — and where a file is split across
 commits, which hunks or functions — that belong to this commit.
+provide the git command to add the required files or hunks to the index,
+e.g. `git add -p path/to/file.rs` or `git add path/to/file.rs` for the whole file. 
+The git commit command should include the -S flag to sign the commit.
 
 **Commit message**, adhering to:
 1. Concise subject under 50 characters.
