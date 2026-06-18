@@ -5,13 +5,17 @@
 //! logic in one place for better maintainability and separation of concerns.
 
 use anyhow::{Context, Result};
+#[cfg(not(feature = "pipeline"))]
+use gnaw_core::template::extract_undefined_variables;
 use gnaw_core::{
-    configuration::{GnawConfig, TomlConfig},
+    builtin_templates::BuiltinTemplates,
+    configuration::{DiffMode, GnawConfig, TomlConfig},
     session::GnawSession,
     sort::FileSortMethod,
-    template::{OutputFormat, extract_undefined_variables},
+    template::OutputFormat,
     tokenizer::TokenizerType,
 };
+#[cfg(not(feature = "pipeline"))]
 use inquire::Text;
 use log::error;
 use std::path::PathBuf;
@@ -131,10 +135,6 @@ pub fn build_session(
         ("".to_string(), "default".to_string())
     };
 
-    configuration
-        .template_str(template_str)
-        .template_name(template_name);
-
     // Git options: CLI overrides config
     let diff_branches = parse_branch_argument(&args.git_diff_branch).or_else(|| {
         cfg.and_then(|c| {
@@ -166,6 +166,22 @@ pub fn build_session(
     let cfg_token_map_enabled = cfg.map(|c| c.token_map_enabled).unwrap_or(false);
     let cfg_deselected = cfg.map(|c| c.deselected).unwrap_or(false);
 
+    // Flag-implied template default (only when the user didn't pass --template).
+    // Mirrors the diff/branch values set on the builder below.
+    let diff_enabled_resolved = args.diff || cfg_diff_enabled;
+    let diff_mode_resolved = args.diff_mode.unwrap_or_default();
+    let (template_str, template_name) = resolve_flag_template_from_parts(
+        &template_str,
+        &template_name,
+        diff_branches.is_some(),
+        log_branches.is_some(),
+        diff_enabled_resolved,
+        diff_mode_resolved,
+    );
+
+    configuration
+        .template_str(template_str)
+        .template_name(template_name);
     let policy = args
         .secret_scan
         .or_else(|| cfg.and_then(|c| c.secret_scan))
@@ -417,4 +433,37 @@ fn levenshtein(a: &str, b: &str) -> usize {
         std::mem::swap(&mut prev, &mut curr);
     }
     prev[b.len()]
+}
+
+fn resolve_flag_template_from_parts(
+    explicit_template_str: &str,
+    explicit_template_name: &str,
+    has_diff_branches: bool,
+    has_log_branches: bool,
+    diff_enabled: bool,
+    diff_mode: DiffMode,
+) -> (String, String) {
+    let user_picked = !explicit_template_str.is_empty() || explicit_template_name != "default";
+    if user_picked {
+        return (
+            explicit_template_str.to_string(),
+            explicit_template_name.to_string(),
+        );
+    }
+
+    let key: Option<&str> = if has_diff_branches || has_log_branches {
+        Some("write-github-pull-request")
+    } else if diff_enabled {
+        match diff_mode {
+            DiffMode::Unstaged | DiffMode::All => Some("write-git-changeset-commits"),
+            DiffMode::Staged => Some("write-git-commit"),
+        }
+    } else {
+        None
+    };
+
+    match key.and_then(BuiltinTemplates::get_template) {
+        Some(t) => (t.content.to_string(), key.unwrap().to_string()),
+        None => (String::new(), "default".to_string()),
+    }
 }
