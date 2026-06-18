@@ -3,13 +3,31 @@
 
 use super::*;
 
-/// Raw content as it leaves a source, before chunking. Binary is a
-/// first-class state so a changed-files response can honestly report a
-/// binary file rather than emitting lossy garbage or dropping it silently.
+/// Raw content as it leaves a source, before chunking.
+///
+/// `Text` is a plain file body (working-tree source). `Changed` is a file
+/// changed between two refs — modeled as its own kind because a changed file
+/// is genuinely a different thing than a file: it carries a *diff*, which is
+/// a property of a ref-pair, not of the file. `Omitted` is binary/over-size.
+///
+/// Which of `before`/`patch` a `Changed` carries depends on the diff-shas
+/// content mode — they are `Option` precisely because the producer
+/// (`get_changed_files_with_contents`) populates a different subset per mode.
+/// `after` is non-optional: a changed file always has a current state to show
+/// (a deletion is represented by the source omitting the item or via status).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case", tag = "kind", content = "data")]
+#[serde(rename_all = "snake_case", tag = "kind")]
 pub enum RawContent {
-    Text(String),
+    Text {
+        text: String,
+    },
+    Changed {
+        after: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        before: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        patch: Option<String>,
+    },
     /// Binary or over-size: content deliberately omitted.
     Omitted,
 }
