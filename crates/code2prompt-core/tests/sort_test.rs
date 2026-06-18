@@ -20,6 +20,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(100),
+                entities: vec![],
             },
             FileEntry {
                 path: "alpha.txt".to_string(),
@@ -31,6 +32,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(200),
+                entities: vec![],
             },
             FileEntry {
                 path: "beta.txt".to_string(),
@@ -42,6 +44,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(150),
+                entities: vec![],
             },
         ];
 
@@ -68,6 +71,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(100),
+                entities: vec![],
             },
             FileEntry {
                 path: "zeta.txt".to_string(),
@@ -79,6 +83,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(200),
+                entities: vec![],
             },
             FileEntry {
                 path: "beta.txt".to_string(),
@@ -90,6 +95,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(150),
+                entities: vec![],
             },
         ];
 
@@ -116,6 +122,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(300),
+                entities: vec![],
             },
             FileEntry {
                 path: "file2.txt".to_string(),
@@ -127,6 +134,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(100),
+                entities: vec![],
             },
             FileEntry {
                 path: "file3.txt".to_string(),
@@ -138,6 +146,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(200),
+                entities: vec![],
             },
         ];
 
@@ -164,6 +173,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(300),
+                entities: vec![],
             },
             FileEntry {
                 path: "file2.txt".to_string(),
@@ -175,6 +185,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(100),
+                entities: vec![],
             },
             FileEntry {
                 path: "file3.txt".to_string(),
@@ -186,6 +197,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some(200),
+                entities: vec![],
             },
         ];
 
@@ -215,6 +227,7 @@ mod tests {
                     is_symlink: false,
                 },
                 mod_time: Some((i as u64 + 1) * 100),
+                entities: vec![],
             })
             .collect();
 

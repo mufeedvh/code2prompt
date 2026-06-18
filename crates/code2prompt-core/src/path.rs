@@ -1,5 +1,6 @@
 //! This module contains the functions for traversing the directory and processing the files.
 use crate::configuration::Code2PromptConfig;
+use crate::entity_map::{EntitySummary, extract_entities};
 use crate::file_processor;
 use crate::filter::{build_globset, should_include_file};
 use crate::sort::{FileSortMethod, sort_files, sort_tree};
@@ -41,6 +42,11 @@ pub struct FileEntry {
     pub metadata: EntryMetadata,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mod_time: Option<u64>,
+    /// Structural entities (functions, classes, ...) extracted from this file.
+    /// Empty unless the `entity-map` feature is enabled and `config.entity_map`
+    /// is set. Skipped from serialized output when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entities: Vec<EntitySummary>,
 }
 
 /// Represents a file that needs to be processed
@@ -283,6 +289,14 @@ fn process_single_file(file_info: &FileToProcess, config: &Code2PromptConfig) ->
 
     debug!(target: "included_files", "Included file: {}", file_path);
 
+    // Extract the entity outline from the unwrapped source. Cheap no-op unless
+    // the `entity-map` feature is on and the user enabled it.
+    let entities = if config.entity_map {
+        extract_entities(&file_path, &code)
+    } else {
+        Vec::new()
+    };
+
     Some(FileEntry {
         path: file_path,
         extension: extension.to_string(),
@@ -290,6 +304,7 @@ fn process_single_file(file_info: &FileToProcess, config: &Code2PromptConfig) ->
         token_count,
         metadata: EntryMetadata::from(metadata),
         mod_time,
+        entities,
     })
 }
 

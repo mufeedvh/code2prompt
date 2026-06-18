@@ -171,6 +171,7 @@ pub fn build_session(
         .no_ignore(args.no_ignore)
         .hidden(args.hidden)
         .no_codeblock(args.no_codeblock)
+        .entity_map(args.entity_map)
         .follow_symlinks(args.follow_symlinks)
         .token_map_enabled(args.token_map || cfg_token_map_enabled || tui_mode)
         .deselected(args.deselected || cfg_deselected);

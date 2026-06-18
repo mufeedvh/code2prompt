@@ -18,8 +18,16 @@ readme = "../../README.md"
 
 [features]
 default = []
+# Entity-level code map via sem-core (functions/classes with line ranges and
+# signatures). Optional because sem-core pulls in tree-sitter grammars for many
+# languages; users who don't need the code map pay no build cost.
+entity-map = ["dep:sem-core"]
 
 [dependencies]
+# Optional: only compiled with the `entity-map` feature. sem-core is offline and
+# carries no telemetry (that lives in the sem CLI, not the library), so this keeps
+# code2prompt fully air-gapped.
+sem-core = { version = "0.13", optional = true }
 anyhow = { workspace = true }
 bracoxide = { workspace = true }
 colored = { workspace = true }

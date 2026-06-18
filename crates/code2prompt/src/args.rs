@@ -106,6 +106,12 @@ pub struct Cli {
     #[clap(long)]
     pub no_codeblock: bool,
 
+    /// Include an entity-level code map (functions, classes, methods with line
+    /// ranges and signatures) for each file, via sem-core. Requires building
+    /// code2prompt with the `entity-map` feature.
+    #[clap(long)]
+    pub entity_map: bool,
+
     /// Copy output to clipboard
     #[clap(short = 'c', long)]
     pub clipboard: bool,

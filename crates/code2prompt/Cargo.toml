@@ -13,6 +13,9 @@ authors = [
 
 [features]
 wayland = ["arboard/wayland-data-control"]
+# Enable the entity-level code map (delegates to code2prompt_core's feature,
+# which pulls in sem-core). Off by default to keep the standard build lean.
+entity-map = ["code2prompt_core/entity-map"]
 
 [dependencies]
 code2prompt_core = { path = "../code2prompt-core", version = "4.3.0" }

@@ -6,6 +6,17 @@ Source Tree:
 {{ source_tree }}
 ```
 
+{{#if code_map}}
+Code Map:
+
+{{#each code_map}}
+`{{path}}`:
+{{#each entities}}
+  - {{kind}} {{name}}{{#if signature}} `{{signature}}`{{/if}} (lines {{start_line}}-{{end_line}})
+{{/each}}
+
+{{/each}}
+{{/if}}
 {{#each files}}
 {{#if code}}
 `{{path}}`:

@@ -26,6 +26,7 @@ mod tests {
                 is_symlink: false,
             },
             mod_time: None,
+            entities: vec![],
         }
     }
 
