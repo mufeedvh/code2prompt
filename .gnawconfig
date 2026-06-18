@@ -1,5 +1,5 @@
 default_output = "clipboard"
-include_patterns = ["*.rs", "*.hbs"]
+include_patterns = ["*.rs", "*.hbs", "*.toml"]
 exclude_patterns = []
 line_numbers = false
 absolute_path = true

@@ -248,7 +248,11 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         if let Some(s) = spinner.as_ref() {
             s.set_message("Proceeding…")
         }
-        let r = crate::pipeline_spec::run_default_extraction(&session.config)?;
+        let r = if session.config.diff_shas.is_some() {
+            crate::pipeline_spec::run_changed_files_extraction(&session.config)?
+        } else {
+            crate::pipeline_spec::run_default_extraction(&session.config)?
+        };
         RenderedPrompt {
             prompt: r.body,
             directory_name: gnaw_core::path::display_name(&session.config.path),
