@@ -10,7 +10,7 @@
 //! renderer decision: legacy templates fed from the new pipeline shape.
 
 use crate::path::wrap_code_block;
-use crate::pipeline::{PipelineError, Rendered, Renderer, Selection};
+use crate::pipeline::{PipelineError, RenderContext, Rendered, Renderer, Selection};
 use crate::template::{OutputFormat, handlebars_setup, render_template};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -21,8 +21,6 @@ use std::collections::HashMap;
 /// a REST handler wants — it builds one of these from a request body.
 pub struct RendererConfig {
     /// Presentation context the pipeline shape doesn't carry.
-    pub absolute_code_path: String,
-    pub source_tree: String,
     pub no_codeblock: bool,
     pub line_numbers: bool,
     pub git_diff: Option<String>,
@@ -47,7 +45,7 @@ struct RenderFile {
 /// `TemplateContext` did, so a custom template referencing `{{project}}`
 /// still resolves.
 #[derive(Serialize)]
-struct RenderContext<'a> {
+struct RenderContextHbs<'a> {
     absolute_code_path: &'a str,
     source_tree: &'a str,
     files: Vec<RenderFile>,
@@ -92,7 +90,7 @@ impl HandlebarsRenderer {
 }
 
 impl Renderer for HandlebarsRenderer {
-    fn render(&self, sel: &Selection) -> Result<Rendered, PipelineError> {
+    fn render(&self, sel: &Selection, ctx: &RenderContext) -> Result<Rendered, PipelineError> {
         // Map chunks → the files array. Line numbers are applied HERE because
         // the source no longer wraps; fences stay the template's job via
         // no_codeblock. This is the presentation ownership option 3 buys.
@@ -106,9 +104,9 @@ impl Renderer for HandlebarsRenderer {
             })
             .collect();
 
-        let ctx = RenderContext {
-            absolute_code_path: &self.cfg.absolute_code_path,
-            source_tree: &self.cfg.source_tree,
+        let render_ctx = RenderContextHbs {
+            absolute_code_path: &ctx.absolute_code_path,
+            source_tree: &ctx.source_tree,
             files,
             git_diff: &self.cfg.git_diff,
             no_codeblock: self.cfg.no_codeblock,
@@ -118,8 +116,8 @@ impl Renderer for HandlebarsRenderer {
         let (body_template, name) = self.resolve_template();
         let hb = handlebars_setup(&body_template, &name)
             .map_err(|e| PipelineError::Render(e.to_string()))?;
-        let body =
-            render_template(&hb, &name, &ctx).map_err(|e| PipelineError::Render(e.to_string()))?;
+        let body = render_template(&hb, &name, &render_ctx)
+            .map_err(|e| PipelineError::Render(e.to_string()))?;
 
         let format = match self.cfg.output_format {
             OutputFormat::Markdown => "markdown",

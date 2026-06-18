@@ -72,6 +72,7 @@ impl ContextSource for WorkingTreeSource {
                     extension: ext,
                     content: RawContent::Text { text: code },
                     status: None,
+                    old_path: None,
                 });
             }
         }
@@ -148,6 +149,7 @@ impl ContextSource for CommitRangeSource {
                     extension,
                     content,
                     status: Some(cf.status.to_string()),
+                    old_path: cf.old_path,
                 }
             })
             .collect();

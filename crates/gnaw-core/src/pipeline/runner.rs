@@ -8,6 +8,7 @@
 //! so the tally is computed once from exactly what's kept.
 
 use super::*;
+use crate::path::tree_from_items;
 
 /// Declares which adapter fills each pipeline slot. Trait objects so a
 /// frontend composes a spec at runtime (CLI picks a source from flags; a REST
@@ -22,6 +23,12 @@ pub struct PipelineSpec {
     pub renderer: Box<dyn Renderer>,
     /// 0 = unbudgeted (keep everything), matching the budgeter's convention.
     pub budget: usize,
+    /// Root node label for the source tree (use `display_name(&config.path)`).
+    pub root_label: String,
+    /// Sort order for the items-derived tree; must match the config used to
+    /// capture the golden or the default tree ordering drifts.
+    pub sort_method: Option<crate::sort::FileSortMethod>,
+    pub tree_builder: Box<dyn TreeBuilder>,
 }
 
 /// Run the pipeline end to end.
@@ -35,34 +42,39 @@ pub fn run(spec: &PipelineSpec, opts: &SourceOpts) -> Result<Rendered, PipelineE
         .filter(|it| spec.selector.keep(it))
         .collect();
 
-    // Chunk: each item → 0..n chunks. Identity chunker emits 0 for Omitted.
-    let chunks: Vec<Chunk> = items
-        .iter()
-        .flat_map(|it| spec.chunker.chunk(it))
-        .collect();
+    // ── NEW ── Render context derived from the surviving items. Built HERE,
+    // after filtering, so the tree is exactly the set that reaches the output —
+    // no separate walk, no binary/empty over-inclusion. This is the double-walk
+    // and tree-over-inclusion fix in one place.
+    let render_ctx = RenderContext {
+        source_tree: spec
+            .tree_builder
+            .build(&items, &spec.root_label, spec.sort_method),
+        absolute_code_path: spec.root_label.clone(),
+    };
 
-    // Rank: score each chunk. No-op ranker scores all equal, so order is
-    // preserved; a real ranker would reorder here.
-    let ctx = RankCtx::default();
+    // Chunk: each item → 0..n chunks.
+    let chunks: Vec<Chunk> = items.iter().flat_map(|it| spec.chunker.chunk(it)).collect();
+
+    // Rank: score each chunk.
+    let rank_ctx = RankCtx; // ← was `ctx`, renamed for clarity
     let mut ranked: Vec<ScoredChunk> = chunks
         .into_iter()
         .map(|chunk| {
-            let score = spec.ranker.score(&chunk, &ctx);
+            let score = spec.ranker.score(&chunk, &rank_ctx);
             ScoredChunk { chunk, score }
         })
         .collect();
 
-    // Stable sort by score DESC so a real ranker takes effect, but equal
-    // scores (the no-op case) keep source order — byte-stable for goldens.
     ranked.sort_by(|a, b| {
         b.score
             .partial_cmp(&a.score)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // Budget (+count): keep what fits, compute the tally once.
+    // Budget (+count).
     let selection = spec.budgeter.fit(ranked, spec.budget);
 
-    // Render.
-    spec.renderer.render(&selection)
+    // Render — now takes the items-derived context as a second argument.
+    spec.renderer.render(&selection, &render_ctx)
 }

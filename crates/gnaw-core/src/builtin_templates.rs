@@ -184,6 +184,14 @@ impl BuiltinTemplates {
                         description: "Per-file changes between two refs. Use with --git-diff-shas <ref1>,<ref2>.",
                     },
                 ),
+                (
+                    "git-diff-shas-pipeline",
+                    BuiltinTemplate {
+                        name: "Git Diff SHAs (pipeline)",
+                        content: include_str!("../templates/git-diff-shas-pipeline.hbs"),
+                        description: "Changed-files view rendered through the pipeline. Internal; selected automatically for --git-diff-shas under the pipeline feature.",
+                    },
+                ),
             ])
         })
     }

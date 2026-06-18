@@ -5,6 +5,7 @@
 //! are multi-threaded, and an axum handler holding a `dyn Renderer` needs it.
 
 use super::*;
+use crate::sort::FileSortMethod;
 
 /// Options threaded into a source. Concrete fields land when adapters need
 /// them (refs for the commit-range source, root path for the tree source);
@@ -56,9 +57,35 @@ pub trait Budgeter: Send + Sync {
     fn fit(&self, ranked: Vec<ScoredChunk>, budget: usize) -> Selection;
 }
 
+/// Pipeline-computed context the renderer needs but the Selection doesn't carry:
+/// the source tree (derived from items), the root label, etc. Built inside `run`,
+/// NOT supplied by the caller — that's the whole point, since an items-derived
+/// tree can't be known before the source runs.
+#[derive(Debug, Clone, Default)]
+pub struct RenderContext {
+    pub source_tree: String,
+    pub absolute_code_path: String,
+}
+
 /// Renders a selection. Wraps handlebars + existing templates in step 2,
 /// and owns its own variable contract — replacing the hand-maintained
 /// `PROVIDED_IDENTIFIERS` list in `template.rs`.
 pub trait Renderer: Send + Sync {
-    fn render(&self, sel: &Selection) -> Result<Rendered, PipelineError>;
+    fn render(&self, sel: &Selection, ctx: &RenderContext) -> Result<Rendered, PipelineError>;
+}
+
+/// Builds the source-tree string. Two sourcings: from surviving items (the
+/// normal case, output-consistent) or from a full filesystem walk (the
+/// `--full-directory-tree` case, which must show filter-dropped paths and so
+/// CANNOT derive from items). A stage, not a flag, because "where the tree
+/// comes from" is a real axis of variation — a REST request could pick either.
+pub trait TreeBuilder: Send + Sync {
+    /// `items` is the post-filter set; `root_label`/`sort_method` come from the
+    /// spec. A full-walk builder ignores `items` and walks instead.
+    fn build(
+        &self,
+        items: &[RawItem],
+        root_label: &str,
+        sort_method: Option<FileSortMethod>,
+    ) -> String;
 }

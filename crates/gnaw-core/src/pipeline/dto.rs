@@ -44,6 +44,10 @@ pub struct RawItem {
     /// the working-tree source can leave it `None`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
+    /// Rename source, repo-relative. `Some` only for renamed files (changed-
+    /// files source); `None` for working-tree files and non-renames.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub old_path: Option<String>,
 }
 
 /// A chunk of one item. The identity (`source_path`) is denormalized onto

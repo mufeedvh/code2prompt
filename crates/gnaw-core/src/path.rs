@@ -558,3 +558,44 @@ pub fn wrap_code_block(code: &str, line_numbers: bool) -> String {
         code.to_string()
     }
 }
+
+/// Build the source-tree string from already-yielded pipeline items, with no
+/// filesystem walk. This is the items-derived tree: it contains exactly the
+/// files that survived the source/filter, so it can never list a file the
+/// output omits (the over-inclusion the legacy two-phase walk allowed).
+///
+/// `root_label` is the displayed root node (use `display_name(&config.path)`),
+/// matching what `discover_files` puts at the tree root. Sorting goes through
+/// the same `sort_tree` the legacy path uses, so a given `sort_method`
+/// produces byte-identical ordering to `traverse_directory`.
+pub fn tree_from_items(
+    items: &[crate::pipeline::RawItem],
+    root_label: &str,
+    sort_method: Option<FileSortMethod>,
+) -> String {
+    let mut tree = Tree::new(root_label.to_owned());
+
+    for item in items {
+        // Item paths are repo-relative, '/'-separated (the sources build them
+        // from strip_prefix + to_string_lossy). Split into components and
+        // insert, creating intermediate directory nodes as needed — the same
+        // nesting logic discover_files uses, minus the filesystem.
+        let mut current = &mut tree;
+        for component in item.path.split('/').filter(|c| !c.is_empty()) {
+            let pos = current
+                .leaves
+                .iter()
+                .position(|child| child.root == component);
+            current = match pos {
+                Some(i) => &mut current.leaves[i],
+                None => {
+                    current.leaves.push(Tree::new(component.to_owned()));
+                    current.leaves.last_mut().unwrap()
+                }
+            };
+        }
+    }
+
+    sort_tree(&mut tree, sort_method);
+    tree.to_string()
+}
