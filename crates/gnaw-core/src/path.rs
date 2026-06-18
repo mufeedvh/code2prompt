@@ -37,6 +37,20 @@ pub struct Traversal {
     pub files: Vec<FileEntry>,
     pub findings: Vec<SecretFinding>,
 }
+
+/// Raw extraction result for the pipeline source path: unwrapped content,
+/// no token count, plus any secret-scan findings. Deliberately distinct from
+/// `FileEntry` — the pipeline defers wrapping and counting to later stages,
+/// so this carries less than `FileEntry` does.
+#[derive(Debug, Clone)]
+pub struct RawFile {
+    pub path: String,
+    pub extension: String,
+    pub code: String,
+    /// (path, finding) pairs. TEMPORARY home — step 2.5's Scrubber stage
+    /// takes ownership of findings and this field goes away.
+    pub findings: Vec<(String, Finding)>,
+}
 /// Represents a file entry with all its metadata and content
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileEntry {
@@ -399,6 +413,91 @@ pub fn count_file_tokens(path: &Path, config: &GnawConfig) -> Option<usize> {
     }
 
     Some(count_tokens(&code, &config.encoding))
+}
+
+/// Pipeline source extraction: produce *raw* file content for one file —
+/// no `wrap_code_block`, no line numbers, no token count. Wrapping and
+/// counting are deferred to the renderer and counter stages respectively;
+/// that deferral is the point of the migration.
+///
+/// Reuses the legacy extraction guts (binary check, BOM strip, processor
+/// dispatch, compression) and, FOR NOW, the inline secret scrub. The scrub
+/// is TEMPORARY: step 2.5 promotes it to a dedicated `Scrubber` stage and
+/// this function then yields genuinely unscrubbed content. Until then it
+/// matches legacy behavior exactly so no secret can leak through the new
+/// path before the stage that guards it exists.
+///
+/// Returns `None` for binary/empty/unreadable files (the source drops them,
+/// same as the legacy traversal). Findings ride out alongside the content so
+/// the source adapter can surface them until 2.5 gives them a real home.
+pub fn extract_raw_file(
+    absolute_path: &Path,
+    relative_path: &Path,
+    config: &GnawConfig,
+) -> Option<RawFile> {
+    // (path, extension, raw_code, findings)
+    let meta = std::fs::metadata(absolute_path).ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+
+    let code_bytes = match read_file_with_binary_check(absolute_path, meta.len()) {
+        Ok(Some(bytes)) => bytes,
+        _ => return None, // binary or read error → source drops it
+    };
+    let clean_bytes = strip_utf8_bom(&code_bytes);
+
+    let extension = absolute_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    let processor = file_processor::get_processor_for_extension(extension);
+    let code = match processor.process(clean_bytes, absolute_path) {
+        Ok(processed) => processed,
+        Err(_) => String::from_utf8_lossy(clean_bytes).into_owned(),
+    };
+
+    #[cfg(feature = "compression")]
+    let code = if config.compression.any() {
+        match crate::compressor::compressor_for_extension(extension) {
+            Some(c) => c.compress(&code, &config.compression),
+            None => code,
+        }
+    } else {
+        code
+    };
+
+    if code.trim().is_empty() || code.contains(char::REPLACEMENT_CHARACTER) {
+        return None;
+    }
+
+    let file_path = if config.absolute_path {
+        absolute_path.to_string_lossy().to_string()
+    } else {
+        relative_path.to_string_lossy().to_string()
+    };
+
+    // TEMPORARY (step 2.5 removes this): scrub inline so the new source path
+    // is no leakier than the legacy one. The dedicated Scrubber stage will
+    // take this over and the source will then yield raw, unscrubbed content.
+    let (code, findings): (String, Vec<(String, Finding)>) = if config.secret_scan
+        != SecretPolicy::Off
+        && !path_is_allowlisted(&file_path, &config.secret_scan_allow_paths)
+    {
+        let (scrubbed, found) = SCANNER.scrub(&code, config.secret_scan);
+        let tagged: Vec<(String, Finding)> =
+            found.into_iter().map(|f| (file_path.clone(), f)).collect();
+        (scrubbed, tagged)
+    } else {
+        (code, Vec::new())
+    };
+
+    Some(RawFile {
+        path: file_path,
+        extension: extension.to_string(),
+        code,
+        findings,
+    })
 }
 
 /// Phase 3: Assembly - Sort results and return
