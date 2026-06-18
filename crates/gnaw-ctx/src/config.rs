@@ -295,6 +295,7 @@ pub fn parse_template(template_arg: &Option<String>) -> Result<(String, String)>
 /// # Returns
 ///
 /// * `Result<()>` - An empty result indicating success or an error
+#[cfg(not(feature = "pipeline"))]
 pub fn handle_undefined_variables(session: &mut GnawSession, template_content: &str) -> Result<()> {
     let undefined_variables = extract_undefined_variables(template_content);
 

@@ -7,6 +7,8 @@ mod clipboard;
 mod config;
 mod config_loader;
 mod model;
+#[cfg(feature = "pipeline")]
+mod pipeline_spec;
 mod token_map;
 mod tui;
 mod utils;
@@ -20,9 +22,13 @@ use clap::{CommandFactory, Parser};
 use clap_complete::CompleteEnv;
 use colored::*;
 use gnaw_core::path::FileEntry;
+#[cfg(feature = "pipeline")]
+use gnaw_core::session::RenderedPrompt;
 use gnaw_core::template::write_to_file;
 use indicatif::{ProgressBar, ProgressStyle};
-use log::{debug, error, info};
+#[cfg(not(feature = "pipeline"))]
+use log::debug;
+use log::{error, info};
 use std::io::Write;
 use tui::run_tui;
 
@@ -112,127 +118,146 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         None
     };
 
-    // ~~~ Gather Repository Data ~~~
-    // THROWAWAY demand-gate (migration prerequisite #1): a changed-files run
-    // (--git-diff-shas) renders only `changed_files`, so it must NOT walk the
-    // working tree. Loading it here pulls in the whole repo and inflates the
-    // token count (load is unconditional, consumption is conditional — the exact
-    // smell the pipeline migration kills). Step 5 deletes this in favor of
-    // spec-driven source selection.
-    if session.config.diff_shas.is_none() {
-        session.load_codebase().map_err(|e| {
+    // ~~~ Gather + Render ~~~
+    // The production half (gather repo data + render) is feature-gated: the
+    // legacy session path is the default build; `--features pipeline` runs the
+    // new staged pipeline. Both branches produce a `RenderedPrompt` so the
+    // entire output half below (stdout/clipboard/file/split) is identical and
+    // the parity diff is against the same sink the golden was captured with.
+    #[cfg(not(feature = "pipeline"))]
+    let rendered = {
+        // THROWAWAY demand-gate (migration prerequisite #1): a changed-files
+        // run (--git-diff-shas) renders only `changed_files`, so it must NOT
+        // walk the working tree. Step 5 deletes this in favor of spec-driven
+        // source selection.
+        if session.config.diff_shas.is_none() {
+            session.load_codebase().map_err(|e| {
+                if let Some(s) = spinner.as_ref() {
+                    s.finish_with_message("Failed!".red().to_string())
+                }
+                error!("Failed to build directory tree: \n{}", e);
+                anyhow::anyhow!("Failed to build directory tree: {}", e)
+            })?;
+        }
+        if session.config.diff_shas.is_some() {
             if let Some(s) = spinner.as_ref() {
-                s.finish_with_message("Failed!".red().to_string())
+                s.set_message("Reading changed files between revisions...")
             }
-            error!("Failed to build directory tree: \n{}", e);
-            anyhow::anyhow!("Failed to build directory tree: {}", e)
-        })?;
-    }
-    if session.config.diff_shas.is_some() {
-        if let Some(s) = spinner.as_ref() {
-            s.set_message("Reading changed files between revisions...")
+            session.load_changed_files().unwrap_or_else(|e| {
+                if let Some(s) = spinner.as_ref() {
+                    s.finish_with_message("Failed!".red().to_string())
+                }
+                error!("Failed to read changed files: {}", e);
+                std::process::exit(1);
+            });
         }
-        session.load_changed_files().unwrap_or_else(|e| {
+        if let Some(s) = spinner.as_ref() {
+            s.set_message("Proceeding…")
+        }
+
+        if session.config.secret_scan == gnaw_core::secret_scan::SecretPolicy::Block
+            && !session.data.secret_findings.is_empty()
+        {
             if let Some(s) = spinner.as_ref() {
-                s.finish_with_message("Failed!".red().to_string())
+                s.finish_with_message("Blocked!".red().to_string());
             }
-            error!("Failed to read changed files: {}", e);
-            std::process::exit(1);
-        });
-    }
-    if let Some(s) = spinner.as_ref() {
-        s.set_message("Proceeding…")
-    }
-
-    if session.config.secret_scan == gnaw_core::secret_scan::SecretPolicy::Block
-        && !session.data.secret_findings.is_empty()
-    {
-        if let Some(s) = spinner.as_ref() {
-            s.finish_with_message("Blocked!".red().to_string());
+            let detail: Vec<String> = session
+                .data
+                .secret_findings
+                .iter()
+                .map(|(p, f)| format!("{p}:{} [{}]", f.line, f.rule_id))
+                .collect();
+            anyhow::bail!(
+                "secret scan: {} finding(s) with --secret-scan=block; aborting\n  {}",
+                session.data.secret_findings.len(),
+                detail.join("\n  ")
+            );
         }
-        let detail: Vec<String> = session
-            .data
-            .secret_findings
-            .iter()
-            .map(|(p, f)| format!("{p}:{} [{}]", f.line, f.rule_id))
-            .collect();
-        anyhow::bail!(
-            "secret scan: {} finding(s) with --secret-scan=block; aborting\n  {}",
-            session.data.secret_findings.len(),
-            detail.join("\n  ")
-        );
-    }
 
-    // ~~~ Git Related ~~~
-    // Git Diff
-    if session.config.diff_enabled {
-        if let Some(s) = spinner.as_ref() {
-            s.set_message("Generating git diff...")
-        }
-        session.load_git_diff().unwrap_or_else(|e| {
+        // ~~~ Git Related ~~~
+        if session.config.diff_enabled {
             if let Some(s) = spinner.as_ref() {
-                s.finish_with_message("Failed!".red().to_string())
+                s.set_message("Generating git diff...")
             }
-            error!("Failed to generate git diff: {}", e);
-            std::process::exit(1);
-        });
-    }
-
-    // Load Git diff between branches if provided
-    if session.config.diff_branches.is_some() {
-        if let Some(s) = spinner.as_ref() {
-            s.set_message("Generating git diff between two branches...")
-        }
-        session
-            .load_git_diff_between_branches()
-            .unwrap_or_else(|e| {
+            session.load_git_diff().unwrap_or_else(|e| {
                 if let Some(s) = spinner.as_ref() {
                     s.finish_with_message("Failed!".red().to_string())
                 }
                 error!("Failed to generate git diff: {}", e);
                 std::process::exit(1);
             });
-    }
-
-    // Load Git log between branches if provided
-    if session.config.log_branches.is_some() {
-        if let Some(ref s) = spinner {
-            s.set_message("Generating git log between two branches...");
         }
-        session.load_git_log_between_branches().unwrap_or_else(|e| {
-            if let Some(ref s) = spinner {
-                s.finish_with_message("Failed!".red().to_string());
+
+        if session.config.diff_branches.is_some() {
+            if let Some(s) = spinner.as_ref() {
+                s.set_message("Generating git diff between two branches...")
             }
-            error!("Failed to generate git log: {}", e);
-            std::process::exit(1);
-        });
-    }
-
-    // ~~~ Template ~~~
-
-    // Handle undefined variables (modifies session.config.user_variables)
-    let template_str_clone = session.config.template_str.clone();
-    match spinner.as_ref() {
-        Some(s) => {
-            s.suspend(|| config::handle_undefined_variables(&mut session, &template_str_clone))
+            session
+                .load_git_diff_between_branches()
+                .unwrap_or_else(|e| {
+                    if let Some(s) = spinner.as_ref() {
+                        s.finish_with_message("Failed!".red().to_string())
+                    }
+                    error!("Failed to generate git diff: {}", e);
+                    std::process::exit(1);
+                });
         }
-        None => config::handle_undefined_variables(&mut session, &template_str_clone),
-    }?;
 
-    // Data - now build after handling undefined variables
-    let data = session.build_template_data();
-    debug!(
-        "Template Context: absolute_code_path={}, files_count={}, has_user_vars={}",
-        data.absolute_code_path,
-        data.files.map(|f| f.len()).unwrap_or(0),
-        !session.config.user_variables.is_empty()
-    );
+        if session.config.log_branches.is_some() {
+            if let Some(ref s) = spinner {
+                s.set_message("Generating git log between two branches...");
+            }
+            session.load_git_log_between_branches().unwrap_or_else(|e| {
+                if let Some(ref s) = spinner {
+                    s.finish_with_message("Failed!".red().to_string());
+                }
+                error!("Failed to generate git log: {}", e);
+                std::process::exit(1);
+            });
+        }
 
-    // Render
-    let rendered = session.render_prompt(&data).unwrap_or_else(|e| {
-        error!("Failed to render prompt: {}", e);
-        std::process::exit(1);
-    });
+        // ~~~ Template ~~~
+        let template_str_clone = session.config.template_str.clone();
+        match spinner.as_ref() {
+            Some(s) => {
+                s.suspend(|| config::handle_undefined_variables(&mut session, &template_str_clone))
+            }
+            None => config::handle_undefined_variables(&mut session, &template_str_clone),
+        }?;
+
+        let data = session.build_template_data();
+        debug!(
+            "Template Context: absolute_code_path={}, files_count={}, has_user_vars={}",
+            data.absolute_code_path,
+            data.files.map(|f| f.len()).unwrap_or(0),
+            !session.config.user_variables.is_empty()
+        );
+
+        session.render_prompt(&data).unwrap_or_else(|e| {
+            error!("Failed to render prompt: {}", e);
+            std::process::exit(1);
+        })
+    };
+
+    #[cfg(feature = "pipeline")]
+    let rendered = {
+        // New staged path (step 3). Default extraction only — the
+        // --git-diff-shas changed-files spec is step 4, so under this feature a
+        // --git-diff-shas run currently renders default extraction and ignores
+        // the SHAs. Diff ONLY against default.golden.md at this step.
+        if let Some(s) = spinner.as_ref() {
+            s.set_message("Proceeding…")
+        }
+        let r = crate::pipeline_spec::run_default_extraction(&session.config)?;
+        RenderedPrompt {
+            prompt: r.body,
+            directory_name: gnaw_core::path::display_name(&session.config.path),
+            token_count: r.tally.total,
+            model_info: "",
+            files: Vec::new(),
+            secret_findings: Vec::new(),
+        }
+    };
 
     if let Some(ref s) = spinner {
         s.finish_with_message("Codebase Traversal Done!".green().to_string());
