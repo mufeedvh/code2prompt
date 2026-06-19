@@ -8,7 +8,7 @@ use gnaw_core::sort::FileSortMethod;
 use gnaw_core::template::OutputFormat;
 use gnaw_core::tokenizer::{TokenFormat, TokenizerType};
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PyGnawSession {
     inner: GnawSession,
@@ -40,12 +40,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -55,12 +55,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -70,12 +70,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -85,12 +85,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -100,12 +100,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -115,12 +115,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -130,12 +130,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -145,12 +145,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -160,12 +160,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -186,12 +186,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -212,12 +212,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -239,12 +239,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -263,12 +263,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -284,12 +284,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
@@ -300,12 +300,12 @@ impl PyGnawSession {
         self.inner = GnawSession::new(config);
 
         Python::attach(|py| {
-            Ok(Py::new(
+            Py::new(
                 py,
                 Self {
                     inner: self.inner.clone(),
                 },
-            )?)
+            )
         })
     }
 
