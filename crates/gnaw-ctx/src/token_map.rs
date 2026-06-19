@@ -4,7 +4,6 @@
 //! that show how tokens are distributed across files in a codebase. It creates
 //! hierarchical tree structures with visual bars and colors, similar to disk usage
 //! analyzers but for token consumption.
-use gnaw_core::path::FileEntry;
 use lscolors::{Indicator, LsColors};
 use serde::Deserialize;
 use std::cmp::Ordering;
@@ -47,7 +46,15 @@ pub struct TuiTokenMapLine {
 pub struct EntryMetadata {
     pub is_dir: bool,
 }
-
+/// Minimal per-file input for the token map. The map reconstructs the
+/// directory tree from `path` (splitting on '/'), so callers supply only leaf
+/// files — no directory entries, no is_dir flag. Both the legacy FileEntry
+/// path and the pipeline's chunks adapt into this, so the token map no longer
+/// depends on gnaw_core::path::FileEntry.
+pub struct TokenMapFile {
+    pub path: String,
+    pub tokens: usize,
+}
 #[derive(Debug, Clone)]
 struct TreeNode {
     tokens: usize,
@@ -108,7 +115,7 @@ impl PartialOrd for NodePriority {
 ///
 /// * `Vec<TokenMapEntry>` - Hierarchical list of token map entries ready for display
 pub fn generate_token_map_with_limit(
-    files: &[FileEntry],
+    files: &[TokenMapFile],
     total_tokens: usize,
     max_lines: Option<usize>,
     min_percent: Option<f64>,
@@ -121,27 +128,23 @@ pub fn generate_token_map_with_limit(
 
     // Insert all files into the tree
     for file in files {
-        let path_str = &file.path;
-        let tokens = file.token_count;
-        let metadata = EntryMetadata {
-            is_dir: file.metadata.is_dir,
-        };
-
-        let path = Path::new(path_str);
-
-        // Keep only normal path segments. A FileEntry path may arrive with a
-        // leading RootDir ("/") or CurDir (".") component depending on how the
-        // root was given; without filtering, every file nests under a single
-        // "/" node and the whole tree collapses to one row.
+        let path = Path::new(&file.path);
         let components: Vec<&str> = path
             .components()
             .filter_map(|c| match c {
                 Component::Normal(s) => s.to_str(),
-                _ => None, // drop RootDir, CurDir, ParentDir, Prefix
+                _ => None,
             })
             .collect();
-
-        insert_path(&mut root, &components, tokens, String::new(), metadata);
+        // inputs are always leaf files → is_dir: false; insert_path creates
+        // intermediate dir nodes itself, marking those is_dir: true.
+        insert_path(
+            &mut root,
+            &components,
+            file.tokens,
+            String::new(),
+            EntryMetadata { is_dir: false },
+        );
     }
 
     // Use priority queue to select most significant entries

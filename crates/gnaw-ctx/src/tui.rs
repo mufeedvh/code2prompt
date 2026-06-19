@@ -25,7 +25,7 @@ use crate::model::{
     TemplateState,
     template::{FocusMode, TemplateFocus, VariableCategory},
 };
-use crate::token_map::generate_token_map_with_limit;
+use crate::token_map::{TokenMapFile, generate_token_map_with_limit};
 use crate::utils::{save_template_to_custom_dir, save_to_file};
 use crate::widgets::{
     FileSelectionWidget, OutputWidget, SettingsWidget, StatisticsByExtensionWidget,
@@ -539,8 +539,15 @@ impl TuiApp {
                             // Convert to AnalysisResults format expected by TUI
                             let token_map_entries = if rendered.token_count > 0 {
                                 if let Some(files) = session.data.files.as_ref() {
+                                    let map_files: Vec<TokenMapFile> = files
+                                        .iter()
+                                        .map(|f| TokenMapFile {
+                                            path: f.path.clone(),
+                                            tokens: f.token_count,
+                                        })
+                                        .collect();
                                     generate_token_map_with_limit(
-                                        files,
+                                        &map_files,
                                         rendered.token_count,
                                         Some(50),
                                         Some(0.5),
