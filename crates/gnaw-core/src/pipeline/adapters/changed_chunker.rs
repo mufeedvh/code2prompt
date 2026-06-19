@@ -60,6 +60,7 @@ impl Chunker for ChangedChunker {
             extension: item.extension.clone(),
             text: body,
             index: 0,
+            tokens: 0,
         }]
     }
 }

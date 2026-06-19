@@ -8,7 +8,7 @@
 //! so the tally is computed once from exactly what's kept.
 
 use super::*;
-use crate::path::tree_from_items;
+use crate::pipeline::dto::{Selection, TokenTally};
 
 /// Declares which adapter fills each pipeline slot. Trait objects so a
 /// frontend composes a spec at runtime (CLI picks a source from flags; a REST
@@ -29,6 +29,7 @@ pub struct PipelineSpec {
     /// capture the golden or the default tree ordering drifts.
     pub sort_method: Option<crate::sort::FileSortMethod>,
     pub tree_builder: Box<dyn TreeBuilder>,
+    pub scrubber: Box<dyn Scrubber>,
 }
 
 /// Run the pipeline end to end.
@@ -41,6 +42,10 @@ pub fn run(spec: &PipelineSpec, opts: &SourceOpts) -> Result<Rendered, PipelineE
         .into_iter()
         .filter(|it| spec.selector.keep(it))
         .collect();
+
+    // Scrub: scan for secrets BEFORE chunking (whole-file scan, matching
+    // legacy). Findings ride to the end independent of budgeting.
+    let (items, findings) = spec.scrubber.scrub(items);
 
     // ── NEW ── Render context derived from the surviving items. Built HERE,
     // after filtering, so the tree is exactly the set that reaches the output —
@@ -76,5 +81,61 @@ pub fn run(spec: &PipelineSpec, opts: &SourceOpts) -> Result<Rendered, PipelineE
     let selection = spec.budgeter.fit(ranked, spec.budget);
 
     // Render — now takes the items-derived context as a second argument.
-    spec.renderer.render(&selection, &render_ctx)
+    let rendered = spec.renderer.render(&selection, &render_ctx)?;
+    Ok(Rendered {
+        findings,
+        chunks: selection.chunks.clone(),
+        source_tree: render_ctx.source_tree.clone(),
+        ..rendered
+    })
+}
+
+/// Render a SUBSET of already-extracted chunks into a standalone document,
+/// reusing a precomputed source tree. This is the split primitive: extraction
+/// ran once (producing `Rendered.chunks` + `Rendered.source_tree`); each part
+/// is one cheap renderer pass over a slice of those chunks against the SAME
+/// tree. No source walk, no re-tokenize — chunks already carry `tokens`.
+///
+/// Lives in core (not gnaw-ctx) so a REST/MCP frontend can split too: a
+/// browser extension requesting a budget-fit gets the same per-part assembly.
+/// Takes the renderer as a trait object so each frontend supplies its own.
+pub fn render_subset(
+    renderer: &dyn Renderer,
+    source_tree: &str,
+    root_label: &str,
+    chunks: Vec<Chunk>,
+    encoding: &str,
+) -> Result<Rendered, PipelineError> {
+    // Rebuild the tally for just this subset — sum the per-chunk counts the
+    // budgeter already stamped, and the per-path breakdown from the same.
+    let mut total = 0usize;
+    let mut by_path = std::collections::BTreeMap::new();
+    for c in &chunks {
+        total += c.tokens;
+        *by_path.entry(c.source_path.clone()).or_insert(0) += c.tokens;
+    }
+
+    let tally = TokenTally {
+        total,
+        by_path,
+        // ← if TokenTally carries `encoding` (or other fields), set them here.
+        encoding: encoding.to_string(),
+    };
+
+    let selection = Selection {
+        chunks,
+        tally,
+        // ← if Selection carries `omitted` (or other fields), set them here.
+        omitted: Vec::new(),
+    };
+
+    let ctx = RenderContext {
+        source_tree: source_tree.to_string(),
+        absolute_code_path: root_label.to_string(),
+    };
+
+    // run() normally overwrites chunks/source_tree/findings on the renderer's
+    // output; for a subset render the body is all we want, so the renderer's
+    // empty placeholders are fine — we don't re-surface chunks here.
+    renderer.render(&selection, &ctx)
 }

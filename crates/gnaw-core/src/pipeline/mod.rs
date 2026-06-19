@@ -19,7 +19,7 @@ pub mod runner;
 
 pub use dto::*;
 pub use ports::*;
-pub use runner::{PipelineSpec, run};
+pub use runner::{PipelineSpec, render_subset, run};
 
 /// Error type for pipeline stages. Library-level, so `thiserror`, not
 /// `anyhow` — the binary maps these at the edge. Variants are coarse on

@@ -89,3 +89,12 @@ pub trait TreeBuilder: Send + Sync {
         sort_method: Option<FileSortMethod>,
     ) -> String;
 }
+
+/// Scans item content for secrets, per the configured policy. Runs BEFORE
+/// chunking (whole-file scan, matching legacy). Returns the (possibly
+/// scrubbed-for-Redact) items plus all findings. Findings are collected here
+/// and carried to render untouched — the budgeter never sees them, so a
+/// finding survives even if its file's chunk is later dropped.
+pub trait Scrubber: Send + Sync {
+    fn scrub(&self, items: Vec<RawItem>) -> (Vec<RawItem>, Vec<FindingDto>);
+}

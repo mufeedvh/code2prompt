@@ -20,6 +20,7 @@ readme = "../../README.md"
 default = []
 compression = ["dep:tree-sitter", "dep:tree-sitter-rust"]
 clap = ["dep:clap"]
+pipeline = []
 
 [dependencies]
 anyhow = { workspace = true }

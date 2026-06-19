@@ -80,7 +80,7 @@ pub struct RenderedPrompt {
     pub token_count: usize,
     pub model_info: &'static str,
     pub files: Vec<String>,
-    pub secret_findings: Vec<(String, crate::secret_scan::Finding)>,
+    pub secret_findings: Vec<crate::pipeline::FindingDto>,
 }
 
 impl GnawSession {
@@ -326,7 +326,12 @@ impl GnawSession {
             token_count,
             model_info,
             files,
-            secret_findings: self.data.secret_findings.clone(),
+            secret_findings: self
+                .data
+                .secret_findings
+                .iter()
+                .map(|(path, f)| crate::pipeline::FindingDto::from_core(path.clone(), f))
+                .collect(),
         })
     }
 

@@ -60,6 +60,11 @@ pub struct Chunk {
     pub text: String,
     /// Ordinal within the source item (0 for whole-file identity chunks).
     pub index: usize,
+    /// Measured token cost of `text`. 0 until the budget/count stage fills it
+    /// (the chunker emits chunks uncounted). Carried so split can pack files
+    /// without re-tokenizing.
+    #[serde(default)]
+    pub tokens: usize,
 }
 
 /// A chunk with a relevance score. Generic at the trait boundary (see
@@ -100,4 +105,45 @@ pub struct Rendered {
     pub body: String,
     pub format: String,
     pub tally: TokenTally,
+    /// Secret-scan findings collected by the Scrubber stage, independent of
+    /// what the budgeter kept — a finding in a budget-dropped file is still
+    /// reported (it was still read off disk). Empty when scanning is Off.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub findings: Vec<FindingDto>,
+    /// Kept chunks, surfaced so a frontend can re-assemble subsets (split)
+    /// without re-extracting. Same `Chunk`s the budgeter produced — token
+    /// counts already filled. Empty for consumers that only want `body`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub chunks: Vec<Chunk>,
+    /// Full source tree, surfaced so split reuses it across all parts (the
+    /// tree is constant per part; only file contents vary).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub source_tree: String,
+}
+
+/// A secret-scan finding, wire form. Distinct from `secret_scan::Finding`
+/// (which holds a `&'static str` rule id for the scanner's sake and can't
+/// round-trip through serde). Owned fields so REST/MCP can both emit and
+/// accept it. The preview is already redacted by the scanner — never the
+/// full secret.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FindingDto {
+    pub path: String,
+    pub rule_id: String,
+    pub line: usize,
+    pub entropy: f32,
+    pub preview: String,
+}
+
+impl FindingDto {
+    /// Build from a path-tagged core finding.
+    pub fn from_core(path: String, f: &crate::secret_scan::Finding) -> Self {
+        Self {
+            path,
+            rule_id: f.rule_id.to_string(),
+            line: f.line,
+            entropy: f.entropy,
+            preview: f.preview.clone(),
+        }
+    }
 }

@@ -126,10 +126,41 @@ impl Renderer for HandlebarsRenderer {
         }
         .to_string();
 
+        // JSON output: wrap the rendered template body in the same envelope the
+        // legacy session path emitted, so `--format json` produces real JSON
+        // (the template itself renders XML; JSON is a wrapper around it). Done
+        // here, in core, so a REST/MCP frontend gets byte-identical JSON without
+        // re-implementing the envelope. `files` is the deduped, first-seen-order
+        // list of source paths — one entry per file even once a chunker emits
+        // multiple chunks per file.
+        let body = if matches!(self.cfg.output_format, OutputFormat::Json) {
+            let mut files: Vec<String> = Vec::new();
+            let mut seen = std::collections::HashSet::new();
+            for c in &sel.chunks {
+                if seen.insert(c.source_path.as_str()) {
+                    files.push(c.source_path.clone());
+                }
+            }
+            let json_data = serde_json::json!({
+                "prompt": body,
+                "directory_name": ctx.absolute_code_path,
+                "token_count": sel.tally.total,
+                "model_info": "",
+                "files": files,
+            });
+            serde_json::to_string_pretty(&json_data)
+                .map_err(|e| PipelineError::Render(e.to_string()))?
+        } else {
+            body
+        };
+
         Ok(Rendered {
             body,
             format,
             tally: sel.tally.clone(),
+            findings: Vec::new(),
+            chunks: Vec::new(),
+            source_tree: String::new(),
         })
     }
 }

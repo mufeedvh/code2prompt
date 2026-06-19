@@ -35,7 +35,8 @@ impl Budgeter for TakeUntilBudget {
             }
             total += tokens;
             *by_path.entry(sc.chunk.source_path.clone()).or_insert(0) += tokens;
-            chunks.push(sc.chunk);
+            let chunk = Chunk { tokens, ..sc.chunk };
+            chunks.push(chunk);
         }
 
         Selection {

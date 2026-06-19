@@ -41,6 +41,7 @@ impl Chunker for IdentityChunker {
             extension: item.extension.clone(),
             text,
             index: 0,
+            tokens: 0,
         }]
     }
 }
