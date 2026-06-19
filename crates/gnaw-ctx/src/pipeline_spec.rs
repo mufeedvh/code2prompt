@@ -9,42 +9,24 @@ use gnaw_core::configuration::GnawConfig;
 use gnaw_core::path::display_name;
 use gnaw_core::pipeline::adapters::{
     ChangedChunker, CommitRangeSource, FullWalkTree, HandlebarsRenderer, IdentityChunker,
-    ItemsTree, PassThrough, PatternSelector, RendererConfig, TakeUntilBudget, TiktokenCounter,
+    ItemsTree, PatternSelector, RendererConfig, SecretScrubber, TakeUntilBudget, TiktokenCounter,
     Uniform, WorkingTreeSource,
 };
 use gnaw_core::pipeline::ports::TreeBuilder;
 use gnaw_core::pipeline::{PipelineSpec, Rendered, SourceOpts, run};
-/// Build and run the default-extraction pipeline. Returns the rendered output.
+/// Build and run the default (working-tree) extraction pipeline, returning the
+/// rendered output.
 ///
-/// Build and run the default-extraction pipeline. Returns the rendered output.
-///
-/// NOTE the tree problem below — the renderer needs `source_tree` and
-/// `absolute_code_path`, which only `traverse_directory` produces today. For
-/// step 3 we get them by running the legacy traversal JUST for the tree, then
-/// the pipeline produces the file contents. That double-walk is temporary and
-/// ugly; step 4's `load_changed_tree` and a tree-from-items approach replace
-/// it. Flagged loudly because it's the seam most likely to break parity.
+/// Source is `WorkingTreeSource`; the source tree is derived from the surviving
+/// items by `ItemsTree` (or a full filesystem walk via `FullWalkTree` when
+/// `--full-directory-tree` is set), so there is no separate walk just for the
+/// tree — the earlier double-walk is gone. Step 5 folds this and
+/// `run_changed_files_extraction` into a single `build_spec(config)` that picks
+/// the source from config rather than the caller picking the function.
 pub fn run_default_extraction(config: &GnawConfig) -> Result<Rendered> {
-    let source_tree_override = if config.full_directory_tree {
-        // Full-directory-tree means "show every directory, ignore include/exclude
-        // for the tree" — so it can't come from the filtered items. Walk for the
-        // tree; the pipeline still produces the actual file contents.
-        let traversal = gnaw_core::path::traverse_directory(config, None)?;
-        Some(traversal.tree)
-    } else {
-        None
-    };
     // Tree + path: legacy traversal, tree only. Its file list is discarded —
     // the pipeline source produces the actual file contents.
-    let renderer = HandlebarsRenderer::new(RendererConfig {
-        no_codeblock: config.no_codeblock,
-        line_numbers: config.line_numbers,
-        git_diff: None,
-        template_str: config.template_str.clone(),
-        template_name: config.template_name.clone(),
-        output_format: config.output_format,
-        user_variables: config.user_variables.clone(),
-    });
+    let renderer = HandlebarsRenderer::new(default_renderer_config(config));
 
     let tree_builder: Box<dyn TreeBuilder> = if config.full_directory_tree {
         Box::new(FullWalkTree::new(config.clone()))
@@ -59,6 +41,7 @@ pub fn run_default_extraction(config: &GnawConfig) -> Result<Rendered> {
             &config.exclude_patterns,
         )),
         chunker: Box::new(IdentityChunker),
+        scrubber: Box::new(SecretScrubber::new(config)),
         ranker: Box::new(Uniform),
         budgeter: Box::new(TakeUntilBudget::new(Box::new(TiktokenCounter::new(
             config.encoding,
@@ -85,26 +68,7 @@ pub fn run_changed_files_extraction(config: &GnawConfig) -> Result<Rendered> {
         .clone()
         .ok_or_else(|| anyhow::anyhow!("run_changed_files_extraction called without diff_shas"))?;
 
-    // The changed-files template is structural, not a format default — the
-    // builder selects it. An explicit --template still wins: if the user set
-    // one, config.template_str is non-empty and we honor it.
-    let (template_str, template_name) = if config.template_str.is_empty() {
-        let t = BuiltinTemplates::get_template("git-diff-shas-pipeline")
-            .ok_or_else(|| anyhow::anyhow!("builtin git-diff-shas-pipeline template missing"))?;
-        (t.content.to_string(), "git-diff-shas-pipeline".to_string())
-    } else {
-        (config.template_str.clone(), config.template_name.clone())
-    };
-
-    let renderer = HandlebarsRenderer::new(RendererConfig {
-        no_codeblock: config.no_codeblock,
-        line_numbers: config.line_numbers,
-        git_diff: None,
-        template_str,
-        template_name,
-        output_format: config.output_format,
-        user_variables: config.user_variables.clone(),
-    });
+    let renderer = HandlebarsRenderer::new(changed_renderer_config(config)?);
 
     let spec = PipelineSpec {
         source: Box::new(CommitRangeSource::new(config.clone(), ref1, ref2)),
@@ -113,6 +77,7 @@ pub fn run_changed_files_extraction(config: &GnawConfig) -> Result<Rendered> {
             &config.exclude_patterns,
         )),
         chunker: Box::new(ChangedChunker),
+        scrubber: Box::new(SecretScrubber::new(config)),
         ranker: Box::new(Uniform),
         budgeter: Box::new(TakeUntilBudget::new(Box::new(TiktokenCounter::new(
             config.encoding,
@@ -126,4 +91,49 @@ pub fn run_changed_files_extraction(config: &GnawConfig) -> Result<Rendered> {
 
     let rendered = run(&spec, &SourceOpts)?;
     Ok(rendered)
+}
+
+fn default_renderer_config(config: &GnawConfig) -> RendererConfig {
+    RendererConfig {
+        no_codeblock: config.no_codeblock,
+        line_numbers: config.line_numbers,
+        git_diff: None,
+        template_str: config.template_str.clone(),
+        template_name: config.template_name.clone(),
+        output_format: config.output_format,
+        user_variables: config.user_variables.clone(),
+    }
+}
+
+/// Renderer config for the changed-files view: resolves the built-in
+/// git-diff-shas-pipeline template unless the user set an explicit one.
+fn changed_renderer_config(config: &GnawConfig) -> Result<RendererConfig> {
+    let (template_str, template_name) = if config.template_str.is_empty() {
+        let t = BuiltinTemplates::get_template("git-diff-shas-pipeline")
+            .ok_or_else(|| anyhow::anyhow!("builtin git-diff-shas-pipeline template missing"))?;
+        (t.content.to_string(), "git-diff-shas-pipeline".to_string())
+    } else {
+        (config.template_str.clone(), config.template_name.clone())
+    };
+    Ok(RendererConfig {
+        no_codeblock: config.no_codeblock,
+        line_numbers: config.line_numbers,
+        git_diff: None,
+        template_str,
+        template_name,
+        output_format: config.output_format,
+        user_variables: config.user_variables.clone(),
+    })
+}
+
+/// Build the renderer matching whichever extraction `config` selects, so a split
+/// part renders byte-identically to a whole run. Used by the CLI split path,
+/// which renders each part via `render_subset`.
+pub fn build_renderer_for(config: &GnawConfig) -> Result<HandlebarsRenderer> {
+    let cfg = if config.diff_shas.is_some() {
+        changed_renderer_config(config)?
+    } else {
+        default_renderer_config(config)
+    };
+    Ok(HandlebarsRenderer::new(cfg))
 }
