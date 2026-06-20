@@ -24,6 +24,18 @@ use crate::{args::Cli, config_loader::ConfigSource};
 use gnaw_core::configuration::CompressionOptions;
 
 const STRIP_TOKENS: [&str; 4] = ["tests", "fn-bodies", "doc-comments", "private-bodies"];
+
+/// Builtin template keys whose runs are "git narrative" — they reason about a
+/// change, so the pipeline scopes their source tree to the changed files. Lives
+/// here, in the template-selection layer, because that's the one place that
+/// already knows these keys; the pipeline reads the resolved `git_narrative`
+/// flag and never carries its own copy.
+const GIT_NARRATIVE_TEMPLATES: &[&str] = &[
+    "write-git-commit",
+    "write-git-changeset-commits",
+    "write-github-pull-request",
+];
+
 /// Unified session builder that merges configuration layering in one place
 /// - base: Some(&ConfigSource) to use loaded config as defaults; None to use CLI defaults
 /// - args: CLI arguments
@@ -170,7 +182,7 @@ pub fn build_session(
     // Mirrors the diff/branch values set on the builder below.
     let diff_enabled_resolved = args.diff || cfg_diff_enabled;
     let diff_mode_resolved = args.diff_mode.unwrap_or_default();
-    let (template_str, template_name) = resolve_flag_template_from_parts(
+    let (template_str, template_name, git_narrative) = resolve_flag_template_from_parts(
         &template_str,
         &template_name,
         diff_branches.is_some(),
@@ -181,7 +193,8 @@ pub fn build_session(
 
     configuration
         .template_str(template_str)
-        .template_name(template_name);
+        .template_name(template_name)
+        .git_narrative(git_narrative);
     let policy = args
         .secret_scan
         .or_else(|| cfg.and_then(|c| c.secret_scan))
@@ -442,12 +455,17 @@ fn resolve_flag_template_from_parts(
     has_log_branches: bool,
     diff_enabled: bool,
     diff_mode: DiffMode,
-) -> (String, String) {
+) -> (String, String, bool) {
     let user_picked = !explicit_template_str.is_empty() || explicit_template_name != "default";
     if user_picked {
+        // Honor the explicit choice; it's git-narrative iff they named one of
+        // the narrative builtins (so `--diff --template write-git-commit` still
+        // gets the changed-files tree, same as the auto-selected case).
+        let git_narrative = GIT_NARRATIVE_TEMPLATES.contains(&explicit_template_name);
         return (
             explicit_template_str.to_string(),
             explicit_template_name.to_string(),
+            git_narrative,
         );
     }
 
@@ -463,7 +481,8 @@ fn resolve_flag_template_from_parts(
     };
 
     match key.and_then(BuiltinTemplates::get_template) {
-        Some(t) => (t.content.to_string(), key.unwrap().to_string()),
-        None => (String::new(), "default".to_string()),
+        // Every key auto-select can produce is a git-narrative template.
+        Some(t) => (t.content.to_string(), key.unwrap().to_string(), true),
+        None => (String::new(), "default".to_string(), false),
     }
 }

@@ -107,6 +107,13 @@ pub struct GnawConfig {
 
     #[builder(default)]
     pub secret_scan_allow_paths: Vec<String>,
+
+    /// True when the resolved template reasons about a *change* (commit,
+    /// changeset, PR). Computed at config-build time from the template
+    /// selection — NOT a user-set knob, NOT serialized to TOML. The pipeline
+    /// reads this to scope the source tree to changed files; it never
+    /// re-derives the intent from the template name.
+    pub git_narrative: bool,
 }
 
 impl GnawConfig {

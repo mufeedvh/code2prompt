@@ -183,32 +183,14 @@ pub fn build_renderer_for(config: &GnawConfig) -> Result<HandlebarsRenderer> {
     Ok(HandlebarsRenderer::new(renderer_config_for(config)?))
 }
 
-/// Git-narrative builtin templates whose source tree should list only the files
-/// involved in the change. Checked against the *resolved* template name (after
-/// user-override), so an explicit `--template` outside this set keeps the
-/// whole-repo tree even with `--diff` set.
-///
-/// NOTE: this is template-name membership. It's robust given how `template_name`
-/// is populated (always the builtin key, for both auto-select and explicit
-/// `--template <key>`), but renaming one of these builtins silently drops the
-/// behavior — `changed_tree_test` is the guard against that.
-const GIT_NARRATIVE_TEMPLATES: &[&str] = &[
-    "write-git-commit",
-    "write-git-changeset-commits",
-    "write-github-pull-request",
-];
-
-fn is_git_narrative(config: &GnawConfig) -> bool {
-    GIT_NARRATIVE_TEMPLATES.contains(&config.template_name.as_str())
-}
-
 /// For a git-narrative run, where the changed-file list comes from: a branch
 /// pair (PR) or the working tree (commit/changeset). `None` → not a changed-
-/// files run, use the whole-repo source. Returns `None` for a git-narrative
-/// template with no git context (e.g. bare `--template write-git-commit`),
-/// which then just renders the whole tree with no diff.
+/// files run, use the whole-repo source. Reads `config.git_narrative`, set at
+/// config-build time from the resolved template — this no longer sniffs a
+/// template name. A git-narrative template with no git context (e.g. bare
+/// `--template write-git-commit`) yields `None` and renders the whole tree.
 fn git_narrative_scope(config: &GnawConfig) -> Option<ChangedScope> {
-    if !is_git_narrative(config) {
+    if !config.git_narrative {
         return None;
     }
     if let Some((b1, b2)) = config
