@@ -1,7 +1,7 @@
 //! Integration tests for the session with simplified file selection
 
 use gnaw_core::configuration::GnawConfig;
-use gnaw_core::session::GnawSession;
+use gnaw_core::session::SelectionState;
 use std::fs;
 use tempfile::TempDir;
 
@@ -36,7 +36,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut session = GnawSession::new(config);
+        let mut session = SelectionState::new(config);
         let main_rs_relative = std::path::PathBuf::from("src/main.rs");
 
         // Initially, no files should be selected (excluded by pattern)
@@ -62,7 +62,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut session = GnawSession::new(config);
+        let mut session = SelectionState::new(config);
         let main_rs_relative = std::path::PathBuf::from("src/main.rs");
         let utils_rs_relative = std::path::PathBuf::from("src/utils.rs");
         let readme_relative = std::path::PathBuf::from("README.md");
@@ -93,7 +93,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut session = GnawSession::new(config);
+        let mut session = SelectionState::new(config);
         let main_rs_relative = std::path::PathBuf::from("src/main.rs");
         let utils_rs_relative = std::path::PathBuf::from("src/utils.rs");
 
@@ -115,7 +115,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut session = GnawSession::new(config);
+        let mut session = SelectionState::new(config);
         let main_rs_relative = std::path::PathBuf::from("src/main.rs");
         let utils_rs_relative = std::path::PathBuf::from("src/utils.rs");
 
@@ -138,7 +138,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut session = GnawSession::new(config);
+        let mut session = SelectionState::new(config);
 
         // Initially no patterns
         assert!(session.config.include_patterns.is_empty());
@@ -162,7 +162,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut session = GnawSession::new(config);
+        let mut session = SelectionState::new(config);
         let main_rs_absolute = temp_dir.path().join("src/main.rs");
         let main_rs_relative = std::path::PathBuf::from("src/main.rs");
 

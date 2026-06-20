@@ -6,12 +6,12 @@
 use gnaw_core::sort::FileSortMethod;
 use gnaw_core::template::OutputFormat;
 use gnaw_core::tokenizer::TokenFormat;
-use gnaw_core::{session::GnawSession, tokenizer::TokenizerType};
+use gnaw_core::{session::SelectionState, tokenizer::TokenizerType};
 
 use crate::model::{SettingKey, SettingType, SettingsGroup, SettingsItem};
 
 /// Format settings groups for display
-pub fn format_settings_groups(session: &GnawSession) -> Vec<SettingsGroup> {
+pub fn format_settings_groups(session: &SelectionState) -> Vec<SettingsGroup> {
     vec![
         SettingsGroup {
             name: "Output Format".to_string(),

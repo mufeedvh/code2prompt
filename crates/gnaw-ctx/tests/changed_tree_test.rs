@@ -5,7 +5,6 @@
 //! Pipeline-only: under the legacy path the whole tree still renders, so the
 //! "unchanged file absent" assertion only holds with the feature on. The gate
 //! comes off at Step 6 when the pipeline is the sole path.
-#![cfg(feature = "pipeline")]
 
 use git2::{Repository, Signature};
 use predicates::prelude::*;

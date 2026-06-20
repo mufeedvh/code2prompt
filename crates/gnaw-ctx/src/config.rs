@@ -1,22 +1,18 @@
 //! Configuration parsing and session creation utilities.
 //!
 //! This module handles the conversion of command-line arguments into
-//! GnawSession instances, consolidating all configuration parsing
+//! SelectionState instances, consolidating all configuration parsing
 //! logic in one place for better maintainability and separation of concerns.
 
 use anyhow::{Context, Result};
-#[cfg(not(feature = "pipeline"))]
-use gnaw_core::template::extract_undefined_variables;
 use gnaw_core::{
     builtin_templates::BuiltinTemplates,
     configuration::{DiffMode, GnawConfig, TomlConfig},
-    session::GnawSession,
+    session::SelectionState,
     sort::FileSortMethod,
     template::OutputFormat,
     tokenizer::TokenizerType,
 };
-#[cfg(not(feature = "pipeline"))]
-use inquire::Text;
 use log::error;
 use std::path::PathBuf;
 
@@ -44,7 +40,7 @@ pub fn build_session(
     base: Option<&ConfigSource>,
     args: &Cli,
     tui_mode: bool,
-) -> Result<GnawSession> {
+) -> Result<SelectionState> {
     let mut configuration = GnawConfig::builder();
 
     let cfg = base.map(|b| &b.config);
@@ -232,7 +228,7 @@ pub fn build_session(
         configuration.user_variables(c.user_variables.clone());
     }
 
-    let session = GnawSession::new(configuration.build()?);
+    let session = SelectionState::new(configuration.build()?);
     Ok(session)
 }
 
@@ -309,38 +305,6 @@ pub fn parse_template(template_arg: &Option<String>) -> Result<(String, String)>
         }
         None => Ok(("".to_string(), "default".to_string())),
     }
-}
-
-/// Handles user-defined variables in the template and adds them to the session.
-///
-/// This function extracts undefined variables from the template and prompts
-/// the user to provide values for them through interactive input.
-///
-/// # Arguments
-///
-/// * `session` - The GnawSession to modify
-/// * `template_content` - The template content string to analyze
-///
-/// # Returns
-///
-/// * `Result<()>` - An empty result indicating success or an error
-#[cfg(not(feature = "pipeline"))]
-pub fn handle_undefined_variables(session: &mut GnawSession, template_content: &str) -> Result<()> {
-    let undefined_variables = extract_undefined_variables(template_content);
-
-    for var in undefined_variables.iter() {
-        // Check if variable is already defined in user_variables
-        if !session.config.user_variables.contains_key(var) {
-            let prompt = format!("Enter value for '{}': ", var);
-            let answer = Text::new(&prompt)
-                .with_help_message("Fill user defined variable in template")
-                .prompt()
-                .unwrap_or_default();
-            session.config.user_variables.insert(var.clone(), answer);
-        }
-    }
-
-    Ok(())
 }
 
 /// Expands comma-separated patterns while preserving brace expansion patterns

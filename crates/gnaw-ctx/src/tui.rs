@@ -10,7 +10,7 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use gnaw_core::session::GnawSession;
+use gnaw_core::session::SelectionState;
 use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     prelude::*,
@@ -31,6 +31,8 @@ use crate::widgets::{
     FileSelectionWidget, OutputWidget, SettingsWidget, StatisticsByExtensionWidget,
     StatisticsOverviewWidget, StatisticsTokenMapWidget, TemplateWidget,
 };
+use gnaw_core::pipeline::adapters::ExplicitSelector;
+use gnaw_core::pipeline::{SourceOpts, run};
 
 use crate::utils::build_file_tree_from_session;
 /// Quiet window after the last selection before a count batch fires.
@@ -50,7 +52,7 @@ impl TuiApp {
     /// The initial file tree is requested via a `RefreshFileTree` message in `run()`.
     ///
     /// Returns an error if the terminal cannot be initialized.
-    pub fn new(session: GnawSession) -> Result<Self> {
+    pub fn new(session: SelectionState) -> Result<Self> {
         let terminal = init_terminal()?;
         let (message_tx, message_rx) = mpsc::unbounded_channel();
         let model = Model::new(session);
@@ -522,49 +524,82 @@ impl TuiApp {
                 template_content,
                 user_variables,
             } => {
-                // Use the current session state (with all user selections)
-                let mut session = self.model.session.clone();
+                // Build a one-shot config from the current session: the editor's
+                // template plus the user's variable values. (Was: clone session,
+                // mutate, call the now-deleted session.generate_prompt().)
+                let mut config = self.model.session.config.clone();
+                config.template_str = template_content;
+                config.template_name = "Custom Template".to_string();
+                config.user_variables = user_variables;
+
+                // Snapshot the interactive selection. get_selected_files() returns
+                // Result<Vec<PathBuf>> — unwrap it before mapping, surfacing a
+                // selection error as an analysis error rather than panicking.
+                let selected: Vec<String> = match self.model.session.get_selected_files() {
+                    Ok(paths) => paths
+                        .iter()
+                        .map(|p| {
+                            p.strip_prefix(&config.path)
+                                .unwrap_or(p)
+                                .to_string_lossy()
+                                .into_owned()
+                        })
+                        .collect(),
+                    Err(e) => {
+                        let _ = self.message_tx.send(Message::AnalysisError(e.to_string()));
+                        return Ok(()); // bail this Cmd; nothing to analyze
+                    }
+                };
+
                 let tx = self.message_tx.clone();
 
-                tokio::spawn(async move {
-                    // Set custom template content
-                    session.config.template_str = template_content;
-                    session.config.template_name = "Custom Template".to_string();
+                // Pipeline work (file reads + tokenization) is blocking, so run it
+                // on the blocking pool rather than stalling an async worker — same
+                // reason Cmd::CountTokens uses spawn_blocking.
+                tokio::task::spawn_blocking(move || {
+                    let analysis = (|| -> anyhow::Result<AnalysisResults> {
+                        // build_spec picks WorkingTreeSource + IdentityChunker for a
+                        // custom, non-diff run; swap its pattern selector for the
+                        // explicit one built from the user's selection.
+                        let mut spec = crate::pipeline_spec::build_spec(&config)?;
+                        spec.selector = Box::new(ExplicitSelector::new(selected));
 
-                    // Transfer user variables from TUI to session config
-                    session.config.user_variables = user_variables;
+                        let r = run(&spec, &SourceOpts)?;
 
-                    match session.generate_prompt() {
-                        Ok(rendered) => {
-                            // Convert to AnalysisResults format expected by TUI
-                            let token_map_entries = if rendered.token_count > 0 {
-                                if let Some(files) = session.data.files.as_ref() {
-                                    let map_files: Vec<TokenMapFile> = files
-                                        .iter()
-                                        .map(|f| TokenMapFile {
-                                            path: f.path.clone(),
-                                            tokens: f.token_count,
-                                        })
-                                        .collect();
-                                    generate_token_map_with_limit(
-                                        &map_files,
-                                        rendered.token_count,
-                                        Some(50),
-                                        Some(0.5),
-                                    )
-                                } else {
-                                    Vec::new()
-                                }
-                            } else {
-                                Vec::new()
-                            };
+                        let token_count = r.tally.total;
 
-                            let result = AnalysisResults {
-                                file_count: rendered.files.len(),
-                                token_count: Some(rendered.token_count),
-                                generated_prompt: rendered.prompt,
-                                token_map_entries,
-                            };
+                        // IdentityChunker emits one chunk per file, so chunks map
+                        // 1:1 to files for both the count and the token map.
+                        let map_files: Vec<TokenMapFile> = r
+                            .chunks
+                            .iter()
+                            .map(|c| TokenMapFile {
+                                path: c.source_path.clone(),
+                                tokens: c.tokens,
+                            })
+                            .collect();
+
+                        let token_map_entries = if token_count > 0 {
+                            generate_token_map_with_limit(
+                                &map_files,
+                                token_count,
+                                Some(50),
+                                Some(0.5),
+                            )
+                        } else {
+                            Vec::new()
+                        };
+
+                        Ok(AnalysisResults {
+                            file_count: map_files.len(),
+                            token_count: Some(token_count),
+                            generated_prompt: r.body,
+                            token_map_entries,
+                        })
+                    })();
+
+                    match analysis {
+                        Ok(result) => {
                             let _ = tx.send(Message::AnalysisComplete(result));
                         }
                         Err(e) => {
@@ -767,7 +802,7 @@ impl TuiApp {
 /// # Errors
 ///
 /// Returns an error if the TUI cannot be initialized or if runtime errors occur during execution.
-pub async fn run_tui(session: GnawSession) -> Result<()> {
+pub async fn run_tui(session: SelectionState) -> Result<()> {
     let mut app = TuiApp::new(session)?;
 
     let result = app.run().await;

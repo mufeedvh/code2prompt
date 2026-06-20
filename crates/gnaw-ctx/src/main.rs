@@ -7,25 +7,23 @@ mod clipboard;
 mod config;
 mod config_loader;
 mod model;
-#[cfg(feature = "pipeline")]
 mod pipeline_spec;
+mod prompt;
 mod token_map;
 mod tui;
 mod utils;
 mod view;
 mod widgets;
 
+use crate::prompt::RenderedPrompt;
 use crate::utils::format_number;
 use anyhow::{Context, Result};
 use args::Cli;
 use clap::{CommandFactory, Parser};
 use clap_complete::CompleteEnv;
 use colored::*;
-use gnaw_core::session::RenderedPrompt;
 use gnaw_core::template::write_to_file;
 use indicatif::{ProgressBar, ProgressStyle};
-#[cfg(not(feature = "pipeline"))]
-use log::debug;
 use log::{error, info};
 use std::io::Write;
 use tui::run_tui;
@@ -81,8 +79,7 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
     // out and nothing mutates `session`, so the mut is unused there — allow it
     // rather than drop it, since dropping breaks the default build. Both the
     // legacy path and its mut die at Step 6.
-    #[cfg_attr(feature = "pipeline", allow(unused_mut))]
-    let mut session = config::build_session(Some(&config_source), &args, false)?;
+    let session = config::build_session(Some(&config_source), &args, false)?;
 
     // ~~~ Determine Output Behavior ~~~
     let default_output = get_default_output_destination(&config_source);
@@ -122,162 +119,6 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         None
     };
 
-    // ~~~ Gather + Render ~~~
-    // The production half (gather repo data + render) is feature-gated: the
-    // legacy session path is the default build; `--features pipeline` runs the
-    // new staged pipeline. Both branches produce a `RenderedPrompt` so the
-    // entire output half below (stdout/clipboard/file/split) is identical and
-    // the parity diff is against the same sink the golden was captured with.
-    #[cfg(not(feature = "pipeline"))]
-    let (rendered, token_map_files): (RenderedPrompt, Vec<crate::token_map::TokenMapFile>) = {
-        let rendered = {
-            // THROWAWAY demand-gate (migration prerequisite #1): a changed-files
-            // run (--git-diff-shas) renders only `changed_files`, so it must NOT
-            // walk the working tree. Step 5 deletes this in favor of spec-driven
-            // source selection.
-            if session.config.diff_shas.is_none() {
-                session.load_codebase().map_err(|e| {
-                    if let Some(s) = spinner.as_ref() {
-                        s.finish_with_message("Failed!".red().to_string())
-                    }
-                    error!("Failed to build directory tree: \n{}", e);
-                    anyhow::anyhow!("Failed to build directory tree: {}", e)
-                })?;
-            }
-            if session.config.diff_shas.is_some() {
-                if let Some(s) = spinner.as_ref() {
-                    s.set_message("Reading changed files between revisions...")
-                }
-                session.load_changed_files().unwrap_or_else(|e| {
-                    if let Some(s) = spinner.as_ref() {
-                        s.finish_with_message("Failed!".red().to_string())
-                    }
-                    error!("Failed to read changed files: {}", e);
-                    std::process::exit(1);
-                });
-            }
-            if let Some(s) = spinner.as_ref() {
-                s.set_message("Proceeding…")
-            }
-
-            if session.config.secret_scan == gnaw_core::secret_scan::SecretPolicy::Block
-                && !session.data.secret_findings.is_empty()
-            {
-                if let Some(s) = spinner.as_ref() {
-                    s.finish_with_message("Blocked!".red().to_string());
-                }
-                let detail: Vec<String> = session
-                    .data
-                    .secret_findings
-                    .iter()
-                    .map(|(p, f)| format!("{p}:{} [{}]", f.line, f.rule_id))
-                    .collect();
-                anyhow::bail!(
-                    "secret scan: {} finding(s) with --secret-scan=block; aborting\n  {}",
-                    session.data.secret_findings.len(),
-                    detail.join("\n  ")
-                );
-            }
-
-            // ~~~ Git Related ~~~
-            if session.config.diff_enabled {
-                if let Some(s) = spinner.as_ref() {
-                    s.set_message("Generating git diff...")
-                }
-                session.load_git_diff().unwrap_or_else(|e| {
-                    if let Some(s) = spinner.as_ref() {
-                        s.finish_with_message("Failed!".red().to_string())
-                    }
-                    error!("Failed to generate git diff: {}", e);
-                    std::process::exit(1);
-                });
-            }
-
-            if session.config.diff_branches.is_some() {
-                if let Some(s) = spinner.as_ref() {
-                    s.set_message("Generating git diff between two branches...")
-                }
-                session
-                    .load_git_diff_between_branches()
-                    .unwrap_or_else(|e| {
-                        if let Some(s) = spinner.as_ref() {
-                            s.finish_with_message("Failed!".red().to_string())
-                        }
-                        error!("Failed to generate git diff: {}", e);
-                        std::process::exit(1);
-                    });
-            }
-
-            if session.config.log_branches.is_some() {
-                if let Some(ref s) = spinner {
-                    s.set_message("Generating git log between two branches...");
-                }
-                session.load_git_log_between_branches().unwrap_or_else(|e| {
-                    if let Some(ref s) = spinner {
-                        s.finish_with_message("Failed!".red().to_string());
-                    }
-                    error!("Failed to generate git log: {}", e);
-                    std::process::exit(1);
-                });
-            }
-
-            // ~~~ Template ~~~
-            let template_str_clone = session.config.template_str.clone();
-            match spinner.as_ref() {
-                Some(s) => s.suspend(|| {
-                    config::handle_undefined_variables(&mut session, &template_str_clone)
-                }),
-                None => config::handle_undefined_variables(&mut session, &template_str_clone),
-            }?;
-
-            let data = session.build_template_data();
-            debug!(
-                "Template Context: absolute_code_path={}, files_count={}, has_user_vars={}",
-                data.absolute_code_path,
-                data.files.map(|f| f.len()).unwrap_or(0),
-                !session.config.user_variables.is_empty()
-            );
-
-            session.render_prompt(&data).unwrap_or_else(|e| {
-                error!("Failed to render prompt: {}", e);
-                std::process::exit(1);
-            })
-        };
-        let token_map_files = if args.token_map {
-            session
-                .data
-                .files
-                .as_ref()
-                .map(|files| {
-                    // Re-root at the project: FileEntry paths can be canonicalized/
-                    // absolute, so strip the configured root (same logic as before).
-                    let root: std::path::PathBuf = session
-                        .config
-                        .path
-                        .canonicalize()
-                        .unwrap_or_else(|_| session.config.path.clone());
-                    files
-                        .iter()
-                        .map(|f| {
-                            let path = std::path::Path::new(&f.path)
-                                .strip_prefix(&root)
-                                .map(|s| s.to_string_lossy().into_owned())
-                                .unwrap_or_else(|_| f.path.clone());
-                            crate::token_map::TokenMapFile {
-                                path,
-                                tokens: f.token_count,
-                            }
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-        (rendered, token_map_files)
-    };
-
-    #[cfg(feature = "pipeline")]
     let (rendered, token_map_files, split_data): (
         RenderedPrompt,
         Vec<crate::token_map::TokenMapFile>,
@@ -345,10 +186,8 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
         };
         let rendered = RenderedPrompt {
             prompt: r.body,
-            directory_name: gnaw_core::path::display_name(&session.config.path),
             token_count,
             model_info: "",
-            files: Vec::new(),
             secret_findings: r.findings,
         };
         (rendered, token_map_files, split_data)
@@ -470,15 +309,8 @@ async fn run_cli_mode_with_args(args: Cli) -> Result<()> {
                  (e.g. -O ctx.md); it cannot write to stdout or the clipboard"
                 )
             })?;
-        #[cfg(not(feature = "pipeline"))]
-        {
-            return write_split_output(&mut session, base, budget, quiet_mode);
-        }
-        #[cfg(feature = "pipeline")]
-        {
-            let split = split_data.expect("--split-size set ⇒ split_data populated");
-            return write_split_output(&session.config, split, base, budget, quiet_mode);
-        }
+        let split = split_data.expect("--split-size set ⇒ split_data populated");
+        return write_split_output(&session.config, split, base, budget, quiet_mode);
     }
 
     // ~~~ Output File ~~~
@@ -576,7 +408,6 @@ struct FilePart {
 
 /// Pipeline-only split inputs, surfaced from the single extraction so split
 /// reuses that one walk. Built only when --split-size is set.
-#[cfg(feature = "pipeline")]
 struct SplitData {
     chunks: Vec<gnaw_core::pipeline::Chunk>,
     source_tree: String,
@@ -633,7 +464,6 @@ fn group_files_by_budget(token_counts: &[usize], budget: usize) -> Vec<FilePart>
 /// part via `render_subset`, reusing the one source tree. No re-walk, no
 /// re-tokenize — the single extraction produced chunks (already counted) and the
 /// tree. Replaces the session-data path; that legacy sibling dies at Step 6.
-#[cfg(feature = "pipeline")]
 fn write_split_output(
     config: &gnaw_core::configuration::GnawConfig,
     split: SplitData,
@@ -711,98 +541,6 @@ fn write_split_output(
                     total_parts,
                     part_path,
                     rendered.tally.total
-                )
-                .green()
-            );
-        }
-    }
-
-    Ok(())
-}
-/// Renders and writes split output parts. Each part is a complete, independently
-/// pasteable document produced through the normal render path.
-#[cfg(not(feature = "pipeline"))]
-fn write_split_output(
-    session: &mut gnaw_core::session::GnawSession,
-    base_path: &str,
-    budget: usize,
-    quiet: bool,
-) -> Result<()> {
-    use gnaw_core::path::FileEntry;
-
-    // Take ownership of the file list so we can render subsets without cloning
-    // the (potentially large) code bodies repeatedly. Restored at the end.
-    let all_files: Vec<FileEntry> = session.data.files.take().unwrap_or_default();
-
-    if all_files.is_empty() {
-        anyhow::bail!("Nothing to split: no files were selected");
-    }
-
-    let token_counts: Vec<usize> = all_files.iter().map(|f| f.token_count).collect();
-    let parts = group_files_by_budget(&token_counts, budget);
-
-    let (stem, ext) = split_base_path(base_path);
-    let total_parts = parts.len();
-
-    // Move files out by index so each FileEntry is relocated, not cloned.
-    let mut slots: Vec<Option<FileEntry>> = all_files.into_iter().map(Some).collect();
-
-    for (part_no, part) in parts.iter().enumerate() {
-        let part_files: Vec<FileEntry> = part
-            .indices
-            .iter()
-            .map(|&i| {
-                slots[i]
-                    .take()
-                    .expect("each index appears in exactly one part")
-            })
-            .collect();
-
-        if part.token_count > budget && part_files.len() == 1 && !quiet {
-            eprintln!(
-                "{}{}{} {}",
-                "[".bold().white(),
-                "!".bold().yellow(),
-                "]".bold().white(),
-                format!(
-                    "File '{}' alone is {} tokens, over the {}-token budget; \
-                     it gets its own part.",
-                    part_files[0].path, part.token_count, budget
-                )
-                .yellow()
-            );
-        }
-
-        // Swap this part's files into the session, render, then move them back out.
-        session.data.files = Some(part_files);
-        let data = session.build_template_data();
-        let rendered = session
-            .render_prompt(&data)
-            .map_err(|e| anyhow::anyhow!("Failed to render part {}: {}", part_no + 1, e))?;
-
-        // Reclaim the FileEntry vec for the next iteration (no clone).
-        if let Some(returned) = session.data.files.take() {
-            for (slot, file) in part.indices.iter().zip(returned) {
-                slots[*slot] = Some(file);
-            }
-        }
-
-        let part_path = format!("{}.part{}{}", stem, part_no + 1, ext);
-        gnaw_core::template::write_to_file(&part_path, &rendered.prompt)
-            .context(format!("Failed to write part file: {}", part_path))?;
-
-        if !quiet {
-            eprintln!(
-                "{}{}{} {}",
-                "[".bold().white(),
-                "✓".bold().green(),
-                "]".bold().white(),
-                format!(
-                    "Part {}/{} -> {} ({} tokens)",
-                    part_no + 1,
-                    total_parts,
-                    part_path,
-                    rendered.token_count
                 )
                 .green()
             );

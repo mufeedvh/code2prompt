@@ -3,7 +3,7 @@
 //! This module contains the settings state, settings groups, and related
 //! functionality for managing configuration options in the TUI.
 
-use gnaw_core::session::GnawSession;
+use gnaw_core::session::SelectionState;
 use gnaw_core::template::OutputFormat;
 use gnaw_core::tokenizer::TokenFormat;
 
@@ -64,7 +64,7 @@ pub enum SettingKey {
 
 impl SettingsState {
     /// Get flattened list of settings for display (uses format_settings_groups)
-    pub fn get_settings_items(&self, session: &GnawSession) -> Vec<SettingsItem> {
+    pub fn get_settings_items(&self, session: &SelectionState) -> Vec<SettingsItem> {
         crate::view::format_settings_groups(session)
             .into_iter()
             .flat_map(|group| group.items)
@@ -74,7 +74,7 @@ impl SettingsState {
     /// Update setting based on SettingKey and action
     pub fn update_setting_by_key(
         &self,
-        session: &mut GnawSession,
+        session: &mut SelectionState,
         key: SettingKey,
         action: SettingAction,
     ) -> &'static str {

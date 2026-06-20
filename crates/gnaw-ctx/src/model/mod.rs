@@ -18,7 +18,7 @@ pub use statistics::*;
 pub use template::*;
 
 use crate::utils::directory_contains_selected_files;
-use gnaw_core::session::GnawSession;
+use gnaw_core::session::SelectionState;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -135,7 +135,7 @@ impl DisplayFileNode {
     /// Load children for this directory node
     pub fn load_children(
         &mut self,
-        session: &mut gnaw_core::session::GnawSession,
+        session: &mut gnaw_core::session::SelectionState,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if !self.is_directory || self.children_loaded {
             return Ok(());
@@ -194,7 +194,7 @@ fn collapse_all(nodes: &mut [DisplayFileNode]) {
 fn recompute_agg(
     node: &mut DisplayFileNode,
     states: &HashMap<PathBuf, TokenState>,
-    session: &mut GnawSession,
+    session: &mut SelectionState,
 ) -> usize {
     let total = if node.is_directory {
         node.children
@@ -347,7 +347,7 @@ pub enum Message {
 /// Represents the overall state of the TUI application.
 #[derive(Debug, Clone)]
 pub struct Model {
-    pub session: GnawSession,
+    pub session: SelectionState,
     pub current_tab: Tab,
     pub should_quit: bool,
     pub file_tree_input_mode: FileTreeInputMode,
@@ -381,7 +381,7 @@ pub struct Model {
 impl Default for Model {
     fn default() -> Self {
         let config = gnaw_core::configuration::GnawConfig::default();
-        let session = GnawSession::new(config);
+        let session = SelectionState::new(config);
 
         Model {
             session,
@@ -410,7 +410,7 @@ impl Default for Model {
 }
 
 impl Model {
-    pub fn new(session: GnawSession) -> Self {
+    pub fn new(session: SelectionState) -> Self {
         Model {
             session,
             current_tab: Tab::FileTree,

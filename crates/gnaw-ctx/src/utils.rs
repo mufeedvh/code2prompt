@@ -7,7 +7,7 @@ use crate::model::DisplayFileNode;
 use crate::model::{SizeFilter, TokenState};
 use anyhow::Result;
 use globset::GlobSet;
-use gnaw_core::session::GnawSession;
+use gnaw_core::session::SelectionState;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 ///
 /// We walk the filesystem rather than the display tree because a collapsed
 /// subtree may not have its children loaded yet.
-pub fn collect_files_under(node_path: &Path, session: &GnawSession) -> Vec<PathBuf> {
+pub fn collect_files_under(node_path: &Path, session: &SelectionState) -> Vec<PathBuf> {
     let mut out = Vec::new();
 
     if node_path.is_file() {
@@ -44,9 +44,9 @@ pub fn collect_files_under(node_path: &Path, session: &GnawSession) -> Vec<PathB
 /// Selected files are auto-expanded at build time, so their nodes are loaded.
 pub fn collect_selected_files_in_tree(
     nodes: &[DisplayFileNode],
-    session: &mut GnawSession,
+    session: &mut SelectionState,
 ) -> Vec<PathBuf> {
-    fn rec(n: &DisplayFileNode, session: &mut GnawSession, out: &mut Vec<PathBuf>) {
+    fn rec(n: &DisplayFileNode, session: &mut SelectionState, out: &mut Vec<PathBuf>) {
         if n.is_directory {
             for c in &n.children {
                 rec(c, session, out);
@@ -62,7 +62,7 @@ pub fn collect_selected_files_in_tree(
     out
 }
 /// Build hierarchical file tree from session using traverse_directory with SelectionEngine
-pub fn build_file_tree_from_session(session: &mut GnawSession) -> Result<Vec<DisplayFileNode>> {
+pub fn build_file_tree_from_session(session: &mut SelectionState) -> Result<Vec<DisplayFileNode>> {
     let mut root_nodes = Vec::new();
 
     // Build root level nodes using ignore crate to respect gitignore
@@ -102,7 +102,7 @@ pub fn build_file_tree_from_session(session: &mut GnawSession) -> Result<Vec<Dis
 }
 
 /// Recursively auto-expand directories that contain selected files
-fn auto_expand_recursively(node: &mut DisplayFileNode, session: &mut GnawSession) {
+fn auto_expand_recursively(node: &mut DisplayFileNode, session: &mut SelectionState) {
     if !node.is_directory {
         return;
     }
@@ -127,7 +127,7 @@ fn auto_expand_recursively(node: &mut DisplayFileNode, session: &mut GnawSession
 /// Check if a directory contains any selected files (helper function)
 pub(crate) fn directory_contains_selected_files(
     dir_path: &Path,
-    session: &mut GnawSession,
+    session: &mut SelectionState,
 ) -> bool {
     if let Ok(entries) = std::fs::read_dir(dir_path) {
         for entry in entries.flatten() {
@@ -157,7 +157,7 @@ pub fn get_visible_nodes(
     search_query: &str,
     size_filter: Option<SizeFilter>,
     token_states: &HashMap<PathBuf, TokenState>,
-    session: &mut GnawSession,
+    session: &mut SelectionState,
 ) -> Vec<DisplayNodeWithSelection> {
     let mut visible = Vec::new();
     let search_active = !search_query.is_empty();
@@ -179,7 +179,7 @@ pub fn get_visible_nodes(
 /// is selected. Folders carry no selection action of their own under per-file
 /// selection, so querying the engine for the directory path would always return
 /// the default — this keeps the checkbox honest after bulk/partial (de)selection.
-fn dir_is_selected(node: &DisplayFileNode, session: &mut GnawSession) -> bool {
+fn dir_is_selected(node: &DisplayFileNode, session: &mut SelectionState) -> bool {
     for child in &node.children {
         if child.is_directory {
             if dir_is_selected(child, session) {
@@ -240,7 +240,7 @@ fn collect_visible_nodes_recursive(
     matcher: &QueryMatcher,
     size_filter: Option<SizeFilter>,
     token_states: &HashMap<PathBuf, TokenState>,
-    session: &mut GnawSession,
+    session: &mut SelectionState,
     visible: &mut Vec<DisplayNodeWithSelection>,
     search_active: bool,
 ) {
@@ -387,7 +387,7 @@ pub fn format_number(num: usize, format: &gnaw_core::tokenizer::TokenFormat) -> 
 /// Load children for search mode without mutating the original tree
 fn get_children_for_search(
     node: &DisplayFileNode,
-    session: &mut GnawSession,
+    session: &mut SelectionState,
 ) -> Vec<DisplayFileNode> {
     if !node.is_directory {
         return Vec::new();
@@ -504,7 +504,7 @@ pub fn load_all_templates() -> Result<Vec<(String, String)>> {
 pub fn ensure_path_exists_in_tree(
     root_nodes: &mut Vec<DisplayFileNode>,
     target_path: &Path,
-    session: &mut GnawSession,
+    session: &mut SelectionState,
 ) -> Result<()> {
     let root_path = &session.config.path;
 

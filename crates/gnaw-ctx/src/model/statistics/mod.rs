@@ -29,7 +29,7 @@ impl Default for StatisticsState {
 
 impl StatisticsState {
     /// Count selected files using session-based approach
-    pub fn count_selected_files(session: &mut gnaw_core::session::GnawSession) -> usize {
+    pub fn count_selected_files(session: &mut gnaw_core::session::SelectionState) -> usize {
         session.get_selected_files().unwrap_or_default().len()
     }
 
