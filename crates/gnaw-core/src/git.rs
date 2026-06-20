@@ -376,3 +376,109 @@ pub fn get_git_log(repo_path: &Path, branch1: &str, branch2: &str) -> Result<Str
 fn branch_exists(repo: &Repository, branch_name: &str) -> bool {
     repo.revparse_single(branch_name).is_ok()
 }
+
+/// Map a diff's deltas to path-only `ChangedFile`s (no blob/file reads). Used by
+/// the changed-paths sources, where the unified diff is rendered as chrome and
+/// only the file LIST is needed (for the source tree).
+fn deltas_to_changed_paths(diff: &git2::Diff) -> Vec<ChangedFile> {
+    let mut out = Vec::with_capacity(diff.deltas().len());
+    for delta in diff.deltas() {
+        let status = match delta.status() {
+            Delta::Added => "added",
+            Delta::Deleted => "deleted",
+            Delta::Modified => "modified",
+            Delta::Renamed => "renamed",
+            Delta::Copied => "copied",
+            _ => "other",
+        };
+        let new_path = delta
+            .new_file()
+            .path()
+            .map(|p| p.to_string_lossy().into_owned());
+        let old_path = delta
+            .old_file()
+            .path()
+            .map(|p| p.to_string_lossy().into_owned());
+        let path = new_path
+            .clone()
+            .or_else(|| old_path.clone())
+            .unwrap_or_else(|| "<unknown>".to_string());
+        out.push(ChangedFile {
+            path,
+            old_path: if delta.status() == Delta::Renamed {
+                old_path
+            } else {
+                None
+            },
+            status,
+            binary: delta.old_file().is_binary() || delta.new_file().is_binary(),
+            before: None,
+            after: None,
+            patch: None,
+        });
+    }
+    out
+}
+
+/// Working-tree changed files (paths + status only). The diff body itself is
+/// rendered as chrome by the frontend via `get_git_diff`; this supplies the
+/// file list for the source tree in commit/changeset runs. Mirrors
+/// `get_git_diff`'s per-mode diff construction.
+pub fn get_working_tree_changed_paths(
+    repo_path: &Path,
+    mode: DiffMode,
+) -> Result<Vec<ChangedFile>> {
+    let repo = Repository::open(repo_path).context("Failed to open repository")?;
+    // Unborn HEAD (fresh repo, no commits): None → empty base tree, all adds.
+    let head_tree = repo.head().ok().and_then(|h| h.peel_to_tree().ok());
+    let mut opts = DiffOptions::new();
+
+    let mut diff = match mode {
+        DiffMode::Staged => {
+            let mut index = repo.index().context("Failed to read index")?;
+            index.read(true).context("Failed to refresh index")?;
+            repo.diff_tree_to_index(head_tree.as_ref(), Some(&index), Some(&mut opts))
+                .context("Failed to diff HEAD to index (staged)")?
+        }
+        DiffMode::Unstaged => {
+            opts.include_untracked(false); // git diff excludes pure untracked
+            let mut index = repo.index().context("Failed to read index")?;
+            index.read(true).context("Failed to refresh index")?;
+            repo.diff_index_to_workdir(Some(&index), Some(&mut opts))
+                .context("Failed to diff index to working tree (unstaged)")?
+        }
+        DiffMode::All => {
+            opts.include_untracked(true).recurse_untracked_dirs(true);
+            repo.diff_tree_to_workdir(head_tree.as_ref(), Some(&mut opts))
+                .context("Failed to diff HEAD to working tree (all)")?
+        }
+    };
+    diff.find_similar(None).context("Rename detection failed")?;
+    Ok(deltas_to_changed_paths(&diff))
+}
+
+/// Files changed between two refs (paths + status only). Supplies the file list
+/// for the source tree in PR runs; the unified branch diff and log are rendered
+/// as chrome via `get_git_diff_between_branches` / `get_git_log`.
+pub fn get_branch_changed_paths(
+    repo_path: &Path,
+    ref1: &str,
+    ref2: &str,
+) -> Result<Vec<ChangedFile>> {
+    let repo = Repository::open(repo_path).context("Failed to open repository")?;
+    let tree1 = repo
+        .revparse_single(ref1)
+        .with_context(|| format!("Cannot resolve revision {ref1}"))?
+        .peel_to_tree()
+        .with_context(|| format!("{ref1} does not point to a tree"))?;
+    let tree2 = repo
+        .revparse_single(ref2)
+        .with_context(|| format!("Cannot resolve revision {ref2}"))?
+        .peel_to_tree()
+        .with_context(|| format!("{ref2} does not point to a tree"))?;
+    let mut diff = repo
+        .diff_tree_to_tree(Some(&tree1), Some(&tree2), Some(&mut DiffOptions::new()))
+        .context("Failed to diff the two trees")?;
+    diff.find_similar(None).context("Rename detection failed")?;
+    Ok(deltas_to_changed_paths(&diff))
+}

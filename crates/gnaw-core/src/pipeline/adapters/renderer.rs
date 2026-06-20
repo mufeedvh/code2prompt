@@ -24,6 +24,11 @@ pub struct RendererConfig {
     pub no_codeblock: bool,
     pub line_numbers: bool,
     pub git_diff: Option<String>,
+    /// `--git-diff-branch` output (HEAD-to-branch diff). Loaded by the frontend
+    /// from get_git_diff_between_branches; the pipeline has no git stage.
+    pub git_diff_branch: Option<String>,
+    /// `--git-log-branch` output. Loaded by the frontend from get_git_log.
+    pub git_log_branch: Option<String>,
     pub user_variables: HashMap<String, String>,
     /// Template body + name. Empty body → fall back to the format default.
     pub template_str: String,
@@ -51,6 +56,10 @@ struct RenderContextHbs<'a> {
     files: Vec<RenderFile>,
     #[serde(skip_serializing_if = "Option::is_none")]
     git_diff: &'a Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    git_diff_branch: &'a Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    git_log_branch: &'a Option<String>,
     no_codeblock: bool,
     #[serde(flatten)]
     user_variables: &'a HashMap<String, String>,
@@ -109,6 +118,8 @@ impl Renderer for HandlebarsRenderer {
             source_tree: &ctx.source_tree,
             files,
             git_diff: &self.cfg.git_diff,
+            git_diff_branch: &self.cfg.git_diff_branch,
+            git_log_branch: &self.cfg.git_log_branch,
             no_codeblock: self.cfg.no_codeblock,
             user_variables: &self.cfg.user_variables,
         };

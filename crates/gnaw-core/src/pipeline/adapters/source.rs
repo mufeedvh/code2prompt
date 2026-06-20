@@ -1,8 +1,11 @@
 //! The two launch sources. "Working-tree files" and "files changed between
 //! two refs" are genuinely different sources, not one source plus a filter.
 
+use crate::configuration::DiffMode;
 use crate::configuration::GnawConfig;
-use crate::git::get_changed_files_with_contents;
+use crate::git::{
+    get_branch_changed_paths, get_changed_files_with_contents, get_working_tree_changed_paths,
+};
 use crate::path::{RawFile, extract_raw_file};
 use crate::pipeline::{ContextSource, PipelineError, RawContent, RawItem, SourceOpts};
 use crate::secret_scan::Finding;
@@ -154,6 +157,68 @@ impl ContextSource for CommitRangeSource {
             })
             .collect();
 
+        items.sort_by(|a, b| a.path.cmp(&b.path));
+        Ok(items)
+    }
+}
+
+/// Where a changed-paths run gets its file list from.
+pub enum ChangedScope {
+    /// Working-tree changes (commit / changeset runs), per `DiffMode`.
+    WorkingTree(DiffMode),
+    /// Changes between two refs (PR runs): (ref1, ref2).
+    Refs(String, String),
+}
+
+/// Yields changed-file *paths* with NO content (`RawContent::Omitted`). The diff
+/// body is rendered as chrome by the frontend; this source exists so the source
+/// tree lists only changed files in commit/changeset/PR runs, with zero content
+/// extraction — no walk, no read, no tokenize of file bodies.
+///
+/// Contrast `CommitRangeSource`, which carries per-file patch content for the
+/// `--git-diff-shas` per-file view. Both produce a changed-files tree; only that
+/// one renders the changes inline.
+pub struct ChangedPathsSource {
+    config: GnawConfig,
+    scope: ChangedScope,
+}
+
+impl ChangedPathsSource {
+    pub fn new(config: GnawConfig, scope: ChangedScope) -> Self {
+        Self { config, scope }
+    }
+}
+
+impl ContextSource for ChangedPathsSource {
+    fn items(&self, _opts: &SourceOpts) -> Result<Vec<RawItem>, PipelineError> {
+        let changed = match &self.scope {
+            ChangedScope::WorkingTree(mode) => {
+                get_working_tree_changed_paths(&self.config.path, *mode)
+                    .map_err(|e| PipelineError::Source(format!("working-tree changes: {e}")))?
+            }
+            ChangedScope::Refs(r1, r2) => get_branch_changed_paths(&self.config.path, r1, r2)
+                .map_err(|e| PipelineError::Source(format!("branch changes: {e}")))?,
+        };
+
+        let mut items: Vec<RawItem> = changed
+            .into_iter()
+            .map(|cf| {
+                let extension = PathBuf::from(&cf.path)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                RawItem {
+                    path: cf.path,
+                    extension,
+                    content: RawContent::Omitted, // paths only — diff is chrome
+                    status: Some(cf.status.to_string()),
+                    old_path: cf.old_path,
+                }
+            })
+            .collect();
+
+        // Deterministic for snapshots / byte-stable trees.
         items.sort_by(|a, b| a.path.cmp(&b.path));
         Ok(items)
     }
