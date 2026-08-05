@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fmufeedvh%2Fcode2prompt.svg)](https://mcptoplist.com/server/glama%2Fmufeedvh%2Fcode2prompt)
+
 <div align="center">
   <a href="https://code2prompt.dev">
     <img align="center" width="550px" src="https://github.com/mufeedvh/code2prompt/blob/main/.assets/logo_dark_v0.0.2.svg?raw=true" alt="Code2prompt"/>
