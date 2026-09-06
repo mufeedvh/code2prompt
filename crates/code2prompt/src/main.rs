@@ -154,7 +154,7 @@ fn emit_cli_results(
 
     if !quiet_mode {
         eprintln!(
-            "{}{}{} Token count: {}, Model info: {}",
+            "{}{}{} Estimated token count: {}, Model info: {}",
             "[".bold().white(),
             "i".bold().blue(),
             "]".bold().white(),

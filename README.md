@@ -97,7 +97,7 @@ Code2Prompt transforms your entire codebase into a well-structured prompt for la
 - **Smart Filtering**: Include/exclude files using glob patterns and respect `.gitignore` rules
 - **Flexible Templating**: Customize prompts with Handlebars templates for different use cases
 - **Automatic Code Processing**: Convert codebases of any size into readable, formatted prompts
-- **Token Tracking**: Track token usage to stay within LLM context limits
+- **Token Estimates**: Estimate prompt size using parallel per-file token counts and estimated template overhead, including optional line numbers. The full rendered prompt is not re-tokenized, and the estimate excludes the JSON output envelope.
 - **Smart File Reading**: Simplify reading various file formats for LLMs (CSV, Notebooks, JSONL, etc.)
 - **Git Integration**: Include diffs, logs, and branch comparisons in your prompts
 - **Blazing Fast**: Built in Rust for high performance and low resource usage

@@ -38,6 +38,7 @@ pub struct FileEntry {
     pub path: String,
     pub extension: String,
     pub code: String,
+    /// Tokens in `code`, including optional line numbers, before template rendering.
     pub token_count: usize,
     pub metadata: EntryMetadata,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -277,9 +278,9 @@ fn process_single_file(file_info: &FileToProcess, config: &Code2PromptConfig) ->
         relative_path.to_string_lossy().to_string()
     };
 
-    // Always calculate token count in parallel (amortized by I/O wait time)
-    // This enables zero-overhead token counting regardless of display preferences
-    let token_count = count_tokens(&code, &config.encoding);
+    // Cache the formatted content's tokens during parallel file processing so
+    // prompt estimates include line numbers without tokenizing the full output.
+    let token_count = count_tokens(&code_block, &config.encoding);
 
     // Get modification time if date sorting is requested
     let mod_time = if let Some(method) = config.sort_method {

@@ -7,6 +7,13 @@ Lorsque l'on travaille avec des modèles de langage, le texte doit être transfo
 
 ---
 
+Le nombre de tokens annoncé est une **estimation** : Code2Prompt compte les fichiers
+en parallèle après traitement et numérotation éventuelle, puis ajoute le coût estimé
+du template. Le prompt complet n'est pas recompté. Les frontières entre fragments et
+les transformations du template peuvent modifier le résultat ; l'estimation n'est
+pas une borne supérieure garantie. Le champ numérique `token_count` garde son nom
+et exclut l'enveloppe JSON ainsi que les échappements de sérialisation.
+
 ## Qu'est-ce qu'un Tokeniseur ?
 
 Un tokeniseur convertit le texte brut en tokens, qui sont les blocs de construction pour la façon dont les modèles de langage traitent l'entrée. Ces tokens peuvent représenter des mots, des sous-mots ou même des caractères individuels, selon la conception du tokeniseur.

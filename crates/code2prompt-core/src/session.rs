@@ -46,7 +46,7 @@ use crate::tokenizer::{TokenizerType, count_tokens};
 ///     .build()?;
 /// let mut session = Code2PromptSession::new(config);
 /// let output = session.generate_prompt()?;
-/// println!("Generated {} tokens", output.token_count);
+/// println!("Estimated token count: {}", output.token_count);
 /// 
 /// // Cleanup
 /// std::fs::remove_dir_all(&temp_dir).ok();
@@ -111,6 +111,9 @@ pub struct TemplateContext<'a> {
 pub struct RenderedPrompt {
     pub prompt: String,
     pub directory_name: String,
+    /// Estimated prompt tokens: cached file counts plus estimated template overhead.
+    /// Includes optional line numbers, but excludes the JSON output envelope.
+    /// Token boundaries and custom template behavior can make the actual count differ.
     pub token_count: usize,
     pub model_info: &'static str,
     pub files: Vec<String>,
@@ -346,7 +349,7 @@ impl Code2PromptSession {
     /// Create a "raw" (intrinsic) analysis of the loaded codebase
     ///
     /// This analysis uses the sum of per-file token counts (Σ FileEntry.token_count)
-    /// without including template structural overhead.
+    /// including optional line numbers, without template structural overhead.
     ///
     /// **Use case**: Before prompt generation, for cost estimation, or for
     /// pure codebase statistics exploration (e.g., in TUI Statistics tab).
@@ -363,11 +366,11 @@ impl Code2PromptSession {
 
     /// Create a "contextual" (post-generation) analysis based on a rendered prompt
     ///
-    /// This analysis uses the token count from a RenderedPrompt, which includes
-    /// both file content tokens AND template structural overhead (tree, git info, etc.).
+    /// This analysis uses the estimated token count from a RenderedPrompt, which
+    /// combines file content tokens with estimated template overhead (tree, Git, etc.).
     ///
     /// **Use case**: After `generate_prompt()`, when you need analysis in the context
-    /// of the actual rendered output (e.g., token map showing real percentages).
+    /// of the rendered output (e.g., token map percentages relative to its estimate).
     ///
     /// # Arguments
     ///
@@ -384,7 +387,7 @@ impl Code2PromptSession {
     }
 
     /// Renders the final prompt given a template context. Returns both
-    /// the rendered prompt and the token count information.
+    /// the rendered prompt and its estimated token count.
     pub fn render_prompt(&self, template_context: &TemplateContext) -> Result<RenderedPrompt> {
         // ~~~ Template selection ~~~
         let mut template_str = self.config.template_str.clone();
@@ -408,8 +411,7 @@ impl Code2PromptSession {
 
         // ~~~ Informations ~~~
         let tokenizer_type: TokenizerType = self.config.encoding;
-        // Always use the cached calculation: Σ(FileTokens) + TemplateOverhead
-        let token_count = self.calculate_token_count_from_cache(&tokenizer_type);
+        let token_count = self.calculate_estimated_token_count(&tokenizer_type);
 
         let model_info = tokenizer_type.description();
         let directory_name = template_context.absolute_code_path.to_string();
@@ -445,24 +447,13 @@ impl Code2PromptSession {
         })
     }
 
-    /// Calculate exact token count using cached per-file token counts + skeleton rendering
+    /// Estimate prompt tokens without re-tokenizing the full rendered output.
     ///
-    /// This method provides precise token counting by:
-    /// 1. Summing the cached per-file token counts (from actual content tokenized in parallel)
-    /// 2. Rendering a "skeleton" template with empty file contents to get structural tokens
-    /// 3. Adding them together for an exact count
-    ///
-    /// This approach avoids re-tokenizing the entire rendered output (sequential bottleneck).
-    ///
-    /// # Arguments
-    ///
-    /// * `tokenizer_type` - The tokenizer to use for tokenization
-    ///
-    /// # Returns
-    ///
-    /// * `usize` - The exact total token count
-    fn calculate_token_count_from_cache(&self, tokenizer_type: &TokenizerType) -> usize {
-        // Sum up cached per-file token counts (tokens from actual file content)
+    /// File content is tokenized in parallel, then combined with the token count
+    /// of a template rendered with empty file contents. Counts are not additive
+    /// across token boundaries, and custom templates may omit, repeat or transform
+    /// content, so this is neither an exact count nor a guaranteed upper bound.
+    fn calculate_estimated_token_count(&self, tokenizer_type: &TokenizerType) -> usize {
         let files_token_count: usize = self
             .data
             .files
@@ -470,25 +461,13 @@ impl Code2PromptSession {
             .map(|files| files.iter().map(|file| file.token_count).sum())
             .unwrap_or(0);
 
-        // Calculate exact structural/template overhead using skeleton rendering
         let structural_tokens = self.calculate_structural_tokens(tokenizer_type);
 
         files_token_count + structural_tokens
     }
 
-    /// Calculate structural tokens by rendering a skeleton template
-    ///
-    /// Creates FileEntry "skeletons" with empty code blocks but same structure,
-    /// renders the template, and counts tokens. This gives us the exact token count
-    /// for everything except the actual file content (tree, headers, wrappers, git info).
-    ///
-    /// # Arguments
-    ///
-    /// * `tokenizer_type` - The tokenizer to use for counting
-    ///
-    /// # Returns
-    ///
-    /// * `usize` - The number of structural tokens
+    /// Estimate template overhead by rendering with empty file contents.
+    /// Content-dependent template branches can differ from the actual prompt.
     fn calculate_structural_tokens(&self, tokenizer_type: &TokenizerType) -> usize {
         // Create skeleton file entries (empty code, but same structure/metadata)
         let skeleton_files: Option<Vec<FileEntry>> = self.data.files.as_ref().map(|files| {
@@ -502,7 +481,7 @@ impl Code2PromptSession {
                         path: file.path.clone(),
                         extension: file.extension.clone(),
                         code: empty_code_block,
-                        token_count: 0, // Not used in skeleton
+                        token_count: 0,
                         metadata: file.metadata,
                         mod_time: file.mod_time,
                         // Keep entities so the code map is counted in the
@@ -649,7 +628,7 @@ impl Code2PromptSession {
     /// let mut session = Code2PromptSession::new(config);
     /// let output = session.generate_prompt()?;
     /// 
-    /// println!("Generated prompt with {} tokens", output.token_count);
+    /// println!("Estimated token count: {}", output.token_count);
     /// println!("Processed {} files", output.files.len());
     /// 
     /// // Cleanup

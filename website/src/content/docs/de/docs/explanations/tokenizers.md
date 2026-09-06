@@ -7,6 +7,14 @@ Bei der Arbeit mit Sprachmodellen muss Text in ein Format umgewandelt werden, da
 
 ---
 
+Die angegebene Tokenzahl ist eine **Schätzung**: Code2Prompt zählt die Dateien nach
+der Verarbeitung und optionalen Zeilennummerierung parallel und addiert den
+geschätzten Aufwand der Vorlage. Der vollständige Prompt wird nicht erneut
+tokenisiert. Fragmentgrenzen und Änderungen durch die Vorlage können das Ergebnis
+beeinflussen; die Schätzung ist keine garantierte Obergrenze. Das numerische Feld
+`token_count` behält seinen Namen und berücksichtigt weder die JSON-Hülle noch
+Escape-Sequenzen der Serialisierung.
+
 ## Was ist ein Tokenizer?
 
 Ein Tokenizer konvertiert rohen Text in Tokens, die die Bausteine für die Verarbeitung von Eingaben durch Sprachmodelle sind. Diese Tokens können je nach Design des Tokenizers Wörter, Subwörter oder sogar einzelne Zeichen darstellen.

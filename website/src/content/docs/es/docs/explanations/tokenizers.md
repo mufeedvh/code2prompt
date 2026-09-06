@@ -7,6 +7,14 @@ Cuando se trabaja con modelos de lenguaje, el texto debe transformarse en un for
 
 ---
 
+El recuento indicado es una **estimación**: Code2Prompt cuenta los archivos en
+paralelo después del procesamiento y la numeración de líneas opcional, y añade el
+coste estimado de la plantilla. El prompt completo no se vuelve a tokenizar. Los
+límites entre fragmentos y las transformaciones de la plantilla pueden cambiar el
+resultado; la estimación no es un límite superior garantizado. El campo numérico
+`token_count` conserva su nombre y excluye la envoltura JSON y los escapes de
+serialización.
+
 ## ¿Qué es un Tokenizador?
 
 Un tokenizador convierte texto sin procesar en tokens, que son los bloques de construcción para cómo los modelos de lenguaje procesan la entrada. Estos tokens pueden representar palabras, subpalabras o incluso caracteres individuales, dependiendo del diseño del tokenizador.

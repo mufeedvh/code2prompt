@@ -132,17 +132,17 @@ impl<'a> Widget for StatisticsOverviewWidget<'a> {
         if let Some(result) = &self.model.prompt_output.result {
             let token_count = result.token_count;
             stats_items.push(ListItem::new(format!(
-                "  • Total Tokens: {}",
+                "  • Estimated Tokens: {}",
                 format_number(token_count, &self.model.session.config.token_format)
             )));
             if let Some(avg_tokens) = token_count.checked_div(selected_count) {
                 stats_items.push(ListItem::new(format!(
-                    "  • Avg per File: {}",
+                    "  • Estimated Avg per File: {}",
                     format_number(avg_tokens, &self.model.session.config.token_format)
                 )));
             }
         } else {
-            stats_items.push(ListItem::new("  • Total Tokens: Not calculated"));
+            stats_items.push(ListItem::new("  • Estimated Tokens: Not calculated"));
         }
         stats_items.push(ListItem::new(""));
 

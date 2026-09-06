@@ -66,7 +66,7 @@ pub struct Cli {
     )]
     pub encoding: Option<TokenizerType>,
 
-    /// Display the token count of the generated prompt. Accepts a format: "raw" (machine parsable) or "format" (human readable)
+    /// Display the estimated token count of the generated prompt. Accepts a format: "raw" (machine parsable) or "format" (human readable)
     #[clap(
         long,
         value_name = "raw,format",

@@ -24,18 +24,18 @@ fn test_output_default(stdout_test_env: StdoutTestEnv) {
         .stdout(contains("test.py"))
         .stdout(contains("print('Hello, World!')"))
         // Status messages should be in stderr
-        .stderr(contains("Token count:"))
+        .stderr(contains("Estimated token count:"))
         // Status messages should NOT be in stdout
-        .stdout(contains("Token count:").not());
+        .stdout(contains("Estimated token count:").not());
 
     debug!("✓ Default stdout output test passed");
 }
 
 /// ~~~ Stdout Configurations ~~~
 #[rstest]
-#[case("explicit_dash", vec!["-O", "-", "--no-clipboard"], vec!["test.py", "print('Hello, World!')", "README.md", "# Test Project"], vec!["✓","▹▹▹▹▸ Done!","Token count:","Copied to clipboard successfully"], true)]
-#[case("long_form", vec!["--output-file", "-", "--no-clipboard"], vec!["test.py", "print('Hello, World!')", "README.md", "# Test Project"], vec!["✓","▹▹▹▹▸ Done!","Token count:","Copied to clipboard successfully"], true)]
-#[case("quiet_mode", vec!["--quiet", "-O", "-", "--no-clipboard"], vec!["test.py", "print('Hello, World!')"], vec!["✓","▹▹▹▹▸ Done!","Token count:","Copied to clipboard successfully"], true)]
+#[case("explicit_dash", vec!["-O", "-", "--no-clipboard"], vec!["test.py", "print('Hello, World!')", "README.md", "# Test Project"], vec!["✓","▹▹▹▹▸ Done!","Estimated token count:","Copied to clipboard successfully"], true)]
+#[case("long_form", vec!["--output-file", "-", "--no-clipboard"], vec!["test.py", "print('Hello, World!')", "README.md", "# Test Project"], vec!["✓","▹▹▹▹▸ Done!","Estimated token count:","Copied to clipboard successfully"], true)]
+#[case("quiet_mode", vec!["--quiet", "-O", "-", "--no-clipboard"], vec!["test.py", "print('Hello, World!')"], vec!["✓","▹▹▹▹▸ Done!","Estimated token count:","Copied to clipboard successfully"], true)]
 fn test_stdout_configurations(
     stdout_test_env: StdoutTestEnv,
     #[case] test_name: &str,
@@ -299,7 +299,7 @@ fn test_stdout_stderr_separation(stdout_test_env: StdoutTestEnv) {
         .stdout(contains("test.py"))
         .stdout(contains("print('Hello, World!')"))
         // Status messages should NOT be in stdout (they go to stderr in non-quiet mode)
-        .stdout(contains("Token count:").not())
+        .stdout(contains("Estimated token count:").not())
         .stdout(contains("✓").not());
 
     debug!("✓ Stdout/stderr separation test passed");

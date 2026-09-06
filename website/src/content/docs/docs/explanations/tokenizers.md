@@ -30,6 +30,18 @@ If you want a technical deep dive into tokenizers, check out Andrej Karpathy's b
 
 ## Implementation in `code2prompt`
 
+The reported prompt token count is an **estimate**. Files are tokenized in parallel
+after processing and optional line numbering. Code2Prompt adds estimated template
+overhead by rendering the template with empty file contents, avoiding another
+tokenization pass over the full prompt.
+
+Token boundaries between fragments, template escaping, and custom templates that
+omit, repeat, or conditionally render content can make the actual count differ.
+The estimate is not a guaranteed upper bound. For JSON output, `token_count`
+estimates the embedded prompt; the JSON envelope and serialization escapes are
+not counted. The CLI and TUI label this value as estimated, while the numeric
+`token_count` field retains its name in Rust, Python, and JSON output.
+
 Tokenization is implemented using [`tiktoken-rs`](https://github.com/zurawiki/tiktoken-rs). `tiktoken` supports these encodings used by OpenAI models:
 
 | CLI Argument | Encoding name           | OpenAI models                                                             |

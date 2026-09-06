@@ -288,6 +288,34 @@ mod tests {
     }
 
     #[rstest]
+    #[case(false)]
+    #[case(true)]
+    fn test_file_tokens_count_formatted_content(#[case] line_numbers: bool) {
+        use code2prompt_core::tokenizer::count_tokens;
+
+        let dir = tempdir().unwrap();
+        let source = "fn main() {\n    println!(\"hello\");\n}\n";
+        fs::write(dir.path().join("main.rs"), source).unwrap();
+        let config = Code2PromptConfig::builder()
+            .path(dir.path())
+            .line_numbers(line_numbers)
+            .build()
+            .unwrap();
+
+        let (_, files) = traverse_directory(&config, None).unwrap();
+
+        assert_eq!(files.len(), 1);
+        let file = &files[0];
+        assert_eq!(file.token_count, count_tokens(&file.code, &config.encoding));
+        if line_numbers {
+            assert!(file.code.contains("1 | fn main()"));
+            assert!(file.token_count > count_tokens(source, &config.encoding));
+        } else {
+            assert_eq!(file.code, source);
+        }
+    }
+
+    #[rstest]
     fn test_symlink_following_when_enabled(simple_dir_structure: TempDir) {
         let link_path = simple_dir_structure.path().join("link_to_file");
         #[cfg(unix)]

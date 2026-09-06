@@ -40,6 +40,10 @@ print(result.token_count)
 print(result.files)
 ```
 
+`result.token_count` estimates the prompt size from cached per-file token counts
+(including optional line numbers) and estimated template overhead. The full rendered
+prompt is not re-tokenized, and the JSON output envelope is not counted.
+
 Selection methods mutate and return the same session, so calls may also be chained:
 
 ```python
