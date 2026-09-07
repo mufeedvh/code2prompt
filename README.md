@@ -19,7 +19,7 @@
 [![PyPI](https://img.shields.io/pypi/v/code2prompt-rs?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/code2prompt-rs/)
 [![CI](https://github.com/mufeedvh/code2prompt/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/mufeedvh/code2prompt/actions)
 [![Discord](https://img.shields.io/discord/1342336677905039451?style=flat-square&logo=discord&logoColor=white)](https://discord.com/invite/ZZyBbsHTwH)
-[![Docs.rs](https://docs.rs/code2prompt-core/badge.svg?style=flat-square)](https://docs.rs/code2prompt-core)
+[![Docs.rs](https://img.shields.io/docsrs/code2prompt_core?logo=docsdotrs&label=docs.rs)](https://docs.rs/crate/code2prompt_core/latest)
 [![Crates.io Downloads](https://img.shields.io/crates/d/code2prompt.svg?style=flat-square)](https://crates.io/crates/code2prompt)
 [![GitHub Stars](https://img.shields.io/github/stars/mufeedvh/code2prompt?style=social)](https://github.com/mufeedvh/code2prompt)
 
