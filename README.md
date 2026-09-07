@@ -65,7 +65,7 @@ pip install code2prompt-rs
 
 Once installed, generating a prompt from your codebase is as simple as pointing the tool to your directory.
 
-**Basic Usage**: Generate a prompt from the current directory and copy it to the clipboard.
+**Basic Usage**: Generate a prompt from the current directory. Output goes to stdout by default; use `-c` to copy it to the clipboard.
 
 ```sh
 code2prompt .
@@ -77,11 +77,36 @@ code2prompt .
 code2prompt path/to/project --output-file prompt.txt
 ```
 
+## 🤖 Agent Skill
+
+Teach your coding agent to install and use code2prompt for repository navigation
+and scoped context gathering with the [Skills CLI](https://github.com/vercel-labs/skills):
+
+```sh
+npx skills add mufeedvh/code2prompt
+```
+
+The [code2prompt skill](skills/code2prompt/SKILL.md) helps agents reduce exploration
+round trips: inspect a compact map of functions and classes using `sem-core`, then
+read relevant source files and tests together. It includes a map template and
+installation instructions for the optional `entity-map` feature, with a directory
+map fallback for standard builds. The code2prompt CLI is installed separately.
+
+The installer adds the skill folder and its template to your agent. It may clone
+the repository temporarily to retrieve them; the rest of the repository is not
+installed as part of the skill.
+
+To install it globally for a specific agent, for example Codex:
+
+```sh
+npx skills add mufeedvh/code2prompt --skill code2prompt --agent codex --global
+```
+
 ## 🌐 Ecosystem
 
 Code2Prompt is more than just a CLI tool. It is a complete ecosystem for codebase context.
 
-| 🧱 Core Library <br><img src="https://img.shields.io/badge/Rust-FF6700?style=for-the-badge&logo=rust&logoColor=white" alt="Rust Core Badge"/>| 💻 CLI Tool <br><img src="https://img.shields.io/badge/Terminal-2C3E50?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="CLI Badge"/> | 🐍 Python SDK <br><img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python SDK Badge"/> | 🤖 MCP Server <img src="https://img.shields.io/badge/Agentic%20Flow-7E57C2?style=for-the-badge&logo=server&logoColor=white" alt="MCP Server Badge"/> |
+| 🧱 Core Library <br><img src="https://img.shields.io/badge/Rust-FF6700?style=for-the-badge&logo=rust&logoColor=white" alt="Rust Core Badge"/> | 💻 CLI Tool <br><img src="https://img.shields.io/badge/Terminal-2C3E50?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="CLI Badge"/> | 🐍 Python SDK <br><img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python SDK Badge"/> | 🤖 MCP Server <img src="https://img.shields.io/badge/Agentic%20Flow-7E57C2?style=for-the-badge&logo=server&logoColor=white" alt="MCP Server Badge"/> |
 | :---: | :---: | :---: | :---: |
 | The internal, high-speed library responsible for secure file traversal, respecting `.gitignore` rules, and structuring Git metadata. | Designed for humans, featuring both a minimal CLI and an interactive TUI. Generate formatted prompts, track token usage, and outputs the result to your clipboard or stdout. | Provides fast Python bindings to the Rust Core. Ideal for AI Agents, automation scripts, or deep integration into RAG pipelines. Available on PyPI. | Run Code2Prompt as a local service, enabling agentic applications to read your local codebase efficiently without bloating your context window. |
 

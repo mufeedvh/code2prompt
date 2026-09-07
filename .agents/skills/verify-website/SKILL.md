@@ -1,6 +1,8 @@
 ---
 name: verify-website
 description: Verify changes under website/.
+metadata:
+  internal: true
 ---
 
 # Verify website

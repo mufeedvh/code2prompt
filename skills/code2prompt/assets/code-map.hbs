@@ -1,0 +1,13 @@
+Project: {{absolute_code_path}}
+
+{{#each files}}
+## {{path}}
+{{#each entities}}
+- {{this.kind}} {{this.name}}{{#if this.parent}} in {{this.parent}}{{/if}} (lines {{this.start_line}}-{{this.end_line}}){{#unless (eq this.kind "chunk")}}{{#if this.signature}}: {{this.signature}}{{/if}}{{/unless}}
+{{else}}
+(no extracted entities)
+{{/each}}
+
+{{else}}
+No files matched the selection.
+{{/each}}

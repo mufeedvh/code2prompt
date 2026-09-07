@@ -1,6 +1,8 @@
 # code2prompt agent guide
 
 Project-specific skills live in `.agents/skills/`.
+These contributor skills use `metadata.internal: true` to stay out of public
+Skills CLI discovery. The installable user skill lives in `skills/code2prompt/`.
 
 ## Rules
 

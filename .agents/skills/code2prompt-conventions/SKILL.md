@@ -1,6 +1,8 @@
 ---
 name: code2prompt-conventions
 description: Follow code2prompt architecture and implementation conventions when changing or reviewing code.
+metadata:
+  internal: true
 ---
 
 # code2prompt conventions

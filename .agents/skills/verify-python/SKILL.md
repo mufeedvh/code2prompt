@@ -1,6 +1,8 @@
 ---
 name: verify-python
 description: Verify changes to the code2prompt Python bindings.
+metadata:
+  internal: true
 ---
 
 # Verify Python

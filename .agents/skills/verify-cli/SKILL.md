@@ -1,6 +1,8 @@
 ---
 name: verify-cli
 description: Verify changes to the code2prompt CLI or TUI.
+metadata:
+  internal: true
 ---
 
 # Verify CLI / TUI

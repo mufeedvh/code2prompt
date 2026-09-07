@@ -1,6 +1,8 @@
 ---
 name: verify-core
 description: Verify changes under crates/code2prompt-core.
+metadata:
+  internal: true
 ---
 
 # Verify core

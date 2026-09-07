@@ -1,6 +1,8 @@
 ---
 name: documentation
 description: Update code2prompt documentation when public behavior or architecture changes.
+metadata:
+  internal: true
 ---
 
 # Documentation
