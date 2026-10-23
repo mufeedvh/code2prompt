@@ -27,7 +27,6 @@ import { Card } from "@astrojs/starlight/components";
 
 - **Шаблоны включения** (`--include`): Укажите файлы и директории, которые вы хотите включить.
 - **Шаблоны исключения** (`--exclude`): Укажите файлы и директории, которые вы хотите исключить.
-- **Приоритет** (`--include-priority`): Разрешает конфликты между шаблонами включения и исключения.
 
 ---
 
@@ -149,7 +148,7 @@ code2prompt test_dir --include="*.py"
 Включить `.py` файлы, но исключить файлы в папке `uppercase`:
 
 ```bash
-code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*"
 ```
 
 #### Результат
@@ -171,7 +170,6 @@ code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-prior
 
 - `--include` для указания файлов для включения
 - `--exclude` для указания файлов для исключения
-- `--include-priority` для разрешения конфликтов между шаблонами
 
 Чтобы практиковаться, настройте тестовую директорию, попробуйте команды и посмотрите, как инструмент динамически фильтрует файлы.
 

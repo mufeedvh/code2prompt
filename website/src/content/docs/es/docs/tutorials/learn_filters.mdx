@@ -28,7 +28,6 @@ Los patrones glob te permiten especificar reglas para filtrar archivos y directo
 
 - **Patrones de inclusión** (`--include`): Especifica los archivos y directorios que deseas incluir.
 - **Patrones de exclusión** (`--exclude`): Especifica los archivos y directorios que deseas excluir.
-- **Prioridad** (`--include-priority`): Resuelve conflictos entre patrones de inclusión y exclusión.
 
 ---
 
@@ -164,7 +163,7 @@ Excluidos:
 Incluir archivos `.py` pero excluir archivos en la carpeta `uppercase`:
 
 ```bash
-code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*"
 ```
 
 #### Resultado
@@ -186,7 +185,6 @@ La herramienta de patrones glob en `code2prompt` te permite filtrar archivos y d
 
 - `--include` para especificar archivos a incluir
 - `--exclude` para archivos a excluir
-- `--include-priority` para resolver conflictos entre patrones
 
 Para practicar, configura el directorio de muestra, prueba los comandos y observa cómo la herramienta filtra archivos dinámicamente.
 
