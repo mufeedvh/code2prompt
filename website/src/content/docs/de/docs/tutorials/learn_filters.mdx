@@ -27,7 +27,6 @@ Glob-Muster ermöglichen es Ihnen, Regeln für die Filterung von Dateien und Ver
 
 - **Einschlussmuster** (`--include`): Geben Sie Dateien und Verzeichnisse an, die Sie einschließen möchten.
 - **Ausschlussmuster** (`--exclude`): Geben Sie Dateien und Verzeichnisse an, die Sie ausschließen möchten.
-- **Priorität** (`--include-priority`): Löst Konflikte zwischen Einschluss- und Ausschlussmustern.
 
 ---
 
@@ -163,7 +162,7 @@ Ausschlossen:
 `.py`-Dateien einschließen, aber Dateien im `uppercase`-Verzeichnis ausschließen:
 
 ```bash
-code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*"
 ```
 
 #### Ergebnis
@@ -185,7 +184,6 @@ Das Glob-Muster-Tool in `code2prompt` ermöglicht es Ihnen, Dateien und Verzeich
 
 - `--include` verwenden, um Dateien anzugeben, die eingeschlossen werden sollen
 - `--exclude` verwenden, um Dateien anzugeben, die ausgeschlossen werden sollen
-- `--include-priority` verwenden, um Konflikte zwischen Mustern zu lösen
 
 Um zu üben, erstellen Sie die Beispieldatenstruktur, probieren Sie die Befehle aus und sehen Sie, wie das Tool Dateien dynamisch filtert.
 

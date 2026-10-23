@@ -27,7 +27,6 @@ Les modèles de glob vous permettent de spécifier des règles pour filtrer des 
 
 - **Modèles d'inclusion** (`--include`) : Spécifiez les fichiers et répertoires que vous souhaitez inclure.
 - **Modèles d'exclusion** (`--exclude`) : Spécifiez les fichiers et répertoires que vous souhaitez exclure.
-- **Priorité** (`--include-priority`) : Résout les conflits entre les modèles d'inclusion et d'exclusion.
 
 ---
 
@@ -163,7 +162,7 @@ Exclus :
 Inclure les fichiers `.py` mais exclure les fichiers dans le dossier `uppercase` :
 
 ```bash
-code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*"
 ```
 
 #### Résultat
@@ -185,7 +184,6 @@ L'outil de modèle de glob dans `code2prompt` vous permet de filtrer efficacemen
 
 - `--include` pour spécifier les fichiers à inclure
 - `--exclude` pour les fichiers à exclure
-- `--include-priority` pour résoudre les conflits entre les modèles
 
 Pour pratiquer, configurez le répertoire échantillon, essayez les commandes et voyez comment l'outil filtre les fichiers de manière dynamique.
 

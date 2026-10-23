@@ -26,7 +26,6 @@ Globパターンは、ファイルやディレクトリのフィルタリング�
 
 - **インクルードパターン** (`--include`): 含めたいファイルやディレクトリを指定します。
 - **エクスクルードパターン** (`--exclude`): 除外したいファイルやディレクトリを指定します。
-- **優先度** (`--include-priority`): インクルードパターンとエクスクルードパターンの競合を解決します。
 
 ---
 
@@ -148,7 +147,7 @@ code2prompt test_dir --include="*.py"
 `.py`ファイルを含めますが、`uppercase`フォルダ内のファイルをエクスクルードします:
 
 ```bash
-code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*"
 ```
 
 #### 結果
@@ -170,7 +169,6 @@ code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-prior
 
 - `--include`でインクルードするファイルを指定
 - `--exclude`でエクスクルードするファイルを指定
-- `--include-priority`でパターン間の競合を解決
 
 練習として、サンプルディレクトリを設定し、コマンドを実行して、ツールがファイルを動的にフィルタリングする様子を確認してください。
 
