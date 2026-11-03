@@ -1,4 +1,6 @@
-use code2prompt_core::git::{get_git_diff, get_git_diff_between_branches, get_git_log};
+use code2prompt_core::git::{
+    get_git_diff, get_git_diff_between_branches, get_git_log, write_diff_line,
+};
 
 #[cfg(test)]
 mod tests {
@@ -384,5 +386,47 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Branch nonexistent_reference doesn't exist!"));
+    }
+
+    #[test]
+    fn write_diff_line_synthesizes_sigils_for_content_lines() {
+        let mut buf = Vec::new();
+        write_diff_line(&mut buf, '+', b"hello\n");
+        assert_eq!(buf, b"+hello\n");
+
+        buf.clear();
+        write_diff_line(&mut buf, '-', b"world\n");
+        assert_eq!(buf, b"-world\n");
+
+        buf.clear();
+        write_diff_line(&mut buf, ' ', b"ctx\n");
+        assert_eq!(buf, b" ctx\n");
+    }
+
+    #[test]
+    fn write_diff_line_does_not_synthesize_sigil_for_headers_and_eof_markers() {
+        let mut buf = Vec::new();
+        write_diff_line(&mut buf, 'F', b"diff --git a/x b/x\n");
+        assert_eq!(buf, b"diff --git a/x b/x\n");
+
+        buf.clear();
+        write_diff_line(&mut buf, '=', b"\\ No newline at end of file\n");
+        assert_eq!(buf, b"\\ No newline at end of file\n");
+
+        buf.clear();
+        write_diff_line(&mut buf, 'H', b"@@ -1,3 +1,4 @@\n");
+        assert_eq!(buf, b"@@ -1,3 +1,4 @@\n");
+
+        buf.clear();
+        write_diff_line(&mut buf, '>', b"old filename\n");
+        assert_eq!(buf, b"old filename\n");
+
+        buf.clear();
+        write_diff_line(&mut buf, '<', b"new filename\n");
+        assert_eq!(buf, b"new filename\n");
+
+        buf.clear();
+        write_diff_line(&mut buf, 'B', b"Binary files a/x and b/x differ\n");
+        assert_eq!(buf, b"Binary files a/x and b/x differ\n");
     }
 }

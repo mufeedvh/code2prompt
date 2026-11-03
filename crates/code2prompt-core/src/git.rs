@@ -11,6 +11,28 @@ use log::info;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+/// Synthesize a diff-line sigil (`+`/`-`/` `) for added/removed/context lines.
+///
+/// `git2`'s `DiffFormat::Patch` splits the sigil from the line content:
+/// - `origin()` returns `'+'` / `'-'` / `' '` for added/removed/context lines
+/// - `content()` returns ONLY the raw line text WITHOUT the sigil
+/// - file headers (`'F'`), hunk headers (`'H'`), binary notices (`'B'`) and the
+///   end-of-file markers (`'='/'>'/'<'`) already contain their full text in
+///   `content()`, so they get no synthesized sigil.
+///
+/// `content()` is appended unconditionally, so binary notices and the
+/// `\ No newline at end of file` markers are preserved rather than dropped.
+pub fn write_diff_line(buf: &mut Vec<u8>, origin: char, content: &[u8]) {
+    match origin {
+        '+' => buf.push(b'+'),
+        '-' => buf.push(b'-'),
+        ' ' => buf.push(b' '),
+        'F' | 'H' | 'B' | '=' | '>' | '<' => {} // full text already in content()
+        _ => {}
+    }
+    buf.extend_from_slice(content);
+}
+
 /// Extract git diff for staged changes in repository.
 /// 
 /// Generates diff between HEAD and index to show staged changes, with additional
@@ -50,7 +72,7 @@ pub fn get_git_diff(repo_path: &Path) -> Result<String> {
     let mut staged_diff_text = Vec::new();
     staged_diff
         .print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-            staged_diff_text.extend_from_slice(line.content());
+            write_diff_line(&mut staged_diff_text, line.origin(), line.content());
             true
         })
         .context("Failed to print staged diff")?;
@@ -70,7 +92,7 @@ pub fn get_git_diff(repo_path: &Path) -> Result<String> {
     let mut unstaged_diff_text = Vec::new();
     unstaged_diff
         .print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-            unstaged_diff_text.extend_from_slice(line.content());
+            write_diff_line(&mut unstaged_diff_text, line.origin(), line.content());
             true
         })
         .context("Failed to print unstaged diff")?;
@@ -127,7 +149,7 @@ pub fn get_git_diff_between_branches(
 
     let mut diff_text = Vec::new();
     diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-        diff_text.extend_from_slice(line.content());
+        write_diff_line(&mut diff_text, line.origin(), line.content());
         true
     })
     .context("Failed to print diff")?;
