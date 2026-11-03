@@ -180,12 +180,12 @@ Excluded:
 
 ---
 
-### Case 4: Include and Exclude with Priority
+### Case 4: Include and Exclude
 
 Include `.py` files but exclude files in the `uppercase` folder:
 
 ```bash
-code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*"
 ```
 
 #### Result
@@ -231,6 +231,5 @@ The glob pattern tool in `code2prompt` allows you to filter files and directorie
 
 - `--include` for specifying files to include
 - `--exclude` for files to exclude
-- `--include-priority` for resolving conflicts between patterns
 
 To practice, set up the sample directory, try out the commands, and see how the tool filters files dynamically.

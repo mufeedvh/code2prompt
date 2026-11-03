@@ -26,7 +26,6 @@ Glob 模式允许您指定过滤文件和目录的规则。
 
 - **包含模式** (`--include`)：指定要包含的文件和目录。
 - **排除模式** (`--exclude`)：指定要排除的文件和目录。
-- **优先级** (`--include-priority`)：解决包含和排除模式之间的冲突。
 
 ---
 
@@ -148,7 +147,7 @@ code2prompt test_dir --include="*.py"
 包含 `.py` 文件，但排除 `uppercase` 文件夹中的文件：
 
 ```bash
-code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-priority=true
+code2prompt test_dir --include="*.py" --exclude="**/uppercase/*"
 ```
 
 #### 结果
@@ -170,7 +169,6 @@ code2prompt test_dir --include="*.py" --exclude="**/uppercase/*" --include-prior
 
 - `--include` 指定要包含的文件
 - `--exclude` 指定要排除的文件
-- `--include-priority` 解决模式之间的冲突
 
 要练习，请设置示例目录，尝试运行命令，并查看工具如何动态过滤文件。
 
