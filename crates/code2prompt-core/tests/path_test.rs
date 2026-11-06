@@ -336,4 +336,37 @@ mod tests {
         #[cfg(unix)]
         assert!(tree_str.contains("link_to_file"));
     }
+
+    #[rstest]
+    fn test_excluded_files_prune_empty_directories_from_tree(simple_dir_structure: TempDir) {
+        let config = Code2PromptConfig::builder()
+            .path(simple_dir_structure.path().to_path_buf())
+            .exclude_patterns(vec!["subdir/**".to_string()])
+            .full_directory_tree(false)
+            .build()
+            .unwrap();
+
+        let (tree_str, files) = traverse_directory(&config, None).unwrap();
+
+        assert_eq!(files.len(), 1);
+        assert!(file_exists(&files, "file1.txt"));
+        assert!(
+            !tree_str.contains("subdir"),
+            "Excluded directory with no remaining files should not appear in tree when full_directory_tree=false, got:\n{tree_str}"
+        );
+        assert!(!tree_str.contains("nested"));
+
+        let full_tree_config = Code2PromptConfig::builder()
+            .path(simple_dir_structure.path().to_path_buf())
+            .exclude_patterns(vec!["subdir/**".to_string()])
+            .full_directory_tree(true)
+            .build()
+            .unwrap();
+
+        let (full_tree_str, _) = traverse_directory(&full_tree_config, None).unwrap();
+        assert!(
+            full_tree_str.contains("subdir"),
+            "Excluded directory should appear in tree when full_directory_tree=true, got:\n{full_tree_str}"
+        );
+    }
 }
