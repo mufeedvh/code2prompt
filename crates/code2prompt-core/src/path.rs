@@ -136,7 +136,7 @@ fn discover_files(
             }
 
             // Directory Tree
-            let include_in_tree = config.full_directory_tree || entry_match;
+            let include_in_tree = config.full_directory_tree || (path.is_file() && entry_match);
 
             if include_in_tree {
                 let mut current_tree = &mut tree;
