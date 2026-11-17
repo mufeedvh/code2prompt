@@ -110,3 +110,125 @@ During prompt generation, `code2prompt` will prompt the user to enter values for
 For example, if your template includes `{{challenge_name}}` and `{{challenge_description}}`, you will be prompted to enter values for these variables when running `code2prompt`.
 
 This feature enables creating reusable templates that can be adapted to different scenarios based on user provided information.
+
+### Keep verified dependency documentation with your code
+
+A prompt explaining a dependency call is easier to check when it includes the
+documentation excerpt and its original URL together. This recipe uses
+`[user_variables]` in a local [configuration file](/docs/how_to/config) to keep
+that evidence separate from the files selected for analysis. It also handles
+missing evidence without presenting an excerpt or link on its own.
+
+Start in a temporary directory with a toy Rust project. Use the installed
+`code2prompt` CLI and a POSIX shell with `mktemp` and `grep`; compiling the toy
+project is optional.
+
+```sh
+recipe_dir=$(mktemp -d)
+cd "$recipe_dir"
+mkdir -p toy/src
+cat > toy/Cargo.toml <<'EOF'
+[package]
+name = "json-list-demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "=1.0.145"
+EOF
+cat > toy/src/main.rs <<'EOF'
+fn main() -> serde_json::Result<()> {
+    let numbers: Vec<u32> = serde_json::from_str("[1, 2, 3]")?;
+    println!("{numbers:?}");
+    Ok(())
+}
+EOF
+```
+
+Choose the public library name and version yourself: here, `serde_json 1.0.145`.
+Before adding evidence, open the versioned documentation and verify that the
+excerpt describes the function used by the project. If you use an MCP client
+for discovery, an optional route is [Parallel MCP setup](https://docs.parallel.ai/integrations/mcp/quickstart).
+Its anonymous web search can use the public query
+`serde_json 1.0.145 from_str documentation`. Send only that public query, keeping
+repository contents, local paths, and private identifiers out of the search.
+Copy the verified original source URL, rather than a search result page or a
+rewritten link. The following values use the versioned `from_str` documentation
+and a short excerpt from it.
+
+Create `.c2pconfig` in the current directory, alongside `toy`, so the CLI loads
+the variables without interactive prompts:
+
+```sh
+cat > .c2pconfig <<'EOF'
+[user_variables]
+doc_url = "https://docs.rs/serde_json/1.0.145/serde_json/de/fn.from_str.html"
+doc_excerpt = "Deserialize an instance of type T from a string of JSON text."
+EOF
+```
+
+Create a template that emits evidence only when both fields are nonempty:
+
+````sh
+cat > explain-json.hbs <<'EOF'
+Explain how this program parses a list of numbers. Cite the supplied source
+for dependency behavior, and distinguish it from observations about the code.
+If no documentation is supplied, say so and limit the explanation to the code.
+
+## Dependency documentation
+{{#if doc_url}}
+{{#if doc_excerpt}}
+Source:
+{{doc_url}}
+Excerpt:
+{{doc_excerpt}}
+{{else}}
+No verified dependency documentation supplied.
+{{/if}}
+{{else}}
+No verified dependency documentation supplied.
+{{/if}}
+
+## Selected project files
+{{#each files}}
+### {{path}}
+```{{extension}}
+{{code}}
+```
+{{/each}}
+EOF
+code2prompt toy --include 'Cargo.toml,src/main.rs' \
+  --template explain-json.hbs --output-file prompt.md
+````
+
+`prompt.md` now contains the two selected files plus the source and excerpt.
+The configuration, template, and generated artifact sit outside `toy`, so they
+do not become additional project files. `code2prompt` renders the supplied
+evidence locally; it does not search, verify the source, or generate an answer.
+You can pass the generated prompt to your usual assistant afterward.
+
+Check that the original URL survives exactly once, on its own line:
+
+```sh
+test "$(grep -Fxc 'https://docs.rs/serde_json/1.0.145/serde_json/de/fn.from_str.html' prompt.md)" -eq 1
+```
+
+If documentation is unavailable, mismatched, or unverified, clear both values
+instead of inserting a guessed citation. Keep the keys present with empty
+strings to avoid interactive variable prompts:
+
+```sh
+cat > .c2pconfig <<'EOF'
+[user_variables]
+doc_url = ""
+doc_excerpt = ""
+EOF
+code2prompt toy --include 'Cargo.toml,src/main.rs' \
+  --template explain-json.hbs --output-file prompt-without-evidence.md
+grep -Fx 'No verified dependency documentation supplied.' prompt-without-evidence.md
+! grep -F 'https://docs.rs/' prompt-without-evidence.md
+```
+
+The same two project files are still selected. An empty URL or an empty excerpt
+also takes the no-evidence branch, so a partial evidence pair is not presented
+as a verified source.
